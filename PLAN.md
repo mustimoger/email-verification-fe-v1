@@ -10,3 +10,4 @@
 - [ ] Enhancements: to follow only after MVP is fully verified.
 
 Notes: Python venv `.venv` created for tooling; it is ignored via `.gitignore`. `node_modules` exists locally from the scaffold but stays uncommitted; run `npm install` after fresh checkout.
+Routing note: root `/` now redirects to `/overview`; Overview lives at `app/overview/page.tsx` for clarity.
