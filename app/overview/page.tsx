@@ -382,17 +382,14 @@ export default function Home() {
               <button
                 type="button"
                 onClick={() => setProfileMenuOpen((open) => !open)}
-                className="flex items-center gap-3 rounded-full border border-slate-100 bg-white px-2 py-1 shadow-sm transition hover:shadow-md"
+                className="flex items-center gap-2 rounded-md bg-transparent px-2 py-1 transition hover:bg-white/40"
                 aria-haspopup="menu"
                 aria-expanded={profileMenuOpen}
               >
                 <Avatar />
-                <div className="leading-tight text-left">
-                  <p className="text-sm font-semibold text-slate-900">
-                    {profile.name}
-                  </p>
-                  <p className="text-xs text-slate-500">{profile.role}</p>
-                </div>
+                <p className="text-sm font-semibold text-slate-900">
+                  {profile.name}
+                </p>
                 <ChevronDown className="h-4 w-4 text-slate-500" />
               </button>
 
