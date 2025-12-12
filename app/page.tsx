@@ -218,7 +218,7 @@ function NavButton({
         "group flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition",
         active
           ? "bg-[#4c61cc] text-white shadow-[0_8px_24px_rgba(0,0,0,0.12)]"
-          : "text-white/80 hover:bg-[#4c61cc]/70 hover:text-white",
+          : "text-white hover:bg-[#4c61cc]/70 hover:text-white",
         isDisabled && "!cursor-not-allowed opacity-70 hover:bg-transparent",
       ].join(" ")}
       aria-current={active ? "page" : undefined}
@@ -227,7 +227,7 @@ function NavButton({
     >
       <Icon
         className={`h-5 w-5 ${
-          active ? "text-white" : "text-white/90 group-hover:text-white"
+          active ? "text-white" : "text-white group-hover:text-white"
         }`}
       />
       <span>{item.label}</span>
