@@ -424,17 +424,6 @@ export default function Home() {
         </header>
 
         <main className="flex-1 overflow-y-auto bg-transparent px-4 py-6 sm:px-6 lg:px-10">
-          <section className="rounded-2xl bg-white/70 p-6 shadow-md ring-1 ring-slate-100 backdrop-blur">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h1 className="text-3xl font-bold text-slate-900">Dashboard</h1>
-                <p className="text-sm text-slate-600">
-                  Overview of verification usage, credits, and performance.
-                </p>
-              </div>
-            </div>
-          </section>
-
           <section className="mt-4 grid gap-4 lg:grid-cols-4">
             {stats.map((stat) => {
               const Icon = stat.icon;
