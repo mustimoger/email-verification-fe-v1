@@ -212,14 +212,15 @@ function NavButton({
   return (
     <button
       type="button"
-      onClick={() => onSelect(item.key)}
-      disabled={isDisabled}
+      onClick={() => {
+        if (item.available) onSelect(item.key);
+      }}
       className={[
         "group flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition",
         active
           ? "bg-[#4c61cc] text-white shadow-[0_8px_24px_rgba(0,0,0,0.12)]"
           : "text-white hover:bg-[#4c61cc]/70 hover:text-white",
-        isDisabled && "!cursor-not-allowed opacity-70 hover:bg-transparent",
+        isDisabled && "!cursor-not-allowed",
       ].join(" ")}
       aria-current={active ? "page" : undefined}
       aria-disabled={isDisabled}
