@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import type { ComponentType, SVGProps } from "react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Bell,
   CheckCircle2,
@@ -17,12 +17,14 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  MoonStar,
   ShieldCheck,
   Puzzle,
   TrendingDown,
   TrendingUp,
   Settings,
   ShoppingBag,
+  UserCog,
   User,
 } from "lucide-react";
 import {
@@ -183,6 +185,18 @@ const statusColor: Record<Task["status"], string> = {
   Cancelled: "bg-rose-500",
 };
 
+type ProfileMenuItem = {
+  key: string;
+  label: string;
+  icon: ComponentType<SVGProps<SVGSVGElement>>;
+};
+
+const profileMenu: ProfileMenuItem[] = [
+  { key: "account", label: "Manage Account", icon: UserCog },
+  { key: "dark-mode", label: "Dark Mode", icon: MoonStar },
+  { key: "logout", label: "Log out", icon: LogOut },
+];
+
 function NavButton({
   item,
   active,
@@ -253,11 +267,26 @@ function Avatar() {
 export default function Home() {
   const [active, setActive] = useState<string>("overview");
   const [isNavOpen, setIsNavOpen] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const profileRef = useRef<HTMLDivElement | null>(null);
 
   const handleSelect = (key: string) => {
     setActive(key);
     setIsNavOpen(false);
   };
+
+  useEffect(() => {
+    const handler = (event: MouseEvent) => {
+      if (
+        profileRef.current &&
+        !profileRef.current.contains(event.target as Node)
+      ) {
+        setProfileMenuOpen(false);
+      }
+    };
+    window.addEventListener("mousedown", handler);
+    return () => window.removeEventListener("mousedown", handler);
+  }, []);
 
   return (
     <div className="flex min-h-screen">
@@ -341,22 +370,54 @@ export default function Home() {
               className="relative rounded-full p-2 text-slate-600 transition hover:bg-slate-100"
               aria-label="Notifications"
             >
-            <Bell className="h-5 w-5" />
-            {profile.notifications > 0 ? (
-              <span className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-semibold text-white">
-                {profile.notifications}
-              </span>
+              <Bell className="h-5 w-5" />
+              {profile.notifications > 0 ? (
+                <span className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-semibold text-white">
+                  {profile.notifications}
+                </span>
               ) : null}
             </button>
-            <div className="flex items-center gap-3 rounded-full border border-slate-100 bg-white px-2 py-1 shadow-sm">
-              <Avatar />
-              <div className="leading-tight">
-                <p className="text-sm font-semibold text-slate-900">
-                  {profile.name}
-                </p>
-                <p className="text-xs text-slate-500">{profile.role}</p>
-              </div>
-              <ChevronDown className="h-4 w-4 text-slate-500" />
+            <div className="relative" ref={profileRef}>
+              <button
+                type="button"
+                onClick={() => setProfileMenuOpen((open) => !open)}
+                className="flex items-center gap-3 rounded-full border border-slate-100 bg-white px-2 py-1 shadow-sm transition hover:shadow-md"
+                aria-haspopup="menu"
+                aria-expanded={profileMenuOpen}
+              >
+                <Avatar />
+                <div className="leading-tight text-left">
+                  <p className="text-sm font-semibold text-slate-900">
+                    {profile.name}
+                  </p>
+                  <p className="text-xs text-slate-500">{profile.role}</p>
+                </div>
+                <ChevronDown className="h-4 w-4 text-slate-500" />
+              </button>
+
+              {profileMenuOpen ? (
+                <div
+                  role="menu"
+                  className="absolute right-0 mt-2 w-48 rounded-2xl border border-slate-100 bg-white py-2 shadow-2xl ring-1 ring-slate-100"
+                >
+                  {profileMenu.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <button
+                        key={item.key}
+                        type="button"
+                        role="menuitem"
+                        className="flex w-full items-center gap-3 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                      >
+                        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-50 text-[#4c61cc] shadow-inner">
+                          <Icon className="h-4 w-4" />
+                        </span>
+                        <span>{item.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : null}
             </div>
           </div>
         </header>
