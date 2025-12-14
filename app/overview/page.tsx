@@ -296,13 +296,13 @@ export default function Home() {
         <div className="flex h-full flex-col px-5 py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="relative h-8 w-[140px] overflow-hidden">
+              <div className="relative h-12 w-[220px] overflow-hidden">
                 <Image
                   src="/logo.png"
                   alt="BoltRoute logo"
                   fill
                   className="object-contain"
-                  sizes="140px"
+                  sizes="220px"
                 />
               </div>
             </div>
