@@ -322,13 +322,11 @@ export default function Home() {
                 onSelect={handleSelect}
               />
             ))}
-            <div className="pt-4">
-              <NavButton
-                item={{ key: "logout", label: "Logout", icon: LogOut, available: false }}
-                active={active === "logout"}
-                onSelect={handleSelect}
-              />
-            </div>
+            <NavButton
+              item={{ key: "logout", label: "Logout", icon: LogOut, available: false }}
+              active={active === "logout"}
+              onSelect={handleSelect}
+            />
           </nav>
         </div>
       </aside>
