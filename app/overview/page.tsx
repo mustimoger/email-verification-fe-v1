@@ -298,14 +298,14 @@ export default function Home() {
       >
         <div className="flex h-full flex-col px-5 py-6">
           <div className="flex items-center justify-between">
-            <Image
-              src="/logo.png"
-              alt="BoltRoute"
-              width={140}
-              height={32}
-              className="h-8 w-auto"
-              priority
-            />
+            <div className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/10 text-lg font-extrabold">
+                D
+              </div>
+              <div className="text-lg font-extrabold">
+                Dash<span className="text-slate-100">Stack</span>
+              </div>
+            </div>
             <button
               type="button"
               className="rounded-lg p-2 text-white/80 hover:bg-white/10 lg:hidden"
