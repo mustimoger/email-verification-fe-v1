@@ -296,14 +296,11 @@ export default function Home() {
         <div className="flex h-full flex-col px-5 py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="relative h-8 w-[140px] overflow-hidden">
-                <Image
-                  src="/logo.png"
-                  alt="BoltRoute logo"
-                  fill
-                  className="object-contain"
-                  sizes="140px"
-                />
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/10 text-lg font-extrabold">
+                D
+              </div>
+              <div className="text-lg font-extrabold">
+                Dash<span className="text-slate-100">Stack</span>
               </div>
             </div>
             <button
