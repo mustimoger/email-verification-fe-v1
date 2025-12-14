@@ -239,6 +239,8 @@ function Avatar() {
     return (first + last || first).toUpperCase();
   }, []);
 
+  const [showFallback, setShowFallback] = useState(false);
+
   return (
     <div className="relative h-11 w-11 overflow-hidden rounded-full bg-gradient-to-br from-[#6ea8ff] via-[#f089ff] to-[#ffba7a] text-white">
       <Image
@@ -247,14 +249,15 @@ function Avatar() {
         fill
         className="object-cover"
         sizes="44px"
-        onError={(event) => {
-          const target = event.target as HTMLImageElement;
-          target.style.display = "none";
-        }}
+        onLoad={() => setShowFallback(false)}
+        onError={() => setShowFallback(true)}
+        style={showFallback ? { display: "none" } : undefined}
       />
-      <span className="absolute inset-0 flex items-center justify-center text-sm font-semibold">
-        {initials}
-      </span>
+      {showFallback ? (
+        <span className="absolute inset-0 flex items-center justify-center text-sm font-semibold">
+          {initials}
+        </span>
+      ) : null}
     </div>
   );
 }
