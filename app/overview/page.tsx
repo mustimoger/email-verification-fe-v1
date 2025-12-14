@@ -22,7 +22,6 @@ import {
   Puzzle,
   TrendingDown,
   TrendingUp,
-  Settings,
   ShoppingBag,
   UserCog,
   User,
@@ -54,11 +53,6 @@ const primaryNav: NavItem[] = [
   { key: "api", label: "API", icon: Code2, available: false },
   { key: "pricing", label: "Pricing", icon: ShoppingBag, available: false },
   { key: "account", label: "Account", icon: User, available: false },
-];
-
-const secondaryNav: NavItem[] = [
-  { key: "settings", label: "Settings", icon: Settings, available: false },
-  { key: "logout", label: "Logout", icon: LogOut, available: false },
 ];
 
 const profile = {
@@ -328,18 +322,14 @@ export default function Home() {
                 onSelect={handleSelect}
               />
             ))}
-          </nav>
-
-          <div className="mt-auto space-y-2 pt-10">
-            {secondaryNav.map((item) => (
+            <div className="pt-4">
               <NavButton
-                key={item.key}
-                item={item}
-                active={active === item.key}
+                item={{ key: "logout", label: "Logout", icon: LogOut, available: false }}
+                active={active === "logout"}
                 onSelect={handleSelect}
               />
-            ))}
-          </div>
+            </div>
+          </nav>
         </div>
       </aside>
 
