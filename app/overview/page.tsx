@@ -296,13 +296,13 @@ export default function Home() {
         <div className="flex h-full flex-col px-5 py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="relative h-12 w-[220px] overflow-hidden">
+              <div className="relative h-24 w-[440px] overflow-hidden">
                 <Image
                   src="/logo.png"
                   alt="Logo"
                   fill
                   className="object-contain"
-                  sizes="220px"
+                  sizes="440px"
                 />
               </div>
             </div>
