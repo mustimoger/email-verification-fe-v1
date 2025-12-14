@@ -58,7 +58,7 @@ const primaryNav: NavItem[] = [
 const profile = {
   name: "Moni Roy",
   role: "Admin",
-  avatar: "/avatar-default.svg",
+  avatar: "/profile-image.png",
   notifications: 6,
 };
 
