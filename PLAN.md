@@ -77,6 +77,10 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
   Explanation: Frontend can now read/update profile info, get remaining credits, and fetch usage records from Supabase instead of mocks.
 - [ ] Implement usage ingestion, account updates for all fields, and retention enforcement hooks; wire frontend to backend and add tests.
   Explanation: Need endpoints or cron hooks to record usage, strengthen account fields, and schedule purge respecting credits/retention days; will also add tests and frontend calls. External API lacks usage; logging usage into Supabase `api_usage` after each external call; cached API keys stored in `cached_api_keys`.
+- [x] Repair API keys cache service after leftover patch artifacts.
+  Explanation: Recreated `backend/app/services/api_keys.py` to restore `cache_api_key`/`list_cached_keys` with Supabase upsert/select and logging; removed broken patch markers that would have caused import errors.
+- [x] Frontend env fix for API client.
+  Explanation: Added `.env.local` with `NEXT_PUBLIC_API_BASE_URL=http://localhost:8000/api` (gitignored) so Next.js pages like `/verify` no longer throw at module load; keeps frontend base URL aligned with backend default.
 
 ## Supabase schema updates
 - [x] Added `cached_api_keys` (key_id PK, user_id FK, name, created_at) with user index for API key caching.
