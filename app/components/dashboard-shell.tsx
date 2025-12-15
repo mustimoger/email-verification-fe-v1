@@ -1,0 +1,350 @@
+"use client";
+
+import Image from "next/image";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import {
+  Bell,
+  CheckCircle2,
+  Clock3,
+  Code2,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  MoonStar,
+  Puzzle,
+  ShoppingBag,
+  User,
+  UserCog,
+} from "lucide-react";
+import type { ComponentType, ReactNode, SVGProps } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+
+type NavItem = {
+  key: string;
+  label: string;
+  icon: ComponentType<SVGProps<SVGSVGElement>>;
+  href: string;
+  available: boolean;
+};
+
+const primaryNav: NavItem[] = [
+  {
+    key: "overview",
+    label: "Overview",
+    icon: LayoutDashboard,
+    href: "/overview",
+    available: true,
+  },
+  {
+    key: "verify",
+    label: "Verify",
+    icon: CheckCircle2,
+    href: "/verify",
+    available: true,
+  },
+  { key: "history", label: "History", icon: Clock3, href: "/history", available: false },
+  {
+    key: "integrations",
+    label: "Integrations",
+    icon: Puzzle,
+    href: "/integrations",
+    available: false,
+  },
+  { key: "api", label: "API", icon: Code2, href: "/api", available: false },
+  { key: "pricing", label: "Pricing", icon: ShoppingBag, href: "/pricing", available: false },
+  { key: "account", label: "Account", icon: User, href: "/account", available: false },
+];
+
+const profile = {
+  name: "Moni Roy",
+  role: "Admin",
+  avatar: "/profile-image.png",
+  notifications: 6,
+};
+
+type ProfileMenuItem = {
+  key: string;
+  label: string;
+  icon: ComponentType<SVGProps<SVGSVGElement>>;
+};
+
+const profileMenu: ProfileMenuItem[] = [
+  { key: "account", label: "Manage Account", icon: UserCog },
+  { key: "dark-mode", label: "Dark Mode", icon: MoonStar },
+  { key: "logout", label: "Log out", icon: LogOut },
+];
+
+function Avatar() {
+  const initials = useMemo(() => {
+    if (!profile.name) return "U";
+    const parts = profile.name.trim().split(" ").filter(Boolean);
+    const first = parts[0]?.[0] ?? "";
+    const last = parts[1]?.[0] ?? "";
+    return (first + last || first).toUpperCase();
+  }, []);
+
+  const [showFallback, setShowFallback] = useState(false);
+
+  return (
+    <div className="relative h-11 w-11 overflow-hidden rounded-full bg-gradient-to-br from-[#6ea8ff] via-[#f089ff] to-[#ffba7a] text-white">
+      <Image
+        src={profile.avatar}
+        alt={profile.name}
+        fill
+        className="object-cover"
+        sizes="44px"
+        onLoad={() => setShowFallback(false)}
+        onError={() => setShowFallback(true)}
+        style={showFallback ? { display: "none" } : undefined}
+      />
+      {showFallback ? (
+        <span className="absolute inset-0 flex items-center justify-center text-sm font-semibold">
+          {initials}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+function NavButton({
+  item,
+  active,
+  onSelect,
+}: {
+  item: NavItem;
+  active: boolean;
+  onSelect: () => void;
+}) {
+  const Icon = item.icon;
+  const baseClasses =
+    "group flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition";
+  const activeClasses = active
+    ? "bg-[#4c61cc] text-white shadow-[0_8px_24px_rgba(0,0,0,0.12)]"
+    : "text-white hover:bg-[#4c61cc]/70 hover:text-white";
+
+  if (!item.available) {
+    return (
+      <button
+        type="button"
+        disabled
+        className={`${baseClasses} ${activeClasses} cursor-not-allowed`}
+        aria-disabled
+        title="Coming soon"
+      >
+        <Icon className="h-5 w-5" />
+        <span>{item.label}</span>
+      </button>
+    );
+  }
+
+  return (
+    <Link
+      href={item.href}
+      onClick={onSelect}
+      className={`${baseClasses} ${activeClasses}`}
+      aria-current={active ? "page" : undefined}
+    >
+      <Icon className="h-5 w-5" />
+      <span>{item.label}</span>
+    </Link>
+  );
+}
+
+export function DashboardShell({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+  const [isNavOpen, setIsNavOpen] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const profileRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const handler = (event: MouseEvent) => {
+      if (
+        profileRef.current &&
+        !profileRef.current.contains(event.target as Node)
+      ) {
+        setProfileMenuOpen(false);
+      }
+    };
+    window.addEventListener("mousedown", handler);
+    return () => window.removeEventListener("mousedown", handler);
+  }, []);
+
+  const activeKey =
+    primaryNav.find((item) =>
+      item.href === "/"
+        ? pathname === "/"
+        : pathname?.startsWith(item.href),
+    )?.key ?? "overview";
+
+  return (
+    <div className="flex min-h-screen">
+      <aside
+        className={[
+          "fixed inset-y-0 z-30 w-64 bg-[#2f47c7] text-white shadow-xl transition-transform duration-200 lg:static lg:translate-x-0",
+          isNavOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
+        ].join(" ")}
+        aria-label="Primary"
+      >
+        <div className="flex h-full flex-col px-5 py-6">
+          <div className="flex items-center justify-between">
+            <Image
+              src="/logo.png"
+              alt="BoltRoute"
+              width={140}
+              height={32}
+              className="h-8 w-auto"
+              priority
+            />
+            <button
+              type="button"
+              className="rounded-lg p-2 text-white/80 hover:bg-white/10 lg:hidden"
+              onClick={() => setIsNavOpen(false)}
+              aria-label="Close navigation"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+          </div>
+
+          <nav className="mt-8 space-y-2">
+            {primaryNav.map((item) => (
+              <NavButton
+                key={item.key}
+                item={item}
+                active={activeKey === item.key}
+                onSelect={() => setIsNavOpen(false)}
+              />
+            ))}
+            <NavButton
+              item={{
+                key: "logout",
+                label: "Logout",
+                icon: LogOut,
+                href: "#",
+                available: false,
+              }}
+              active={activeKey === "logout"}
+              onSelect={() => setIsNavOpen(false)}
+            />
+          </nav>
+        </div>
+      </aside>
+
+      {isNavOpen ? (
+        <button
+          type="button"
+          className="fixed inset-0 z-20 bg-slate-900/40 backdrop-blur-sm lg:hidden"
+          aria-label="Close navigation overlay"
+          onClick={() => setIsNavOpen(false)}
+        />
+      ) : null}
+
+      <div className="flex flex-1 flex-col">
+        <header className="sticky top-0 z-10 flex items-center gap-4 border-b border-slate-100 bg-white/80 px-4 py-3 backdrop-blur md:px-6">
+          <button
+            type="button"
+            className="rounded-lg p-2 text-slate-700 hover:bg-slate-100 lg:hidden"
+            onClick={() => setIsNavOpen(true)}
+            aria-label="Open navigation"
+          >
+            <Menu className="h-6 w-6" />
+          </button>
+
+          <div className="ml-auto flex items-center gap-4">
+            <button
+              type="button"
+              className="relative rounded-full p-2 text-slate-600 transition hover:bg-slate-100"
+              aria-label="Notifications"
+            >
+              <Bell className="h-5 w-5" />
+              {profile.notifications > 0 ? (
+                <span className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-semibold text-white">
+                  {profile.notifications}
+                </span>
+              ) : null}
+            </button>
+            <div className="relative" ref={profileRef}>
+              <button
+                type="button"
+                onClick={() => setProfileMenuOpen((open) => !open)}
+                className="flex items-center gap-2 rounded-md bg-transparent px-2 py-1 transition hover:bg-white/40"
+                aria-haspopup="menu"
+                aria-expanded={profileMenuOpen}
+              >
+                <Avatar />
+                <div className="text-left">
+                  <p className="text-sm font-semibold text-slate-900">
+                    {profile.name}
+                  </p>
+                  <p className="text-xs font-medium text-slate-500">
+                    {profile.role}
+                  </p>
+                </div>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={1.5}
+                  stroke="currentColor"
+                  className="h-4 w-4 text-slate-500"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M19.5 8.25l-7.5 7.5-7.5-7.5"
+                  />
+                </svg>
+              </button>
+
+              {profileMenuOpen ? (
+                <div
+                  role="menu"
+                  className="absolute right-0 mt-2 w-48 rounded-2xl border border-slate-100 bg-white py-2 shadow-2xl ring-1 ring-slate-100"
+                >
+                  {profileMenu.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <button
+                        key={item.key}
+                        type="button"
+                        role="menuitem"
+                        className="flex w-full items-center gap-3 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                      >
+                        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-50 text-[#4c61cc] shadow-inner">
+                          <Icon className="h-4 w-4" />
+                        </span>
+                        <span>{item.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </header>
+
+        <main className="flex-1 overflow-y-auto bg-transparent px-4 py-6 sm:px-6 lg:px-10">
+          <div className="mx-auto flex max-w-6xl flex-col gap-10">
+            {children}
+            <footer className="mt-auto flex flex-wrap gap-8 text-xs font-semibold text-slate-500">
+              <button
+                type="button"
+                className="hover:text-[#4c61cc] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4c61cc]"
+              >
+                Privacy Policy & Terms
+              </button>
+              <button
+                type="button"
+                className="hover:text-[#4c61cc] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4c61cc]"
+              >
+                Cookie Preferences
+              </button>
+            </footer>
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+}
+
+export const navConfig = primaryNav;
