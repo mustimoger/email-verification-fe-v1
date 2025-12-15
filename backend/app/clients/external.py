@@ -210,6 +210,10 @@ class ExternalAPIClient:
     async def revoke_api_key(self, api_key_id: str) -> RevokeAPIKeyResponse:
         return await self._delete(f"/api/v1/api-keys/{api_key_id}", RevokeAPIKeyResponse)
 
+    async def get_email_by_address(self, address: str) -> Dict[str, Any]:
+        response = await self._request("GET", f"/emails/{address}")
+        return self._parse_response_generic(response)
+
     async def _request(self, method: str, path: str, **kwargs) -> httpx.Response:
         url = f"{self.base_url}{path}"
         headers = kwargs.pop("headers", {})
@@ -261,6 +265,28 @@ class ExternalAPIClient:
             ) from exc
         return model.model_validate(data)
 
+    def _parse_response_generic(self, response: httpx.Response):
+        if response.status_code >= 400:
+            detail = None
+            try:
+                detail = response.json()
+            except Exception:
+                detail = response.text
+            logger.warning(
+                "external_api.error",
+                extra={"status_code": response.status_code, "detail": detail},
+            )
+            raise ExternalAPIError(status_code=response.status_code, message="External API error", details=detail)
+        try:
+            return response.json()
+        except Exception as exc:
+            logger.error("external_api.invalid_json", extra={"error": str(exc)})
+            raise ExternalAPIError(
+                status_code=response.status_code,
+                message="Unable to parse external API response",
+                details=str(exc),
+            ) from exc
+
 
 def get_external_api_client() -> ExternalAPIClient:
     settings = get_settings()
@@ -269,4 +295,3 @@ def get_external_api_client() -> ExternalAPIClient:
         api_key=settings.email_api_key,
         max_upload_bytes=settings.upload_max_mb * 1024 * 1024,
     )
-
