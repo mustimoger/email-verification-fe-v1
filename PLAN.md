@@ -58,10 +58,14 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
 - [x] External API client wrappers for `/verify`, `/tasks`, `/tasks/{id}`, `/tasks/batch/upload`, `/api/v1/api-keys` with structured logging and typed responses.
   Explanation: Added `clients/external.py` with pydantic models, async httpx calls, unified error handling, and 10 MB upload guard; covers verify, create/list/detail tasks, file upload, and API key list/create/revoke with Bearer auth.
 - [ ] Routes for frontend pages: verify (manual + file upload), tasks/history listing, task detail, emails lookup, API keys CRUD, usage (Supabase-backed), account/profile (Supabase-backed stub), health.
-  Explanation: In progress. Added FastAPI router under `/api` for verify, tasks (create/list/detail), batch upload (with local save + external upload), email lookup by address, and API key list/create/revoke, all using auth + external client. Usage/account routes still pending; will be Supabase-backed.\n*** End Patch
+  Explanation: In progress. Added FastAPI router under `/api` for verify, tasks (create/list/detail), batch upload (with local save + external upload), email lookup by address, and API key list/create/revoke, all using auth + external client. Usage/account routes still pending; will be Supabase-backed.
 - [ ] Storage and housekeeping: enforce 10 MB uploads, save under `backend/uploads`, expose retention rule (default keep up to 180 days when user has non-zero credits, configurable via env) and log cleanup actions.
   Explanation: Matches requirement to retain files while users have credits, with env overrides to avoid disk bloat.
 - [ ] CORS/Env setup: default allow `http://localhost:3000`; read extra origins from env (staging/prod) via comma-separated `BACKEND_CORS_ORIGINS`. Add `.env.example` documenting keys (`EMAIL_API_BASE_URL/KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET`, `DATABASE_URL`, `NEXT_PUBLIC_API_BASE_URL`, `BACKEND_CORS_ORIGINS`, `LOG_LEVEL`, `APP_ENV`, `UPLOAD_RETENTION_DAYS`).
   Explanation: Keeps secrets out of code and makes allowed origins configurable without redeploys.
 - [ ] Tests: unit tests for settings, auth dependency, upload guard, and external client parsing; integration-style tests for verify and task routes.
   Explanation: Ensures MVP backend is verifiable and safe to iterate; aligns with requirement to test thoroughly before enhancements.
+
+## Supabase schema bootstrap
+- [x] Create base tables via Supabase MCP: `profiles` (user_id PK, email, display_name, timestamps), `user_credits` (user_id FK, credits_remaining >= 0), and `api_usage` (usage logs with period and counts) plus index on user/period.
+  Explanation: Provides minimal storage for profile data, credits/retention checks, and API usage metrics; built through Supabase migration for backend wiring.
