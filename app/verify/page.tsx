@@ -106,6 +106,10 @@ export default function VerifyPage() {
   const [fileError, setFileError] = useState<string | null>(null);
   const [files, setFiles] = useState<File[]>([]);
   const [uploadSummary, setUploadSummary] = useState<UploadSummary | null>(null);
+  const [flowStage, setFlowStage] = useState<"idle" | "popup1" | "popup2" | "summary">("idle");
+  const [columnMapping, setColumnMapping] = useState<Record<string, string>>({});
+  const [firstRowHasLabels, setFirstRowHasLabels] = useState<boolean>(true);
+  const [removeDuplicates, setRemoveDuplicates] = useState<boolean>(true);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const handleVerify = () => {
@@ -146,6 +150,10 @@ export default function VerifyPage() {
     setFiles(incoming);
     const summary = deriveUploadSummary(incoming);
     setUploadSummary(summary);
+    setFlowStage("popup1");
+    setColumnMapping(
+      Object.fromEntries(summary.files.map((file) => [file.fileName, ""])),
+    );
 
     console.info("[verify/upload] files selected", {
       count: incoming.length,
@@ -162,6 +170,10 @@ export default function VerifyPage() {
   const resetUpload = () => {
     setFiles([]);
     setUploadSummary(null);
+    setFlowStage("idle");
+    setColumnMapping({});
+    setFirstRowHasLabels(true);
+    setRemoveDuplicates(true);
     setFileError(null);
   };
 
@@ -182,6 +194,24 @@ export default function VerifyPage() {
       (uploadSummary.aggregates.valid / uploadSummary.totalEmails) * 100,
     );
   }, [uploadSummary]);
+
+  const proceedToMapping = () => {
+    if (!uploadSummary) return;
+    setFlowStage("popup2");
+  };
+
+  const proceedToSummary = () => {
+    if (!uploadSummary) return;
+    console.info("[verify/upload] mapping confirmed", {
+      mapping: columnMapping,
+      firstRowHasLabels,
+      removeDuplicates,
+      totalEmails: uploadSummary.totalEmails,
+    });
+    setFlowStage("summary");
+  };
+
+  const showSummaryState = flowStage === "summary" && uploadSummary;
 
   return (
     <DashboardShell>
@@ -255,7 +285,7 @@ export default function VerifyPage() {
           </div>
         </div>
 
-        {uploadSummary ? (
+        {showSummaryState ? (
           <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
             <div className="rounded-2xl bg-white p-5 shadow-lg ring-1 ring-slate-100">
               <div className="flex flex-wrap items-center justify-between gap-4">
@@ -463,6 +493,160 @@ export default function VerifyPage() {
           </>
         )}
       </section>
+
+      {/* Popup 1: File list confirmation */}
+      {flowStage === "popup1" && uploadSummary ? (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/70 px-4 py-6 backdrop-blur-sm">
+          <div className="relative w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl ring-1 ring-slate-200">
+            <h3 className="text-center text-lg font-extrabold text-slate-900">
+              File Based Verification
+            </h3>
+            <div className="mt-4 flex flex-wrap justify-center gap-3">
+              {uploadSummary.files.map((file) => (
+                <span
+                  key={file.fileName}
+                  className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm"
+                >
+                  {file.fileName}
+                </span>
+              ))}
+            </div>
+            <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-center text-sm font-bold text-rose-500">
+              Total {formatNumber(uploadSummary.totalEmails)} emails will be verified
+            </div>
+            <div className="mt-6 flex justify-center">
+              <button
+                type="button"
+                onClick={proceedToMapping}
+                className="rounded-lg bg-[#4880ff] px-6 py-3 text-sm font-bold uppercase text-white shadow-md transition hover:bg-[#3368e0] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4c61cc]"
+              >
+                Verify Emails
+              </button>
+            </div>
+            <div className="mt-3 text-center text-sm font-semibold text-[#020af9]">
+              <button
+                type="button"
+                onClick={resetUpload}
+                className="hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4c61cc]"
+              >
+                Go Back to File Upload Section
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Popup 2: Column mapping */}
+      {flowStage === "popup2" && uploadSummary ? (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/70 px-4 py-6 backdrop-blur-sm">
+          <div className="relative w-full max-w-3xl rounded-3xl bg-white p-6 shadow-2xl ring-1 ring-slate-200">
+            <h3 className="text-center text-lg font-extrabold text-slate-900">
+              Map Your File Columns
+            </h3>
+            <div className="mt-6 grid gap-4 md:grid-cols-3">
+              {uploadSummary.files.map((file) => (
+                <div key={file.fileName} className="space-y-2">
+                  <p className="text-sm font-semibold text-slate-600">
+                    {file.fileName}
+                  </p>
+                  <div className="relative">
+                    <select
+                      value={columnMapping[file.fileName] ?? ""}
+                      onChange={(event) =>
+                        setColumnMapping((prev) => ({
+                          ...prev,
+                          [file.fileName]: event.target.value,
+                        }))
+                      }
+                      className="w-full appearance-none rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm outline-none focus:border-[#4c61cc] focus:ring-1 focus:ring-[#4c61cc]"
+                    >
+                      <option value="">Select column</option>
+                      <option value="email">Email column</option>
+                      <option value="first_name">First name</option>
+                      <option value="last_name">Last name</option>
+                      <option value="title">Title</option>
+                    </select>
+                    <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-slate-400">
+                      ▾
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-6 divide-y divide-slate-200 border-t border-b border-slate-200 py-4">
+              <div className="flex flex-wrap items-center gap-4 py-2">
+                <p className="text-sm font-semibold text-slate-700">
+                  Files first rows contain labels?
+                </p>
+                <div className="flex items-center gap-3 text-sm font-semibold text-slate-700">
+                  <label className="flex items-center gap-1">
+                    <input
+                      type="radio"
+                      name="firstRowLabels"
+                      checked={firstRowHasLabels === true}
+                      onChange={() => setFirstRowHasLabels(true)}
+                    />
+                    Yes
+                  </label>
+                  <label className="flex items-center gap-1">
+                    <input
+                      type="radio"
+                      name="firstRowLabels"
+                      checked={firstRowHasLabels === false}
+                      onChange={() => setFirstRowHasLabels(false)}
+                    />
+                    No
+                  </label>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-4 py-2">
+                <p className="text-sm font-semibold text-slate-700">
+                  Remove duplicate emails?
+                </p>
+                <div className="flex items-center gap-3 text-sm font-semibold text-slate-700">
+                  <label className="flex items-center gap-1">
+                    <input
+                      type="radio"
+                      name="removeDuplicates"
+                      checked={removeDuplicates === true}
+                      onChange={() => setRemoveDuplicates(true)}
+                    />
+                    Yes
+                  </label>
+                  <label className="flex items-center gap-1">
+                    <input
+                      type="radio"
+                      name="removeDuplicates"
+                      checked={removeDuplicates === false}
+                      onChange={() => setRemoveDuplicates(false)}
+                    />
+                    No
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 flex flex-col items-center gap-3">
+              <button
+                type="button"
+                onClick={proceedToSummary}
+                className="w-40 rounded-lg bg-[#4880ff] px-6 py-3 text-sm font-bold uppercase text-white shadow-md transition hover:bg-[#3368e0] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4c61cc]"
+              >
+                Proceed
+              </button>
+              <button
+                type="button"
+                onClick={resetUpload}
+                className="text-sm font-semibold text-[#020af9] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4c61cc]"
+              >
+                Go Back to File Upload Section
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </DashboardShell>
   );
 }
