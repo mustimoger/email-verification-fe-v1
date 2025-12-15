@@ -49,3 +49,19 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
 
 ## Account page
 - [x] Implemented Account page per Figma: profile card with avatar, edit link, username/email/password fields, and Update button; purchase history table with invoice download pills; total credits summary card. Uses typed data and shared shell/footer; backend wiring TBD.
+
+## Backend wiring plan (FastAPI + Supabase + external verification API)
+- [ ] Establish backend structure under `/backend/app` with FastAPI app factory, logging, CORS, and pydantic settings. Decisions: Python 3.12 + pip, uploads stored locally at `backend/uploads` (10 MB max, purge policy configurable), Next.js -> our FastAPI -> external API.
+  Explanation: Need a consistent entrypoint and settings so frontend can call a stable layer while we proxy to the external verification API and Supabase without exposing secrets.
+- [ ] Auth layer using Supabase JWT (validate with `SUPABASE_JWT_SECRET`/service role); read token from `Authorization: Bearer` and cookie (name TBD).
+  Explanation: Enforces per-user scoping for all backend routes; awaiting cookie name confirmation to finalize.
+- [ ] External API client wrappers for `/verify`, `/tasks`, `/tasks/{id}`, `/tasks/batch/upload`, `/api/v1/api-keys` with structured logging and typed responses.
+  Explanation: Centralizes calls to the external verification API; required for manual verify, batch create/upload, task history, and API key create/list/revoke.
+- [ ] Routes for frontend pages: verify (manual + file upload), tasks/history listing, task detail, emails lookup, API keys CRUD, usage (Supabase-backed), account/profile (Supabase-backed stub), health.
+  Explanation: Provides minimal MVP endpoints to replace current mock data/logs; usage/profile will leverage Supabase tables since external spec lacks usage.
+- [ ] Storage and housekeeping: enforce 10 MB uploads, save under `backend/uploads`, expose age-based cleanup (env-driven, default 7 days) and log retention actions.
+  Explanation: Prevents disk bloat while meeting requirement to store uploads locally; configurable for ops.
+- [ ] CORS/Env setup: default allow `http://localhost:3000`; read extra origins from env (staging/prod) via comma-separated `BACKEND_CORS_ORIGINS`. Add `.env.example` documenting keys (`EMAIL_API_BASE_URL/KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET`, `DATABASE_URL`, `NEXT_PUBLIC_API_BASE_URL`, `BACKEND_CORS_ORIGINS`, `LOG_LEVEL`, `APP_ENV`, `UPLOAD_RETENTION_DAYS`).
+  Explanation: Keeps secrets out of code and makes allowed origins configurable without redeploys.
+- [ ] Tests: unit tests for settings, auth dependency, upload guard, and external client parsing; integration-style tests for verify and task routes.
+  Explanation: Ensures MVP backend is verifiable and safe to iterate; aligns with requirement to test thoroughly before enhancements.
