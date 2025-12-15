@@ -69,3 +69,11 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
 ## Supabase schema bootstrap
 - [x] Create base tables via Supabase MCP: `profiles` (user_id PK, email, display_name, timestamps), `user_credits` (user_id FK, credits_remaining >= 0), and `api_usage` (usage logs with period and counts) plus index on user/period.
   Explanation: Provides minimal storage for profile data, credits/retention checks, and API usage metrics; built through Supabase migration for backend wiring.
+
+## Latest backend wiring progress
+- [x] Added Supabase client service using service role key and fetch/upsert helpers for profiles, credits, and usage.
+  Explanation: Centralizes Supabase access with logging; powers account/usage routes and retention checks.
+- [x] Added account and usage routes under `/api`: profile get/patch, credits fetch, and usage listing with optional date filters; all authenticated.
+  Explanation: Frontend can now read/update profile info, get remaining credits, and fetch usage records from Supabase instead of mocks.
+- [ ] Implement usage ingestion, account updates for all fields, and retention enforcement hooks; wire frontend to backend and add tests.
+  Explanation: Need endpoints or cron hooks to record usage, strengthen account fields, and schedule purge respecting credits/retention days; will also add tests and frontend calls.

@@ -4,6 +4,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from .core.logging import configure_logging
 from .core.settings import get_settings
 from .api.routes import router as api_router
+from .api.account import router as account_router
+from .api.usage import router as usage_router
 
 
 def create_app() -> FastAPI:
@@ -25,6 +27,8 @@ def create_app() -> FastAPI:
         return {"status": "ok"}
 
     app.include_router(api_router)
+    app.include_router(account_router)
+    app.include_router(usage_router)
 
     return app
 
