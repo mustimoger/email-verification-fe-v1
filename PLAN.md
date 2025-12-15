@@ -55,8 +55,8 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
   Explanation: Skeleton in place so the frontend can call a stable FastAPI layer without exposing secrets; CORS defaults include localhost and boltroute domains; env-driven configuration recorded for newcomers.
 - [x] Auth layer using Supabase JWT (validate with `SUPABASE_JWT_SECRET`/service role); read token from `Authorization: Bearer` or configured Supabase auth cookie.
   Explanation: Added `SUPABASE_AUTH_COOKIE_NAME` env, auth dependency (`core/auth.py`) decoding HS256 JWTs, extracting `sub`/`user_id`, logging missing/invalid tokens, and returning typed `AuthContext`. Ready to apply to routers for per-user scoping.
-- [ ] External API client wrappers for `/verify`, `/tasks`, `/tasks/{id}`, `/tasks/batch/upload`, `/api/v1/api-keys` with structured logging and typed responses.
-  Explanation: Centralizes calls to the external verification API; required for manual verify, batch create/upload, task history, and API key create/list/revoke.
+- [x] External API client wrappers for `/verify`, `/tasks`, `/tasks/{id}`, `/tasks/batch/upload`, `/api/v1/api-keys` with structured logging and typed responses.
+  Explanation: Added `clients/external.py` with pydantic models, async httpx calls, unified error handling, and 10 MB upload guard; covers verify, create/list/detail tasks, file upload, and API key list/create/revoke with Bearer auth.
 - [ ] Routes for frontend pages: verify (manual + file upload), tasks/history listing, task detail, emails lookup, API keys CRUD, usage (Supabase-backed), account/profile (Supabase-backed stub), health.
   Explanation: Provides minimal MVP endpoints to replace current mock data/logs; usage/profile will leverage Supabase tables since external spec lacks usage.
 - [ ] Storage and housekeeping: enforce 10 MB uploads, save under `backend/uploads`, expose retention rule (default keep up to 180 days when user has non-zero credits, configurable via env) and log cleanup actions.
