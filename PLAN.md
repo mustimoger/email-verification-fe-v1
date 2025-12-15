@@ -53,8 +53,8 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
 ## Backend wiring plan (FastAPI + Supabase + external verification API)
 - [x] Establish backend structure under `/backend/app` with FastAPI app factory, logging, CORS, and pydantic settings. Decisions: Python 3.12 + pip, uploads stored locally at `backend/uploads` (10 MB max, retention configurable), Next.js -> our FastAPI -> external API. Added `.env.example`, `requirements.txt`, `settings.py`, `logging.py`, `main.py` with `/health`, and created upload dir.
   Explanation: Skeleton in place so the frontend can call a stable FastAPI layer without exposing secrets; CORS defaults include localhost and boltroute domains; env-driven configuration recorded for newcomers.
-- [ ] Auth layer using Supabase JWT (validate with `SUPABASE_JWT_SECRET`/service role); read token from `Authorization: Bearer` and cookie (name TBD).
-  Explanation: Enforces per-user scoping for all backend routes; awaiting cookie name confirmation to finalize.
+- [x] Auth layer using Supabase JWT (validate with `SUPABASE_JWT_SECRET`/service role); read token from `Authorization: Bearer` or configured Supabase auth cookie.
+  Explanation: Added `SUPABASE_AUTH_COOKIE_NAME` env, auth dependency (`core/auth.py`) decoding HS256 JWTs, extracting `sub`/`user_id`, logging missing/invalid tokens, and returning typed `AuthContext`. Ready to apply to routers for per-user scoping.
 - [ ] External API client wrappers for `/verify`, `/tasks`, `/tasks/{id}`, `/tasks/batch/upload`, `/api/v1/api-keys` with structured logging and typed responses.
   Explanation: Centralizes calls to the external verification API; required for manual verify, batch create/upload, task history, and API key create/list/revoke.
 - [ ] Routes for frontend pages: verify (manual + file upload), tasks/history listing, task detail, emails lookup, API keys CRUD, usage (Supabase-backed), account/profile (Supabase-backed stub), health.

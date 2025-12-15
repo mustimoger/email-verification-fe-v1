@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     supabase_service_role_key: str
     supabase_jwt_secret: str
     supabase_anon_key: Optional[str] = None
+    supabase_auth_cookie_name: str
 
     database_url: Optional[str] = None
 
