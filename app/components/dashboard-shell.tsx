@@ -51,9 +51,9 @@ const primaryNav: NavItem[] = [
     href: "/integrations",
     available: true,
   },
-  { key: "api", label: "API", icon: Code2, href: "/api", available: false },
-  { key: "pricing", label: "Pricing", icon: ShoppingBag, href: "/pricing", available: false },
-  { key: "account", label: "Account", icon: User, href: "/account", available: false },
+  { key: "api", label: "API", icon: Code2, href: "/api", available: true },
+  { key: "pricing", label: "Pricing", icon: ShoppingBag, href: "/pricing", available: true },
+  { key: "account", label: "Account", icon: User, href: "/account", available: true },
 ];
 
 const profile = {
