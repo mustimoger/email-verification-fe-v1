@@ -1,9 +1,10 @@
 "use client";
 
 import Image from "next/image";
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { DashboardShell } from "../components/dashboard-shell";
+import { apiClient, ApiError, Credits, Profile } from "../lib/api-client";
 
 type Purchase = {
   id: string;
@@ -13,54 +14,48 @@ type Purchase = {
   expireDate: string;
 };
 
-const purchases: Purchase[] = [
-  {
-    id: "00001",
-    email: "Christine Brooks",
-    amount: "089 Kutch Green Apt. 448",
-    creditsBought: "14 Feb 2019",
-    expireDate: "Never",
-  },
-  {
-    id: "00002",
-    email: "Rosie Pearson",
-    amount: "979 Immanuel Ferry Suite 526",
-    creditsBought: "14 Feb 2019",
-    expireDate: "Never",
-  },
-  {
-    id: "00005",
-    email: "Alan Cain",
-    amount: "042 Mylene Throughway",
-    creditsBought: "14 Feb 2019",
-    expireDate: "Never",
-  },
-  {
-    id: "00006",
-    email: "Alfred Murray",
-    amount: "543 Weimann Mountain",
-    creditsBought: "14 Feb 2019",
-    expireDate: "Never",
-  },
-];
-
-const totalCredits = {
-  purchased: 260000,
-  used: 250000,
-};
-
 export default function AccountPage() {
-  const [profile, setProfile] = useState({
-    username: "Kevin",
-    email: "Fleming",
-    currentPassword: "jaskolski.brent@yahoo.com",
-    newPassword: "546-933-2772",
-  });
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [profileDraft, setProfileDraft] = useState<{ email?: string; display_name?: string }>({});
+  const [credits, setCredits] = useState<Credits | null>(null);
+  const [purchases] = useState<Purchase[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
-  const purchaseRows = useMemo(() => purchases, []);
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const [p, c] = await Promise.all([apiClient.getProfile(), apiClient.getCredits()]);
+        setProfile(p);
+        setProfileDraft({ email: p.email ?? "", display_name: p.display_name ?? "" });
+        setCredits(c);
+      } catch (err: unknown) {
+        const message = err instanceof ApiError ? err.message : "Failed to load account";
+        setError(message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    void load();
+  }, []);
 
-  const handleUpdate = () => {
-    console.info("[account/update]", profile);
+  const handleUpdate = async () => {
+    if (!profile) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const updated = await apiClient.updateProfile(profileDraft);
+      setProfile(updated);
+      setProfileDraft({ email: updated.email ?? "", display_name: updated.display_name ?? "" });
+    } catch (err: unknown) {
+      const message = err instanceof ApiError ? err.message : "Update failed";
+      setError(message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -70,13 +65,7 @@ export default function AccountPage() {
           <div className="flex justify-center">
             <div className="flex flex-col items-center">
               <div className="relative h-16 w-16 overflow-hidden rounded-full">
-                <Image
-                  src="/profile-image.png"
-                  alt="Profile"
-                  fill
-                  className="object-cover"
-                  sizes="64px"
-                />
+                <Image src="/profile-image.png" alt="Profile" fill className="object-cover" sizes="64px" />
               </div>
               <button
                 type="button"
@@ -90,57 +79,35 @@ export default function AccountPage() {
 
           <div className="mt-6 grid gap-4 lg:grid-cols-2">
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-semibold text-slate-500">Username</label>
+              <label className="text-xs font-semibold text-slate-500">Display Name</label>
               <input
-                value={profile.username}
-                onChange={(event) =>
-                  setProfile((prev) => ({ ...prev, username: event.target.value }))
-                }
+                value={profileDraft.display_name ?? ""}
+                onChange={(event) => setProfileDraft((prev) => ({ ...prev, display_name: event.target.value }))}
                 className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700 shadow-inner outline-none focus:border-[#4c61cc] focus:ring-1 focus:ring-[#4c61cc]"
               />
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-xs font-semibold text-slate-500">Email</label>
               <input
-                value={profile.email}
-                onChange={(event) =>
-                  setProfile((prev) => ({ ...prev, email: event.target.value }))
-                }
-                className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700 shadow-inner outline-none focus:border-[#4c61cc] focus:ring-1 focus:ring-[#4c61cc]"
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-semibold text-slate-500">Current Password</label>
-              <input
-                value={profile.currentPassword}
-                onChange={(event) =>
-                  setProfile((prev) => ({
-                    ...prev,
-                    currentPassword: event.target.value,
-                  }))
-                }
-                className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700 shadow-inner outline-none focus:border-[#4c61cc] focus:ring-1 focus:ring-[#4c61cc]"
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-semibold text-slate-500">New Password</label>
-              <input
-                value={profile.newPassword}
-                onChange={(event) =>
-                  setProfile((prev) => ({ ...prev, newPassword: event.target.value }))
-                }
+                value={profileDraft.email ?? ""}
+                onChange={(event) => setProfileDraft((prev) => ({ ...prev, email: event.target.value }))}
                 className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700 shadow-inner outline-none focus:border-[#4c61cc] focus:ring-1 focus:ring-[#4c61cc]"
               />
             </div>
           </div>
 
+          {error ? (
+            <div className="mt-3 rounded-md bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700">{error}</div>
+          ) : null}
+
           <div className="mt-6 flex justify-center">
             <button
               type="button"
               onClick={handleUpdate}
-              className="w-40 rounded-lg bg-amber-300 px-4 py-2 text-sm font-bold text-slate-800 shadow-sm transition hover:bg-amber-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4c61cc]"
+              disabled={saving || loading}
+              className="w-40 rounded-lg bg-amber-300 px-4 py-2 text-sm font-bold text-slate-800 shadow-sm transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4c61cc]"
             >
-              Update
+              {saving ? "Updating..." : "Update"}
             </button>
           </div>
         </div>
@@ -157,23 +124,27 @@ export default function AccountPage() {
               <span className="text-right">Invoice</span>
             </div>
             <div className="divide-y divide-slate-100">
-              {purchaseRows.map((row) => (
-                <div
-                  key={row.id}
-                  className="grid grid-cols-6 items-center px-4 py-4 text-sm font-semibold text-slate-800"
-                >
-                  <span className="text-slate-700">{row.id}</span>
-                  <span className="text-slate-700">{row.email}</span>
-                  <span className="text-slate-700">{row.amount}</span>
-                  <span className="text-slate-700">{row.creditsBought}</span>
-                  <span className="text-slate-700">{row.expireDate}</span>
-                  <span className="flex justify-end">
-                    <span className="inline-flex items-center rounded-full bg-emerald-500 px-3 py-1 text-xs font-bold text-white shadow-sm">
-                      Download
+              {purchases.length === 0 ? (
+                <div className="px-4 py-4 text-sm font-semibold text-slate-600">No purchases yet.</div>
+              ) : (
+                purchases.map((row) => (
+                  <div
+                    key={row.id}
+                    className="grid grid-cols-6 items-center px-4 py-4 text-sm font-semibold text-slate-800"
+                  >
+                    <span className="text-slate-700">{row.id}</span>
+                    <span className="text-slate-700">{row.email}</span>
+                    <span className="text-slate-700">{row.amount}</span>
+                    <span className="text-slate-700">{row.creditsBought}</span>
+                    <span className="text-slate-700">{row.expireDate}</span>
+                    <span className="flex justify-end">
+                      <span className="inline-flex items-center rounded-full bg-emerald-500 px-3 py-1 text-xs font-bold text-white shadow-sm">
+                        Download
+                      </span>
                     </span>
-                  </span>
-                </div>
-              ))}
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>
@@ -182,19 +153,15 @@ export default function AccountPage() {
           <h3 className="text-sm font-extrabold text-slate-800">Total Credits</h3>
           <div className="mt-3 overflow-hidden rounded-xl border border-slate-200">
             <div className="grid grid-cols-2 bg-white px-4 py-3 text-sm font-semibold text-slate-700">
-              <span>Total Credits Purchased</span>
+              <span>Total Credits Remaining</span>
               <span className="text-right font-extrabold text-slate-800">
-                {totalCredits.purchased.toLocaleString()}
-              </span>
-            </div>
-            <div className="grid grid-cols-2 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700">
-              <span>Total Credits Used</span>
-              <span className="text-right font-extrabold text-slate-800">
-                {totalCredits.used.toLocaleString()}
+                {credits ? credits.credits_remaining.toLocaleString() : "—"}
               </span>
             </div>
           </div>
         </div>
+
+        {loading ? <div className="text-sm font-semibold text-slate-600">Loading account...</div> : null}
       </section>
     </DashboardShell>
   );
