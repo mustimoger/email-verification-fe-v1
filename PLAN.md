@@ -35,3 +35,8 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
 - [x] Pull Figma specs via MCP and capture screenshot (node `65:5`). Design: shared shell/footer, table listing history rows with columns DATE, FILENAME/TOTAL, VALID, INVALID, CATCH-ALL, ACTION (Download/Pending pills), pagination note “Showing 1-09 of 78”.
 - [x] Implement History page UI per Figma using shared shell; align nav highlight, spacing, and pills per design. Use typed sample data; wire to backend later.  
   Explanation: Added `/history` with table layout (Date, Filename/Total, Valid, Invalid, Catch-all, Action) using shared shell/footer. Status pills for Download/Pending mirror design. Uses typed sample rows and formatting helpers; ready for backend data swap.
+
+## Integrations page
+- [x] Pull Figma specs via MCP and capture screenshot (node `65:339`). Design: shared shell/footer, three integration cards (Zapier, n8n, Google Sheets), text “More coming soon...”.
+- [x] Implement Integrations page UI per Figma using shared shell; render logo cards and supporting text; keep layout responsive. Wire real integration links later.  
+  Explanation: Added `/integrations` with three logo cards (Zapier, n8n, Google Sheets) and “More coming soon...” text, matching spacing/background from Figma. Assets saved under `public/integrations/*.png`. Shared shell/footer reused; ready to link to real integration flows later.
