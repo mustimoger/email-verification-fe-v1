@@ -195,11 +195,11 @@ export const apiClient = {
   listTasks: (limit = 10, offset = 0) =>
     request<TaskListResponse>(`/tasks?limit=${limit}&offset=${offset}`, { method: "GET" }),
   getTask: (taskId: string) => request<TaskDetailResponse>(`/tasks/${taskId}`, { method: "GET" }),
-  uploadTaskFile: (file: File, webhook_url?: string) => {
+  uploadTaskFiles: (files: File[], webhook_url?: string) => {
     const form = new FormData();
-    form.append("file", file);
+    files.forEach((file) => form.append("files", file));
     if (webhook_url) form.append("webhook_url", webhook_url);
-    return request<BatchFileUploadResponse>("/tasks/upload", { method: "POST", body: form, isForm: true });
+    return request<BatchFileUploadResponse[]>("/tasks/upload", { method: "POST", body: form, isForm: true });
   },
   getEmail: (address: string) => request(`/emails/${encodeURIComponent(address)}`, { method: "GET" }),
   listApiKeys: () => request<ListApiKeysResponse>("/api-keys", { method: "GET" }),

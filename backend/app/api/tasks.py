@@ -89,26 +89,29 @@ async def get_task_detail(
         raise HTTPException(status_code=exc.status_code, detail=exc.details or exc.args[0])
 
 
-@router.post("/tasks/upload", response_model=BatchFileUploadResponse)
+@router.post("/tasks/upload", response_model=list[BatchFileUploadResponse])
 async def upload_task_file(
-    file: UploadFile = File(...),
+    files: list[UploadFile] = File(...),
     webhook_url: Optional[str] = Form(default=None),
     user: AuthContext = Depends(get_current_user),
     client: ExternalAPIClient = Depends(...),
 ):
     settings = get_settings()
-    try:
-        saved_path, data = await persist_upload_file(
-            upload=file, user_id=user.user_id, max_bytes=settings.upload_max_mb * 1024 * 1024
-        )
-        result = await client.upload_batch_file(
-            filename=file.filename or "upload", content=data, user_id=user.user_id, webhook_url=webhook_url
-        )
-        record_usage(user.user_id, path="/tasks/batch/upload", count=1)
-        logger.info(
-          "route.tasks.upload",
-          extra={"user_id": user.user_id, "filename": file.filename, "saved_path": str(saved_path)},
-        )
-        return result
-    except ExternalAPIError as exc:
-        raise HTTPException(status_code=exc.status_code, detail=exc.details or exc.args[0])
+    responses: list[BatchFileUploadResponse] = []
+    for file in files:
+        try:
+            saved_path, data = await persist_upload_file(
+                upload=file, user_id=user.user_id, max_bytes=settings.upload_max_mb * 1024 * 1024
+            )
+            result = await client.upload_batch_file(
+                filename=file.filename or "upload", content=data, user_id=user.user_id, webhook_url=webhook_url
+            )
+            record_usage(user.user_id, path="/tasks/batch/upload", count=1)
+            logger.info(
+                "route.tasks.upload",
+                extra={"user_id": user.user_id, "filename": file.filename, "saved_path": str(saved_path)},
+            )
+            responses.append(result)
+        except ExternalAPIError as exc:
+            raise HTTPException(status_code=exc.status_code, detail=exc.details or exc.args[0])
+    return responses

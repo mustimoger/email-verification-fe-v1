@@ -205,17 +205,19 @@ export default function VerifyPage() {
     if (!uploadSummary) return;
     setIsSubmitting(true);
     try {
-      const target = files[0];
-      if (!target) {
+      if (files.length === 0) {
         setFileError("No file to upload.");
         return;
       }
-      const uploadResult = await apiClient.uploadTaskFile(target);
+      const uploadResults = await apiClient.uploadTaskFiles(files);
       const summary = deriveUploadSummary(files);
       setUploadSummary(summary);
       setFlowStage("summary");
-      setToast(uploadResult.message || "Upload submitted");
-      console.info("[verify/upload] uploaded", { upload_id: uploadResult.upload_id, file: target.name });
+      setToast("Upload submitted");
+      console.info("[verify/upload] uploaded", {
+        upload_ids: uploadResults.map((r) => r.upload_id),
+        files: files.map((f) => f.name),
+      });
     } catch (err: unknown) {
       const message = err instanceof ApiError ? err.details || err.message : "Upload failed";
       setFileError(typeof message === "string" ? message : "Upload failed");
