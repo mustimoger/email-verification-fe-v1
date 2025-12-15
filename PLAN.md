@@ -64,7 +64,7 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
 - [ ] CORS/Env setup: default allow `http://localhost:3000`; read extra origins from env (staging/prod) via comma-separated `BACKEND_CORS_ORIGINS`. Add `.env.example` documenting keys (`EMAIL_API_BASE_URL/KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET`, `DATABASE_URL`, `NEXT_PUBLIC_API_BASE_URL`, `BACKEND_CORS_ORIGINS`, `LOG_LEVEL`, `APP_ENV`, `UPLOAD_RETENTION_DAYS`).
   Explanation: Keeps secrets out of code and makes allowed origins configurable without redeploys.
 - [ ] Tests: unit tests for settings, auth dependency, upload guard, and external client parsing; integration-style tests for verify and task routes.
-  Explanation: Ensures MVP backend is verifiable and safe to iterate; aligns with requirement to test thoroughly before enhancements.
+  Explanation: Added minimal smoke tests (settings validation, auth dependency, external client guard/parsing, retention); still need integration coverage for routes once wiring to frontend is finished.\n*** End Patch
 
 ## Supabase schema bootstrap
 - [x] Create base tables via Supabase MCP: `profiles` (user_id PK, email, display_name, timestamps), `user_credits` (user_id FK, credits_remaining >= 0), and `api_usage` (usage logs with period and counts) plus index on user/period.

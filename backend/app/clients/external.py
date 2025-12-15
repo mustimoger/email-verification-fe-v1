@@ -184,7 +184,7 @@ class ExternalAPIClient:
         if len(content) > self.max_upload_bytes:
             logger.warning(
                 "external_api.upload_file_too_large",
-                extra={"filename": filename, "size": len(content), "max": self.max_upload_bytes},
+                extra={"file_name": filename, "file_size": len(content), "max_bytes": self.max_upload_bytes},
             )
             raise ExternalAPIError(
                 status_code=400,
