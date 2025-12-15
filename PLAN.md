@@ -76,4 +76,4 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
 - [x] Added account and usage routes under `/api`: profile get/patch, credits fetch, and usage listing with optional date filters; all authenticated.
   Explanation: Frontend can now read/update profile info, get remaining credits, and fetch usage records from Supabase instead of mocks.
 - [ ] Implement usage ingestion, account updates for all fields, and retention enforcement hooks; wire frontend to backend and add tests.
-  Explanation: Need endpoints or cron hooks to record usage, strengthen account fields, and schedule purge respecting credits/retention days; will also add tests and frontend calls. Awaiting decision on whether external API will expose a usage endpoint; if not, plan is to log usage into Supabase `api_usage` after each external call.
+  Explanation: Need endpoints or cron hooks to record usage, strengthen account fields, and schedule purge respecting credits/retention days; will also add tests and frontend calls. External API lacks usage; plan is to log usage into Supabase `api_usage` after each external call; API keys cached in Supabase.
