@@ -49,7 +49,7 @@ const primaryNav: NavItem[] = [
     label: "Integrations",
     icon: Puzzle,
     href: "/integrations",
-    available: false,
+    available: true,
   },
   { key: "api", label: "API", icon: Code2, href: "/api", available: false },
   { key: "pricing", label: "Pricing", icon: ShoppingBag, href: "/pricing", available: false },
