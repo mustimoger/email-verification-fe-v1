@@ -119,24 +119,15 @@ export default function VerifyPage() {
     setErrors(null);
     setIsSubmitting(true);
     try {
-      const first = parsed[0];
-      const response = await apiClient.verifyEmail(first);
-      const updated: VerificationResult[] = parsed.map((email) => {
-        if (email === first) {
-          return {
-            email,
-            status: response.status || "unknown",
-            message: response.message || "",
-          };
-        }
-        return {
-          email,
-          status: "pending",
-          message: "Queued for verification (bulk endpoint wiring TBD)",
-        };
-      });
+      const response = await apiClient.createTask(parsed);
+      const taskId = response.id ?? null;
+      const updated: VerificationResult[] = parsed.map((email) => ({
+        email,
+        status: "pending",
+        message: taskId ? `Task ${taskId}` : "Task queued",
+      }));
       setResults(updated);
-      setToast(`Verified ${first}`);
+      setToast(taskId ? `Task created (${parsed.length} emails)` : `Task queued (${parsed.length} emails)`);
     } catch (err: unknown) {
       const message = err instanceof ApiError ? err.details || err.message : "Verification failed";
       setErrors(typeof message === "string" ? message : "Verification failed");
