@@ -43,7 +43,7 @@ const primaryNav: NavItem[] = [
     href: "/verify",
     available: true,
   },
-  { key: "history", label: "History", icon: Clock3, href: "/history", available: false },
+  { key: "history", label: "History", icon: Clock3, href: "/history", available: true },
   {
     key: "integrations",
     label: "Integrations",
