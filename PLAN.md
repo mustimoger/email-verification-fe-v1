@@ -43,3 +43,6 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
 
 ## API page
 - [x] Implement simplified API page: card 1 with API keys table (name, masked key, status pill, edit action); card 2 with usage controls (API key dropdown, date range, actions) and line chart placeholder with mock data/empty state. Shared shell/footer reused; console logs for future backend wiring.
+
+## Pricing page
+- [x] Implemented Pricing page per Figma: four tier cards in a grid, each with title, “Credits Never Expire” note, price (last card “Contact Us”), feature list, and “Start Verification” CTA. Shared shell/footer reused; typed feature data for now.
