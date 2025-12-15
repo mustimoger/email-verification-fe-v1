@@ -2,19 +2,15 @@
 
 import { useMemo, useRef, useState } from "react";
 import type { DragEvent } from "react";
-import { AlertCircle, UploadCloud } from "lucide-react";
-import {
-  Cell,
-  Pie,
-  PieChart as RePieChart,
-  ResponsiveContainer,
-} from "recharts";
+import { AlertCircle, UploadCloud, X } from "lucide-react";
+import { Cell, Pie, PieChart as RePieChart, ResponsiveContainer } from "recharts";
 
 import { DashboardShell } from "../components/dashboard-shell";
+import { apiClient, ApiError } from "../lib/api-client";
 
 type VerificationResult = {
   email: string;
-  status: "pending";
+  status: "pending" | string;
   message: string;
 };
 
@@ -67,8 +63,7 @@ function deriveUploadSummary(selectedFiles: File[]): UploadSummary {
     const catchAll = Math.max(0, Math.round(base * 0.05));
     const invalid = Math.max(1, base - valid - catchAll);
     const totalEmails = valid + catchAll + invalid;
-    const status: FileVerificationStatus =
-      index === selectedFiles.length - 1 ? "pending" : "download";
+    const status: FileVerificationStatus = index === selectedFiles.length - 1 ? "pending" : "download";
 
     return {
       fileName: file.name,
@@ -110,9 +105,11 @@ export default function VerifyPage() {
   const [columnMapping, setColumnMapping] = useState<Record<string, string>>({});
   const [firstRowHasLabels, setFirstRowHasLabels] = useState<boolean>(true);
   const [removeDuplicates, setRemoveDuplicates] = useState<boolean>(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const handleVerify = () => {
+  const handleVerify = async () => {
     const parsed = normalizeEmails(inputValue);
     if (parsed.length === 0) {
       setErrors("Add at least one email to verify.");
@@ -120,15 +117,32 @@ export default function VerifyPage() {
       return;
     }
     setErrors(null);
-    const pendingResults = parsed.map<VerificationResult>((email) => ({
-      email,
-      status: "pending",
-      message: "Awaiting verification (connect FastAPI backend).",
-    }));
-    console.info("[verify/manual] queued emails for verification", {
-      count: pendingResults.length,
-    });
-    setResults(pendingResults);
+    setIsSubmitting(true);
+    try {
+      const first = parsed[0];
+      const response = await apiClient.verifyEmail(first);
+      const updated: VerificationResult[] = parsed.map((email) => {
+        if (email === first) {
+          return {
+            email,
+            status: response.status || "unknown",
+            message: response.message || "",
+          };
+        }
+        return {
+          email,
+          status: "pending",
+          message: "Queued for verification (bulk endpoint wiring TBD)",
+        };
+      });
+      setResults(updated);
+      setToast(`Verified ${first}`);
+    } catch (err: unknown) {
+      const message = err instanceof ApiError ? err.details || err.message : "Verification failed";
+      setErrors(typeof message === "string" ? message : "Verification failed");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleFilesSelected = (fileList: FileList | null) => {
@@ -151,9 +165,7 @@ export default function VerifyPage() {
     const summary = deriveUploadSummary(incoming);
     setUploadSummary(summary);
     setFlowStage("popup1");
-    setColumnMapping(
-      Object.fromEntries(summary.files.map((file) => [file.fileName, ""])),
-    );
+    setColumnMapping(Object.fromEntries(summary.files.map((file) => [file.fileName, ""])));
 
     console.info("[verify/upload] files selected", {
       count: incoming.length,
@@ -190,9 +202,7 @@ export default function VerifyPage() {
 
   const validPercent = useMemo(() => {
     if (!uploadSummary || uploadSummary.totalEmails === 0) return 0;
-    return Math.round(
-      (uploadSummary.aggregates.valid / uploadSummary.totalEmails) * 100,
-    );
+    return Math.round((uploadSummary.aggregates.valid / uploadSummary.totalEmails) * 100);
   }, [uploadSummary]);
 
   const proceedToMapping = () => {
@@ -200,15 +210,27 @@ export default function VerifyPage() {
     setFlowStage("popup2");
   };
 
-  const proceedToSummary = () => {
+  const proceedToSummary = async () => {
     if (!uploadSummary) return;
-    console.info("[verify/upload] mapping confirmed", {
-      mapping: columnMapping,
-      firstRowHasLabels,
-      removeDuplicates,
-      totalEmails: uploadSummary.totalEmails,
-    });
-    setFlowStage("summary");
+    setIsSubmitting(true);
+    try {
+      const target = files[0];
+      if (!target) {
+        setFileError("No file to upload.");
+        return;
+      }
+      const uploadResult = await apiClient.uploadTaskFile(target);
+      const summary = deriveUploadSummary(files);
+      setUploadSummary(summary);
+      setFlowStage("summary");
+      setToast(uploadResult.message || "Upload submitted");
+      console.info("[verify/upload] uploaded", { upload_id: uploadResult.upload_id, file: target.name });
+    } catch (err: unknown) {
+      const message = err instanceof ApiError ? err.details || err.message : "Upload failed";
+      setFileError(typeof message === "string" ? message : "Upload failed");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const showSummaryState = flowStage === "summary" && uploadSummary;
@@ -218,9 +240,7 @@ export default function VerifyPage() {
       <section className="flex flex-col gap-8">
         <div className="grid gap-4 lg:grid-cols-3">
           <div className="rounded-2xl bg-white p-5 shadow-md ring-1 ring-slate-100">
-            <h2 className="text-lg font-extrabold text-slate-900">
-              Add Emails To Verify
-            </h2>
+            <h2 className="text-lg font-extrabold text-slate-900">Add Emails To Verify</h2>
             <p className="mt-2 text-sm font-semibold text-slate-600">
               Enter emails comma separated or on their own line
             </p>
@@ -246,9 +266,10 @@ export default function VerifyPage() {
             <button
               type="button"
               onClick={handleVerify}
-              className="mt-4 w-full rounded-lg bg-[#ffe369] px-4 py-3 text-center text-sm font-bold uppercase text-slate-900 shadow-sm transition hover:bg-[#ffd84d] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4c61cc]"
+              disabled={isSubmitting}
+              className="mt-4 w-full rounded-lg bg-[#ffe369] px-4 py-3 text-center text-sm font-bold uppercase text-slate-900 shadow-sm transition hover:bg-[#ffd84d] disabled:cursor-not-allowed disabled:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4c61cc]"
             >
-              Verify
+              {isSubmitting ? "Verifying..." : "Verify"}
             </button>
           </div>
 
@@ -260,393 +281,287 @@ export default function VerifyPage() {
                   Results will appear here after verification.
                 </p>
               ) : (
-                <ul className="space-y-3">
+                <div className="space-y-2">
                   {results.map((item) => (
-                    <li
+                    <div
                       key={item.email}
-                      className="flex items-start justify-between rounded-lg bg-white p-3 shadow-sm ring-1 ring-slate-100"
+                      className="flex items-center justify-between rounded-lg bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200"
                     >
-                      <div>
-                        <p className="text-sm font-semibold text-slate-800">
-                          {item.email}
-                        </p>
-                        <p className="text-xs font-medium text-slate-500">
-                          {item.message}
-                        </p>
-                      </div>
-                      <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold uppercase text-amber-700">
-                        Pending
+                      <span>{item.email}</span>
+                      <span className="text-xs font-bold uppercase text-[#4c61cc]">
+                        {item.status}
                       </span>
-                    </li>
+                    </div>
                   ))}
-                </ul>
+                </div>
               )}
             </div>
           </div>
         </div>
 
-        {showSummaryState ? (
-          <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
-            <div className="rounded-2xl bg-white p-5 shadow-lg ring-1 ring-slate-100">
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <h3 className="text-lg font-extrabold text-slate-900">
-                    Verification Results
-                  </h3>
-                  <span className="text-xs font-bold uppercase text-slate-600">
-                    Total Emails : {formatNumber(uploadSummary.totalEmails)}
-                  </span>
-                </div>
-                <span className="text-xs font-bold uppercase text-slate-600">
-                  Upload Date : {uploadSummary.uploadDate}
-                </span>
-              </div>
-              <div className="mt-4 overflow-hidden rounded-xl border border-slate-200">
-                <div className="grid grid-cols-6 bg-slate-50 px-4 py-3 text-xs font-bold uppercase text-slate-700">
-                  <span>File Name</span>
-                  <span>Total Emails</span>
-                  <span>Valid Emails</span>
-                  <span>Catch-all</span>
-                  <span>Invalid</span>
-                  <span className="text-right">Status</span>
-                </div>
-                <div className="divide-y divide-slate-200">
-                  {uploadSummary.files.map((file, index) => (
-                    <div
-                      key={`${file.fileName}-${index}`}
-                      className="grid grid-cols-6 items-center px-4 py-3 text-sm font-semibold text-slate-800"
-                    >
-                      <span className="truncate" title={file.fileName}>
-                        {file.fileName}
-                      </span>
-                      <span>{formatNumber(file.totalEmails)}</span>
-                      <span>{formatNumber(file.valid)}</span>
-                      <span>{formatNumber(file.catchAll)}</span>
-                      <span>{formatNumber(file.invalid)}</span>
-                      <span className="flex justify-end">
-                        <span
-                          className={[
-                            "inline-flex items-center rounded-full px-3 py-1 text-xs font-bold text-white",
-                            file.status === "download"
-                              ? "bg-[#00b69b]"
-                              : "bg-[#ff990a]",
-                          ].join(" ")}
-                        >
-                          {file.status === "download" ? "Download" : "Pending"}
-                        </span>
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="mt-4 flex flex-wrap gap-3">
+        <div className="grid gap-4 lg:grid-cols-3">
+          <div className="rounded-2xl bg-white p-5 shadow-md ring-1 ring-slate-100">
+            <h2 className="text-lg font-extrabold text-slate-900">Upload a file</h2>
+            <p className="mt-2 text-sm font-semibold text-slate-600">
+              CSV or Excel file
+            </p>
+            <div
+              onDragOver={(event) => event.preventDefault()}
+              onDrop={handleDrop}
+              className="mt-4 flex h-44 flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 p-4 text-center"
+            >
+              <UploadCloud className="h-8 w-8 text-slate-400" />
+              <p className="text-sm font-semibold text-slate-700">Drop your files here</p>
+              <p className="text-xs font-semibold text-slate-500">CSV or Excel file</p>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-slate-600">or</span>
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 shadow-sm transition hover:border-[#4c61cc] hover:text-[#4c61cc] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4c61cc]"
+                  className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs font-bold text-[#4c61cc] shadow-sm transition hover:border-[#4c61cc]"
                 >
-                  Upload more files
+                  Browse files
                 </button>
-                <button
-                  type="button"
-                  onClick={resetUpload}
-                  className="rounded-lg border border-slate-200 bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4c61cc]"
-                >
-                  Reset view
-                </button>
-              </div>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                multiple
-                className="hidden"
-                onChange={(event) => handleFilesSelected(event.target.files)}
-              />
-            </div>
-
-            <div className="rounded-2xl bg-white p-5 shadow-lg ring-1 ring-slate-100">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-extrabold text-slate-900">Validation</h3>
-              </div>
-              <div className="mt-6 h-[260px] w-full">
-                {validationSlices.length === 0 ? (
-                  <div className="flex h-full items-center justify-center rounded-xl bg-slate-50 text-sm font-semibold text-slate-600">
-                    No validation data yet.
-                  </div>
-                ) : (
-                  <ResponsiveContainer>
-                    <RePieChart>
-                      <Pie
-                        data={validationSlices}
-                        dataKey="value"
-                        innerRadius={70}
-                        outerRadius={100}
-                        paddingAngle={2}
-                        startAngle={90}
-                        endAngle={450}
-                      >
-                        {validationSlices.map((entry) => (
-                          <Cell key={entry.name} fill={entry.color} />
-                        ))}
-                      </Pie>
-                    </RePieChart>
-                  </ResponsiveContainer>
-                )}
-              </div>
-              {validationSlices.length > 0 ? (
-                <div className="mt-2 text-center text-sm font-bold text-slate-800">
-                  {validPercent}% VALID
-                </div>
-              ) : null}
-              <div className="mt-4 grid grid-cols-3 gap-2 text-xs font-semibold text-slate-600">
-                {validationSlices.map((slice) => (
-                  <div key={slice.name} className="flex items-center gap-2">
-                    <span
-                      className="inline-block h-3 w-3 rounded-full"
-                      style={{ backgroundColor: slice.color }}
-                    />
-                    <span className="truncate">{slice.name}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        ) : (
-          <>
-            <div className="border-t border-slate-200" />
-
-            <div className="flex flex-col items-center gap-2 text-center">
-              <h3 className="text-lg font-extrabold text-slate-900">File Upload</h3>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-700">
-                CSV, XLS, XSLX FILE TYPES SUPPORTED
-              </p>
-            </div>
-
-            <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-              <div
-                className="flex flex-col items-center justify-center gap-4 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center"
-                onDragOver={(event) => event.preventDefault()}
-                onDrop={handleDrop}
-              >
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#ffe369]">
-                  <UploadCloud className="h-8 w-8 text-slate-900" />
-                </div>
-                <div className="space-y-1">
-                  <p className="text-sm font-semibold text-slate-700">
-                    Drag and drop files here
-                  </p>
-                  <p className="text-sm font-semibold text-slate-700">or</p>
-                </div>
-                <div className="flex flex-col items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 shadow-sm transition hover:border-[#4c61cc] hover:text-[#4c61cc] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4c61cc]"
-                  >
-                    Browse Files
-                  </button>
-                  <p className="text-xs font-semibold text-slate-500">
-                    Upload up to 5 files (max 5 MB each)
-                  </p>
-                </div>
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept=".csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                  accept=".csv, .xlsx, .xls"
                   multiple
                   className="hidden"
                   onChange={(event) => handleFilesSelected(event.target.files)}
                 />
               </div>
-              {fileError ? (
-                <div
-                  className="mt-3 flex items-center gap-2 rounded-md bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700"
-                  role="alert"
-                  aria-live="polite"
-                >
-                  <AlertCircle className="h-4 w-4" />
-                  {fileError}
-                </div>
-              ) : null}
-              {files.length > 0 ? (
-                <div className="mt-4 space-y-2">
-                  <p className="text-sm font-bold text-slate-700">
-                    Files queued (not uploaded):
-                  </p>
-                  <ul className="space-y-1">
-                    {files.map((file) => (
-                      <li
-                        key={file.name}
-                        className="flex items-center justify-between rounded-md bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700"
-                      >
-                        <span className="truncate">{file.name}</span>
-                        <span className="text-xs font-medium text-slate-500">
-                          {(file.size / 1024 / 1024).toFixed(2)} MB
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
             </div>
-          </>
-        )}
-      </section>
-
-      {/* Popup 1: File list confirmation */}
-      {flowStage === "popup1" && uploadSummary ? (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/70 px-4 py-6 backdrop-blur-sm">
-          <div className="relative w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl ring-1 ring-slate-200">
-            <h3 className="text-center text-lg font-extrabold text-slate-900">
-              File Based Verification
-            </h3>
-            <div className="mt-4 flex flex-wrap justify-center gap-3">
-              {uploadSummary.files.map((file) => (
-                <span
-                  key={file.fileName}
-                  className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm"
-                >
-                  {file.fileName}
-                </span>
-              ))}
-            </div>
-            <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-center text-sm font-bold text-rose-500">
-              Total {formatNumber(uploadSummary.totalEmails)} emails will be verified
-            </div>
-            <div className="mt-6 flex justify-center">
-              <button
-                type="button"
-                onClick={proceedToMapping}
-                className="rounded-lg bg-[#4880ff] px-6 py-3 text-sm font-bold uppercase text-white shadow-md transition hover:bg-[#3368e0] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4c61cc]"
+            {fileError ? (
+              <div
+                className="mt-2 flex items-center gap-2 rounded-md bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700"
+                role="alert"
+                aria-live="polite"
               >
-                Verify Emails
-              </button>
-            </div>
-            <div className="mt-3 text-center text-sm font-semibold text-[#020af9]">
-              <button
-                type="button"
-                onClick={resetUpload}
-                className="hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4c61cc]"
-              >
-                Go Back to File Upload Section
-              </button>
-            </div>
+                <AlertCircle className="h-4 w-4" />
+                {fileError}
+              </div>
+            ) : null}
           </div>
-        </div>
-      ) : null}
 
-      {/* Popup 2: Column mapping */}
-      {flowStage === "popup2" && uploadSummary ? (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/70 px-4 py-6 backdrop-blur-sm">
-          <div className="relative w-full max-w-3xl rounded-3xl bg-white p-6 shadow-2xl ring-1 ring-slate-200">
-            <h3 className="text-center text-lg font-extrabold text-slate-900">
-              Map Your File Columns
-            </h3>
-            <div className="mt-6 grid gap-4 md:grid-cols-3">
-              {uploadSummary.files.map((file) => (
-                <div key={file.fileName} className="space-y-2">
-                  <p className="text-sm font-semibold text-slate-600">
+          <div className="lg:col-span-2 space-y-4">
+            {flowStage === "popup1" && uploadSummary ? (
+              <div className="space-y-3 rounded-xl bg-white p-5 shadow-lg ring-1 ring-slate-200">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-base font-extrabold text-slate-900">Verify Emails</h3>
+                  <span className="text-sm font-semibold text-slate-600">
+                    {uploadSummary.totalEmails} emails detected
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {uploadSummary.files.map((file) => (
+                  <span
+                    key={file.fileName}
+                    className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700"
+                  >
                     {file.fileName}
-                  </p>
-                  <div className="relative">
-                    <select
-                      value={columnMapping[file.fileName] ?? ""}
-                      onChange={(event) =>
-                        setColumnMapping((prev) => ({
-                          ...prev,
-                          [file.fileName]: event.target.value,
-                        }))
-                      }
-                      className="w-full appearance-none rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm outline-none focus:border-[#4c61cc] focus:ring-1 focus:ring-[#4c61cc]"
-                    >
-                      <option value="">Select column</option>
-                      <option value="email">Email column</option>
-                      <option value="first_name">First name</option>
-                      <option value="last_name">Last name</option>
-                      <option value="title">Title</option>
-                    </select>
-                    <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-slate-400">
-                      ▾
+                      <button
+                        type="button"
+                        className="text-slate-500 hover:text-slate-700"
+                        onClick={() => {
+                          const nextFiles = files.filter((f) => f.name !== file.fileName);
+                          setFiles(nextFiles);
+                          const nextSummary = deriveUploadSummary(nextFiles);
+                          setUploadSummary(nextFiles.length ? nextSummary : null);
+                          if (nextFiles.length === 0) setFlowStage("idle");
+                        }}
+                        aria-label={`Remove ${file.fileName}`}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
                     </span>
+                  ))}
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setFlowStage("idle")}
+                    className="text-sm font-semibold text-[#4c61cc] underline"
+                  >
+                    Go back
+                  </button>
+                  <button
+                    type="button"
+                    onClick={proceedToMapping}
+                    disabled={isSubmitting}
+                    className="rounded-lg bg-[#4c61cc] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#3f52ad] disabled:cursor-not-allowed disabled:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4c61cc]"
+                  >
+                    VERIFY EMAILS
+                  </button>
+                </div>
+              </div>
+            ) : null}
+
+            {flowStage === "popup2" && uploadSummary ? (
+              <div className="space-y-3 rounded-xl bg-white p-5 shadow-lg ring-1 ring-slate-200">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-base font-extrabold text-slate-900">Assign Email Column</h3>
+                  <span className="text-sm font-semibold text-slate-600">
+                    {uploadSummary.totalEmails} emails detected
+                  </span>
+                </div>
+                <div className="space-y-2">
+                  {uploadSummary.files.map((file) => (
+                    <div key={file.fileName} className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2">
+                      <span className="text-sm font-semibold text-slate-700">{file.fileName}</span>
+                      <select
+                        value={columnMapping[file.fileName] ?? ""}
+                        onChange={(event) =>
+                          setColumnMapping((prev) => ({ ...prev, [file.fileName]: event.target.value }))
+                        }
+                        className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-sm font-semibold text-slate-700 focus:border-[#4c61cc] focus:ring-1 focus:ring-[#4c61cc]"
+                      >
+                        <option value="">Select email column</option>
+                        <option value="email">Email</option>
+                        <option value="address">Address</option>
+                      </select>
+                    </div>
+                  ))}
+                </div>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <label className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={firstRowHasLabels}
+                      onChange={(event) => setFirstRowHasLabels(event.target.checked)}
+                    />
+                    First row has column names
+                  </label>
+                  <label className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={removeDuplicates}
+                      onChange={(event) => setRemoveDuplicates(event.target.checked)}
+                    />
+                    Remove duplicate emails
+                  </label>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setFlowStage("popup1")}
+                    className="text-sm font-semibold text-[#4c61cc] underline"
+                  >
+                    Go back
+                  </button>
+                  <button
+                    type="button"
+                    onClick={proceedToSummary}
+                    disabled={isSubmitting}
+                    className="rounded-lg bg-[#4c61cc] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#3f52ad] disabled:cursor-not-allowed disabled:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4c61cc]"
+                  >
+                    {isSubmitting ? "Submitting..." : "PROCEED"}
+                  </button>
+                </div>
+              </div>
+            ) : null}
+
+            {showSummaryState ? (
+              <div className="space-y-3 rounded-2xl bg-white p-5 shadow-md ring-1 ring-slate-100">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-base font-extrabold text-slate-900">Verification Summary</h3>
+                    <p className="text-sm font-semibold text-slate-600">{uploadSummary?.uploadDate}</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={resetUpload}
+                      className="rounded-lg border border-slate-300 bg-white px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-[#4c61cc] hover:text-[#4c61cc] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4c61cc]"
+                    >
+                      Upload Another File
+                    </button>
                   </div>
                 </div>
-              ))}
-            </div>
 
-            <div className="mt-6 divide-y divide-slate-200 border-t border-b border-slate-200 py-4">
-              <div className="flex flex-wrap items-center gap-4 py-2">
-                <p className="text-sm font-semibold text-slate-700">
-                  Files first rows contain labels?
-                </p>
-                <div className="flex items-center gap-3 text-sm font-semibold text-slate-700">
-                  <label className="flex items-center gap-1">
-                    <input
-                      type="radio"
-                      name="firstRowLabels"
-                      checked={firstRowHasLabels === true}
-                      onChange={() => setFirstRowHasLabels(true)}
-                    />
-                    Yes
-                  </label>
-                  <label className="flex items-center gap-1">
-                    <input
-                      type="radio"
-                      name="firstRowLabels"
-                      checked={firstRowHasLabels === false}
-                      onChange={() => setFirstRowHasLabels(false)}
-                    />
-                    No
-                  </label>
+                <div className="grid gap-4 lg:grid-cols-2">
+                  <div className="overflow-hidden rounded-xl border border-slate-200">
+                    <div className="grid grid-cols-5 bg-slate-50 px-3 py-2 text-xs font-extrabold uppercase tracking-wide text-slate-700">
+                      <span>File name</span>
+                      <span className="text-center">Total</span>
+                      <span className="text-center">Valid</span>
+                      <span className="text-center">Invalid</span>
+                      <span className="text-right">Action</span>
+                    </div>
+                    <div className="divide-y divide-slate-100">
+                      {uploadSummary?.files.map((file) => (
+                        <div
+                          key={file.fileName}
+                          className="grid grid-cols-5 items-center px-3 py-2 text-sm font-semibold text-slate-800"
+                        >
+                          <span className="truncate" title={file.fileName}>
+                            {file.fileName}
+                          </span>
+                          <span className="text-center text-slate-700">{formatNumber(file.totalEmails)}</span>
+                          <span className="text-center text-emerald-600">{formatNumber(file.valid)}</span>
+                          <span className="text-center text-rose-600">{formatNumber(file.invalid)}</span>
+                          <span className="flex justify-end">
+                            <span
+                              className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-bold ${
+                                file.status === "download"
+                                  ? "bg-emerald-100 text-emerald-700"
+                                  : "bg-slate-200 text-slate-600"
+                              }`}
+                            >
+                              {file.status === "download" ? "Download" : "Pending"}
+                            </span>
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="grid gap-2 rounded-xl border border-slate-200 bg-white p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-wide text-slate-700">Valid Emails</p>
+                        <p className="text-3xl font-extrabold text-slate-900">{validPercent}%</p>
+                      </div>
+                    </div>
+                    <div className="h-64">
+                      <ResponsiveContainer>
+                        <RePieChart margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+                          <Pie
+                            data={validationSlices}
+                            dataKey="value"
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={70}
+                            outerRadius={100}
+                            paddingAngle={2}
+                          >
+                            {validationSlices.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                          </Pie>
+                        </RePieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
                 </div>
               </div>
-
-              <div className="flex flex-wrap items-center gap-4 py-2">
-                <p className="text-sm font-semibold text-slate-700">
-                  Remove duplicate emails?
-                </p>
-                <div className="flex items-center gap-3 text-sm font-semibold text-slate-700">
-                  <label className="flex items-center gap-1">
-                    <input
-                      type="radio"
-                      name="removeDuplicates"
-                      checked={removeDuplicates === true}
-                      onChange={() => setRemoveDuplicates(true)}
-                    />
-                    Yes
-                  </label>
-                  <label className="flex items-center gap-1">
-                    <input
-                      type="radio"
-                      name="removeDuplicates"
-                      checked={removeDuplicates === false}
-                      onChange={() => setRemoveDuplicates(false)}
-                    />
-                    No
-                  </label>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-6 flex flex-col items-center gap-3">
-              <button
-                type="button"
-                onClick={proceedToSummary}
-                className="w-40 rounded-lg bg-[#4880ff] px-6 py-3 text-sm font-bold uppercase text-white shadow-md transition hover:bg-[#3368e0] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4c61cc]"
-              >
-                Proceed
-              </button>
-              <button
-                type="button"
-                onClick={resetUpload}
-                className="text-sm font-semibold text-[#020af9] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4c61cc]"
-              >
-                Go Back to File Upload Section
-              </button>
-            </div>
+            ) : null}
           </div>
         </div>
-      ) : null}
+
+        {toast ? (
+          <div className="fixed bottom-6 right-6 z-10 rounded-lg bg-slate-900 px-4 py-3 text-sm font-semibold text-white shadow-lg ring-1 ring-slate-700">
+            {toast}
+            <button
+              type="button"
+              onClick={() => setToast(null)}
+              className="ml-2 text-xs font-bold text-slate-200 hover:text-white"
+            >
+              Dismiss
+            </button>
+          </div>
+        ) : null}
+      </section>
     </DashboardShell>
   );
 }
