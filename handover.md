@@ -1,29 +1,39 @@
 # Handover (current session wrap-up)
 
 ## State of codebase
-- Shared shell (`app/components/dashboard-shell.tsx`) with active links for Overview, Verify, History, Integrations, API, Pricing, Account; profile menu stub; footer links. Sidebar logo uses `public/logo.png`; avatar uses `public/profile-image.png` with fallback initials.
-- Overview page (`app/overview/page.tsx`) built per Figma with stat cards, donut/line charts, plan card, tasks table.
-- Verify page (`app/verify/page.tsx`): initial state (manual input/results + upload dropzone), post-upload state (summary table + validation donut), and two popups (file confirmation + column mapping) controlled by `flowStage`. Front-end limits for files, logs for actions; no backend calls yet.
-- History page (`app/history/page.tsx`): table per Figma (Date, Filename/Total, Valid, Invalid, Catch-all, Action pills).
-- Integrations page (`app/integrations/page.tsx`): three logo cards (Zapier, n8n, Google Sheets) + “More coming soon...”; assets in `public/integrations/*.png`.
-- API page (`app/api/page.tsx`): two cards—API keys table (mock data) and usage card (API key dropdown, date range, See Usage/Download buttons, line chart placeholder with mock data). Logs actions for backend wiring.
-- Pricing page (`app/pricing/page.tsx`): four tier cards per Figma with features and CTA, typed data.
-- Account page (`app/account/page.tsx`): profile card (avatar, edit link, fields, Update button), purchase history table with Download pills, total credits summary. Typed data; logs on update.
-- Routing: `/` redirects to `/overview`. All new pages under `/verify`, `/history`, `/integrations`, `/api`, `/pricing`, `/account`.
-- Assets: integrations logos in `public/integrations/`; existing `profile-image.png`, `logo.png`.
-- PLAN.md updated through Account/Integrations/API/Pricing completion; outstanding items are tests/backend wiring and a summary task for Verify still marked pending in plan steps (see below).
-- Untracked: `Screenshot_1.png` still local only.
+- Frontend pages now wired to backend where possible:
+  - `/verify`: manual flow creates a task via `/api/tasks` for all pasted emails (pending statuses shown); file upload posts all selected files sequentially to `/api/tasks/upload`; loading/error/toast handling; multi-file support.
+  - `/history`: fetches tasks + task details from backend, derives counts from job email statuses, shows pending vs download.
+  - `/api`: lists/creates/revokes API keys via backend; caches last plaintext key; loads usage from `/usage` (uses `count` for processed/valid for now). Basic error/loading.
+  - `/account`: fetches profile + credits from backend; updates display_name/email via PATCH; shows credits remaining; purchases table still static empty (no backend data yet).
+  - Other pages (overview, pricing, integrations) unchanged UI-wise.
+- Backend:
+  - FastAPI app with routes split: tasks (verify/create/list/detail/upload), api-keys (list/create/revoke + Supabase cache), account (profile/credits), usage (Supabase-backed). Auth via Supabase JWT (Bearer or cookie).
+  - External client for verification API; usage logging into Supabase `api_usage` after external calls; multi-file upload sequential handling; storage guard 10 MB.
+  - Supabase tables: `profiles`, `user_credits`, `api_usage`, `cached_api_keys` (new), all created via MCP.
+  - Retention helper exists (age + credits rule), but no scheduler/endpoint yet.
+- Tests: smoke tests (settings, auth dependency, external client guard/parsing, retention) passing. No integration tests yet.
+- Env: `backend/.env` populated (NEXT_PUBLIC_API_BASE_URL=http://localhost:8000/api, DATABASE_URL with %40 encoded). `.env.example` documents required vars.
 
-## Pending tasks / next steps
-- Add tests (unit/integration) for the new pages and behaviors (Verify flow state machine, forms, table rendering).
-- Wire frontend to FastAPI backend: replace mock data/logs in Verify (manual/file flows), History, API (keys/usage), Account (profile update, purchases, credits), Integrations links. Need endpoint contracts.
-- Clean up PLAN.md pending steps: still marked pending for “Add basic client-side behavior/logging and minimal tests...” and “Summarize changes...” under Verify sprint. (Logging exists; tests missing.)
-- Optional: handle logo if a finalized asset is needed; `Screenshot_1.png` is untracked reference.
+## Pending/next steps (suggested)
+- Usage ingestion refinement: currently logging one usage per external call with count. If richer metrics needed (valid/invalid), extend backend to capture per-call payload stats and adjust usage chart mapping.
+- Storage/retention: add a scheduled hook or endpoint to invoke `purge_expired_uploads` (honors credits >0 for retention days). Ensure retention rule matches product expectation.
+- Frontend wiring: purchases history still static; wire once backend schema is defined. Improve usage chart once backend returns split metrics.
+- Integration tests: add route-level tests for tasks/api-keys/account/usage with mocked external API and Supabase client.
+- CORS/env: confirm staging/prod origins and set BACKEND_CORS_ORIGINS accordingly.
 
-## Running/Tooling
-- Next.js app with Tailwind; lint via `npm run lint`. Python venv `.venv` exists (ignored). Node modules present locally.
+## Notes/decisions
+- Two backends: external “API backend” (issues/verifies keys) and our “frontend backend” (FastAPI) which logs usage to Supabase and fronts the UI. External API has no usage endpoint.
+- Manual verify flow now task-based (bulk via `/tasks`).
+- File upload supports multiple files sequentially via `/tasks/upload`.
+- Cached API keys stored in Supabase (`cached_api_keys`), though UI reads from external list and caches only plaintext locally on create.
 
-## Notes/Decisions
-- No backend calls yet; all data typed in-page. Console logs added where backend wiring is expected.
-- File upload flow in Verify enforces 5 files max, 5 MB each; derives mock summary from size/name; mapping/flags captured for handoff.
-- Sidebar links all enabled; nav highlighting handled via pathname prefix match.
+## How to run/check
+- Lint: `npm run lint` (passes).
+- Backend tests: `pytest backend/tests` (passes).
+- Backend runs with `uvicorn app.main:app` from `backend` (requires `.env`).
+
+## Warnings
+- Purchase history not wired (no backend data).
+- Usage chart treats `count` as processed/valid; adjust when backend provides split metrics.
+- Retention cleanup not scheduled/invoked yet; only helper exists.
