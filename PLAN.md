@@ -124,6 +124,7 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
   Explanation: Tasks/verify now resolve a per-user hidden `dashboard_api` key; optional `api_key_id` query selects another user-owned key. API key creation caches secrets and integration metadata (`integration` column), listing can include internal keys when requested, and frontend API page creation sends integration choice. History page now offers a key selector (including dashboard) to filter task history per key.
 - [x] Storage/retention cleanup hook.
   Explanation: Added authenticated maintenance endpoint `/api/maintenance/purge-uploads` that runs retention cleanup (`purge_expired_uploads`), logging deletions and returning deleted files. Use for cron/operator calls to enforce upload retention policy.
+- [ ] TODO: Add optional in-app scheduler (env-gated) to trigger retention cleanup on an interval for dev/staging when cron isn’t available; update OpenAPI (`api-docs.json`) to include maintenance route.
 
 ## Supabase schema updates
 - [x] Added `cached_api_keys` (key_id PK, user_id FK, name, created_at) with user index for API key caching.
