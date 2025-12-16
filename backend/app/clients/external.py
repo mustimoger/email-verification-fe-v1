@@ -295,3 +295,12 @@ def get_external_api_client() -> ExternalAPIClient:
         api_key=settings.email_api_key,
         max_upload_bytes=settings.upload_max_mb * 1024 * 1024,
     )
+
+
+def get_external_api_client_for_key(api_key: str) -> ExternalAPIClient:
+    settings = get_settings()
+    return ExternalAPIClient(
+        base_url=settings.email_api_base_url,
+        api_key=api_key,
+        max_upload_bytes=settings.upload_max_mb * 1024 * 1024,
+    )
