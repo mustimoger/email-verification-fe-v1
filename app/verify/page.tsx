@@ -196,6 +196,7 @@ export default function VerifyPage() {
     return Math.round((uploadSummary.aggregates.valid / uploadSummary.totalEmails) * 100);
   }, [uploadSummary]);
 
+  const showSummaryState = flowStage === "summary" && uploadSummary;
   const hasSecondaryContent = flowStage === "popup1" || flowStage === "popup2" || showSummaryState;
 
   const proceedToMapping = () => {
@@ -227,8 +228,6 @@ export default function VerifyPage() {
       setIsSubmitting(false);
     }
   };
-
-  const showSummaryState = flowStage === "summary" && uploadSummary;
 
   return (
     <DashboardShell>
