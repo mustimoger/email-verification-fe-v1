@@ -139,6 +139,24 @@ export type UsageResponse = {
   items: UsageEntry[];
 };
 
+export type OverviewResponse = {
+  profile: Profile;
+  credits_remaining: number;
+  usage_total: number;
+  usage_series: { date: string; count: number }[];
+  task_counts: Record<string, number>;
+  recent_tasks: {
+    task_id: string;
+    status?: string | null;
+    email_count?: number | null;
+    valid_count?: number | null;
+    invalid_count?: number | null;
+    catchall_count?: number | null;
+    integration?: string | null;
+    created_at?: string | null;
+  }[];
+};
+
 const rawBase = process.env.NEXT_PUBLIC_API_BASE_URL;
 if (!rawBase) {
   throw new Error("NEXT_PUBLIC_API_BASE_URL is required for API client");
@@ -250,6 +268,7 @@ export const apiClient = {
     const qs = params.toString();
     return request<UsageResponse>(`/usage${qs ? `?${qs}` : ""}`, { method: "GET" });
   },
+  getOverview: () => request<OverviewResponse>("/overview", { method: "GET" }),
 };
 
 export type ApiClient = typeof apiClient;

@@ -23,6 +23,7 @@ from ..services.api_keys import (
     resolve_user_api_key,
 )
 from ..services.storage import persist_upload_file
+from ..services.tasks_store import upsert_task_from_detail, upsert_tasks_from_list
 from ..services.usage import record_usage
 
 router = APIRouter(prefix="/api", tags=["tasks"])
@@ -95,6 +96,11 @@ async def create_task(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="emails array is required")
     try:
         result = await resolved.client.create_task(emails=emails, user_id=user.user_id, webhook_url=webhook_url)
+        upsert_tasks_from_list(
+            user.user_id,
+            [TaskResponse(**result.model_dump())],
+            integration=INTERNAL_DASHBOARD_KEY_NAME,
+        )
         record_usage(user.user_id, path="/tasks", count=len(emails), api_key_id=resolved.key_id)
         logger.info("route.tasks.create", extra={"user_id": user.user_id, "count": len(emails)})
         return result
@@ -112,6 +118,8 @@ async def list_tasks(
     start = time.time()
     try:
         result = await resolved.client.list_tasks(limit=limit, offset=offset)
+        if result.tasks:
+            upsert_tasks_from_list(user.user_id, result.tasks, integration=INTERNAL_DASHBOARD_KEY_NAME)
         record_usage(user.user_id, path="/tasks", count=1, api_key_id=resolved.key_id)
         logger.info(
             "route.tasks.list",
@@ -153,6 +161,17 @@ async def get_task_detail(
     start = time.time()
     try:
         result = await resolved.client.get_task_detail(task_id)
+        if result.jobs is not None:
+            counts = {"valid": 0, "invalid": 0, "catchall": 0}
+            for job in result.jobs:
+                status = (job.email and job.email.get("status")) or job.status
+                if status == "exists":
+                    counts["valid"] += 1
+                elif status == "catchall":
+                    counts["catchall"] += 1
+                else:
+                    counts["invalid"] += 1
+            upsert_task_from_detail(user.user_id, result, counts=counts, integration=INTERNAL_DASHBOARD_KEY_NAME)
         record_usage(user.user_id, path="/tasks/{id}", count=1, api_key_id=resolved.key_id)
         logger.info(
             "route.tasks.detail",
