@@ -91,6 +91,7 @@ export type ApiKeySummary = {
   created_at?: string;
   is_active?: boolean;
   last_used_at?: string;
+  integration?: string;
 };
 
 export type ListApiKeysResponse = {
@@ -104,6 +105,7 @@ export type CreateApiKeyResponse = {
   key?: string;
   user_id?: string;
   created_at?: string;
+  integration?: string;
 };
 
 export type RevokeApiKeyResponse = {

@@ -31,6 +31,10 @@ async def list_api_keys(
                 for k in result.keys
                 if k.id in cached and (include_internal or not _is_dashboard_key(k.name))
             ]
+            for key in filtered_keys:
+                cached_row = cached.get(key.id or "")
+                if cached_row:
+                    key.integration = cached_row.get("integration")
             result.keys = filtered_keys
             result.count = len(filtered_keys)
         record_usage(user.user_id, path="/api-keys", count=1)
@@ -59,6 +63,7 @@ async def create_api_key(
         cache_api_key(
             user.user_id, key_id=result.id or name, name=name, key_plain=result.key, integration=integration or name
         )
+        result.integration = integration or name
         record_usage(user.user_id, path="/api-keys", count=1)
         logger.info("route.api_keys.create", extra={"user_id": user.user_id, "name": name, "integration": integration})
         return result

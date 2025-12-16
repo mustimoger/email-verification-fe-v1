@@ -155,11 +155,15 @@ export default function HistoryPage() {
               disabled={keysLoading}
             >
               {keysLoading ? <option>Loading...</option> : null}
-              {keys.map((key) => (
-                <option key={key.id} value={key.id}>
-                  {(key.name ?? "API key") + (dashboardKeyId === key.id ? " (Dashboard)" : "")}
-                </option>
-              ))}
+              {keys.map((key) => {
+                const label = key.integration || key.name || "API key";
+                return (
+                  <option key={key.id} value={key.id}>
+                    {label}
+                    {dashboardKeyId === key.id ? " (Dashboard)" : ""}
+                  </option>
+                );
+              })}
             </select>
           </div>
         </div>

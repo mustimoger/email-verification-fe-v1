@@ -126,6 +126,7 @@ class APIKeySummary(BaseModel):
     created_at: Optional[str] = None
     is_active: Optional[bool] = None
     last_used_at: Optional[str] = None
+    integration: Optional[str] = None
 
 
 class ListAPIKeysResponse(BaseModel):
@@ -139,6 +140,7 @@ class CreateAPIKeyResponse(BaseModel):
     key: Optional[str] = None
     user_id: Optional[str] = None
     created_at: Optional[str] = None
+    integration: Optional[str] = None
 
 
 class RevokeAPIKeyResponse(BaseModel):
