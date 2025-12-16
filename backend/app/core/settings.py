@@ -2,6 +2,7 @@ from functools import lru_cache
 from typing import List, Literal, Optional
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import field_validator
 
 
 class Settings(BaseSettings):
@@ -29,6 +30,17 @@ class Settings(BaseSettings):
     upload_retention_when_credits: Literal["non_zero", "always", "never"] = "non_zero"
 
     usage_retention_days: int = 180
+
+    @field_validator("backend_cors_origins", mode="before")
+    @classmethod
+    def split_cors(cls, value):
+        """
+        Allow comma-separated CORS origins in env (e.g., http://localhost:3000,https://example.com).
+        """
+        if isinstance(value, str):
+            parts = [v.strip() for v in value.split(",") if v.strip()]
+            return parts or value
+        return value
 
 
 @lru_cache()
