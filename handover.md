@@ -1,39 +1,26 @@
-# Handover (current session wrap-up)
+# Handover (Overview wiring, tasks ingestion, auth/keys)
 
-## State of codebase
-- Frontend pages now wired to backend where possible:
-  - `/verify`: manual flow creates a task via `/api/tasks` for all pasted emails (pending statuses shown); file upload posts all selected files sequentially to `/api/tasks/upload`; loading/error/toast handling; multi-file support.
-  - `/history`: fetches tasks + task details from backend, derives counts from job email statuses, shows pending vs download.
-  - `/api`: lists/creates/revokes API keys via backend; caches last plaintext key; loads usage from `/usage` (uses `count` for processed/valid for now). Basic error/loading.
-  - `/account`: fetches profile + credits from backend; updates display_name/email via PATCH; shows credits remaining; purchases table still static empty (no backend data yet).
-  - Other pages (overview, pricing, integrations) unchanged UI-wise.
-- Backend:
-  - FastAPI app with routes split: tasks (verify/create/list/detail/upload), api-keys (list/create/revoke + Supabase cache), account (profile/credits), usage (Supabase-backed). Auth via Supabase JWT (Bearer or cookie).
-  - External client for verification API; usage logging into Supabase `api_usage` after external calls; multi-file upload sequential handling; storage guard 10 MB.
-  - Supabase tables: `profiles`, `user_credits`, `api_usage`, `cached_api_keys` (new), all created via MCP.
-  - Retention helper exists (age + credits rule), but no scheduler/endpoint yet.
-- Tests: smoke tests (settings, auth dependency, external client guard/parsing, retention) passing. No integration tests yet.
-- Env: `backend/.env` populated (NEXT_PUBLIC_API_BASE_URL=http://localhost:8000/api, DATABASE_URL with %40 encoded). `.env.example` documents required vars.
+## Current state
+- Auth: Supabase JWT validated (HS/RS), frontend attaches Bearer, guarded pages. Account profile/credits endpoints validate EmailStr and log usage.
+- Keys: per-user external key resolution; hidden `dashboard_api` used for verify/tasks. Integration metadata stored on cached keys; `/api` page shows only integration/custom keys.
+- Tasks ingestion: Supabase `tasks` table created (task_id PK, counts, integration). Create/list/detail routes now upsert per-user tasks into Supabase (counts when available). Seeded demo tasks for user musti (`959ce587-7a0e-4726-8382-e70ad89e1232`). File upload still lacks task_id (see gaps).
+- Overview: new `/api/overview` aggregates profile, credits, usage total/series (from `api_usage`), task counts, and recent tasks (from Supabase). Frontend `/overview` now fetches real data and replaces mocks; preserves design, adds loading/error/empty states. Backend tests cover overview aggregation.
+- Maintenance: `/api/maintenance/purge-uploads` exists; scheduler deferred to enhancement. Retention cron to be set up later in deploy.
+- Env/CORS: `.env.example` added; CORS splits comma-separated origins.
+- Tests: backend suites for auth, api-keys, account, overview, maintenance pass; lint passes.
 
-## Pending/next steps (suggested)
-- Usage ingestion refinement: currently logging one usage per external call with count. If richer metrics needed (valid/invalid), extend backend to capture per-call payload stats and adjust usage chart mapping.
-- Storage/retention: add a scheduled hook or endpoint to invoke `purge_expired_uploads` (honors credits >0 for retention days). Ensure retention rule matches product expectation.
-- Frontend wiring: purchases history still static; wire once backend schema is defined. Improve usage chart once backend returns split metrics.
-- Integration tests: add route-level tests for tasks/api-keys/account/usage with mocked external API and Supabase client.
-- CORS/env: confirm staging/prod origins and set BACKEND_CORS_ORIGINS accordingly.
+## Open gaps / TODOs
+- File upload tasks: external `/tasks/batch/upload` does not return task_id. Need a post-upload polling strategy (call `/tasks` for the user key, upsert new tasks) to capture uploads into Supabase.
+- Overview frontend tests still missing; only manual/lint/back-end tests exist.
+- Retention scheduler enhancement (cron/in-app) deferred; OpenAPI not regenerated.
+- Account fields beyond email/display_name still minimal; usage ingestion mostly covered but confirm any remaining routes.
 
-## Notes/decisions
-- Two backends: external “API backend” (issues/verifies keys) and our “frontend backend” (FastAPI) which logs usage to Supabase and fronts the UI. External API has no usage endpoint.
-- Manual verify flow now task-based (bulk via `/tasks`).
-- File upload supports multiple files sequentially via `/tasks/upload`.
-- Cached API keys stored in Supabase (`cached_api_keys`), though UI reads from external list and caches only plaintext locally on create.
+## Next steps (suggested)
+1) Implement upload polling: after `/tasks/upload`, trigger a background fetch of `/tasks` for the user key and upsert into Supabase `tasks` (or add a manual button). Avoid design changes.
+2) Add minimal frontend tests/checks for `/overview` rendering (loading/error/empty).
+3) (Enhancement later) Add cron/in-app scheduler for retention, regenerate api-docs if needed.
 
-## How to run/check
-- Lint: `npm run lint` (passes).
-- Backend tests: `pytest backend/tests` (passes).
-- Backend runs with `uvicorn app.main:app` from `backend` (requires `.env`).
-
-## Warnings
-- Purchase history not wired (no backend data).
-- Usage chart treats `count` as processed/valid; adjust when backend provides split metrics.
-- Retention cleanup not scheduled/invoked yet; only helper exists.
+## Quick refs
+- Seed user: `mustimoger@gmail.com` id `959ce587-7a0e-4726-8382-e70ad89e1232` (has demo tasks).
+- New endpoint: `GET /api/overview` returns profile/credits/usage/task stats.
+- Tasks table: Supabase `tasks` upserts now happen on create/list/detail; upload pending.
