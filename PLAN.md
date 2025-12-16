@@ -80,9 +80,11 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
 - [x] Repair API keys cache service after leftover patch artifacts.
   Explanation: Recreated `backend/app/services/api_keys.py` to restore `cache_api_key`/`list_cached_keys` with Supabase upsert/select and logging; removed broken patch markers that would have caused import errors.
 - [x] Frontend env fix for API client.
-  Explanation: Added `.env.local` with `NEXT_PUBLIC_API_BASE_URL=http://localhost:8000/api` (gitignored) so Next.js pages like `/verify` no longer throw at module load; keeps frontend base URL aligned with backend default.
+  Explanation: Added `.env.local` with `NEXT_PUBLIC_API_BASE_URL` (now pointed to `http://localhost:8001/api` for local) so Next.js pages like `/verify` no longer throw at module load; keeps frontend base URL aligned with backend instance.
 - [x] Verify page upload width restoration.
   Explanation: Made the “Upload a file” card span the full row when no popup/summary is shown by adding a conditional `lg:col-span-3`; keeps side-by-side layout only when secondary content (popups/summary) is present. Aligns with original Figma layout and avoids the narrow card regression on large screens.
+- [x] External API client dependency fix and local port change.
+  Explanation: Swapped FastAPI `Depends(...)` ellipsis for a real dependency (`get_external_api_client`) in task and API key routes so the backend boots. Adjusted local env to use API base `http://localhost:8001/api` to avoid a conflicting service on 8000; backend now runs on port 8001.
 
 ## Supabase schema updates
 - [x] Added `cached_api_keys` (key_id PK, user_id FK, name, created_at) with user index for API key caching.

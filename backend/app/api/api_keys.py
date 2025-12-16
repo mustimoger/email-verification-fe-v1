@@ -1,7 +1,7 @@
 import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from ..clients.external import ExternalAPIClient, ExternalAPIError
+from ..clients.external import ExternalAPIClient, ExternalAPIError, get_external_api_client
 from ..core.auth import AuthContext, get_current_user
 from ..services.api_keys import cache_api_key, list_cached_keys
 from ..services.usage import record_usage
@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 @router.get("/api-keys", response_model=ListAPIKeysResponse)
 async def list_api_keys(
-    user: AuthContext = Depends(get_current_user), client: ExternalAPIClient = Depends(...)
+    user: AuthContext = Depends(get_current_user), client: ExternalAPIClient = Depends(get_external_api_client)
 ):
     try:
         result = await client.list_api_keys()
@@ -28,7 +28,7 @@ async def list_api_keys(
 async def create_api_key(
     payload: dict,
     user: AuthContext = Depends(get_current_user),
-    client: ExternalAPIClient = Depends(...),
+    client: ExternalAPIClient = Depends(get_external_api_client),
 ):
     name = payload.get("name")
     if not name:
@@ -47,7 +47,7 @@ async def create_api_key(
 async def revoke_api_key(
     api_key_id: str,
     user: AuthContext = Depends(get_current_user),
-    client: ExternalAPIClient = Depends(...),
+    client: ExternalAPIClient = Depends(get_external_api_client),
 ):
     try:
         result = await client.revoke_api_key(api_key_id=api_key_id)

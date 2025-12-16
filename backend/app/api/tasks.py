@@ -7,6 +7,7 @@ from ..clients.external import (
     BatchFileUploadResponse,
     ExternalAPIClient,
     ExternalAPIError,
+    get_external_api_client,
     TaskDetailResponse,
     TaskListResponse,
     TaskResponse,
@@ -25,7 +26,7 @@ logger = logging.getLogger(__name__)
 async def verify_email(
     payload: dict,
     user: AuthContext = Depends(get_current_user),
-    client: ExternalAPIClient = Depends(...),
+    client: ExternalAPIClient = Depends(get_external_api_client),
 ):
     email = payload.get("email")
     if not email:
@@ -43,7 +44,7 @@ async def verify_email(
 async def create_task(
     payload: dict,
     user: AuthContext = Depends(get_current_user),
-    client: ExternalAPIClient = Depends(...),
+    client: ExternalAPIClient = Depends(get_external_api_client),
 ):
     emails = payload.get("emails")
     webhook_url = payload.get("webhook_url")
@@ -63,7 +64,7 @@ async def list_tasks(
     limit: int = 10,
     offset: int = 0,
     user: AuthContext = Depends(get_current_user),
-    client: ExternalAPIClient = Depends(...),
+    client: ExternalAPIClient = Depends(get_external_api_client),
 ):
     try:
         result = await client.list_tasks(limit=limit, offset=offset)
@@ -78,7 +79,7 @@ async def list_tasks(
 async def get_task_detail(
     task_id: str,
     user: AuthContext = Depends(get_current_user),
-    client: ExternalAPIClient = Depends(...),
+    client: ExternalAPIClient = Depends(get_external_api_client),
 ):
     try:
         result = await client.get_task_detail(task_id)
@@ -94,7 +95,7 @@ async def upload_task_file(
     files: list[UploadFile] = File(...),
     webhook_url: Optional[str] = Form(default=None),
     user: AuthContext = Depends(get_current_user),
-    client: ExternalAPIClient = Depends(...),
+    client: ExternalAPIClient = Depends(get_external_api_client),
 ):
     settings = get_settings()
     responses: list[BatchFileUploadResponse] = []
