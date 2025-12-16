@@ -77,7 +77,7 @@ export default function ApiPage() {
         const response: ListApiKeysResponse = await apiClient.listApiKeys();
         const list = (response.keys ?? []).filter((key) => !isDashboardKey(key));
         setKeys(list);
-        setSelectedKey(list[0]?.id ?? "");
+        setSelectedKey("");
       } catch (err: unknown) {
         const message = err instanceof ApiError ? err.message : "Failed to load API keys";
         setError(message);
@@ -121,7 +121,7 @@ export default function ApiPage() {
       const refreshed = await apiClient.listApiKeys();
       const list = (refreshed.keys ?? []).filter((key) => !isDashboardKey(key));
       setKeys(list);
-      setSelectedKey(created.id ?? list[0]?.id ?? "");
+      setSelectedKey(created.id ?? "");
       setCustomKeyName("");
       setIntegrationChoice(integrationOptions[0]);
     } catch (err: unknown) {

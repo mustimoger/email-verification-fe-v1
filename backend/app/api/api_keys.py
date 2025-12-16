@@ -47,7 +47,9 @@ async def create_api_key(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="dashboard key is reserved")
     try:
         result = await client.create_api_key(name=name)
-        cache_api_key(user.user_id, key_id=result.id or name, name=name)
+        if not result.key:
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="external API did not return a key")
+        cache_api_key(user.user_id, key_id=result.id or name, name=name, key_plain=result.key)
         record_usage(user.user_id, path="/api-keys", count=1)
         logger.info("route.api_keys.create", extra={"user_id": user.user_id, "name": name})
         return result
