@@ -111,7 +111,7 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
 - [x] Added account and usage routes under `/api`: profile get/patch, credits fetch, and usage listing with optional date filters; all authenticated.
   Explanation: Frontend can now read/update profile info, get remaining credits, and fetch usage records from Supabase instead of mocks.
 - [ ] Implement usage ingestion, account updates for all fields, and retention enforcement hooks; wire frontend to backend and add tests.
-  Explanation: Usage logging added on tasks/verify/api-keys and account profile/credits; account profile accepts validated email (EmailStr) and is test-covered. Remaining: broaden account fields if needed, ensure all external calls are instrumented, and add retention scheduling/usage ingestion for other routes as required.
+  Explanation: Usage logging added on verify/tasks/api-keys/account profile & credits & usage list; account profile uses EmailStr validation and has backend tests. Remaining: broaden account fields if needed and add retention scheduling/ingestion for other routes as required.
 - [x] Repair API keys cache service after leftover patch artifacts.
   Explanation: Recreated `backend/app/services/api_keys.py` to restore `cache_api_key`/`list_cached_keys` with Supabase upsert/select and logging; removed broken patch markers that would have caused import errors.
 - [x] Frontend env fix for API client.

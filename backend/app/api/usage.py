@@ -6,6 +6,7 @@ from pydantic import BaseModel
 
 from ..core.auth import AuthContext, get_current_user
 from ..services import supabase_client
+from ..services.usage import record_usage
 
 router = APIRouter(prefix="/api/usage", tags=["usage"])
 logger = logging.getLogger(__name__)
@@ -30,12 +31,13 @@ class UsageResponse(BaseModel):
 def list_usage(
     start: Optional[str] = Query(default=None, description="ISO timestamp start"),
     end: Optional[str] = Query(default=None, description="ISO timestamp end"),
+    api_key_id: Optional[str] = Query(default=None, description="Filter by api_key_id"),
     user: AuthContext = Depends(get_current_user),
 ):
-    rows = supabase_client.fetch_usage(user.user_id, start=start, end=end)
+    rows = supabase_client.fetch_usage(user.user_id, start=start, end=end, api_key_id=api_key_id)
     logger.info(
         "usage.list",
-        extra={"user_id": user.user_id, "count": len(rows), "start": start, "end": end},
+        extra={"user_id": user.user_id, "count": len(rows), "start": start, "end": end, "api_key_id": api_key_id},
     )
+    record_usage(user.user_id, path="/usage", count=1, api_key_id=api_key_id)
     return UsageResponse(items=rows)
-
