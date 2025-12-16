@@ -130,3 +130,4 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
 - [x] Added `cached_api_keys` (key_id PK, user_id FK, name, created_at) with user index for API key caching.
 - [x] Added `key_plain` column + user/name index on `cached_api_keys` to store per-user external key secrets for server-side proxying; reserved dashboard keys stay hidden from `/api`.
 - [x] Added `integration` column + (user_id, integration) index to `cached_api_keys` to persist user-selected integration for each key.
+- [x] Added `tasks` table (task_id PK, user_id FK, status, counts, integration, timestamps) with user/created_at index and updated_at trigger; seeded demo rows for user `959ce587-7a0e-4726-8382-e70ad89e1232` to exercise Overview/History once wired.

@@ -3,9 +3,10 @@
 Goal: replace mock data on `/overview` with real per-user data sourced from our backend/Supabase and the external email verification API.
 
 ## Agreed tasks
-1) Supabase tasks table
-   - Add a minimal `tasks` table to Supabase to store task metadata per user: `task_id` (external id, PK), `user_id`, `status`, `email_count`, `created_at`, `updated_at`, `integration` (nullable), and optional stats (valid/invalid/catchall if available). Index on `user_id`, `created_at`.
-   - Ingest rows when we create or fetch tasks from the external API so Overview/History can read from Supabase without leaking across users.
+1) Supabase tasks table (DONE)
+   - Added `tasks` table in Supabase: `task_id` (PK, external id), `user_id`, `status`, `email_count`, counts (valid/invalid/catchall), `integration`, timestamps, and index on (user_id, created_at) with updated_at trigger.
+   - Seeded demo rows for user `959ce587-7a0e-4726-8382-e70ad89e1232` (musti) to exercise Overview/History once wired.
+   - Next: ingest rows when we create or fetch tasks from the external API so Overview/History can read from Supabase without leaking across users.
 
 2) Backend aggregation endpoints
    - Create an `/api/overview` endpoint that returns:
