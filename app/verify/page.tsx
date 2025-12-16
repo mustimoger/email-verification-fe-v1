@@ -196,6 +196,8 @@ export default function VerifyPage() {
     return Math.round((uploadSummary.aggregates.valid / uploadSummary.totalEmails) * 100);
   }, [uploadSummary]);
 
+  const hasSecondaryContent = flowStage === "popup1" || flowStage === "popup2" || showSummaryState;
+
   const proceedToMapping = () => {
     if (!uploadSummary) return;
     setFlowStage("popup2");
@@ -293,7 +295,11 @@ export default function VerifyPage() {
         </div>
 
         <div className="grid gap-4 lg:grid-cols-3">
-          <div className="rounded-2xl bg-white p-5 shadow-md ring-1 ring-slate-100">
+          <div
+            className={`rounded-2xl bg-white p-5 shadow-md ring-1 ring-slate-100 ${
+              hasSecondaryContent ? "" : "lg:col-span-3"
+            }`}
+          >
             <h2 className="text-lg font-extrabold text-slate-900">Upload a file</h2>
             <p className="mt-2 text-sm font-semibold text-slate-600">
               CSV or Excel file
