@@ -18,8 +18,8 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
 - Intended: each user gets their own external API key(s) (per integration/custom), stored in `cached_api_keys`, and proxy calls use that user’s key. The internal “dashboard” key for manual/file verify stays hidden from `/api`.
 
 ## Step-by-step plan for per-user key logic
-1) Filter UI now: hide any dashboard/internal key from `/api` listings/selectors; key creation options limited to Zapier, n8n, Google Sheets, Custom (no Dashboard). Update usage selector to show “All keys” + user-owned keys only.  
-   Purpose: avoid exposing the internal dashboard key and keep the API page focused on integration/custom keys.
+1) DONE — Filter UI now: hide any dashboard/internal key from `/api` listings/selectors; key creation options limited to Zapier, n8n, Google Sheets, Custom (no Dashboard). Update usage selector to show “All keys” + user-owned keys only.  
+   Explanation: `/api` now filters out keys named `dashboard_api`, defaults the usage selector to user-owned keys or “All keys”, and creation is restricted to integration/custom names with a custom-name field when needed to prevent exposing internal keys.
 2) Resolve user key per request in backend proxy: before calling external `/tasks` or `/verify`, fetch the user’s external key from `cached_api_keys` (by type/name). If missing, create via external API using the dev master bearer, store in `cached_api_keys`, and use that key for the call.  
    Purpose: ensure every call is scoped to the requesting user’s external key and prevent cross-user leakage.
 3) Hidden dashboard key: provision/use a per-user key named `dashboard_api` (or similar) for manual/file verification flows; do not return it from `/api` routes.  

@@ -5,6 +5,8 @@ import { Calendar } from "lucide-react";
 import { Line, LineChart as ReLineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 import { DashboardShell } from "../components/dashboard-shell";
+import { RequireAuth } from "../components/protected";
+import { useAuth } from "../components/auth-provider";
 import {
   apiClient,
   ApiError,
@@ -48,18 +50,32 @@ export default function ApiPage() {
   const [isLoadingKeys, setIsLoadingKeys] = useState(false);
   const [isLoadingUsage, setIsLoadingUsage] = useState(false);
   const [creating, setCreating] = useState(false);
-  const [newKeyName, setNewKeyName] = useState("");
+  const integrationOptions = ["Zapier", "n8n", "Google Sheets", "Custom"] as const;
+  const [integrationChoice, setIntegrationChoice] = useState<(typeof integrationOptions)[number]>(
+    integrationOptions[0],
+  );
+  const [customKeyName, setCustomKeyName] = useState("");
   const [lastPlainKey, setLastPlainKey] = useState<string | null>(null);
+  const { session, loading: authLoading } = useAuth();
 
   const chartData = useMemo(() => groupUsage(usage), [usage]);
 
+  const isDashboardKey = (key: ApiKeySummary) => (key.name ?? "").toLowerCase() === "dashboard_api";
+
   useEffect(() => {
+    if (!session) {
+      setKeys([]);
+      setUsage([]);
+      setSelectedKey("");
+      setError(null);
+      return;
+    }
     const load = async () => {
       setIsLoadingKeys(true);
       setError(null);
       try {
         const response: ListApiKeysResponse = await apiClient.listApiKeys();
-        const list = response.keys ?? [];
+        const list = (response.keys ?? []).filter((key) => !isDashboardKey(key));
         setKeys(list);
         setSelectedKey(list[0]?.id ?? "");
       } catch (err: unknown) {
@@ -70,13 +86,18 @@ export default function ApiPage() {
       }
     };
     void load();
-  }, []);
+  }, [session]);
 
   const loadUsage = async () => {
+    if (!session) return;
     setIsLoadingUsage(true);
     setError(null);
     try {
-      const response: UsageResponse = await apiClient.getUsage(dateRange.from || undefined, dateRange.to || undefined);
+      const response: UsageResponse = await apiClient.getUsage(
+        dateRange.from || undefined,
+        dateRange.to || undefined,
+        selectedKey || undefined,
+      );
       setUsage(response.items ?? []);
     } catch (err: unknown) {
       const message = err instanceof ApiError ? err.message : "Failed to load usage";
@@ -87,17 +108,22 @@ export default function ApiPage() {
   };
 
   const handleCreateKey = async () => {
-    if (!newKeyName) return;
+    const resolvedName = integrationChoice === "Custom" ? customKeyName.trim() : integrationChoice;
+    if (!resolvedName) {
+      setError("Please enter a key name.");
+      return;
+    }
     setCreating(true);
     setError(null);
     try {
-      const created = await apiClient.createApiKey(newKeyName);
+      const created = await apiClient.createApiKey(resolvedName);
       setLastPlainKey(created.key || null);
       const refreshed = await apiClient.listApiKeys();
-      const list = refreshed.keys ?? [];
+      const list = (refreshed.keys ?? []).filter((key) => !isDashboardKey(key));
       setKeys(list);
       setSelectedKey(created.id ?? list[0]?.id ?? "");
-      setNewKeyName("");
+      setCustomKeyName("");
+      setIntegrationChoice(integrationOptions[0]);
     } catch (err: unknown) {
       const message = err instanceof ApiError ? err.message : "Failed to create API key";
       setError(message);
@@ -111,7 +137,7 @@ export default function ApiPage() {
     try {
       await apiClient.revokeApiKey(id);
       const refreshed = await apiClient.listApiKeys();
-      const list = refreshed.keys ?? [];
+      const list = (refreshed.keys ?? []).filter((key) => !isDashboardKey(key));
       setKeys(list);
       setSelectedKey(list[0]?.id ?? "");
     } catch (err: unknown) {
@@ -120,22 +146,48 @@ export default function ApiPage() {
     }
   };
 
+  if (authLoading) {
+    return (
+      <DashboardShell>
+        <div className="flex min-h-[240px] items-center justify-center text-sm font-semibold text-slate-700">
+          Checking session...
+        </div>
+      </DashboardShell>
+    );
+  }
+
   return (
     <DashboardShell>
-      <section className="space-y-6">
+      <RequireAuth>
+        <section className="space-y-6">
         <div className="rounded-2xl bg-white p-5 shadow-md ring-1 ring-slate-200">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-extrabold text-slate-900">API Keys</h2>
             <div className="flex items-center gap-2">
-              <input
-                value={newKeyName}
-                onChange={(event) => setNewKeyName(event.target.value)}
-                placeholder="New key name"
-                className="w-48 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm outline-none focus:border-[#4c61cc] focus:ring-1 focus:ring-[#4c61cc]"
-              />
+              <select
+                value={integrationChoice}
+                onChange={(event) =>
+                  setIntegrationChoice(event.target.value as (typeof integrationOptions)[number])
+                }
+                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm outline-none focus:border-[#4c61cc] focus:ring-1 focus:ring-[#4c61cc]"
+              >
+                {integrationOptions.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </select>
+              {integrationChoice === "Custom" ? (
+                <input
+                  value={customKeyName}
+                  onChange={(event) => setCustomKeyName(event.target.value)}
+                  aria-label="Custom key name"
+                  className="w-48 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm outline-none focus:border-[#4c61cc] focus:ring-1 focus:ring-[#4c61cc]"
+                />
+              ) : null}
               <button
                 type="button"
-                disabled={creating || !newKeyName}
+                disabled={creating || (integrationChoice === "Custom" && customKeyName.trim() === "")}
                 onClick={handleCreateKey}
                 className="rounded-lg bg-[#4c61cc] px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#3f52ad] disabled:cursor-not-allowed disabled:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4c61cc]"
               >
@@ -213,6 +265,7 @@ export default function ApiPage() {
                 onChange={(event) => setSelectedKey(event.target.value)}
                 className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm outline-none focus:border-[#4c61cc] focus:ring-1 focus:ring-[#4c61cc]"
               >
+                <option value="">All keys</option>
                 {keys.map((key) => (
                   <option key={key.id} value={key.id}>
                     {key.name} ({maskKey(key.id)})
@@ -311,7 +364,8 @@ export default function ApiPage() {
             )}
           </div>
         </div>
-      </section>
+        </section>
+      </RequireAuth>
     </DashboardShell>
   );
 }
