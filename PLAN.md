@@ -111,7 +111,7 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
 - [x] Added account and usage routes under `/api`: profile get/patch, credits fetch, and usage listing with optional date filters; all authenticated.
   Explanation: Frontend can now read/update profile info, get remaining credits, and fetch usage records from Supabase instead of mocks.
 - [ ] Implement usage ingestion, account updates for all fields, and retention enforcement hooks; wire frontend to backend and add tests.
-  Explanation: Need endpoints or cron hooks to record usage, strengthen account fields, and schedule purge respecting credits/retention days; will also add tests and frontend calls. External API lacks usage; logging usage into Supabase `api_usage` after each external call; cached API keys stored in `cached_api_keys`.
+  Explanation: Usage logging added on tasks/verify/api-keys and account profile/credits; account profile accepts validated email (EmailStr) and is test-covered. Remaining: broaden account fields if needed, ensure all external calls are instrumented, and add retention scheduling/usage ingestion for other routes as required.
 - [x] Repair API keys cache service after leftover patch artifacts.
   Explanation: Recreated `backend/app/services/api_keys.py` to restore `cache_api_key`/`list_cached_keys` with Supabase upsert/select and logging; removed broken patch markers that would have caused import errors.
 - [x] Frontend env fix for API client.
@@ -124,7 +124,7 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
   Explanation: Tasks/verify now resolve a per-user hidden `dashboard_api` key; optional `api_key_id` query selects another user-owned key. API key creation caches secrets and integration metadata (`integration` column), listing can include internal keys when requested, and frontend API page creation sends integration choice. History page now offers a key selector (including dashboard) to filter task history per key.
 - [x] Storage/retention cleanup hook.
   Explanation: Added authenticated maintenance endpoint `/api/maintenance/purge-uploads` that runs retention cleanup (`purge_expired_uploads`), logging deletions and returning deleted files. Use for cron/operator calls to enforce upload retention policy.
-- [ ] TODO: Add optional in-app scheduler (env-gated) to trigger retention cleanup on an interval for dev/staging when cron isn’t available; update OpenAPI (`api-docs.json`) to include maintenance route.
+- [ ] TODO: (Enhancement) Add optional in-app scheduler (env-gated) to trigger retention cleanup on an interval for dev/staging when cron isn’t available; update OpenAPI (`api-docs.json`) to include maintenance route. Cron-based purge will be handled later in deployment.
 
 ## Supabase schema updates
 - [x] Added `cached_api_keys` (key_id PK, user_id FK, name, created_at) with user index for API key caching.
