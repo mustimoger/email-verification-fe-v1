@@ -1,5 +1,7 @@
 type HttpMethod = "GET" | "POST" | "DELETE" | "PATCH";
 
+import { getSupabaseBrowserClient } from "./supabase-browser";
+
 export class ApiError extends Error {
   status: number;
   details?: unknown;
@@ -141,6 +143,22 @@ if (!rawBase) {
 }
 const API_BASE = rawBase.replace(/\/$/, "");
 
+async function getAccessToken(): Promise<string | null> {
+  if (typeof window === "undefined") return null;
+  try {
+    const supabase = getSupabaseBrowserClient();
+    const { data, error } = await supabase.auth.getSession();
+    if (error) {
+      console.warn("auth.get_session_failed", error);
+      return null;
+    }
+    return data.session?.access_token ?? null;
+  } catch (err) {
+    console.error("auth.token_lookup_error", err);
+    return null;
+  }
+}
+
 async function request<T>(
   path: string,
   options: {
@@ -162,6 +180,11 @@ async function request<T>(
       finalHeaders["Content-Type"] = "application/json";
       payload = JSON.stringify(body);
     }
+  }
+
+  const token = await getAccessToken();
+  if (token) {
+    finalHeaders["Authorization"] = `Bearer ${token}`;
   }
 
   const res = await fetch(url, {
@@ -192,9 +215,16 @@ export const apiClient = {
   verifyEmail: (email: string) => request<VerifyEmailResponse>("/verify", { method: "POST", body: { email } }),
   createTask: (emails: string[], webhook_url?: string) =>
     request<TaskResponse>("/tasks", { method: "POST", body: { emails, webhook_url } }),
-  listTasks: (limit = 10, offset = 0) =>
-    request<TaskListResponse>(`/tasks?limit=${limit}&offset=${offset}`, { method: "GET" }),
-  getTask: (taskId: string) => request<TaskDetailResponse>(`/tasks/${taskId}`, { method: "GET" }),
+  listTasks: (limit = 10, offset = 0, apiKeyId?: string) => {
+    const params = new URLSearchParams({ limit: `${limit}`, offset: `${offset}` });
+    if (apiKeyId) params.append("api_key_id", apiKeyId);
+    return request<TaskListResponse>(`/tasks?${params.toString()}`, { method: "GET" });
+  },
+  getTask: (taskId: string, apiKeyId?: string) =>
+    request<TaskDetailResponse>(
+      `/tasks/${taskId}${apiKeyId ? `?api_key_id=${encodeURIComponent(apiKeyId)}` : ""}`,
+      { method: "GET" },
+    ),
   uploadTaskFiles: (files: File[], webhook_url?: string) => {
     const form = new FormData();
     files.forEach((file) => form.append("files", file));
@@ -202,16 +232,19 @@ export const apiClient = {
     return request<BatchFileUploadResponse[]>("/tasks/upload", { method: "POST", body: form, isForm: true });
   },
   getEmail: (address: string) => request(`/emails/${encodeURIComponent(address)}`, { method: "GET" }),
-  listApiKeys: () => request<ListApiKeysResponse>("/api-keys", { method: "GET" }),
-  createApiKey: (name: string) => request<CreateApiKeyResponse>("/api-keys", { method: "POST", body: { name } }),
+  listApiKeys: (includeInternal = false) =>
+    request<ListApiKeysResponse>(`/api-keys${includeInternal ? "?include_internal=true" : ""}`, { method: "GET" }),
+  createApiKey: (name: string, integration: string) =>
+    request<CreateApiKeyResponse>("/api-keys", { method: "POST", body: { name, integration } }),
   revokeApiKey: (id: string) => request<RevokeApiKeyResponse>(`/api-keys/${id}`, { method: "DELETE" }),
   getProfile: () => request<Profile>("/account/profile", { method: "GET" }),
   updateProfile: (payload: Partial<Profile>) => request<Profile>("/account/profile", { method: "PATCH", body: payload }),
   getCredits: () => request<Credits>("/account/credits", { method: "GET" }),
-  getUsage: (start?: string, end?: string) => {
+  getUsage: (start?: string, end?: string, apiKeyId?: string) => {
     const params = new URLSearchParams();
     if (start) params.append("start", start);
     if (end) params.append("end", end);
+    if (apiKeyId) params.append("api_key_id", apiKeyId);
     const qs = params.toString();
     return request<UsageResponse>(`/usage${qs ? `?${qs}` : ""}`, { method: "GET" });
   },

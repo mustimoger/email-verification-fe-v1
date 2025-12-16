@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { DashboardShell } from "../components/dashboard-shell";
-import { apiClient, TaskDetailResponse, TaskListResponse } from "../lib/api-client";
+import { apiClient, ApiKeySummary, TaskDetailResponse, TaskListResponse } from "../lib/api-client";
+import { RequireAuth } from "../components/protected";
+import { useAuth } from "../components/auth-provider";
 
 type HistoryRow = {
   id: string;
@@ -51,18 +53,58 @@ function deriveCounts(detail: TaskDetailResponse): { total: number; valid: numbe
 }
 
 export default function HistoryPage() {
+  const [keys, setKeys] = useState<ApiKeySummary[]>([]);
+  const [selectedKey, setSelectedKey] = useState<string>("");
+  const [keysLoading, setKeysLoading] = useState(false);
   const [rows, setRows] = useState<HistoryRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { session } = useAuth();
+
+  const dashboardKeyId = useMemo(
+    () => keys.find((k) => (k.name ?? "").toLowerCase() === "dashboard_api")?.id ?? "",
+    [keys],
+  );
 
   useEffect(() => {
+    if (!session) {
+      setKeys([]);
+      setSelectedKey("");
+      setRows([]);
+      setError(null);
+      return;
+    }
+    const loadKeys = async () => {
+      setKeysLoading(true);
+      try {
+        const response = await apiClient.listApiKeys(true);
+        const list = response.keys ?? [];
+        setKeys(list);
+        const defaultKey = list.find((k) => (k.name ?? "").toLowerCase() === "dashboard_api")?.id ?? list[0]?.id ?? "";
+        setSelectedKey(defaultKey);
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Failed to load API keys";
+        setError(message);
+      } finally {
+        setKeysLoading(false);
+      }
+    };
+    void loadKeys();
+  }, [session]);
+
+  useEffect(() => {
+    if (!session) {
+      return;
+    }
     const load = async () => {
       setLoading(true);
       setError(null);
       try {
-        const tasks: TaskListResponse = await apiClient.listTasks(10, 0);
+        const tasks: TaskListResponse = await apiClient.listTasks(10, 0, selectedKey || undefined);
         const items = tasks.tasks ?? [];
-        const details = await Promise.all(items.map((task) => (task.id ? apiClient.getTask(task.id) : null)));
+        const details = await Promise.all(
+          items.map((task) => (task.id ? apiClient.getTask(task.id, selectedKey || undefined) : null)),
+        );
         const nextRows: HistoryRow[] = details
           .filter((d): d is TaskDetailResponse => Boolean(d && d.id))
           .map((detail) => {
@@ -87,18 +129,40 @@ export default function HistoryPage() {
           });
         setRows(nextRows);
       } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : "Failed to load history";
+        const message =
+          err instanceof Error
+            ? err.message
+            : "Failed to load history from the verification service. Please try again.";
         setError(message);
       } finally {
         setLoading(false);
       }
     };
     void load();
-  }, []);
+  }, [session, selectedKey]);
 
   return (
     <DashboardShell>
-      <section className="rounded-2xl bg-white p-4 shadow-md ring-1 ring-slate-200 lg:p-6">
+      <RequireAuth>
+        <section className="rounded-2xl bg-white p-4 shadow-md ring-1 ring-slate-200 lg:p-6">
+        <div className="mb-4 flex flex-wrap items-center gap-3">
+          <div className="flex flex-col">
+            <label className="text-xs font-bold uppercase tracking-wide text-slate-700">API key</label>
+            <select
+              value={selectedKey}
+              onChange={(event) => setSelectedKey(event.target.value)}
+              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm outline-none focus:border-[#4c61cc] focus:ring-1 focus:ring-[#4c61cc]"
+              disabled={keysLoading}
+            >
+              {keysLoading ? <option>Loading...</option> : null}
+              {keys.map((key) => (
+                <option key={key.id} value={key.id}>
+                  {(key.name ?? "API key") + (dashboardKeyId === key.id ? " (Dashboard)" : "")}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
         <div className="overflow-hidden rounded-xl border border-slate-200">
           <div className="grid grid-cols-6 bg-slate-50 px-4 py-3 text-xs font-extrabold uppercase tracking-wide text-slate-700 md:text-sm">
             <span>Date</span>
@@ -147,6 +211,7 @@ export default function HistoryPage() {
           {rows.length > 0 ? `Showing ${rows.length} record${rows.length === 1 ? "" : "s"}` : "No records yet"}
         </div>
       </section>
+      </RequireAuth>
     </DashboardShell>
   );
 }

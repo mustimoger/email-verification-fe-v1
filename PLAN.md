@@ -13,6 +13,7 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
 
 ## Data ownership & key logic (current vs intended)
 - Supabase (app-owned): profiles, user_credits, api_usage (filterable by api_key_id), cached_api_keys (key_id + name, no plaintext). No tasks stored locally.
+- cached_api_keys now includes `key_plain` (server-side use) and `integration` metadata for user-selected platforms.
 - External API (external-owned): tasks, jobs, API keys are scoped by the Bearer key used. The shared `.env` `EMAIL_API_KEY` is for development only and returns global tasks (`user_id` null).
 - Current behavior: backend proxies using the shared key; `/api` filters external key list to those cached for the signed-in user; usage can filter by selected key; history shows whatever the shared key owns.
 - Intended: each user gets their own external API key(s) (per integration/custom), stored in `cached_api_keys`, and proxy calls use that user’s key. The internal “dashboard” key for manual/file verify stays hidden from `/api`.
@@ -28,6 +29,12 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
    Explanation: `/api` UI defaults usage to “All keys”; key creation restricted to integration/custom; backend caches created key secret and rejects dashboard name; listing filters out dashboard keys. History remains tied to the per-user dashboard key (not filterable by integration).
 5) DONE — Logging and tests: added structured logs in key resolution; added backend tests to cover resolve path (create vs cached), dashboard key hiding, creation caching secrets, and reserved-name rejection.  
    Explanation: `backend/tests/test_api_keys.py` validates per-user key creation/caching and filters, ensuring dashboard key stays hidden and secrets are cached; logging already present on resolve/create paths.
+
+### Next options
+- Wire retention/cleanup: enforce upload retention based on credits and retention days; add scheduled cleanup hook and logging.
+- Link integrations: add actionable links/CTAs for Zapier/n8n/Google Sheets and per-integration guides; surface integration metadata in UI where helpful.
+- Expand history filtering: add richer status mapping and pagination; consider date range filters aligned with usage filters.
+- Auth enhancements: password reset flow and improved session refresh handling.
 
 ## Auth onboarding
 - [x] Supabase auth wiring — Added browser Supabase client with env validation, auth provider/context, and auto-attached `Authorization: Bearer` token on all API requests.  
@@ -111,6 +118,8 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
   Explanation: Made the “Upload a file” card span the full row when no popup/summary is shown by adding a conditional `lg:col-span-3`; keeps side-by-side layout only when secondary content (popups/summary) is present. Aligns with original Figma layout and avoids the narrow card regression on large screens.
 - [x] External API client dependency fix and local port change.
   Explanation: Swapped FastAPI `Depends(...)` ellipsis for a real dependency (`get_external_api_client`) in task and API key routes so the backend boots. Adjusted local env to use API base `http://localhost:8001/api` to avoid a conflicting service on 8000; backend now runs on port 8001.
+- [x] Per-user key resolution + integration metadata.
+  Explanation: Tasks/verify now resolve a per-user hidden `dashboard_api` key; optional `api_key_id` query selects another user-owned key. API key creation caches secrets and integration metadata (`integration` column), listing can include internal keys when requested, and frontend API page creation sends integration choice. History page now offers a key selector (including dashboard) to filter task history per key.
 
 ## Supabase schema updates
 - [x] Added `cached_api_keys` (key_id PK, user_id FK, name, created_at) with user index for API key caching.

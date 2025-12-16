@@ -9,7 +9,9 @@ logger = logging.getLogger(__name__)
 INTERNAL_DASHBOARD_KEY_NAME = "dashboard_api"
 
 
-def cache_api_key(user_id: str, key_id: str, name: str, key_plain: Optional[str] = None) -> None:
+def cache_api_key(
+    user_id: str, key_id: str, name: str, key_plain: Optional[str] = None, integration: Optional[str] = None
+) -> None:
     """
     Persist API key metadata so we can show it later without storing plaintext.
     """
@@ -18,8 +20,13 @@ def cache_api_key(user_id: str, key_id: str, name: str, key_plain: Optional[str]
         payload: Dict[str, Optional[str]] = {"user_id": user_id, "key_id": key_id, "name": name}
         if key_plain:
             payload["key_plain"] = key_plain
+        if integration:
+            payload["integration"] = integration
         sb.table("cached_api_keys").upsert(payload, on_conflict="key_id").execute()
-        logger.info("api_keys.cached", extra={"user_id": user_id, "key_id": key_id, "name": name, "has_secret": bool(key_plain)})
+        logger.info(
+            "api_keys.cached",
+            extra={"user_id": user_id, "key_id": key_id, "name": name, "integration": integration, "has_secret": bool(key_plain)},
+        )
     except Exception as exc:
         logger.error("api_keys.cache_failed", extra={"error": str(exc), "user_id": user_id, "key_id": key_id})
 
@@ -30,7 +37,7 @@ def list_cached_keys(user_id: str) -> List[Dict[str, str]]:
     """
     sb = get_supabase()
     try:
-        res = sb.table("cached_api_keys").select("key_id,name").eq("user_id", user_id).execute()
+        res = sb.table("cached_api_keys").select("key_id,name,integration").eq("user_id", user_id).execute()
         items: List[Dict[str, str]] = res.data or []
         logger.info("api_keys.cache_list", extra={"user_id": user_id, "count": len(items)})
         return items
@@ -44,7 +51,7 @@ def get_cached_key_by_name(user_id: str, name: str) -> Optional[Dict[str, str]]:
     try:
         res = (
             sb.table("cached_api_keys")
-            .select("key_id,name,key_plain")
+            .select("key_id,name,key_plain,integration")
             .eq("user_id", user_id)
             .eq("name", name)
             .limit(1)
@@ -54,6 +61,24 @@ def get_cached_key_by_name(user_id: str, name: str) -> Optional[Dict[str, str]]:
         return data[0] if data else None
     except Exception as exc:
         logger.error("api_keys.cache_lookup_failed", extra={"error": str(exc), "user_id": user_id, "name": name})
+        return None
+
+
+def get_cached_key_by_id(user_id: str, key_id: str) -> Optional[Dict[str, str]]:
+    sb = get_supabase()
+    try:
+        res = (
+            sb.table("cached_api_keys")
+            .select("key_id,name,key_plain,integration")
+            .eq("user_id", user_id)
+            .eq("key_id", key_id)
+            .limit(1)
+            .execute()
+        )
+        data: List[Dict[str, str]] = res.data or []
+        return data[0] if data else None
+    except Exception as exc:
+        logger.error("api_keys.cache_lookup_by_id_failed", extra={"error": str(exc), "user_id": user_id, "key_id": key_id})
         return None
 
 

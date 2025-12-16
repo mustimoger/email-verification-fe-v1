@@ -17,14 +17,20 @@ def _is_dashboard_key(name: str | None) -> bool:
 
 @router.get("/api-keys", response_model=ListAPIKeysResponse)
 async def list_api_keys(
-    user: AuthContext = Depends(get_current_user), client: ExternalAPIClient = Depends(get_external_api_client)
+    include_internal: bool = False,
+    user: AuthContext = Depends(get_current_user),
+    client: ExternalAPIClient = Depends(get_external_api_client),
 ):
     try:
         cached = {item["key_id"]: item for item in list_cached_keys(user.user_id)}
         result = await client.list_api_keys()
         # Filter external keys to those cached for this user to avoid leaking other users' keys when using a shared bearer.
         if cached and result.keys:
-            filtered_keys = [k for k in result.keys if k.id in cached and not _is_dashboard_key(k.name)]
+            filtered_keys = [
+                k
+                for k in result.keys
+                if k.id in cached and (include_internal or not _is_dashboard_key(k.name))
+            ]
             result.keys = filtered_keys
             result.count = len(filtered_keys)
         record_usage(user.user_id, path="/api-keys", count=1)
@@ -41,6 +47,7 @@ async def create_api_key(
     client: ExternalAPIClient = Depends(get_external_api_client),
 ):
     name = payload.get("name")
+    integration = payload.get("integration")
     if not name:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="name is required")
     if _is_dashboard_key(name):
@@ -49,9 +56,11 @@ async def create_api_key(
         result = await client.create_api_key(name=name)
         if not result.key:
             raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="external API did not return a key")
-        cache_api_key(user.user_id, key_id=result.id or name, name=name, key_plain=result.key)
+        cache_api_key(
+            user.user_id, key_id=result.id or name, name=name, key_plain=result.key, integration=integration or name
+        )
         record_usage(user.user_id, path="/api-keys", count=1)
-        logger.info("route.api_keys.create", extra={"user_id": user.user_id, "name": name})
+        logger.info("route.api_keys.create", extra={"user_id": user.user_id, "name": name, "integration": integration})
         return result
     except ExternalAPIError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.details or exc.args[0])

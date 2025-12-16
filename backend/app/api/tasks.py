@@ -17,7 +17,11 @@ from ..clients.external import (
 )
 from ..core.auth import AuthContext, get_current_user
 from ..core.settings import get_settings
-from ..services.api_keys import INTERNAL_DASHBOARD_KEY_NAME, resolve_user_api_key
+from ..services.api_keys import (
+    INTERNAL_DASHBOARD_KEY_NAME,
+    get_cached_key_by_id,
+    resolve_user_api_key,
+)
 from ..services.storage import persist_upload_file
 from ..services.usage import record_usage
 
@@ -30,7 +34,22 @@ class ResolvedClient(NamedTuple):
     key_id: str
 
 
-async def get_user_external_client(user: AuthContext = Depends(get_current_user)) -> ResolvedClient:
+async def get_user_external_client(
+    api_key_id: Optional[str] = None, user: AuthContext = Depends(get_current_user)
+) -> ResolvedClient:
+    """
+    Resolve an external API client. Use a specific cached key when api_key_id is provided; otherwise fallback to the per-user dashboard key.
+    """
+    if api_key_id:
+        cached = get_cached_key_by_id(user.user_id, api_key_id)
+        if not cached or not cached.get("key_plain"):
+            logger.error(
+                "route.tasks.resolve_key_missing",
+                extra={"user_id": user.user_id, "api_key_id": api_key_id, "found": bool(cached)},
+            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="API key not found for user")
+        return ResolvedClient(client=get_external_api_client_for_key(cached["key_plain"]), key_id=api_key_id)
+
     master_client = get_external_api_client()
     try:
         key_secret, key_id = await resolve_user_api_key(
@@ -128,6 +147,7 @@ async def list_tasks(
 async def get_task_detail(
     task_id: str,
     user: AuthContext = Depends(get_current_user),
+    api_key_id: Optional[str] = None,
     resolved: ResolvedClient = Depends(get_user_external_client),
 ):
     start = time.time()

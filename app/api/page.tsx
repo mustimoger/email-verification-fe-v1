@@ -116,7 +116,7 @@ export default function ApiPage() {
     setCreating(true);
     setError(null);
     try {
-      const created = await apiClient.createApiKey(resolvedName);
+      const created = await apiClient.createApiKey(resolvedName, integrationChoice);
       setLastPlainKey(created.key || null);
       const refreshed = await apiClient.listApiKeys();
       const list = (refreshed.keys ?? []).filter((key) => !isDashboardKey(key));
