@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { DashboardShell } from "../components/dashboard-shell";
 import { apiClient, ApiKeySummary, TaskDetailResponse, TaskListResponse } from "../lib/api-client";
@@ -22,6 +22,9 @@ const statusColor: Record<HistoryRow["status"], string> = {
   download: "bg-emerald-500",
   pending: "bg-amber-400",
 };
+
+const PENDING_STATES = new Set(["pending", "processing", "started", "queued"]);
+const PAGE_SIZE = 10;
 
 function formatNumber(value: number) {
   return new Intl.NumberFormat().format(value);
@@ -58,6 +61,8 @@ export default function HistoryPage() {
   const [keysLoading, setKeysLoading] = useState(false);
   const [rows, setRows] = useState<HistoryRow[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [total, setTotal] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { session } = useAuth();
 
@@ -71,6 +76,7 @@ export default function HistoryPage() {
       setKeys([]);
       setSelectedKey("");
       setRows([]);
+      setTotal(null);
       setError(null);
       return;
     }
@@ -92,15 +98,17 @@ export default function HistoryPage() {
     void loadKeys();
   }, [session]);
 
-  useEffect(() => {
-    if (!session) {
-      return;
-    }
-    const load = async () => {
-      setLoading(true);
+  const fetchPage = useCallback(
+    async (offset: number, append: boolean) => {
+      if (!session) return;
+      if (append) {
+        setLoadingMore(true);
+      } else {
+        setLoading(true);
+      }
       setError(null);
       try {
-        const tasks: TaskListResponse = await apiClient.listTasks(10, 0, selectedKey || undefined);
+        const tasks: TaskListResponse = await apiClient.listTasks(PAGE_SIZE, offset, selectedKey || undefined);
         const items = tasks.tasks ?? [];
         const details = await Promise.all(
           items.map((task) => (task.id ? apiClient.getTask(task.id, selectedKey || undefined) : null)),
@@ -109,10 +117,7 @@ export default function HistoryPage() {
           .filter((d): d is TaskDetailResponse => Boolean(d && d.id))
           .map((detail) => {
             const counts = deriveCounts(detail);
-            const status =
-              detail.jobs?.some((j) => j.status === "pending" || j.status === "processing") ?? false
-                ? "pending"
-                : "download";
+            const hasPending = detail.jobs?.some((j) => PENDING_STATES.has((j.status || "").toLowerCase())) ?? false;
             const date = detail.created_at
               ? new Date(detail.created_at).toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" })
               : "—";
@@ -124,22 +129,38 @@ export default function HistoryPage() {
               valid: counts.valid,
               invalid: counts.invalid,
               catchAll: counts.catchAll,
-              status,
+              status: hasPending ? "pending" : "download",
             };
           });
-        setRows(nextRows);
+        setRows((prev) => (append ? [...prev, ...nextRows] : nextRows));
+        setTotal(tasks.count ?? null);
       } catch (err: unknown) {
         const message =
-          err instanceof Error
-            ? err.message
-            : "Failed to load history from the verification service. Please try again.";
+          err instanceof Error ? err.message : "Failed to load history from the verification service. Please try again.";
         setError(message);
       } finally {
-        setLoading(false);
+        if (append) {
+          setLoadingMore(false);
+        } else {
+          setLoading(false);
+        }
       }
-    };
-    void load();
-  }, [session, selectedKey]);
+    },
+    [session, selectedKey],
+  );
+
+  useEffect(() => {
+    if (!session) return;
+    setRows([]);
+    setTotal(null);
+    void fetchPage(0, false);
+  }, [session, selectedKey, fetchPage]);
+
+  const canLoadMore = useMemo(() => {
+    if (loading || loadingMore) return false;
+    if (total === null) return rows.length >= PAGE_SIZE;
+    return rows.length < total;
+  }, [loading, loadingMore, rows.length, total]);
 
   return (
     <DashboardShell>
@@ -211,8 +232,22 @@ export default function HistoryPage() {
             )}
           </div>
         </div>
-        <div className="mt-4 text-sm font-semibold text-slate-600">
-          {rows.length > 0 ? `Showing ${rows.length} record${rows.length === 1 ? "" : "s"}` : "No records yet"}
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm font-semibold text-slate-600">
+          <span>
+            {rows.length > 0
+              ? `Showing ${rows.length}${total ? ` of ${total}` : ""} record${rows.length === 1 ? "" : "s"}`
+              : "No records yet"}
+          </span>
+          {rows.length > 0 ? (
+            <button
+              type="button"
+              disabled={!canLoadMore}
+              onClick={() => fetchPage(rows.length, true)}
+              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-[#4c61cc] hover:text-[#4c61cc] disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4c61cc]"
+            >
+              {loadingMore ? "Loading..." : canLoadMore ? "Load more" : "All loaded"}
+            </button>
+          ) : null}
         </div>
       </section>
       </RequireAuth>
