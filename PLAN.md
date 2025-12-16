@@ -9,7 +9,33 @@
 - [ ] Testing and staging — Add unit/integration coverage and deploy to staging after MVP pages and API wiring are in place; verify flows end-to-end.
 - [ ] Enhancements — Only after MVP + tests + staging verification.
 
-Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` present locally (uncommitted). Root `/` redirects to `/overview`; main page at `app/overview/page.tsx`. A dev server may still be running on port 3001 (see handover if needed).
+Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` present locally (uncommitted). Root `/` redirects to `/overview`; main page at `app/overview/page.tsx`. A dev server may still be running on port 3001 (see handover if needed). External email verification API is reachable at `https://email-verification.islamsaka.com/api/v1/`; shared bearer works and returns tasks (global to the key). Supabase seeded for user `mustimoger@gmail.com` with credits and cached keys; external `/tasks` currently unscoped per user.
+
+## Data ownership & key logic (current vs intended)
+- Supabase (app-owned): profiles, user_credits, api_usage (filterable by api_key_id), cached_api_keys (key_id + name, no plaintext). No tasks stored locally.
+- External API (external-owned): tasks, jobs, API keys are scoped by the Bearer key used. The shared `.env` `EMAIL_API_KEY` is for development only and returns global tasks (`user_id` null).
+- Current behavior: backend proxies using the shared key; `/api` filters external key list to those cached for the signed-in user; usage can filter by selected key; history shows whatever the shared key owns.
+- Intended: each user gets their own external API key(s) (per integration/custom), stored in `cached_api_keys`, and proxy calls use that user’s key. The internal “dashboard” key for manual/file verify stays hidden from `/api`.
+
+## Step-by-step plan for per-user key logic
+1) Filter UI now: hide any dashboard/internal key from `/api` listings/selectors; key creation options limited to Zapier, n8n, Google Sheets, Custom (no Dashboard). Update usage selector to show “All keys” + user-owned keys only.  
+   Purpose: avoid exposing the internal dashboard key and keep the API page focused on integration/custom keys.
+2) Resolve user key per request in backend proxy: before calling external `/tasks` or `/verify`, fetch the user’s external key from `cached_api_keys` (by type/name). If missing, create via external API using the dev master bearer, store in `cached_api_keys`, and use that key for the call.  
+   Purpose: ensure every call is scoped to the requesting user’s external key and prevent cross-user leakage.
+3) Hidden dashboard key: provision/use a per-user key named `dashboard_api` (or similar) for manual/file verification flows; do not return it from `/api` routes.  
+   Purpose: dedicate a key for dashboard verification without polluting the visible key list.
+4) Integration/custom keys: allow creating/listing/revoking user-specific keys for Zapier/n8n/Google Sheets/Custom, caching ids/names in Supabase. When fetching usage/history, allow filtering by selected key and default to “All keys” or the active integration key.  
+   Purpose: let users manage multiple integration-specific keys and see usage per key.
+5) Logging and tests: add logs for key resolution/creation paths; add unit/integration tests for: missing cached key triggers creation, dashboard key is hidden from `/api`, usage/history queries respect `api_key_id`.  
+   Purpose: ensure behavior is transparent and verifiable.
+
+## Auth onboarding
+- [x] Supabase auth wiring — Added browser Supabase client with env validation, auth provider/context, and auto-attached `Authorization: Bearer` token on all API requests.  
+  Explanation: Ensures FastAPI receives the Supabase JWT and prevents silent unauthenticated calls; fails fast if public Supabase env vars are missing. Wrapped app with `AuthProvider` for session awareness.
+- [x] Signup and login screens — Built `/signup` and `/signin` per Figma (blue organic background, centered card, inputs, checkbox, CTA links) using existing Tailwind stack. Forms call Supabase email/password signup/signin, gate on required fields/terms, and redirect to `/overview` on success.  
+  Explanation: Provides user-facing auth entry, aligns with design (node `65:3385` signup, `65:3343` signin), and logs/returns errors instead of hardcoded fallbacks. Remember/terms checkboxes are functional; “Forget Password?” is a placeholder link for future reset flow.
+- [x] Auth-gated data fetching — Guarded dashboard API calls until a session exists and show friendly prompts instead of 401s. Added JWKS-based Supabase token validation with `audience=\"authenticated\"` for RS256/HS256 and correct JWKS URL (`/.well-known/jwks.json`).  
+  Explanation: Prevents unauthorized calls and fixes “Invalid or expired authentication token” caused by audience/JWKS validation gaps. Pending: adjust `test_settings_missing_env_raises` separately.
 
 ## Current sprint: Initial Verify page (first state only)
 - [x] Pull Figma specs for the initial Verify page (layout, spacing, colors, interaction notes) via Figma MCP to drive implementation.  
