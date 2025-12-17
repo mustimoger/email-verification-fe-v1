@@ -58,7 +58,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await apiClient.bootstrapDashboardKey();
         console.info("auth.bootstrap_dashboard_key.ok");
       } catch (err) {
-        console.error("auth.bootstrap_dashboard_key.failed", err);
+        console.warn("auth.bootstrap_dashboard_key.failed", err);
       }
     };
     void bootstrap();
