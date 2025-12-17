@@ -10,11 +10,14 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error("Missing Supabase env vars: set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY");
 }
 
+const supabaseUrlStrict = supabaseUrl;
+const supabaseAnonKeyStrict = supabaseAnonKey;
+
 let browserClient: SupabaseClient | null = null;
 
 export function getSupabaseBrowserClient(): SupabaseClient {
   if (!browserClient) {
-    browserClient = createClient(supabaseUrl, supabaseAnonKey, {
+    browserClient = createClient(supabaseUrlStrict, supabaseAnonKeyStrict, {
       auth: {
         persistSession: true,
         autoRefreshToken: true,

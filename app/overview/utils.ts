@@ -1,6 +1,16 @@
-import { OverviewResponse, Task } from "../lib/api-client";
+import { OverviewResponse } from "../lib/api-client";
 
 export type TaskStatus = "Completed" | "Running" | "Cancelled";
+
+export type OverviewTask = {
+  id: string;
+  name: string;
+  emails: number;
+  date: string;
+  valid: number;
+  invalid: number;
+  status: TaskStatus;
+};
 
 const RUNNING_STATUSES = new Set(["processing", "pending", "started", "queued", "running"]);
 const COMPLETED_STATUSES = new Set(["completed", "finished", "done", "success"]);
@@ -34,7 +44,7 @@ export function aggregateValidationCounts(tasks: OverviewResponse["recent_tasks"
   return { valid, invalid, catchAll, total };
 }
 
-export function mapOverviewTask(task: OverviewResponse["recent_tasks"][number]): Task {
+export function mapOverviewTask(task: OverviewResponse["recent_tasks"][number]): OverviewTask {
   const status = normalizeOverviewStatus(task.status);
   return {
     id: task.task_id,

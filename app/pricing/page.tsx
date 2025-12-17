@@ -84,7 +84,7 @@ export default function PricingPage() {
       const billing = await getBillingClient({ token: clientSideToken });
       const session = await billingApi.createTransaction({ price_id: plan.priceId });
       console.info("[pricing] transaction created", session);
-      billing.openCheckout({ transactionId: session.id });
+      billing.Checkout.open({ transactionId: session.id });
     } catch (err) {
       console.error("[pricing] checkout failed", err);
       setError(err instanceof ApiError ? err.message : "Checkout failed");

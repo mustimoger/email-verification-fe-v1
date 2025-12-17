@@ -18,7 +18,7 @@ import {
 import { DashboardShell } from "../components/dashboard-shell";
 import { RequireAuth } from "../components/protected";
 import { apiClient, ApiError, OverviewResponse } from "../lib/api-client";
-import { aggregateValidationCounts, mapOverviewTask, TaskStatus } from "./utils";
+import { aggregateValidationCounts, mapOverviewTask, TaskStatus, OverviewTask } from "./utils";
 
 type Stat = {
   title: string;
@@ -35,16 +35,6 @@ type ValidationSlice = {
 type UsagePoint = {
   date: string;
   count: number;
-};
-
-type Task = {
-  id: string;
-  name: string;
-  emails: number;
-  date: string;
-  valid: number;
-  invalid: number;
-  status: TaskStatus;
 };
 
 const statusColor: Record<TaskStatus, string> = {
@@ -103,7 +93,7 @@ export default function OverviewPage() {
     [overview],
   );
 
-  const tasks: Task[] = useMemo(() => {
+  const tasks: OverviewTask[] = useMemo(() => {
     if (!overview?.recent_tasks) return [];
     return overview.recent_tasks.map(mapOverviewTask);
   }, [overview]);

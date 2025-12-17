@@ -201,36 +201,6 @@ export type CreateTransactionResponse = {
   created_at?: string;
 };
 
-export type PlanPrice = {
-  price_id: string;
-  metadata?: Record<string, unknown>;
-  quantity?: number;
-};
-
-export type Plan = {
-  name: string;
-  product_id: string;
-  metadata?: Record<string, unknown>;
-  prices: Record<string, PlanPrice>;
-};
-
-export type PlansResponse = {
-  status: string;
-  checkout_enabled: boolean;
-  checkout_script?: string | null;
-  client_side_token?: string | null;
-  seller_id?: string | null;
-  plans: Plan[];
-};
-
-export type CreateTransactionResponse = {
-  id: string;
-  status?: string;
-  customer_id?: string;
-  address_id?: string;
-  created_at?: string;
-};
-
 const rawBase = process.env.NEXT_PUBLIC_API_BASE_URL;
 if (!rawBase) {
   throw new Error("NEXT_PUBLIC_API_BASE_URL is required for API client");
@@ -309,7 +279,8 @@ async function request<T>(
   }
 
   if (!res.ok) {
-    const message = (data && (data as { detail?: string }).detail) || res.statusText;
+    const detail = (data as { detail?: unknown })?.detail;
+    const message = typeof detail === "string" && detail.trim().length > 0 ? detail : res.statusText;
     if (!suppressErrorLog) {
       console.error("api.request_failed", { path, status: res.status, message, details: data });
     }

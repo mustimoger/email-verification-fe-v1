@@ -38,7 +38,7 @@ export function deriveCounts(detail: TaskDetailResponse): { total: number; valid
   let invalid = 0;
   let catchAll = 0;
   jobs.forEach((job: TaskEmailJob) => {
-    const status = job.email?.status || job.status;
+    const status = job.status;
     switch (status) {
       case "exists":
         valid += 1;
@@ -62,7 +62,7 @@ export function mapDetailToHistoryRow(detail: TaskDetailResponse): HistoryRow | 
   const counts = deriveCounts(detail);
   const hasPending =
     detail.jobs?.some((job) => {
-      const status = (job.status || job.email?.status || "").toLowerCase();
+      const status = (job.status || "").toLowerCase();
       return PENDING_STATES.has(status);
     }) ?? false;
   return {
