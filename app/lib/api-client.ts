@@ -47,6 +47,12 @@ export type Task = {
   id?: string;
   user_id?: string;
   webhook_url?: string;
+  status?: string;
+  email_count?: number;
+  valid_count?: number;
+  invalid_count?: number;
+  catchall_count?: number;
+  integration?: string;
   created_at?: string;
   updated_at?: string;
 };
@@ -226,7 +232,9 @@ async function request<T>(
   }
 
   if (!res.ok) {
-    throw new ApiError(res.status, (data && data.detail) || res.statusText, data);
+    const message = (data && (data as { detail?: string }).detail) || res.statusText;
+    console.error("api.request_failed", { path, status: res.status, message, details: data });
+    throw new ApiError(res.status, message, data);
   }
   return data as T;
 }

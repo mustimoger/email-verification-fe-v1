@@ -4,6 +4,8 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 
 import { DashboardShell } from "../components/dashboard-shell";
+import { RequireAuth } from "../components/protected";
+import { useAuth } from "../components/auth-provider";
 import { apiClient, ApiError, Credits, Profile } from "../lib/api-client";
 
 type Purchase = {
@@ -22,8 +24,15 @@ export default function AccountPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const { session, loading: authLoading } = useAuth();
 
   useEffect(() => {
+    if (!session) {
+      setProfile(null);
+      setCredits(null);
+      setError(null);
+      return;
+    }
     const load = async () => {
       setLoading(true);
       setError(null);
@@ -40,7 +49,7 @@ export default function AccountPage() {
       }
     };
     void load();
-  }, []);
+  }, [session]);
 
   const handleUpdate = async () => {
     if (!profile) return;
@@ -58,9 +67,20 @@ export default function AccountPage() {
     }
   };
 
+  if (authLoading) {
+    return (
+      <DashboardShell>
+        <div className="flex min-h-[240px] items-center justify-center text-sm font-semibold text-slate-700">
+          Checking session...
+        </div>
+      </DashboardShell>
+    );
+  }
+
   return (
     <DashboardShell>
-      <section className="flex flex-col gap-8">
+      <RequireAuth>
+        <section className="flex flex-col gap-8">
         <div className="rounded-2xl bg-white p-6 shadow-md ring-1 ring-slate-200">
           <div className="flex justify-center">
             <div className="flex flex-col items-center">
@@ -163,6 +183,7 @@ export default function AccountPage() {
 
         {loading ? <div className="text-sm font-semibold text-slate-600">Loading account...</div> : null}
       </section>
+      </RequireAuth>
     </DashboardShell>
   );
 }

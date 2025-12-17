@@ -1,6 +1,7 @@
+import asyncio
 import logging
 import time
-from typing import NamedTuple, Optional
+from typing import NamedTuple, Optional, Set
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 
@@ -10,6 +11,7 @@ from ..clients.external import (
     ExternalAPIError,
     get_external_api_client_for_key,
     get_external_api_client,
+    Task,
     TaskDetailResponse,
     TaskListResponse,
     TaskResponse,
@@ -23,7 +25,7 @@ from ..services.api_keys import (
     resolve_user_api_key,
 )
 from ..services.storage import persist_upload_file
-from ..services.tasks_store import upsert_task_from_detail, upsert_tasks_from_list
+from ..services.tasks_store import fetch_tasks_with_counts, upsert_task_from_detail, upsert_tasks_from_list
 from ..services.usage import record_usage
 
 router = APIRouter(prefix="/api", tags=["tasks"])
@@ -64,6 +66,49 @@ async def get_user_external_client(
         raise HTTPException(status_code=exc.status_code, detail=exc.details or exc.args[0])
     client = get_external_api_client_for_key(key_secret)
     return ResolvedClient(client=client, key_id=key_id)
+
+
+async def poll_tasks_after_upload(
+    client: ExternalAPIClient,
+    user_id: str,
+    integration: str,
+    attempts: int,
+    interval_seconds: float,
+    page_size: int,
+    baseline_ids: Set[str],
+) -> Optional[TaskListResponse]:
+    """
+    Poll recent tasks after an upload to capture new task_ids and upsert into Supabase.
+    Stops early when a new task id appears beyond the baseline.
+    """
+    latest: Optional[TaskListResponse] = None
+    for attempt in range(1, attempts + 1):
+        try:
+            latest = await client.list_tasks(limit=page_size, offset=0)
+            tasks = latest.tasks or []
+            if tasks:
+                upsert_tasks_from_list(user_id, tasks, integration=integration)
+            new_ids = {task.id for task in tasks or [] if task and task.id} - baseline_ids
+            logger.info(
+                "route.tasks.upload.poll",
+                extra={
+                    "user_id": user_id,
+                    "attempt": attempt,
+                    "new_tasks": len(new_ids),
+                    "returned": len(tasks),
+                    "total_count": latest.count,
+                },
+            )
+            if new_ids:
+                break
+        except ExternalAPIError as exc:
+            logger.warning(
+                "route.tasks.upload.poll_failed",
+                extra={"user_id": user_id, "attempt": attempt, "status_code": exc.status_code, "details": exc.details},
+            )
+        if attempt < attempts:
+            await asyncio.sleep(interval_seconds)
+    return latest
 
 
 @router.post("/verify", response_model=VerifyEmailResponse)
@@ -112,26 +157,63 @@ async def create_task(
 async def list_tasks(
     limit: int = 10,
     offset: int = 0,
+    api_key_id: Optional[str] = None,
     user: AuthContext = Depends(get_current_user),
-    resolved: ResolvedClient = Depends(get_user_external_client),
 ):
     start = time.time()
-    try:
-        result = await resolved.client.list_tasks(limit=limit, offset=offset)
-        if result.tasks:
-            upsert_tasks_from_list(user.user_id, result.tasks, integration=INTERNAL_DASHBOARD_KEY_NAME)
-        record_usage(user.user_id, path="/tasks", count=1, api_key_id=resolved.key_id)
+    # Supabase is primary source for history; return cached tasks first
+    fallback = fetch_tasks_with_counts(user.user_id, limit=limit, offset=offset)
+    tasks_data = fallback.get("tasks") or []
+    supa_tasks: list[Task] = []
+    for row in tasks_data:
+        supa_tasks.append(
+            Task(
+                id=row.get("task_id"),
+                user_id=row.get("user_id"),
+                status=row.get("status"),
+                email_count=row.get("email_count"),
+                valid_count=row.get("valid_count"),
+                invalid_count=row.get("invalid_count"),
+                catchall_count=row.get("catchall_count"),
+                integration=row.get("integration"),
+                created_at=row.get("created_at"),
+                updated_at=row.get("updated_at"),
+            )
+        )
+    count_value = fallback.get("count") if isinstance(fallback, dict) else None
+    if supa_tasks:
+        record_usage(user.user_id, path="/tasks", count=len(supa_tasks), api_key_id=api_key_id)
         logger.info(
-            "route.tasks.list",
+            "route.tasks.list.supabase_primary",
             extra={
                 "user_id": user.user_id,
                 "limit": limit,
                 "offset": offset,
-                "count": result.count,
+                "returned": len(supa_tasks),
+                "count": count_value,
                 "duration_ms": round((time.time() - start) * 1000, 2),
             },
         )
-        return result
+        return TaskListResponse(count=count_value or len(supa_tasks), limit=limit, offset=offset, tasks=supa_tasks)
+
+    # If Supabase is empty, sync from external and upsert
+    try:
+        resolved = await get_user_external_client(api_key_id=api_key_id, user=user)
+        external_result = await resolved.client.list_tasks(limit=limit, offset=offset)
+        if external_result.tasks:
+            upsert_tasks_from_list(user.user_id, external_result.tasks, integration=INTERNAL_DASHBOARD_KEY_NAME)
+            record_usage(user.user_id, path="/tasks", count=1, api_key_id=resolved.key_id)
+            logger.info(
+                "route.tasks.list.external_refresh",
+                extra={
+                    "user_id": user.user_id,
+                    "limit": limit,
+                    "offset": offset,
+                    "count": external_result.count,
+                    "duration_ms": round((time.time() - start) * 1000, 2),
+                },
+            )
+            return external_result
     except ExternalAPIError as exc:
         logger.error(
             "route.tasks.list.failed",
@@ -142,13 +224,15 @@ async def list_tasks(
                 "duration_ms": round((time.time() - start) * 1000, 2),
             },
         )
-        raise HTTPException(status_code=exc.status_code, detail=exc.details or exc.args[0])
     except Exception as exc:  # noqa: BLE001
         logger.exception(
             "route.tasks.list.exception",
             extra={"user_id": user.user_id, "duration_ms": round((time.time() - start) * 1000, 2)},
         )
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Upstream tasks service error") from exc
+
+    # Nothing in Supabase and external failed/empty
+    record_usage(user.user_id, path="/tasks", count=0, api_key_id=resolved.key_id)
+    return TaskListResponse(count=0, limit=limit, offset=offset, tasks=[])
 
 
 @router.get("/tasks/{task_id}", response_model=TaskDetailResponse)
@@ -215,6 +299,19 @@ async def upload_task_file(
 ):
     settings = get_settings()
     responses: list[BatchFileUploadResponse] = []
+    baseline_ids: Set[str] = set()
+
+    try:
+        baseline = await resolved.client.list_tasks(limit=settings.upload_poll_page_size, offset=0)
+        baseline_ids = {task.id for task in baseline.tasks or [] if task and task.id}
+        if baseline.tasks:
+            upsert_tasks_from_list(user.user_id, baseline.tasks, integration=INTERNAL_DASHBOARD_KEY_NAME)
+    except ExternalAPIError as exc:
+        logger.warning(
+            "route.tasks.upload.baseline_failed",
+            extra={"user_id": user.user_id, "status_code": exc.status_code, "details": exc.details},
+        )
+
     for file in files:
         try:
             saved_path, data = await persist_upload_file(
@@ -231,4 +328,14 @@ async def upload_task_file(
             responses.append(result)
         except ExternalAPIError as exc:
             raise HTTPException(status_code=exc.status_code, detail=exc.details or exc.args[0])
+
+    await poll_tasks_after_upload(
+        client=resolved.client,
+        user_id=user.user_id,
+        integration=INTERNAL_DASHBOARD_KEY_NAME,
+        attempts=settings.upload_poll_attempts,
+        interval_seconds=settings.upload_poll_interval_seconds,
+        page_size=settings.upload_poll_page_size,
+        baseline_ids=baseline_ids,
+    )
     return responses

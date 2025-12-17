@@ -6,9 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:history": "tsx tests/history-mapping.test.ts"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.87.3",
     "lucide-react": "^0.561.0",
     "next": "16.0.10",
     "react": "19.2.1",
@@ -22,6 +24,8 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.0.10",
+    "playwright": "^1.57.0",
+    "tsx": "^4.19.2",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

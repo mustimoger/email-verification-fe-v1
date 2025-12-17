@@ -74,6 +74,12 @@ class Task(BaseModel):
     id: Optional[str] = None
     user_id: Optional[str] = None
     webhook_url: Optional[str] = None
+    status: Optional[str] = None
+    email_count: Optional[int] = None
+    valid_count: Optional[int] = None
+    invalid_count: Optional[int] = None
+    catchall_count: Optional[int] = None
+    integration: Optional[str] = None
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
 
@@ -204,13 +210,13 @@ class ExternalAPIClient:
         return await self._post_multipart("/tasks/batch/upload", data=data, files=files, model=BatchFileUploadResponse)
 
     async def list_api_keys(self) -> ListAPIKeysResponse:
-        return await self._get("/api/v1/api-keys", ListAPIKeysResponse)
+        return await self._get("/api-keys", ListAPIKeysResponse)
 
     async def create_api_key(self, name: str) -> CreateAPIKeyResponse:
-        return await self._post("/api/v1/api-keys", {"name": name}, CreateAPIKeyResponse)
+        return await self._post("/api-keys", {"name": name}, CreateAPIKeyResponse)
 
     async def revoke_api_key(self, api_key_id: str) -> RevokeAPIKeyResponse:
-        return await self._delete(f"/api/v1/api-keys/{api_key_id}", RevokeAPIKeyResponse)
+        return await self._delete(f"/api-keys/{api_key_id}", RevokeAPIKeyResponse)
 
     async def get_email_by_address(self, address: str) -> Dict[str, Any]:
         response = await self._request("GET", f"/emails/{address}")

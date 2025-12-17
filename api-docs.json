@@ -2930,7 +2930,7 @@
         },
         "/tasks": {
             "get": {
-                "description": "Get a paginated list of all verification tasks",
+                "description": "Get a paginated list of verification tasks with optional filtering by user ID and creation date range",
                 "tags": [
                     "tasks"
                 ],
@@ -2956,6 +2956,33 @@
                             "minimum": 0,
                             "default": 0
                         }
+                    },
+                    {
+                        "description": "Filter by user ID (UUID format)",
+                        "name": "user_id",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "description": "Filter tasks created after this timestamp (RFC3339 format, e.g., 2023-01-01T00:00:00Z)",
+                        "name": "created_after",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date-time"
+                        }
+                    },
+                    {
+                        "description": "Filter tasks created before this timestamp (RFC3339 format, e.g., 2023-12-31T23:59:59Z)",
+                        "name": "created_before",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date-time"
+                        }
                     }
                 ],
                 "responses": {
@@ -2965,6 +2992,16 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/cmd_controllers.TaskListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid query parameters (malformed UUID or timestamp format)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/validation.ValidationErrorResponse"
                                 }
                             }
                         }
@@ -3126,6 +3163,83 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/cmd_controllers.BatchFileUploadError"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ]
+            }
+        },
+        "/tasks/batch/uploads/{upload_id}": {
+            "get": {
+                "description": "Retrieve task information and status for a batch file upload using the upload_id returned from the upload endpoint",
+                "tags": [
+                    "tasks"
+                ],
+                "summary": "Get batch upload details by upload ID",
+                "parameters": [
+                    {
+                        "description": "Upload ID (UUID format)",
+                        "name": "upload_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Batch upload details",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/cmd_controllers.BatchUploadResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error (invalid UUID)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Upload not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                        "type": "string"
+                                    }
                                 }
                             }
                         }
@@ -3389,6 +3503,35 @@
                         "type": "string"
                     },
                     "uploaded_at": {
+                        "type": "string"
+                    }
+                }
+            },
+            "cmd_controllers.BatchUploadResponse": {
+                "type": "object",
+                "properties": {
+                    "created_at": {
+                        "type": "string"
+                    },
+                    "filename": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "type": "string"
+                    },
+                    "task": {
+                        "$ref": "#/components/schemas/models.Task"
+                    },
+                    "task_id": {
+                        "type": "string"
+                    },
+                    "updated_at": {
+                        "type": "string"
+                    },
+                    "upload_id": {
+                        "type": "string"
+                    },
+                    "user_id": {
                         "type": "string"
                     }
                 }

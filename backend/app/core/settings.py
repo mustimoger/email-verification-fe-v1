@@ -23,11 +23,14 @@ class Settings(BaseSettings):
     database_url: Optional[str] = None
 
     next_public_api_base_url: Optional[str] = None
-    backend_cors_origins: List[str] = ["http://localhost:3000", "https://boltroute.ai", "https://www.boltroute.ai"]
+    backend_cors_origins: List[str] | str = ["http://localhost:3000", "https://boltroute.ai", "https://www.boltroute.ai"]
 
     upload_max_mb: int = 10
     upload_retention_days: int = 180
     upload_retention_when_credits: Literal["non_zero", "always", "never"] = "non_zero"
+    upload_poll_attempts: int = 3
+    upload_poll_interval_seconds: float = 2.0
+    upload_poll_page_size: int = 20
 
     usage_retention_days: int = 180
 
@@ -38,8 +41,41 @@ class Settings(BaseSettings):
         Allow comma-separated CORS origins in env (e.g., http://localhost:3000,https://example.com).
         """
         if isinstance(value, str):
+            trimmed = value.strip()
+            if trimmed.startswith("[") and trimmed.endswith("]"):
+                for parser in ("json", "ast"):
+                    try:
+                        if parser == "json":
+                            import json
+                            parsed = json.loads(trimmed)
+                        else:
+                            import ast
+                            parsed = ast.literal_eval(trimmed)
+                        if isinstance(parsed, list):
+                            return [v.strip() for v in parsed if isinstance(v, str) and v.strip()]
+                    except Exception:
+                        continue
+                # Fallback for shell-stripped bracketed values like [http://a.com,"http://b.com"]
+                stripped = trimmed.strip("[]")
+                parts = [p.strip().strip('"').strip("'") for p in stripped.split(",") if p.strip()]
+                if parts:
+                    return parts
             parts = [v.strip() for v in value.split(",") if v.strip()]
             return parts or value
+        return value
+
+    @field_validator("upload_poll_attempts", "upload_poll_page_size")
+    @classmethod
+    def positive_int(cls, value):
+        if value <= 0:
+            raise ValueError("must be greater than zero")
+        return value
+
+    @field_validator("upload_poll_interval_seconds")
+    @classmethod
+    def non_negative(cls, value):
+        if value < 0:
+            raise ValueError("must be non-negative")
         return value
 
 

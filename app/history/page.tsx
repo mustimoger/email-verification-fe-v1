@@ -3,56 +3,20 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { DashboardShell } from "../components/dashboard-shell";
-import { apiClient, ApiKeySummary, TaskDetailResponse, TaskListResponse } from "../lib/api-client";
+import { apiClient, ApiKeySummary, TaskDetailResponse, TaskListResponse, Task } from "../lib/api-client";
 import { RequireAuth } from "../components/protected";
 import { useAuth } from "../components/auth-provider";
-
-type HistoryRow = {
-  id: string;
-  date: string;
-  label: string;
-  total: number;
-  valid: number;
-  invalid: number;
-  catchAll: number;
-  status: "download" | "pending";
-};
+import { HistoryRow, mapDetailToHistoryRow, mapTaskToHistoryRow } from "./utils";
 
 const statusColor: Record<HistoryRow["status"], string> = {
   download: "bg-emerald-500",
   pending: "bg-amber-400",
 };
 
-const PENDING_STATES = new Set(["pending", "processing", "started", "queued"]);
 const PAGE_SIZE = 10;
 
 function formatNumber(value: number) {
   return new Intl.NumberFormat().format(value);
-}
-
-function deriveCounts(detail: TaskDetailResponse): { total: number; valid: number; invalid: number; catchAll: number } {
-  const jobs = detail.jobs ?? [];
-  let valid = 0;
-  let invalid = 0;
-  let catchAll = 0;
-  jobs.forEach((job) => {
-    const status = job.email?.status || job.status;
-    switch (status) {
-      case "exists":
-        valid += 1;
-        break;
-      case "catchall":
-        catchAll += 1;
-        break;
-      case "not_exists":
-      case "invalid_syntax":
-      case "unknown":
-      default:
-        invalid += 1;
-        break;
-    }
-  });
-  return { total: jobs.length, valid, invalid, catchAll };
 }
 
 export default function HistoryPage() {
@@ -110,28 +74,35 @@ export default function HistoryPage() {
       try {
         const tasks: TaskListResponse = await apiClient.listTasks(PAGE_SIZE, offset, selectedKey || undefined);
         const items = tasks.tasks ?? [];
-        const details = await Promise.all(
-          items.map((task) => (task.id ? apiClient.getTask(task.id, selectedKey || undefined) : null)),
-        );
-        const nextRows: HistoryRow[] = details
-          .filter((d): d is TaskDetailResponse => Boolean(d && d.id))
-          .map((detail) => {
-            const counts = deriveCounts(detail);
-            const hasPending = detail.jobs?.some((j) => PENDING_STATES.has((j.status || "").toLowerCase())) ?? false;
-            const date = detail.created_at
-              ? new Date(detail.created_at).toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" })
-              : "—";
-            return {
-              id: detail.id || crypto.randomUUID(),
-              date,
-              label: detail.id || "Task",
-              total: counts.total,
-              valid: counts.valid,
-              invalid: counts.invalid,
-              catchAll: counts.catchAll,
-              status: hasPending ? "pending" : "download",
-            };
+        const rowsByIndex: Array<HistoryRow | null> = new Array(items.length).fill(null);
+        const detailRequests: Array<Promise<{ index: number; detail: TaskDetailResponse | null }>> = [];
+
+        items.forEach((task, index) => {
+          const mapped = mapTaskToHistoryRow(task as Task);
+          if (mapped) {
+            rowsByIndex[index] = mapped;
+          } else if (task.id) {
+            detailRequests.push(
+              apiClient
+                .getTask(task.id, selectedKey || undefined)
+                .then((detail) => ({ index, detail }))
+                .catch(() => ({ index, detail: null })),
+            );
+          }
+        });
+
+        if (detailRequests.length > 0) {
+          const details = await Promise.all(detailRequests);
+          details.forEach(({ index, detail }) => {
+            if (!detail) return;
+            const row = mapDetailToHistoryRow(detail);
+            if (row) {
+              rowsByIndex[index] = row;
+            }
           });
+        }
+
+        const nextRows: HistoryRow[] = rowsByIndex.filter((row): row is HistoryRow => Boolean(row));
         setRows((prev) => (append ? [...prev, ...nextRows] : nextRows));
         setTotal(tasks.count ?? null);
       } catch (err: unknown) {

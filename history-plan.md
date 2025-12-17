@@ -1,0 +1,21 @@
+# History Wiring Plan
+
+Goal: replace mock data on `/history` with real per-user tasks from FastAPI/Supabase using the user’s external key (dashboard or selected integration), while preserving existing UI/filters and avoiding hardcoded fallbacks.
+
+Tasks
+- [x] Backend readiness check (quick): verify `/api/tasks` list/detail respond with per-user key resolution and Supabase upsert; note that upload still uses polling until external API returns `task_id` directly. No code changes unless a blocking gap appears.  
+  Explanation: Confirmed `GET /api/tasks` uses per-user key resolution (dashboard key by default, `api_key_id` override), upserts Supabase `tasks` on list/detail, and upload now polls to capture task_ids until upstream returns them. Supabase tables (`tasks`, `cached_api_keys`, `profiles`, `user_credits`, `api_usage`) exist with seeded tasks for musti, so backend can serve history data now.
+- [x] Frontend fetch layer: add typed client for `/api/tasks` (limit/offset/api_key_id), include auth token, log errors, and avoid silent defaults. Support pagination and map to existing status labels.  
+  Explanation: API client already provided typed `/tasks` list/detail with pagination and key override; added explicit error logging on request failures while preserving typed errors. Auth token is auto-attached via Supabase session, and pagination params are passed through. Ready for `/history` wiring.
+- [x] Wire `/history` page to backend: replace mock rows with fetched data, keep key selector hooked to `api_key_id`, handle loading/error/empty states gracefully, and keep status pill logic aligned with backend statuses.  
+  Explanation: History page already calls `/api/tasks` with optional `api_key_id`, fetches task detail for counts, maps pending states to pills, and supports pagination/load-more. Added API error logging to surface failures. Loading/error/empty states are present, and the key selector includes the hidden dashboard key so per-user data flows through without hardcoded fallbacks.
+- [x] Tests: add minimal frontend tests for fetch mapping and `/history` render (loading/error/empty + basic data render). Keep deterministic and avoid placeholders.  
+  Explanation: Added `app/history/utils.ts` to house mapping/count/date helpers and `tests/history-mapping.test.ts` (run via `npm run test:history` with `tsx`) covering counts, pending detection, date formatting, and row mapping. Keeps tests deterministic without UI placeholders.
+- [x] Supabase fallback for history data: when external tasks are empty/unavailable, list tasks from Supabase cache with stored counts/status so seeded/user tasks render.  
+  Explanation: `/api/tasks` now falls back to Supabase `tasks` (with counts/status) and logs the fallback. Frontend maps tasks with counts directly (no detail fetch needed) and still calls detail for tasks lacking counts. Added backend fallback test and extended mapping helpers to use cached counts.
+- [ ] Post-upload future tweak: when external upload starts returning `task_id`, drop or reduce polling in `/api/tasks/upload` and upsert directly from response.
+- [x] Supabase as primary source for history: return Supabase tasks first, only hit external `/tasks` when Supabase is empty to refresh cache.  
+  Explanation: `/api/tasks` now reads from Supabase `tasks` as the primary source (with counts/status/integration). If Supabase has rows, it returns them immediately and logs usage; external fetch is only attempted when Supabase is empty, with upsert on success. Ensures history always shows cached/seeded data even when external tasks list is empty.
+
+Notes
+- Supabase tables in place: `tasks` (seeded for user musti), `cached_api_keys` (with `key_plain` + `integration`), `api_usage`, `profiles`, `user_credits`. `/api/tasks` already upserts list/detail to keep Supabase current; upload polling fills the gap until `task_id` is returned.

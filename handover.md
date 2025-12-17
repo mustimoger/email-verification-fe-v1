@@ -1,26 +1,23 @@
-# Handover (Overview wiring, tasks ingestion, auth/keys)
+# Handover (auth/key issues, history backend)
 
-## Current state
-- Auth: Supabase JWT validated (HS/RS), frontend attaches Bearer, guarded pages. Account profile/credits endpoints validate EmailStr and log usage.
-- Keys: per-user external key resolution; hidden `dashboard_api` used for verify/tasks. Integration metadata stored on cached keys; `/api` page shows only integration/custom keys.
-- Tasks ingestion: Supabase `tasks` table created (task_id PK, counts, integration). Create/list/detail routes now upsert per-user tasks into Supabase (counts when available). Seeded demo tasks for user musti (`959ce587-7a0e-4726-8382-e70ad89e1232`). File upload still lacks task_id (see gaps).
-- Overview: new `/api/overview` aggregates profile, credits, usage total/series (from `api_usage`), task counts, and recent tasks (from Supabase). Frontend `/overview` now fetches real data and replaces mocks; preserves design, adds loading/error/empty states. Backend tests cover overview aggregation.
-- Maintenance: `/api/maintenance/purge-uploads` exists; scheduler deferred to enhancement. Retention cron to be set up later in deploy.
-- Env/CORS: `.env.example` added; CORS splits comma-separated origins.
-- Tests: backend suites for auth, api-keys, account, overview, maintenance pass; lint passes.
+## Current blockers
+- External API key creation fails: the dev key `9a56bd21-eba2-4f8c-bf79-791ffcf2e47b` can list tasks but gets 401 on `/api-keys`. Our backend tries to create a per-user `dashboard_api` key on `/api/tasks` and `/api/api-keys`; new users hit this and the route crashes. External dev confirmed this key is a manual vault key, not allowed for `/api-keys`; proper `/api-keys` requires Supabase-authenticated user tokens (anon key + JWT secret).
+- Supabase auth flow is in place on the frontend, but new users still see empty history because `/api/tasks` 500s when external key creation 401s. CORS error is a side effect of the 500.
 
-## Open gaps / TODOs
-- File upload tasks: external `/tasks/batch/upload` does not return task_id. Need a post-upload polling strategy (call `/tasks` for the user key, upsert new tasks) to capture uploads into Supabase.
-- Overview frontend tests still missing; only manual/lint/back-end tests exist.
-- Retention scheduler enhancement (cron/in-app) deferred; OpenAPI not regenerated.
-- Account fields beyond email/display_name still minimal; usage ingestion mostly covered but confirm any remaining routes.
+## Backend state
+- Supabase tables populated; seeded tasks exist for mustimoger user. `/api/debug/me` and `/api/debug/tasks` (added) work when called with a valid Supabase JWT and show tasks.
+- CORS is configured via `BACKEND_CORS_ORIGINS` array in `backend/.env`; parsing fixed in settings.
+- External API client paths fixed for `/api-keys`, but 401 persists because the dev key lacks permissions.
 
-## Next steps (suggested)
-1) Implement upload polling: after `/tasks/upload`, trigger a background fetch of `/tasks` for the user key and upsert into Supabase `tasks` (or add a manual button). Avoid design changes.
-2) Add minimal frontend tests/checks for `/overview` rendering (loading/error/empty).
-3) (Enhancement later) Add cron/in-app scheduler for retention, regenerate api-docs if needed.
+## Frontend state
+- History/Overview pages call backend; History crashes when `/api/tasks` fails on external key creation. UI shows CORS/401 because backend returns 500.
+- Auth placeholder avatar is static; real Supabase session required for data.
 
-## Quick refs
-- Seed user: `mustimoger@gmail.com` id `959ce587-7a0e-4726-8382-e70ad89e1232` (has demo tasks).
-- New endpoint: `GET /api/overview` returns profile/credits/usage/task stats.
-- Tasks table: Supabase `tasks` upserts now happen on create/list/detail; upload pending.
+## Next steps (recommended)
+1) Add safe fallback in `/api/tasks` (and `/api/api-keys` if needed): on ExternalAPIError 401, skip key creation and return Supabase tasks only; avoid UnboundLocalError on `resolved`. This unblocks History for new users without external key creation.
+2) Decide on external key strategy: either supply a master key that can call `/api-keys`, or switch to user-specific `/api-keys` via Supabase auth tokens as external dev expects.
+3) Once a valid key strategy exists, re-enable per-user dashboard key creation and remove the fallback.
+
+## Quick commands
+- Debug endpoints (require valid JWT): `/api/debug/me`, `/api/debug/tasks`.
+- External create-key test (currently 401): `curl -H "Authorization: Bearer $EMAIL_API_KEY" -d '{"name":"test"}' https://email-verification.islamsaka.com/api/v1/api-keys`.

@@ -124,6 +124,9 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
   Explanation: Tasks/verify now resolve a per-user hidden `dashboard_api` key; optional `api_key_id` query selects another user-owned key. API key creation caches secrets and integration metadata (`integration` column), listing can include internal keys when requested, and frontend API page creation sends integration choice. History page now offers a key selector (including dashboard) to filter task history per key.
 - [x] Storage/retention cleanup hook.
   Explanation: Added authenticated maintenance endpoint `/api/maintenance/purge-uploads` that runs retention cleanup (`purge_expired_uploads`), logging deletions and returning deleted files. Use for cron/operator calls to enforce upload retention policy.
+- [x] Post-upload task polling/backfill.
+  Explanation: `/api/tasks/upload` now captures batch-upload tasks by polling `/tasks` with the user’s external key after uploads complete, comparing against a baseline, and upserting recent tasks into Supabase. Poll attempts/interval/page size are env-configurable (`UPLOAD_POLL_*`), with structured logs for baseline fetch, each poll attempt, and new task detection.
+- [ ] External key creation blocked (401) — current dev key `9a56bd21-eba2-4f8c-bf79-791ffcf2e47b` cannot call `/api-keys`; new users hit `/api/tasks` and crash when dashboard key creation fails (UnboundLocalError). Need either a key with `/api-keys` permission or a safe fallback that skips creation and serves Supabase-only tasks.
 - [ ] TODO: (Enhancement) Add optional in-app scheduler (env-gated) to trigger retention cleanup on an interval for dev/staging when cron isn’t available; update OpenAPI (`api-docs.json`) to include maintenance route. Cron-based purge will be handled later in deployment.
 
 ## Supabase schema updates
@@ -131,4 +134,5 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
 - [x] Added `key_plain` column + user/name index on `cached_api_keys` to store per-user external key secrets for server-side proxying; reserved dashboard keys stay hidden from `/api`.
 - [x] Added `integration` column + (user_id, integration) index to `cached_api_keys` to persist user-selected integration for each key.
 - [x] Added `tasks` table (task_id PK, user_id FK, status, counts, integration, timestamps) with user/created_at index and updated_at trigger; seeded demo rows for user `959ce587-7a0e-4726-8382-e70ad89e1232` to exercise Overview/History once wired.
-- [ ] File upload tasks: external `/tasks/batch/upload` does not return a task_id; need polling of `/tasks` post-upload to upsert Supabase tasks for those jobs. Tracks missing piece for full ingestion.
+- [x] File upload tasks ingestion after batch upload.  
+  Explanation: Added configurable post-upload polling that captures tasks created by `/tasks/batch/upload` by fetching recent tasks with the user’s key, comparing against a baseline, and upserting into Supabase. Logging covers baseline fetch, poll attempts, and new task detection; env knobs (`UPLOAD_POLL_*`) control attempts/interval/page size.

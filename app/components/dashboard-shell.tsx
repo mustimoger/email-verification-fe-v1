@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Bell,
   CheckCircle2,
@@ -19,6 +19,8 @@ import {
 } from "lucide-react";
 import type { ComponentType, ReactNode, SVGProps } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
+
+import { useAuth } from "./auth-provider";
 
 type NavItem = {
   key: string;
@@ -153,9 +155,12 @@ function NavButton({
 
 export function DashboardShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { signOut } = useAuth();
   const [isNavOpen, setIsNavOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement | null>(null);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   useEffect(() => {
     const handler = (event: MouseEvent) => {
@@ -176,6 +181,22 @@ export function DashboardShell({ children }: { children: ReactNode }) {
         ? pathname === "/"
         : pathname?.startsWith(item.href),
     )?.key ?? "overview";
+
+  const handleLogout = async () => {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    try {
+      const { error } = await signOut();
+      if (error) {
+        console.error("auth.logout_failed", { error });
+      }
+      setProfileMenuOpen(false);
+      setIsNavOpen(false);
+      router.push("/signin");
+    } finally {
+      setLoggingOut(false);
+    }
+  };
 
   return (
     <div className="flex min-h-screen">
@@ -215,17 +236,18 @@ export function DashboardShell({ children }: { children: ReactNode }) {
                 onSelect={() => setIsNavOpen(false)}
               />
             ))}
-            <NavButton
-              item={{
-                key: "logout",
-                label: "Logout",
-                icon: LogOut,
-                href: "#",
-                available: false,
-              }}
-              active={activeKey === "logout"}
-              onSelect={() => setIsNavOpen(false)}
-            />
+            <button
+              type="button"
+              onClick={handleLogout}
+              disabled={loggingOut}
+              className={[
+                "group flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition",
+                "text-white hover:bg-[#4c61cc]/70 hover:text-white disabled:opacity-60 disabled:cursor-not-allowed",
+              ].join(" ")}
+            >
+              <LogOut className="h-5 w-5" />
+              <span>{loggingOut ? "Logging out..." : "Logout"}</span>
+            </button>
           </nav>
         </div>
       </aside>
@@ -303,17 +325,29 @@ export function DashboardShell({ children }: { children: ReactNode }) {
                 >
                   {profileMenu.map((item) => {
                     const Icon = item.icon;
+                    const isLogout = item.key === "logout";
                     return (
                       <button
                         key={item.key}
                         type="button"
                         role="menuitem"
-                        className="flex w-full items-center gap-3 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                        onClick={
+                          isLogout
+                            ? handleLogout
+                            : () => {
+                                setProfileMenuOpen(false);
+                                if (item.key === "account") {
+                                  router.push("/account");
+                                }
+                              }
+                        }
+                        disabled={isLogout && loggingOut}
+                        className="flex w-full items-center gap-3 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60 disabled:cursor-not-allowed"
                       >
                         <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-50 text-[#4c61cc] shadow-inner">
                           <Icon className="h-4 w-4" />
                         </span>
-                        <span>{item.label}</span>
+                        <span>{isLogout && loggingOut ? "Logging out..." : item.label}</span>
                       </button>
                     );
                   })}

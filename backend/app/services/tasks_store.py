@@ -101,3 +101,27 @@ def fetch_task_summary(user_id: str, limit: int = 5) -> Dict[str, object]:
         logger.error("tasks.summary_recent_failed", extra={"user_id": user_id, "error": str(exc)})
         recent = []
     return {"counts": counts, "recent": recent}
+
+
+def fetch_tasks_with_counts(user_id: str, limit: int = 10, offset: int = 0) -> Dict[str, object]:
+    """
+    Fetch tasks from Supabase with stored counts/status for history fallback.
+    Returns dict with tasks list and optional total count when available.
+    """
+    sb: Client = get_supabase()
+    end = offset + limit - 1
+    try:
+        res = (
+            sb.table("tasks")
+            .select("*", count="exact")
+            .eq("user_id", user_id)
+            .order("created_at", desc=True)
+            .range(offset, end if end >= offset else offset)
+            .execute()
+        )
+        data = res.data or []
+        total = res.count if hasattr(res, "count") else None
+        return {"tasks": data, "count": total}
+    except Exception as exc:  # noqa: BLE001
+        logger.error("tasks.fetch_with_counts_failed", extra={"user_id": user_id, "error": str(exc)})
+        return {"tasks": [], "count": None}
