@@ -186,10 +186,10 @@ async def _resolve_customer_and_address(user: AuthContext) -> Tuple[str, str]:
                 customer = await client.create_customer(
                     CreateCustomerRequest(
                         email=profile["email"],
-                    name=profile.get("display_name"),
-                    custom_data={"user_id": user.user_id},
+                        name=profile.get("display_name"),
+                        custom_data={"user_id": user.user_id},
+                    )
                 )
-            )
             except PaddleAPIError as exc:
                 # If conflict, try to find existing customer by search/email
                 if exc.status_code == status.HTTP_409_CONFLICT:
