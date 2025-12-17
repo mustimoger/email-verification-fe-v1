@@ -46,6 +46,11 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
 - [x] Dashboard shell gating — Sidebar/topbar/footer now render only when authenticated; shell redirects to `/signin` and returns `null` for signed-out users. Added shared `resolveAuthState` helper and a unit test for guard logic.  
   Explanation: Ensures signed-out users only see auth pages (per screenshot_1), eliminating dashboard chrome flashes when no session is present.
 
+## Data flow alignment (frontend reads Supabase, backend proxies external)
+- [x] Harden `/api/tasks` fallback so Supabase stays primary: if Supabase is empty and external `/tasks` fails, return an empty list without crashing or leaking upstream errors; keep logging. Add a regression test. No schema change expected.  
+  Explanation: Guarded unresolved client use, always return a safe empty TaskList when external fails/returns none, and added `test_tasks_list_external_failure.py` to prevent UnboundLocal/500 regressions.
+- [ ] Provision hidden per-user dashboard key early (post-signup/signin) and cache it in Supabase so manual/file verification never attempts creation during history fetch; backend remains the sole caller to the external API. Frontend keeps using Supabase-backed data for UI.
+
 ## Current sprint: Initial Verify page (first state only)
 - [x] Pull Figma specs for the initial Verify page (layout, spacing, colors, interaction notes) via Figma MCP to drive implementation.  
   Explanation: fetched design context for node `51:306` (Verify initial page) and captured screenshot via Figma MCP (`get_screenshot`, see local session). Confirms layout: shared sidebar/topbar identical to Overview plus footer links (“Privacy Policy & Terms”, “Cookie Pereferences”), manual email input card with textarea + VERIFY button, results panel, file upload section with drag/drop and Browse button, light gray background.

@@ -161,6 +161,7 @@ async def list_tasks(
     user: AuthContext = Depends(get_current_user),
 ):
     start = time.time()
+    resolved_client: Optional[ResolvedClient] = None
     # Supabase is primary source for history; return cached tasks first
     fallback = fetch_tasks_with_counts(user.user_id, limit=limit, offset=offset)
     tasks_data = fallback.get("tasks") or []
@@ -198,22 +199,25 @@ async def list_tasks(
 
     # If Supabase is empty, sync from external and upsert
     try:
-        resolved = await get_user_external_client(api_key_id=api_key_id, user=user)
-        external_result = await resolved.client.list_tasks(limit=limit, offset=offset)
+        resolved_client = await get_user_external_client(api_key_id=api_key_id, user=user)
+        external_result = await resolved_client.client.list_tasks(limit=limit, offset=offset)
         if external_result.tasks:
             upsert_tasks_from_list(user.user_id, external_result.tasks, integration=INTERNAL_DASHBOARD_KEY_NAME)
-            record_usage(user.user_id, path="/tasks", count=1, api_key_id=resolved.key_id)
-            logger.info(
-                "route.tasks.list.external_refresh",
-                extra={
-                    "user_id": user.user_id,
-                    "limit": limit,
-                    "offset": offset,
-                    "count": external_result.count,
-                    "duration_ms": round((time.time() - start) * 1000, 2),
-                },
-            )
-            return external_result
+        record_usage(
+            user.user_id, path="/tasks", count=len(external_result.tasks or []), api_key_id=resolved_client.key_id
+        )
+        logger.info(
+            "route.tasks.list.external_refresh",
+            extra={
+                "user_id": user.user_id,
+                "limit": limit,
+                "offset": offset,
+                "count": external_result.count,
+                "returned": len(external_result.tasks or []),
+                "duration_ms": round((time.time() - start) * 1000, 2),
+            },
+        )
+        return external_result
     except ExternalAPIError as exc:
         logger.error(
             "route.tasks.list.failed",
@@ -231,7 +235,21 @@ async def list_tasks(
         )
 
     # Nothing in Supabase and external failed/empty
-    record_usage(user.user_id, path="/tasks", count=0, api_key_id=resolved.key_id)
+    record_usage(
+        user.user_id,
+        path="/tasks",
+        count=0,
+        api_key_id=resolved_client.key_id if resolved_client else api_key_id,
+    )
+    logger.info(
+        "route.tasks.list.empty_fallback",
+        extra={
+            "user_id": user.user_id,
+            "limit": limit,
+            "offset": offset,
+            "duration_ms": round((time.time() - start) * 1000, 2),
+        },
+    )
     return TaskListResponse(count=0, limit=limit, offset=offset, tasks=[])
 
 

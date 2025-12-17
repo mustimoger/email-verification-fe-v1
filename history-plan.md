@@ -16,6 +16,8 @@ Tasks
 - [ ] Post-upload future tweak: when external upload starts returning `task_id`, drop or reduce polling in `/api/tasks/upload` and upsert directly from response.
 - [x] Supabase as primary source for history: return Supabase tasks first, only hit external `/tasks` when Supabase is empty to refresh cache.  
   Explanation: `/api/tasks` now reads from Supabase `tasks` as the primary source (with counts/status/integration). If Supabase has rows, it returns them immediately and logs usage; external fetch is only attempted when Supabase is empty, with upsert on success. Ensures history always shows cached/seeded data even when external tasks list is empty.
+- [x] External failure fallback: when Supabase is empty and external `/tasks` fails, respond with an empty list without crashing; added regression test to prevent UnboundLocal errors.  
+  Explanation: Guards unresolved client use in `list_tasks`, keeps logging, and returns a safe empty response so History never 500s on upstream issues.
 
 Notes
 - Supabase tables in place: `tasks` (seeded for user musti), `cached_api_keys` (with `key_plain` + `integration`), `api_usage`, `profiles`, `user_credits`. `/api/tasks` already upserts list/detail to keep Supabase current; upload polling fills the gap until `task_id` is returned.
