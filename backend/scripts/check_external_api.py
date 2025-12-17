@@ -23,7 +23,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--api-key",
         default=None,
-        help="External API key (defaults to EMAIL_API_KEY env). Required for auth.",
+        help="External API key for Authorization: Bearer (defaults to EMAIL_API_KEY env).",
+    )
+    parser.add_argument(
+        "--x-api-key",
+        default=None,
+        help="Optional X-API-Key header (sent in addition to Authorization).",
     )
     parser.add_argument(
         "--verify-email",
@@ -51,6 +56,8 @@ def parse_args() -> argparse.Namespace:
 
 async def run_checks(base_url: str, api_key: str, opts: argparse.Namespace) -> int:
     headers = {"Authorization": f"Bearer {api_key}"}
+    if opts.x_api_key:
+        headers["X-API-Key"] = opts.x_api_key
     client = httpx.AsyncClient(base_url=base_url.rstrip("/"), headers=headers, timeout=opts.timeout)
     failures: List[str] = []
 
