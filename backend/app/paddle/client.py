@@ -136,7 +136,11 @@ class PaddleAPIClient:
         return await self._parse(response, CustomerResponse)
 
     async def create_address(self, payload: CreateAddressRequest) -> AddressResponse:
-        response = await self._request("POST", "/addresses", json=payload.model_dump(mode="json"))
+        path = f"/customers/{payload.customer_id}/addresses"
+        body = payload.model_dump(mode="json")
+        # remove customer_id from body per endpoint expectations
+        body.pop("customer_id", None)
+        response = await self._request("POST", path, json=body)
         return await self._parse(response, AddressResponse)
 
     async def get_price(self, price_id: str) -> PriceResponse:
