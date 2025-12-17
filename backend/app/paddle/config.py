@@ -58,8 +58,8 @@ class PaddleConfig(BaseSettings):
 
     plan_definitions: Dict[str, PaddlePlanDefinition] = Field(alias="PADDLE_BILLING_PLAN_DEFINITIONS")
 
-    sandbox_ip_allowlist: list[str] = Field(default_factory=list, alias="PADDLE_SANDBOX_IPS")
-    production_ip_allowlist: list[str] = Field(default_factory=list, alias="PADDLE_PRODUCTION_IPS")
+    sandbox_ip_allowlist: list[str] | str = Field(default_factory=list, alias="PADDLE_SANDBOX_IPS")
+    production_ip_allowlist: list[str] | str = Field(default_factory=list, alias="PADDLE_PRODUCTION_IPS")
 
     default_country: Optional[str] = Field(None, alias="PADDLE_BILLING_DEFAULT_COUNTRY")
     default_postal_code: Optional[str] = Field(None, alias="PADDLE_BILLING_DEFAULT_POSTAL")
