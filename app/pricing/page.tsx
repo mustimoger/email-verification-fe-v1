@@ -19,6 +19,8 @@ type Plan = {
   cta: string;
   priceId: string;
   credits?: number;
+  amount?: number;
+  currency?: string;
 };
 
 export default function PricingPage() {
@@ -46,12 +48,14 @@ export default function PricingPage() {
           return {
             id: plan.name,
             name: plan.name,
-            price: priceEntry.price_id,
+            price: formatPrice(priceEntry.amount, priceEntry.currency_code),
             priceId: priceEntry.price_id,
             creditsNote: plan.metadata?.credits ? `${plan.metadata.credits} Credits` : "Credits Never Expire",
             features: [{ label: "Credits Never Expire" }],
             cta: "Start Verification",
             credits,
+            amount: priceEntry.amount,
+            currency: priceEntry.currency_code,
           };
         });
         setPlans(mapped);
@@ -131,3 +135,15 @@ export default function PricingPage() {
     </DashboardShell>
   );
 }
+  const formatPrice = (amount?: number, currency?: string) => {
+    if (amount == null || !currency) return "Price unavailable";
+    try {
+      return new Intl.NumberFormat(undefined, {
+        style: "currency",
+        currency,
+        minimumFractionDigits: 2,
+      }).format(amount / 100);
+    } catch {
+      return `${currency} ${amount / 100}`;
+    }
+  };

@@ -173,6 +173,8 @@ export type PlanPrice = {
   price_id: string;
   metadata?: Record<string, unknown>;
   quantity?: number;
+  amount?: number;
+  currency_code?: string;
 };
 
 export type Plan = {

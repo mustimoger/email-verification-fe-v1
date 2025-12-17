@@ -13,6 +13,7 @@ from ..paddle.client import (
     get_paddle_client,
     CreateCustomerRequest,
     CreateAddressRequest,
+    PriceResponse,
 )
 from ..paddle.config import get_paddle_config, PaddlePlanDefinition
 from ..paddle.webhook import verify_webhook
@@ -29,6 +30,8 @@ class PlanPrice(BaseModel):
     price_id: str
     metadata: Dict[str, Any] = Field(default_factory=dict)
     quantity: int = 1
+    amount: Optional[int] = None
+    currency_code: Optional[str] = None
 
 
 class PlanResponse(BaseModel):
@@ -62,18 +65,35 @@ class CheckoutRequest(BaseModel):
 
 
 @router.get("/plans", response_model=PlansPayload)
-def list_plans(user: AuthContext = Depends(get_current_user)):
+async def list_plans(user: AuthContext = Depends(get_current_user)):
     config = get_paddle_config()
     env = config.active_environment
+    client = get_paddle_client()
+
+    price_details: Dict[str, Dict[str, Any]] = {}
+    unique_price_ids = {p.price_id for definition in config.plan_definitions.values() for p in definition.prices.values()}
+    for price_id in unique_price_ids:
+        try:
+            price_obj = await client.get_price(price_id)  # type: ignore[arg-type]
+            price_details[price_id] = {
+                "amount": price_obj.unit_price.amount,
+                "currency_code": price_obj.unit_price.currency_code,
+            }
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("billing.plans.price_lookup_failed", extra={"price_id": price_id, "error": str(exc)})
+
     plans: list[PlanResponse] = []
     for name, definition in config.plan_definitions.items():
         plan = PaddlePlanDefinition.model_validate(definition)
         prices: Dict[str, PlanPrice] = {}
         for price_name, price_def in plan.prices.items():
+            details = price_details.get(price_def.price_id, {})
             prices[price_name] = PlanPrice(
                 price_id=price_def.price_id,
                 metadata=price_def.metadata,
                 quantity=price_def.quantity,
+                amount=details.get("amount"),
+                currency_code=details.get("currency_code"),
             )
         plans.append(
             PlanResponse(

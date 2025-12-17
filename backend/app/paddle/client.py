@@ -75,6 +75,16 @@ class AddressResponse(BaseModel):
     postal_code: Optional[str] = None
 
 
+class PriceAmount(BaseModel):
+    amount: int
+    currency_code: str
+
+
+class PriceResponse(BaseModel):
+    id: str
+    unit_price: PriceAmount
+
+
 class PaddleAPIClient:
     def __init__(self, env: PaddleEnvironmentConfig, timeout_seconds: float = 15.0):
         self.base_url = env.api_url.rstrip("/")
@@ -128,6 +138,10 @@ class PaddleAPIClient:
     async def create_address(self, payload: CreateAddressRequest) -> AddressResponse:
         response = await self._request("POST", "/addresses", json=payload.model_dump(mode="json"))
         return await self._parse(response, AddressResponse)
+
+    async def get_price(self, price_id: str) -> PriceResponse:
+        response = await self._request("GET", f"/prices/{price_id}")
+        return await self._parse(response, PriceResponse)
 
 
 def get_paddle_client() -> PaddleAPIClient:
