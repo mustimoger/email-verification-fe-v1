@@ -18,6 +18,8 @@ Tasks
   Explanation: `/api/tasks` now reads from Supabase `tasks` as the primary source (with counts/status/integration). If Supabase has rows, it returns them immediately and logs usage; external fetch is only attempted when Supabase is empty, with upsert on success. Ensures history always shows cached/seeded data even when external tasks list is empty.
 - [x] External failure fallback: when Supabase is empty and external `/tasks` fails, respond with an empty list without crashing; added regression test to prevent UnboundLocal errors.  
   Explanation: Guards unresolved client use in `list_tasks`, keeps logging, and returns a safe empty response so History never 500s on upstream issues.
+- [x] Hidden dashboard key bootstrapping: added `/api/api-keys/bootstrap` to create/cache the reserved dashboard key early (no secret returned) and call it after session establishment on the frontend, keeping history/verify traffic on the backend proxy and Supabase cache.  
+  Explanation: Prevents late key-creation attempts during history fetches and reinforces “frontend reads Supabase, backend talks to external API” flow.
 
 Notes
 - Supabase tables in place: `tasks` (seeded for user musti), `cached_api_keys` (with `key_plain` + `integration`), `api_usage`, `profiles`, `user_credits`. `/api/tasks` already upserts list/detail to keep Supabase current; upload polling fills the gap until `task_id` is returned.

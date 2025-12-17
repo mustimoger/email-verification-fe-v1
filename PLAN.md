@@ -49,7 +49,8 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
 ## Data flow alignment (frontend reads Supabase, backend proxies external)
 - [x] Harden `/api/tasks` fallback so Supabase stays primary: if Supabase is empty and external `/tasks` fails, return an empty list without crashing or leaking upstream errors; keep logging. Add a regression test. No schema change expected.  
   Explanation: Guarded unresolved client use, always return a safe empty TaskList when external fails/returns none, and added `test_tasks_list_external_failure.py` to prevent UnboundLocal/500 regressions.
-- [ ] Provision hidden per-user dashboard key early (post-signup/signin) and cache it in Supabase so manual/file verification never attempts creation during history fetch; backend remains the sole caller to the external API. Frontend keeps using Supabase-backed data for UI.
+- [x] Provision hidden per-user dashboard key early (post-signup/signin) and cache it in Supabase so manual/file verification never attempts creation during history fetch; backend remains the sole caller to the external API. Frontend keeps using Supabase-backed data for UI.  
+  Explanation: Added `/api/api-keys/bootstrap` to resolve/create the reserved `dashboard_api` key without returning secrets, and call it once after session is established in `AuthProvider`. Includes regression test `test_dashboard_key_bootstrap.py`.
 
 ## Current sprint: Initial Verify page (first state only)
 - [x] Pull Figma specs for the initial Verify page (layout, spacing, colors, interaction notes) via Figma MCP to drive implementation.  

@@ -118,6 +118,12 @@ export type RevokeApiKeyResponse = {
   message?: string;
 };
 
+export type BootstrapKeyResponse = {
+  key_id: string;
+  name: string;
+  created: boolean;
+};
+
 export type Profile = {
   user_id: string;
   email?: string;
@@ -265,6 +271,7 @@ export const apiClient = {
   createApiKey: (name: string, integration: string) =>
     request<CreateApiKeyResponse>("/api-keys", { method: "POST", body: { name, integration } }),
   revokeApiKey: (id: string) => request<RevokeApiKeyResponse>(`/api-keys/${id}`, { method: "DELETE" }),
+  bootstrapDashboardKey: () => request<BootstrapKeyResponse>("/api-keys/bootstrap", { method: "POST" }),
   getProfile: () => request<Profile>("/account/profile", { method: "GET" }),
   updateProfile: (payload: Partial<Profile>) => request<Profile>("/account/profile", { method: "PATCH", body: payload }),
   getCredits: () => request<Credits>("/account/credits", { method: "GET" }),
