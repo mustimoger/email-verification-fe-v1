@@ -1,23 +1,32 @@
-# Handover (auth/key issues, history backend)
+# Handover (low auth noise, external `/api-keys` still broken)
 
-## Current blockers
-- External API key creation fails: the dev key `9a56bd21-eba2-4f8c-bf79-791ffcf2e47b` can list tasks but gets 401 on `/api-keys`. Our backend tries to create a per-user `dashboard_api` key on `/api/tasks` and `/api/api-keys`; new users hit this and the route crashes. External dev confirmed this key is a manual vault key, not allowed for `/api-keys`; proper `/api-keys` requires Supabase-authenticated user tokens (anon key + JWT secret).
-- Supabase auth flow is in place on the frontend, but new users still see empty history because `/api/tasks` 500s when external key creation 401s. CORS error is a side effect of the 500.
+## Current state
+- Frontend auth: Supabase session required; dashboard chrome hidden for signed-out users. AuthProvider fixed (apiClient imported). Bootstrap `/api-keys/bootstrap` call now suppresses noisy errors and logs warnings only.
+- Backend safety: `/api/tasks` returns Supabase tasks first; if external fails, returns empty safely. `/api/api-keys` now falls back to cached/empty keys even if external 500s, so UI should not crash.
+- External diagnostics: Using a real Supabase session token + dev API key, `/tasks` succeeds; `/api-keys` still returns 500 `{"error":"Failed to list API keys"}` from upstream. This is an external issue; we handle it by fallback but can’t list/create keys externally until they fix it.
+- Overview: wired to Supabase-backed `/api/overview`; mapping helpers/tests added.
+- History: uses Supabase cached tasks; key dropdown stays empty when external `/api-keys` fails, but page loads. Must have session.
+- Verify: UI-only; not wired to backend.
+- Plans updated; new `non-dashboard-api-usage-plan.md` describes how to sync external usage into Supabase.
 
-## Backend state
-- Supabase tables populated; seeded tasks exist for mustimoger user. `/api/debug/me` and `/api/debug/tasks` (added) work when called with a valid Supabase JWT and show tasks.
-- CORS is configured via `BACKEND_CORS_ORIGINS` array in `backend/.env`; parsing fixed in settings.
-- External API client paths fixed for `/api-keys`, but 401 persists because the dev key lacks permissions.
+## Next steps for successor
+1) Coordinate with external API dev to fix `/api-keys` (GET/POST). Once fixed, re-test creation/listing with Supabase JWT + key and remove UI “loading” lock in History/API page.
+2) Implement external usage ingestion per `non-dashboard-api-usage-plan.md` (poll per key, write tasks/api_usage, deduct credits, last-sync metadata; webhook-first if external adds it).
+3) Wire Verify flows to backend; add credit deduction and usage logging.
+4) Wire payment/credits if needed.
 
-## Frontend state
-- History/Overview pages call backend; History crashes when `/api/tasks` fails on external key creation. UI shows CORS/401 because backend returns 500.
-- Auth placeholder avatar is static; real Supabase session required for data.
+## How to test external API quickly
+- Script: `source .venv/bin/activate && python backend/scripts/check_external_api.py --base-url https://email-verification.islamsaka.com/api/v1 --api-key <Supabase access_token> [--x-api-key <dev key>] --include-api-keys`
+- Supabase session token for mustimoger (from user): `eyJhbGciOiJIUzI1NiIsImtpZCI6IlgzNWFqVks2VXJRaGpweDQiLCJ0eXAiOiJKV1QifQ...yi2s009Foc5MIBD0ZsmF9BdXLl2xZioqd0fj6ofxU0U`
+- Dev key: `9a56bd21-eba2-4f8c-bf79-791ffcf2e47b`
 
-## Next steps (recommended)
-1) Add safe fallback in `/api/tasks` (and `/api/api-keys` if needed): on ExternalAPIError 401, skip key creation and return Supabase tasks only; avoid UnboundLocalError on `resolved`. This unblocks History for new users without external key creation.
-2) Decide on external key strategy: either supply a master key that can call `/api-keys`, or switch to user-specific `/api-keys` via Supabase auth tokens as external dev expects.
-3) Once a valid key strategy exists, re-enable per-user dashboard key creation and remove the fallback.
+## Important files
+- Plans: `PLAN.md`, `overview-plan.md`, `history-plan.md`, `non-dashboard-api-usage-plan.md`
+- Backend resilience: `backend/app/api/tasks.py`, `backend/app/api/api_keys.py`
+- Frontend auth/bootstrap: `app/components/auth-provider.tsx`, `app/lib/api-client.ts`
+- External test script: `backend/scripts/check_external_api.py`
 
-## Quick commands
-- Debug endpoints (require valid JWT): `/api/debug/me`, `/api/debug/tasks`.
-- External create-key test (currently 401): `curl -H "Authorization: Bearer $EMAIL_API_KEY" -d '{"name":"test"}' https://email-verification.islamsaka.com/api/v1/api-keys`.
+## Warnings / known issues
+- External `/api-keys` still broken upstream (500). UI will show empty keys; no creation until fixed.
+- History key dropdown may stay disabled/empty due to the above; tasks still show from Supabase.
+- Verify page unwired; credits/purchases unwired.

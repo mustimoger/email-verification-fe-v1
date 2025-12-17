@@ -57,6 +57,9 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
   Explanation: Added cache-based fallback in `/api/api-keys`, with tests to cover internal-key filtering and include_internal behavior.
 - [x] External API diagnostic script — Added `backend/scripts/check_external_api.py` (CLI) to hit external `/tasks`, optional `/tasks/{id}`, `/verify` (opt-in), and `/api-keys` with the configured bearer to isolate upstream issues without frontend context.  
   Explanation: Run with `source .venv/bin/activate && python backend/scripts/check_external_api.py --base-url ... --api-key ... [--include-api-keys] [--verify-email ...]`; defaults skip `/verify` to avoid consuming credits.
+- [x] Webhook alternative noted — If external API later provides global usage/task webhooks, plan is to consume them (with polling as fallback). See `non-dashboard-api-usage-plan.md`.
+- [x] External API diagnostic script — Added `backend/scripts/check_external_api.py` (CLI) to hit external `/tasks`, optional `/tasks/{id}`, `/verify` (opt-in), and `/api-keys` with the configured bearer to isolate upstream issues without frontend context.  
+  Explanation: Run with `source .venv/bin/activate && python backend/scripts/check_external_api.py --base-url ... --api-key ... [--include-api-keys] [--verify-email ...]`; defaults skip `/verify` to avoid consuming credits.
 
 ## Current sprint: Initial Verify page (first state only)
 - [x] Pull Figma specs for the initial Verify page (layout, spacing, colors, interaction notes) via Figma MCP to drive implementation.  

@@ -35,3 +35,4 @@ Notes:
 - Dashboard key bootstrap: `/api/api-keys/bootstrap` resolves/creates the hidden dashboard key and caches it (no secret returned); frontend triggers it after session, so backend remains the sole external API caller and Supabase stays the UI source of truth.
 - Overview UI now consumes backend data: added mapping helpers/tests (status normalization, date formatting, count aggregation) and wired stats/validation/recent tasks to Supabase-backed `/api/overview` response instead of mock placeholders.
 - API keys list cache fallback: `/api/api-keys` now falls back to Supabase-cached keys (dashboard filtered unless requested) when external `/api-keys` is unavailable, preventing 5xx during upstream auth outages.
+- Webhook-first option: if the external API provides global usage/task webhooks, switch ingestion to webhook-first with polling as fallback (see `non-dashboard-api-usage-plan.md`).
