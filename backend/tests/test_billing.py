@@ -16,6 +16,8 @@ def env(monkeypatch):
     monkeypatch.setenv("PADDLE_CLIENT_SIDE_TOKEN", "test_client_token")
     monkeypatch.setenv("PADDLE_BILLING_SANDBOX_API_URL", "https://sandbox-api.paddle.com")
     monkeypatch.setenv("PADDLE_BILLING_SANDBOX_API_KEY", "pdl_sdbx_apikey_test")
+    monkeypatch.setenv("PADDLE_BILLING_SANDBOX_CHECKOUT_SCRIPT", "https://cdn.paddle.com/paddle/v2/paddle.js")
+    monkeypatch.setenv("PADDLE_BILLING_SANDBOX_WEBHOOK_SECRET", "test_webhook_secret")
     monkeypatch.setenv(
         "PADDLE_BILLING_PLAN_DEFINITIONS",
         json.dumps(
