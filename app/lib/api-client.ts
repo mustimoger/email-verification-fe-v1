@@ -198,9 +198,10 @@ async function request<T>(
     body?: unknown;
     headers?: Record<string, string>;
     isForm?: boolean;
+    suppressErrorLog?: boolean;
   } = {},
 ): Promise<T> {
-  const { method = "GET", body, headers = {}, isForm = false } = options;
+  const { method = "GET", body, headers = {}, isForm = false, suppressErrorLog = false } = options;
   const url = `${API_BASE}${path}`;
   const finalHeaders: Record<string, string> = { ...headers };
   let payload: BodyInit | undefined;
@@ -239,7 +240,9 @@ async function request<T>(
 
   if (!res.ok) {
     const message = (data && (data as { detail?: string }).detail) || res.statusText;
-    console.error("api.request_failed", { path, status: res.status, message, details: data });
+    if (!suppressErrorLog) {
+      console.error("api.request_failed", { path, status: res.status, message, details: data });
+    }
     throw new ApiError(res.status, message, data);
   }
   return data as T;
@@ -271,7 +274,8 @@ export const apiClient = {
   createApiKey: (name: string, integration: string) =>
     request<CreateApiKeyResponse>("/api-keys", { method: "POST", body: { name, integration } }),
   revokeApiKey: (id: string) => request<RevokeApiKeyResponse>(`/api-keys/${id}`, { method: "DELETE" }),
-  bootstrapDashboardKey: () => request<BootstrapKeyResponse>("/api-keys/bootstrap", { method: "POST" }),
+  bootstrapDashboardKey: () =>
+    request<BootstrapKeyResponse>("/api-keys/bootstrap", { method: "POST", suppressErrorLog: true }),
   getProfile: () => request<Profile>("/account/profile", { method: "GET" }),
   updateProfile: (payload: Partial<Profile>) => request<Profile>("/account/profile", { method: "PATCH", body: payload }),
   getCredits: () => request<Credits>("/account/credits", { method: "GET" }),
