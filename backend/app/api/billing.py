@@ -193,7 +193,9 @@ async def _resolve_customer_and_address(user: AuthContext) -> Tuple[str, str]:
             if exc.status_code == status.HTTP_409_CONFLICT:
                 try:
                     search_res = await client.search_customers(profile["email"])
-                    items = getattr(search_res, "data", None) or getattr(search_res, "customers", None) or []
+                    items = []
+                    if isinstance(search_res, dict):
+                        items = search_res.get("data") or search_res.get("customers") or []
                     if items:
                         first = items[0]
                         customer = CustomerResponse.model_validate(first)

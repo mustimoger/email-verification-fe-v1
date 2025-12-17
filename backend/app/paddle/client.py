@@ -147,13 +147,13 @@ class PaddleAPIClient:
         response = await self._request("GET", f"/prices/{price_id}")
         return await self._parse(response, PriceResponse)
 
-    async def search_customers(self, search: str):
+    async def search_customers(self, search: str) -> dict:
         response = await self._request("GET", f"/customers?search={search}")
-        return await self._parse(response, BaseModel)
+        return await self._parse(response, BaseModel)  # returns dict with data/meta
 
     async def list_addresses(self, customer_id: str):
         response = await self._request("GET", f"/customers/{customer_id}/addresses")
-        return await self._parse(response, BaseModel)
+        return await self._parse(response, BaseModel)  # returns dict with data/meta
 
 
 def get_paddle_client() -> PaddleAPIClient:
