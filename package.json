@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test:history": "tsx tests/history-mapping.test.ts",
-    "test:auth-guard": "tsx tests/auth-guard-utils.test.ts"
+    "test:auth-guard": "tsx tests/auth-guard-utils.test.ts",
+    "test:overview": "tsx tests/overview-mapping.test.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.87.3",

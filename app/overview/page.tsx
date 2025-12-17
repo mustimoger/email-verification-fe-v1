@@ -18,6 +18,7 @@ import {
 import { DashboardShell } from "../components/dashboard-shell";
 import { RequireAuth } from "../components/protected";
 import { apiClient, ApiError, OverviewResponse } from "../lib/api-client";
+import { aggregateValidationCounts, mapOverviewTask, TaskStatus } from "./utils";
 
 type Stat = {
   title: string;
@@ -35,8 +36,6 @@ type UsagePoint = {
   date: string;
   count: number;
 };
-
-type TaskStatus = "Completed" | "Running" | "Cancelled";
 
 type Task = {
   id: string;
@@ -76,33 +75,28 @@ export default function OverviewPage() {
     void load();
   }, []);
 
+  const validationTotals = useMemo(() => aggregateValidationCounts(overview?.recent_tasks), [overview]);
+
   const stats: Stat[] = useMemo(() => {
     const credits = overview?.credits_remaining ?? 0;
     const totalVerifications = overview?.usage_total ?? 0;
-    const invalid = overview?.task_counts?.invalid ?? overview?.task_counts?.invalid_syntax ?? 0;
-    const catchall = overview?.task_counts?.catchall ?? overview?.task_counts?.["catch-all"] ?? 0;
     return [
       { title: "Credits Remaining", value: credits.toLocaleString(), icon: CheckCircle2 },
       { title: "Total Verifications", value: totalVerifications.toLocaleString(), icon: CheckCircle2 },
-      { title: "Total Invalid", value: invalid.toLocaleString(), icon: CircleDollarSign },
-      { title: "Total Catch-all", value: catchall.toLocaleString(), icon: Leaf },
+      { title: "Total Invalid", value: validationTotals.invalid.toLocaleString(), icon: CircleDollarSign },
+      { title: "Total Catch-all", value: validationTotals.catchAll.toLocaleString(), icon: Leaf },
     ];
-  }, [overview]);
+  }, [overview, validationTotals]);
 
   const validationData: ValidationSlice[] = useMemo(() => {
-    const valid = overview?.task_counts?.valid ?? 0;
-    const catchall = overview?.task_counts?.catchall ?? overview?.task_counts?.["catch-all"] ?? 0;
-    const invalid = overview?.task_counts?.invalid ?? overview?.task_counts?.invalid_syntax ?? 0;
-    const unknown = overview?.task_counts?.unknown ?? 0;
     const slices = [
-      { name: "Valid", value: valid, color: "#0eb38b" },
-      { name: "Catch-all", value: catchall, color: "#f6c34d" },
-      { name: "Invalid", value: invalid, color: "#ff6b6b" },
-      { name: "Unknown", value: unknown, color: "#3a8dff" },
+      { name: "Valid", value: validationTotals.valid, color: "#0eb38b" },
+      { name: "Catch-all", value: validationTotals.catchAll, color: "#f6c34d" },
+      { name: "Invalid", value: validationTotals.invalid, color: "#ff6b6b" },
     ];
-    if (overview === null) return slices;
+    if (!overview) return slices;
     return slices.filter((slice) => slice.value > 0);
-  }, [overview]);
+  }, [overview, validationTotals]);
 
   const usageData: UsagePoint[] = useMemo(
     () => (overview?.usage_series ?? []).map((p) => ({ date: p.date, count: p.count })),
@@ -111,26 +105,7 @@ export default function OverviewPage() {
 
   const tasks: Task[] = useMemo(() => {
     if (!overview?.recent_tasks) return [];
-    return overview.recent_tasks.map((task) => {
-      const statusRaw = (task.status || "").toLowerCase();
-      const status: TaskStatus =
-        statusRaw === "completed" ? "Completed" : statusRaw === "processing" ? "Running" : "Cancelled";
-      return {
-        id: task.task_id,
-        name: task.integration || "Task",
-        emails: task.email_count ?? 0,
-        date: task.created_at
-          ? new Date(task.created_at).toLocaleDateString(undefined, {
-              day: "2-digit",
-              month: "short",
-              year: "numeric",
-            })
-          : "—",
-        valid: task.valid_count ?? 0,
-        invalid: task.invalid_count ?? 0,
-        status,
-      };
-    });
+    return overview.recent_tasks.map(mapOverviewTask);
   }, [overview]);
 
   const anyData = overview !== null;
