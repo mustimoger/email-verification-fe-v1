@@ -151,6 +151,10 @@ class PaddleAPIClient:
         response = await self._request("GET", f"/customers?search={search}")
         return await self._parse(response, BaseModel)
 
+    async def list_addresses(self, customer_id: str):
+        response = await self._request("GET", f"/customers/{customer_id}/addresses")
+        return await self._parse(response, BaseModel)
+
 
 def get_paddle_client() -> PaddleAPIClient:
     config = get_paddle_config()

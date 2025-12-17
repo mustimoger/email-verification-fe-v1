@@ -132,18 +132,41 @@ async def _resolve_customer_and_address(user: AuthContext) -> Tuple[str, str]:
         )
 
     client = get_paddle_client()
-    async def create_address_for_customer(customer: CustomerResponse) -> str:
-        address = await client.create_address(
-            CreateAddressRequest(
-                customer_id=customer.id,
-                country_code=default_country,
-                postal_code=config.default_postal_code,
-                region=config.default_region,
-                city=config.default_city,
-                first_line=config.default_line1,
+    async def create_or_reuse_address(customer: CustomerResponse) -> str:
+        # Attempt to reuse an existing address if creation conflicts
+        try:
+            address = await client.create_address(
+                CreateAddressRequest(
+                    customer_id=customer.id,
+                    country_code=default_country,
+                    postal_code=config.default_postal_code,
+                    region=config.default_region,
+                    city=config.default_city,
+                    first_line=config.default_line1,
+                )
             )
-        )
-        return address.id
+            return address.id
+        except PaddleAPIError as exc:
+            if exc.status_code != status.HTTP_409_CONFLICT:
+                raise
+            try:
+                addr_res = await client.list_addresses(customer.id)
+                items = getattr(addr_res, "data", None) or getattr(addr_res, "addresses", None) or []
+                if items:
+                    first = items[0]
+                    addr_id = first.get("id") if isinstance(first, dict) else getattr(first, "id", None)
+                    if addr_id:
+                        logger.info(
+                            "billing.address.reused",
+                            extra={"user_id": user.user_id, "customer_id": customer.id, "address_id": addr_id},
+                        )
+                        return addr_id
+            except Exception as inner_exc:  # noqa: BLE001
+                logger.error(
+                    "billing.address.conflict_no_match",
+                    extra={"user_id": user.user_id, "customer_id": customer.id, "error": str(inner_exc)},
+                )
+            raise
 
     try:
         customer: CustomerResponse
@@ -179,7 +202,7 @@ async def _resolve_customer_and_address(user: AuthContext) -> Tuple[str, str]:
             else:
                 raise
 
-        address_id = await create_address_for_customer(customer)
+        address_id = await create_or_reuse_address(customer)
         upsert_paddle_ids(user.user_id, customer.id, address_id)
         return customer.id, address_id
     except PaddleAPIError as exc:
