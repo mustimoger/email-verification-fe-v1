@@ -53,6 +53,14 @@ def set_credits(user_id: str, credits_remaining: int) -> Dict[str, Any]:
     return data[0] if data else payload
 
 
+def increment_credits(user_id: str, delta: int) -> Dict[str, Any]:
+    current = fetch_credits(user_id)
+    new_value = current + delta
+    if new_value < 0:
+        new_value = 0
+    return set_credits(user_id, new_value)
+
+
 def fetch_usage(
     user_id: str,
     start: Optional[str] = None,
