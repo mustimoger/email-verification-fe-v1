@@ -204,11 +204,24 @@ async def _resolve_customer_and_address(user: AuthContext) -> Tuple[str, str]:
                             extra={"user_id": user.user_id, "customer_id": customer.id, "conflict_details": exc.details},
                         )
                     else:
+                        logger.error(
+                            "billing.customer.conflict_no_match",
+                            extra={
+                                "user_id": user.user_id,
+                                "email": profile["email"],
+                                "conflict_details": exc.details,
+                                "search_res": search_res,
+                            },
+                        )
                         raise
                 except Exception:
                     logger.error(
                         "billing.customer.conflict_no_match",
-                        extra={"user_id": user.user_id, "email": profile["email"], "conflict_details": exc.details},
+                        extra={
+                            "user_id": user.user_id,
+                            "email": profile["email"],
+                            "conflict_details": exc.details,
+                        },
                     )
                     raise HTTPException(status_code=exc.status_code, detail="Paddle customer conflict") from exc
             else:
