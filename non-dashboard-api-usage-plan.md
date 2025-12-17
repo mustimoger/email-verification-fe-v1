@@ -27,7 +27,8 @@ Goal: track and display usage/credits for API keys used outside our app (Zapier,
    - `/history`: continue showing Supabase tasks; add a “last synced” indicator and retry action if sync failed.
 
 5) **Scheduling/webhooks**
-   - Add a backend cron/worker (env-gated) to poll external tasks per user key periodically; later prefer webhooks if external service supports them. Record last sync per key in Supabase.
+   - Add a backend cron/worker (env-gated) to poll external tasks per user key periodically; record last sync per key in Supabase.
+   - Alternative (preferred if provided by external API): consume global webhooks for task/usage events per API key, updating Supabase `tasks`/`api_usage` and last-sync metadata; keep polling as fallback.
 
 6) **Integration metadata**
    - Preserve integration type when creating keys; include it in usage aggregation and UI filters. Ensure ingestion tags tasks with the key’s integration when known.
