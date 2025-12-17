@@ -147,6 +147,10 @@ class PaddleAPIClient:
         response = await self._request("GET", f"/prices/{price_id}")
         return await self._parse(response, PriceResponse)
 
+    async def search_customers(self, search: str):
+        response = await self._request("GET", f"/customers?search={search}")
+        return await self._parse(response, BaseModel)
+
 
 def get_paddle_client() -> PaddleAPIClient:
     config = get_paddle_config()

@@ -14,6 +14,7 @@ from ..paddle.client import (
     CreateCustomerRequest,
     CreateAddressRequest,
     PriceResponse,
+    CustomerResponse,
 )
 from ..paddle.config import get_paddle_config, PaddlePlanDefinition
 from ..paddle.webhook import verify_webhook
@@ -131,10 +132,7 @@ async def _resolve_customer_and_address(user: AuthContext) -> Tuple[str, str]:
         )
 
     client = get_paddle_client()
-    try:
-        customer = await client.create_customer(
-            CreateCustomerRequest(email=profile["email"], name=profile.get("display_name"), custom_data={"user_id": user.user_id})
-        )
+    async def create_address_for_customer(customer: CustomerResponse) -> str:
         address = await client.create_address(
             CreateAddressRequest(
                 customer_id=customer.id,
@@ -145,8 +143,45 @@ async def _resolve_customer_and_address(user: AuthContext) -> Tuple[str, str]:
                 first_line=config.default_line1,
             )
         )
-        upsert_paddle_ids(user.user_id, customer.id, address.id)
-        return customer.id, address.id
+        return address.id
+
+    try:
+        customer: CustomerResponse
+        try:
+            customer = await client.create_customer(
+                CreateCustomerRequest(
+                    email=profile["email"],
+                    name=profile.get("display_name"),
+                    custom_data={"user_id": user.user_id},
+                )
+            )
+        except PaddleAPIError as exc:
+            # If conflict, try to find existing customer by search/email
+            if exc.status_code == status.HTTP_409_CONFLICT:
+                try:
+                    search_res = await client.search_customers(profile["email"])
+                    items = getattr(search_res, "data", None) or getattr(search_res, "customers", None) or []
+                    if items:
+                        first = items[0]
+                        customer = CustomerResponse.model_validate(first)
+                        logger.info(
+                            "billing.customer.reused",
+                            extra={"user_id": user.user_id, "customer_id": customer.id},
+                        )
+                    else:
+                        raise
+                except Exception:
+                    logger.error(
+                        "billing.customer.conflict_no_match",
+                        extra={"user_id": user.user_id, "email": profile["email"]},
+                    )
+                    raise HTTPException(status_code=exc.status_code, detail="Paddle customer conflict") from exc
+            else:
+                raise
+
+        address_id = await create_address_for_customer(customer)
+        upsert_paddle_ids(user.user_id, customer.id, address_id)
+        return customer.id, address_id
     except PaddleAPIError as exc:
         logger.error(
             "billing.customer_address.error",
