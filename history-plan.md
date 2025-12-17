@@ -20,6 +20,8 @@ Tasks
   Explanation: Guards unresolved client use in `list_tasks`, keeps logging, and returns a safe empty response so History never 500s on upstream issues.
 - [x] Hidden dashboard key bootstrapping: added `/api/api-keys/bootstrap` to create/cache the reserved dashboard key early (no secret returned) and call it after session establishment on the frontend, keeping history/verify traffic on the backend proxy and Supabase cache.  
   Explanation: Prevents late key-creation attempts during history fetches and reinforces “frontend reads Supabase, backend talks to external API” flow.
+- [x] API key listing cache fallback: when external `/api-keys` is unavailable, return cached user keys from Supabase (filtering out dashboard unless requested) instead of a 5xx.  
+  Explanation: Keeps History’s key selector operational even if upstream auth is down; covered by tests for include_internal and filtering.
 
 Notes
 - Supabase tables in place: `tasks` (seeded for user musti), `cached_api_keys` (with `key_plain` + `integration`), `api_usage`, `profiles`, `user_credits`. `/api/tasks` already upserts list/detail to keep Supabase current; upload polling fills the gap until `task_id` is returned.

@@ -11,7 +11,7 @@ from ..services.api_keys import (
     resolve_user_api_key,
 )
 from ..services.usage import record_usage
-from ..clients.external import ListAPIKeysResponse, CreateAPIKeyResponse, RevokeAPIKeyResponse
+from ..clients.external import APIKeySummary, ListAPIKeysResponse, CreateAPIKeyResponse, RevokeAPIKeyResponse
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/api", tags=["api-keys"])
@@ -34,8 +34,8 @@ async def list_api_keys(
     user: AuthContext = Depends(get_current_user),
     client: ExternalAPIClient = Depends(get_external_api_client),
 ):
+    cached = {item["key_id"]: item for item in list_cached_keys(user.user_id)}
     try:
-        cached = {item["key_id"]: item for item in list_cached_keys(user.user_id)}
         result = await client.list_api_keys()
         # Filter external keys to those cached for this user to avoid leaking other users' keys when using a shared bearer.
         if cached and result.keys:
@@ -54,7 +54,23 @@ async def list_api_keys(
         logger.info("route.api_keys.list", extra={"user_id": user.user_id, "count": result.count})
         return result
     except ExternalAPIError as exc:
-        raise HTTPException(status_code=exc.status_code, detail=exc.details or exc.args[0])
+        logger.warning(
+            "route.api_keys.list_external_failed",
+            extra={"user_id": user.user_id, "status_code": exc.status_code, "details": exc.details},
+        )
+        if not cached:
+            raise HTTPException(status_code=exc.status_code, detail=exc.details or exc.args[0])
+        fallback_keys = [
+            APIKeySummary(id=item.get("key_id"), name=item.get("name"), integration=item.get("integration"), is_active=True)
+            for item in cached.values()
+            if include_internal or not _is_dashboard_key(item.get("name"))
+        ]
+        record_usage(user.user_id, path="/api-keys", count=len(fallback_keys))
+        logger.info(
+            "route.api_keys.list_cache_fallback",
+            extra={"user_id": user.user_id, "count": len(fallback_keys)},
+        )
+        return ListAPIKeysResponse(count=len(fallback_keys), keys=fallback_keys)
 
 
 @router.post("/api-keys", response_model=CreateAPIKeyResponse)

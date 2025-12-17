@@ -53,6 +53,8 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
   Explanation: Added `/api/api-keys/bootstrap` to resolve/create the reserved `dashboard_api` key without returning secrets, and call it once after session is established in `AuthProvider`. Includes regression test `test_dashboard_key_bootstrap.py`.
 - [x] Overview page wired to Supabase-backed overview data: aggregates validation counts from cached tasks, normalizes statuses, and maps recent tasks safely with tests.  
   Explanation: Added mapping helpers and tests for overview (status/date/count aggregation), switched Validation/Stats to use Supabase task counts, and rely solely on backend `/api/overview` data.
+- [x] API keys list fallback to Supabase cache: when external `/api-keys` fails (e.g., auth unavailable), return cached user keys from Supabase (filtering dashboard unless requested) instead of 5xx.  
+  Explanation: Added cache-based fallback in `/api/api-keys`, with tests to cover internal-key filtering and include_internal behavior.
 
 ## Current sprint: Initial Verify page (first state only)
 - [x] Pull Figma specs for the initial Verify page (layout, spacing, colors, interaction notes) via Figma MCP to drive implementation.  
