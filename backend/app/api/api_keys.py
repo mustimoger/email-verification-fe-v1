@@ -58,13 +58,18 @@ async def list_api_keys(
             "route.api_keys.list_external_failed",
             extra={"user_id": user.user_id, "status_code": exc.status_code, "details": exc.details},
         )
-        if not cached:
-            raise HTTPException(status_code=exc.status_code, detail=exc.details or exc.args[0])
-        fallback_keys = [
-            APIKeySummary(id=item.get("key_id"), name=item.get("name"), integration=item.get("integration"), is_active=True)
-            for item in cached.values()
-            if include_internal or not _is_dashboard_key(item.get("name"))
-        ]
+        fallback_keys = []
+        if cached:
+            fallback_keys = [
+                APIKeySummary(
+                    id=item.get("key_id"),
+                    name=item.get("name"),
+                    integration=item.get("integration"),
+                    is_active=True,
+                )
+                for item in cached.values()
+                if include_internal or not _is_dashboard_key(item.get("name"))
+            ]
         record_usage(user.user_id, path="/api-keys", count=len(fallback_keys))
         logger.info(
             "route.api_keys.list_cache_fallback",

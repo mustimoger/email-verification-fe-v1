@@ -68,3 +68,30 @@ def test_list_api_keys_can_include_internal(monkeypatch):
     data = resp.json()
     assert data["count"] == 2
     assert {k["id"] for k in data["keys"]} == {"k1", "k2"}
+
+
+def test_list_api_keys_empty_cache_returns_empty(monkeypatch):
+    app = FastAPI()
+    app.include_router(router)
+
+    def fake_user():
+        return AuthContext(user_id="user-cache-empty", claims={}, token="t")
+
+    class FakeClient(ExternalAPIClient):  # type: ignore[misc]
+        def __init__(self):
+            super().__init__(base_url="https://api.test", api_key="key")
+
+        async def list_api_keys(self):
+            raise ExternalAPIError(status_code=503, message="auth unavailable", details={"error": "Authentication service unavailable"})
+
+    monkeypatch.setattr(api_keys_module, "list_cached_keys", lambda user_id: [])
+    monkeypatch.setattr(api_keys_module, "record_usage", lambda *args, **kwargs: None)
+    app.dependency_overrides[api_keys_module.get_current_user] = fake_user
+    app.dependency_overrides[api_keys_module.get_external_api_client] = lambda: FakeClient()
+
+    client = TestClient(app)
+    resp = client.get("/api/api-keys")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["count"] == 0
+    assert data["keys"] == []
