@@ -156,6 +156,7 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
 - [x] Auto Paddle customer/address creation and pricing wiring: backend now creates/reuses Paddle Customer + Address per user (from profile email + default address config), stores mapping in `paddle_customers`, and uses it for transactions. Pricing page fetches plans and triggers transactions without client-provided IDs. Explanation: aligns dev flow with prod without hardcoded IDs; requires `PADDLE_BILLING_DEFAULT_COUNTRY` (+ optional address defaults) and user email in profile.
 - [x] Billing tests added (`backend/tests/test_billing.py`) covering customer/address auto-create on transaction and credit grant on webhook events using plan metadata. Explanation: ensures MVP billing flow works and remains idempotent under test doubles.
 - [x] Env defaults for Paddle addresses set (per user input): `PADDLE_BILLING_DEFAULT_COUNTRY=US`, line1/city/region/postal present. Explanation: satisfies auto address creation in sandbox; change to production equivalents before go-live.
+- [ ] Paddle checkout still 409 on customer creation (sandbox): POST /customers returns 409, search by email returns data but reuse not happening yet. Latest code logs `conflict_details` and `search_res`; need to inspect logs and reuse existing customer_id/address to proceed.
 
 ## Supabase schema updates
 - [x] Added `cached_api_keys` (key_id PK, user_id FK, name, created_at) with user index for API key caching.

@@ -1,0 +1,252 @@
+MCP Server for Paddle Billing
+Paddle Billing is the developer-first merchant of record. We take care of payments, tax, subscriptions, and metrics with one unified API that does it all.
+
+This is a Model Context Protocol (MCP) server that provides LLMs and AI agents with tools for interacting with the Paddle API.
+
+Important: This MCP server works with Paddle Billing. It does not support Paddle Classic. To work with Paddle Classic, see: Paddle Classic API reference
+
+Install in Cursor
+
+
+
+Features
+The MCP server has near parity with the Paddle API, allowing AI assistants and agents to:
+
+Manage your full Paddle catalog
+View customer, purchase, and provisioning information
+Handle subscription, payment, and refund workflows
+Debug billing and order management issues
+Create and adjust transactions directly in conversation
+Generate financial reports for financial and operational insights
+Implement and test Paddle integrations faster
+Available tools
+The MCP server can use the following tools to take actions with your Paddle account:
+
+Products
+Operation	Tool	Non-destructive	Read only
+List products	list_products	✅	✅
+Create a product	create_product	✅	❌
+Get a product	get_product	✅	✅
+Update a product	update_product	❌	❌
+Prices
+Operation	Tool	Non-destructive	Read only
+List prices	list_prices	✅	✅
+Create a price	create_price	✅	❌
+Get a price	get_price	✅	✅
+Update a price	update_price	❌	❌
+Preview prices	preview_prices	✅	❌
+Discounts
+Operation	Tool	Non-destructive	Read only
+List discounts	list_discounts	✅	✅
+Create a discount	create_discount	✅	❌
+Get a discount	get_discount	✅	✅
+Update a discount	update_discount	❌	❌
+Discount Groups
+Operation	Tool	Non-destructive	Read only
+List discount groups	list_discount_groups	✅	✅
+Create a discount group	create_discount_group	✅	❌
+Get a discount group	get_discount_group	✅	✅
+Update a discount group	update_discount_group	❌	❌
+Archive a discount group	archive_discount_group	❌	❌
+Customers
+Operation	Tool	Non-destructive	Read only
+List customers	list_customers	✅	✅
+Create a customer	create_customer	✅	❌
+Get a customer	get_customer	✅	✅
+Update a customer	update_customer	❌	❌
+List credit balances for a customer	list_credit_balances	✅	✅
+Addresses
+Operation	Tool	Non-destructive	Read only
+List addresses for a customer	list_addresses	✅	✅
+Create an address for a customer	create_address	✅	❌
+Get an address for a customer	get_address	✅	✅
+Update an address for a customer	update_address	❌	❌
+Businesses
+Operation	Tool	Non-destructive	Read only
+List businesses for a customer	list_businesses	✅	✅
+Create a business for a customer	create_business	✅	❌
+Get a business for a customer	get_business	✅	✅
+Update a business for a customer	update_business	❌	❌
+Transactions
+Operation	Tool	Non-destructive	Read only
+List transactions	list_transactions	✅	✅
+Create a transaction	create_transaction	✅	❌
+Get a transaction	get_transaction	✅	✅
+Update a transaction	update_transaction	❌	❌
+Preview a transaction	preview_transaction_create	✅	❌
+Revise customer information on a billed or completed transaction	revise_transaction	❌	❌
+Get a PDF invoice for a transaction	get_transaction_invoice	✅	✅
+Adjustments
+Operation	Tool	Non-destructive	Read only
+List adjustments	list_adjustments	✅	✅
+Create an adjustment	create_adjustment	✅	❌
+Get a PDF credit note for an adjustment	get_adjustment_credit_note	✅	✅
+Subscriptions
+Operation	Tool	Non-destructive	Read only
+List subscriptions	list_subscriptions	✅	✅
+Get a subscription	get_subscription	✅	✅
+Update a subscription	update_subscription	❌	❌
+Cancel a subscription	cancel_subscription	❌	❌
+Pause a subscription	pause_subscription	❌	❌
+Resume a paused subscription	resume_subscription	❌	❌
+Activate a trialing subscription	activate_subscription	❌	❌
+Preview an update to a subscription	preview_subscription_update	✅	❌
+Create a one-time charge for a subscription	create_subscription_charge	✅	❌
+Preview a one-time charge for a subscription	preview_subscription_charge	✅	❌
+Saved Payment Methods
+Operation	Tool	Non-destructive	Read only
+List payment methods saved for a customer	list_saved_payment_methods	✅	✅
+Get a payment method saved for a customer	get_saved_payment_method	✅	✅
+Delete a payment method saved for a customer	delete_saved_payment_method	❌	❌
+Customer Portal Sessions
+Operation	Tool	Non-destructive	Read only
+Create a customer portal session	create_customer_portal_session	✅	❌
+Notification Settings
+Operation	Tool	Non-destructive	Read only
+List notification settings	list_notification_settings	✅	✅
+Create a notification setting	create_notification_setting	✅	❌
+Get a notification setting	get_notification_setting	✅	✅
+Update a notification setting	update_notification_setting	❌	❌
+Delete a notification setting	delete_notification_setting	❌	❌
+Events
+Operation	Tool	Non-destructive	Read only
+List events	list_events	✅	✅
+Notifications
+Operation	Tool	Non-destructive	Read only
+List notifications	list_notifications	✅	✅
+Get a notification	get_notification	✅	✅
+Replay a notification	replay_notification	✅	❌
+Notification Logs
+Operation	Tool	Non-destructive	Read only
+List logs for a notification	list_notification_logs	✅	✅
+Simulations
+Operation	Tool	Non-destructive	Read only
+List simulations	list_simulations	✅	✅
+Create a simulation	create_simulation	✅	❌
+Get a simulation	get_simulation	✅	✅
+Update a simulation	update_simulation	❌	❌
+Simulation Runs
+Operation	Tool	Non-destructive	Read only
+List runs for a simulation	list_simulation_runs	✅	✅
+Create a run for a simulation	create_simulation_run	✅	❌
+Get a run for a simulation	get_simulation_run	✅	✅
+Simulation Run Events
+Operation	Tool	Non-destructive	Read only
+List events for a simulation run	list_simulation_run_events	✅	✅
+Get an event for a simulation run	get_simulation_run_event	✅	✅
+Replay an event for a simulation run	replay_simulation_run_event	✅	❌
+Reports
+Operation	Tool	Non-destructive	Read only
+List reports	list_reports	✅	✅
+Create a report	create_report	✅	❌
+Get a report	get_report	✅	✅
+Get a CSV file for a report	get_report_csv	✅	✅
+Client-Side Tokens
+Operation	Tool	Non-destructive	Read only
+List client-side tokens	list_client_side_tokens	✅	✅
+Create a client-side token	create_client_side_token	✅	❌
+Get a client-side token	get_client_side_token	✅	✅
+Revoke a client-side token	revoke_client_side_token	❌	❌
+Installation
+To use the MCP server, you'll need an API key. You can create and manage API keys in Paddle > Developer tools > Authentication:
+
+Sandbox: https://sandbox-vendors.paddle.com/authentication-v2
+Live: https://vendors.paddle.com/authentication-v2
+Adding the following to your MCP settings file will configure and run the Paddle MCP server in a client like Claude Desktop, Cursor or Windsurf:
+
+Method 1: One-click installation in Cursor or VS Code
+You can install the Paddle MCP server with a single click in Cursor or VS Code.
+
+Install in Cursor
+
+
+
+After installation, you'll need to update the configuration in your MCP settings file to replace your_api_key with your actual Paddle API key and adjust the environment and tools values as needed.
+
+Method 2: Using command-line arguments (Recommended for npx)
+Add the following to the MCP settings or configuration file in the client you're using:
+
+{
+  "mcpServers": {
+    "paddle": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@paddle/paddle-mcp",
+        "--api-key=your_api_key",
+        "--environment=sandbox",
+        "--tools=non-destructive"
+      ]
+    }
+  }
+}
+Replace your_api_key with your actual Paddle API key, set --environment to either sandbox or production, and set --tools to the tools which you want to be loaded and available to the MCP client.
+
+Method 3: Using environment variables
+Add the following to the MCP settings or configuration file in the client you're using:
+
+{
+  "mcpServers": {
+    "paddle": {
+      "command": "npx",
+      "args": ["-y", "@paddle/paddle-mcp"],
+      "env": {
+        "PADDLE_API_KEY": "your_api_key",
+        "PADDLE_ENVIRONMENT": "sandbox",
+        "PADDLE_MCP_TOOLS": "non-destructive"
+      }
+    }
+  }
+}
+Replace your_api_key with your actual Paddle API key, set PADDLE_ENVIRONMENT to either sandbox or production, and set PADDLE_MCP_TOOLS to the tools which you want to be loaded and available to the MCP client.
+
+Filtering tools
+You can filter which tools are loaded and available to the MCP client by passing the --tools argument (Method 2) or setting the PADDLE_MCP_TOOLS environment variable (Method 1 or 3). Accepted values are:
+
+all - All tools are available
+read-only - Only read operations are available
+non-destructive - Read operations and safe write operations are available (default)
+A comma-separated list of specific tool names (e.g., list_products,get_product,create_product)
+For detailed setup guides, see:
+
+Claude Desktop
+Cursor
+Windsurf
+Development
+Install dependencies:
+
+pnpm install
+Build the server:
+
+pnpm build
+Update client to use the local build:
+
+{
+  "mcpServers": {
+    "paddle": {
+      "command": "node",
+      "args": ["path/to/paddle-mcp-server/build/index.js"],
+      "env": {
+        "PADDLE_API_KEY": "your_api_key",
+        "PADDLE_ENVIRONMENT": "sandbox",
+        "PADDLE_MCP_TOOLS": "all"
+      }
+    }
+  }
+}
+The PADDLE_MCP_TOOLS environment variable accepts the same values as the --tools argument: all, read-only, non-destructive, or a comma-separated list of tool names. If not set, defaults to non-destructive.
+
+Debugging
+To debug the MCP server, you can use the MCP Inspector tool:
+
+Run the server with the inspector:
+
+pnpm inspector
+Open the provided URL in your browser to view and debug the MCP requests and responses.
+
+Include the --api-key and --environment arguments.
+
+Learn more
+Paddle developer docs
+Paddle API reference
+Sign up for Paddle Billing
