@@ -55,6 +55,8 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
   Explanation: Added mapping helpers and tests for overview (status/date/count aggregation), switched Validation/Stats to use Supabase task counts, and rely solely on backend `/api/overview` data.
 - [x] API keys list fallback to Supabase cache: when external `/api-keys` fails (e.g., auth unavailable), return cached user keys from Supabase (filtering dashboard unless requested) instead of 5xx.  
   Explanation: Added cache-based fallback in `/api/api-keys`, with tests to cover internal-key filtering and include_internal behavior.
+- [x] External API diagnostic script — Added `backend/scripts/check_external_api.py` (CLI) to hit external `/tasks`, optional `/tasks/{id}`, `/verify` (opt-in), and `/api-keys` with the configured bearer to isolate upstream issues without frontend context.  
+  Explanation: Run with `source .venv/bin/activate && python backend/scripts/check_external_api.py --base-url ... --api-key ... [--include-api-keys] [--verify-email ...]`; defaults skip `/verify` to avoid consuming credits.
 
 ## Current sprint: Initial Verify page (first state only)
 - [x] Pull Figma specs for the initial Verify page (layout, spacing, colors, interaction notes) via Figma MCP to drive implementation.  
