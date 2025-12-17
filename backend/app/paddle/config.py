@@ -61,6 +61,12 @@ class PaddleConfig(BaseSettings):
     sandbox_ip_allowlist: list[str] = Field(default_factory=list, alias="PADDLE_SANDBOX_IPS")
     production_ip_allowlist: list[str] = Field(default_factory=list, alias="PADDLE_PRODUCTION_IPS")
 
+    default_country: Optional[str] = Field(None, alias="PADDLE_BILLING_DEFAULT_COUNTRY")
+    default_postal_code: Optional[str] = Field(None, alias="PADDLE_BILLING_DEFAULT_POSTAL")
+    default_region: Optional[str] = Field(None, alias="PADDLE_BILLING_DEFAULT_REGION")
+    default_city: Optional[str] = Field(None, alias="PADDLE_BILLING_DEFAULT_CITY")
+    default_line1: Optional[str] = Field(None, alias="PADDLE_BILLING_DEFAULT_LINE1")
+
     sandbox_api_url: Optional[str] = Field(None, alias="PADDLE_BILLING_SANDBOX_API_URL")
     sandbox_api_key: Optional[str] = Field(None, alias="PADDLE_BILLING_SANDBOX_API_KEY")
     sandbox_secondary_api_key: Optional[str] = Field(None, alias="PADDLE_BILLING_SANDBOX_SECONDARY_API_KEY")

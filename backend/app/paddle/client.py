@@ -45,6 +45,36 @@ class CreateTransactionResponse(BaseModel):
     created_at: Optional[str] = None
 
 
+class CreateCustomerRequest(BaseModel):
+    email: str
+    name: Optional[str] = None
+    custom_data: Optional[Dict[str, Any]] = None
+
+
+class CustomerResponse(BaseModel):
+    id: str
+    email: Optional[str] = None
+    name: Optional[str] = None
+    status: Optional[str] = None
+
+
+class CreateAddressRequest(BaseModel):
+    customer_id: str
+    country_code: str
+    postal_code: Optional[str] = None
+    region: Optional[str] = None
+    city: Optional[str] = None
+    first_line: Optional[str] = None
+    second_line: Optional[str] = None
+
+
+class AddressResponse(BaseModel):
+    id: str
+    customer_id: str
+    country_code: Optional[str] = None
+    postal_code: Optional[str] = None
+
+
 class PaddleAPIClient:
     def __init__(self, env: PaddleEnvironmentConfig, timeout_seconds: float = 15.0):
         self.base_url = env.api_url.rstrip("/")
@@ -90,6 +120,14 @@ class PaddleAPIClient:
     async def create_transaction(self, payload: CreateTransactionRequest) -> CreateTransactionResponse:
         response = await self._request("POST", "/transactions", json=payload.model_dump(mode="json"))
         return await self._parse(response, CreateTransactionResponse)
+
+    async def create_customer(self, payload: CreateCustomerRequest) -> CustomerResponse:
+        response = await self._request("POST", "/customers", json=payload.model_dump(mode="json"))
+        return await self._parse(response, CustomerResponse)
+
+    async def create_address(self, payload: CreateAddressRequest) -> AddressResponse:
+        response = await self._request("POST", "/addresses", json=payload.model_dump(mode="json"))
+        return await self._parse(response, AddressResponse)
 
 
 def get_paddle_client() -> PaddleAPIClient:

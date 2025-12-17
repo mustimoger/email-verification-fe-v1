@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field, field_validator
@@ -11,11 +11,15 @@ from ..paddle.client import (
     TransactionItem,
     PaddleAPIError,
     get_paddle_client,
+    CreateCustomerRequest,
+    CreateAddressRequest,
 )
 from ..paddle.config import get_paddle_config, PaddlePlanDefinition
 from ..paddle.webhook import verify_webhook
 from ..services.billing_events import record_billing_event
 from ..services.credits import grant_credits
+from ..services import supabase_client
+from ..services.paddle_store import get_paddle_ids, upsert_paddle_ids
 
 router = APIRouter(prefix="/api/billing", tags=["billing"])
 logger = logging.getLogger(__name__)
@@ -46,8 +50,6 @@ class PlansPayload(BaseModel):
 class CheckoutRequest(BaseModel):
     price_id: str
     quantity: int = 1
-    customer_id: str
-    address_id: str
     custom_data: Optional[Dict[str, Any]] = None
     metadata: Optional[Dict[str, Any]] = None
 
@@ -91,6 +93,48 @@ def list_plans(user: AuthContext = Depends(get_current_user)):
     )
 
 
+async def _resolve_customer_and_address(user: AuthContext) -> Tuple[str, str]:
+    existing = get_paddle_ids(user.user_id)
+    if existing:
+        return existing
+
+    profile = supabase_client.fetch_profile(user.user_id)
+    if not profile or not profile.get("email"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User profile email is required for billing")
+
+    config = get_paddle_config()
+    default_country = config.default_country
+    if not default_country:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Paddle billing default country is not configured",
+        )
+
+    client = get_paddle_client()
+    try:
+        customer = await client.create_customer(
+            CreateCustomerRequest(email=profile["email"], name=profile.get("display_name"), custom_data={"user_id": user.user_id})
+        )
+        address = await client.create_address(
+            CreateAddressRequest(
+                customer_id=customer.id,
+                country_code=default_country,
+                postal_code=config.default_postal_code,
+                region=config.default_region,
+                city=config.default_city,
+                first_line=config.default_line1,
+            )
+        )
+        upsert_paddle_ids(user.user_id, customer.id, address.id)
+        return customer.id, address.id
+    except PaddleAPIError as exc:
+        logger.error(
+            "billing.customer_address.error",
+            extra={"user_id": user.user_id, "status_code": exc.status_code, "details": exc.details},
+        )
+        raise HTTPException(status_code=exc.status_code, detail=exc.details or exc.args[0])
+
+
 @router.post("/transactions", response_model=CreateTransactionResponse)
 async def create_transaction(
     payload: CheckoutRequest,
@@ -109,11 +153,12 @@ async def create_transaction(
     if not allowed_price:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unknown price_id")
 
-    client = get_paddle_client()
     try:
+        customer_id, address_id = await _resolve_customer_and_address(user)
+        client = get_paddle_client()
         tx_payload = CreateTransactionRequest(
-            customer_id=payload.customer_id,
-            address_id=payload.address_id,
+            customer_id=customer_id,
+            address_id=address_id,
             items=[TransactionItem(price_id=payload.price_id, quantity=payload.quantity)],
             custom_data={**(payload.custom_data or {}), "supabase_user_id": user.user_id},
             metadata=payload.metadata,

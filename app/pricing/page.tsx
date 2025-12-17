@@ -1,6 +1,10 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import Script from "next/script";
+
+import { getBillingClient } from "../lib/paddle";
+import { ApiError, billingApi } from "../lib/api-client";
 
 import { DashboardShell } from "../components/dashboard-shell";
 
@@ -13,77 +17,75 @@ type Plan = {
   creditsNote: string;
   features: Feature[];
   cta: string;
+  priceId: string;
+  credits?: number;
 };
 
-const plans: Plan[] = [
-  {
-    id: "basic-29",
-    name: "Basic",
-    price: "$29",
-    creditsNote: "Credits Never Expire",
-    features: [
-      { label: "Free Setup" },
-      { label: "10,000 Credits" },
-      { label: "Email Support" },
-      { label: "Real-time API" },
-      { label: "All Integrations" },
-      { label: "CSV/Excel Upload" },
-      { label: "Basic Analytics" },
-    ],
-    cta: "Start Verification",
-  },
-  {
-    id: "basic-129",
-    name: "Basic",
-    price: "$129",
-    creditsNote: "Credits Never Expire",
-    features: [
-      { label: "Free Setup" },
-      { label: "100,000 Credits" },
-      { label: "Priority Email Support" },
-      { label: "Real-time API" },
-      { label: "All Integrations" },
-      { label: "CSV/Excel Upload" },
-      { label: "Advanced Analytics" },
-    ],
-    cta: "Start Verification",
-  },
-  {
-    id: "basic-279",
-    name: "Basic",
-    price: "$279",
-    creditsNote: "Credits Never Expire",
-    features: [
-      { label: "Free Setup" },
-      { label: "500,000 Credits" },
-      { label: "Chat Support" },
-      { label: "Real-time API" },
-      { label: "All Integrations" },
-      { label: "CSV/Excel Upload" },
-      { label: "Advanced Analytics" },
-    ],
-    cta: "Start Verification",
-  },
-  {
-    id: "contact",
-    name: "Basic",
-    price: "Contact Us",
-    creditsNote: "Credits Never Expire",
-    features: [
-      { label: "Free Setup" },
-      { label: "1M Plus Credits" },
-      { label: "27/7 Chat Support" },
-      { label: "Real-time API" },
-      { label: "All Integrations" },
-      { label: "CSV/Excel Upload" },
-      { label: "Advanced Analytics" },
-    ],
-    cta: "Start Verification",
-  },
-];
-
 export default function PricingPage() {
-  const tierCards = useMemo(() => plans, []);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [checkoutScript, setCheckoutScript] = useState<string | null>(null);
+  const [clientSideToken, setClientSideToken] = useState<string | null>(null);
+  const [plans, setPlans] = useState<Plan[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function loadPlans() {
+      setLoading(true);
+      setError(null);
+      try {
+        const resp = await billingApi.listPlans();
+        if (!isMounted) return;
+        setCheckoutScript(resp.checkout_script || null);
+        setClientSideToken(resp.client_side_token || null);
+
+        const mapped: Plan[] = resp.plans.map((plan) => {
+          // pick the first price entry for display
+          const priceEntry = Object.values(plan.prices)[0];
+          const credits = typeof priceEntry.metadata?.credits === "number" ? priceEntry.metadata.credits : undefined;
+          return {
+            id: plan.name,
+            name: plan.name,
+            price: priceEntry.price_id,
+            priceId: priceEntry.price_id,
+            creditsNote: plan.metadata?.credits ? `${plan.metadata.credits} Credits` : "Credits Never Expire",
+            features: [{ label: "Credits Never Expire" }],
+            cta: "Start Verification",
+            credits,
+          };
+        });
+        setPlans(mapped);
+      } catch (err) {
+        const message = err instanceof ApiError ? `${err.status}: ${err.message}` : "Failed to load plans";
+        console.error("[pricing] load plans failed", err);
+        if (isMounted) setError(message);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    }
+    void loadPlans();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const tierCards = useMemo(() => plans, [plans]);
+
+  const handleCheckout = async (plan: Plan) => {
+    if (!clientSideToken || !checkoutScript) {
+      console.warn("[pricing] checkout not enabled");
+      return;
+    }
+    try {
+      const billing = await getBillingClient({ token: clientSideToken });
+      const session = await billingApi.createTransaction({ price_id: plan.priceId });
+      console.info("[pricing] transaction created", session);
+      billing.openCheckout({ transactionId: session.id });
+    } catch (err) {
+      console.error("[pricing] checkout failed", err);
+      setError(err instanceof ApiError ? err.message : "Checkout failed");
+    }
+  };
 
   return (
     <DashboardShell>
@@ -112,10 +114,9 @@ export default function PricingPage() {
             <div className="mt-6 flex justify-center">
               <button
                 type="button"
-                className="rounded-full border border-sky-500 px-6 py-2 text-sm font-semibold text-sky-600 transition hover:bg-sky-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
-                onClick={() => {
-                  console.info("[pricing] CTA clicked", { plan: plan.id });
-                }}
+                className="rounded-full border border-sky-500 px-6 py-2 text-sm font-semibold text-sky-600 transition hover:bg-sky-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 disabled:cursor-not-allowed disabled:opacity-60"
+                onClick={() => handleCheckout(plan)}
+                disabled={loading || !!error}
               >
                 {plan.cta}
               </button>
@@ -123,6 +124,10 @@ export default function PricingPage() {
           </div>
         ))}
       </section>
+      {checkoutScript ? (
+        <Script src={checkoutScript} strategy="afterInteractive" />
+      ) : null}
+      {error ? <p className="mt-4 text-sm text-red-600">{error}</p> : null}
     </DashboardShell>
   );
 }
