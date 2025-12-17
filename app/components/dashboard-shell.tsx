@@ -21,6 +21,7 @@ import type { ComponentType, ReactNode, SVGProps } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useAuth } from "./auth-provider";
+import { resolveAuthState } from "./auth-guard-utils";
 
 type NavItem = {
   key: string;
@@ -156,11 +157,12 @@ function NavButton({
 export function DashboardShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { signOut } = useAuth();
+  const { signOut, session, loading } = useAuth();
   const [isNavOpen, setIsNavOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement | null>(null);
   const [loggingOut, setLoggingOut] = useState(false);
+  const authState = resolveAuthState({ loading, hasSession: Boolean(session) });
 
   useEffect(() => {
     const handler = (event: MouseEvent) => {
@@ -182,6 +184,13 @@ export function DashboardShell({ children }: { children: ReactNode }) {
         : pathname?.startsWith(item.href),
     )?.key ?? "overview";
 
+  useEffect(() => {
+    if (authState === "unauthenticated") {
+      console.info("auth.redirect_dashboard_shell", { redirectTo: "/signin", pathname });
+      router.replace("/signin");
+    }
+  }, [authState, pathname, router]);
+
   const handleLogout = async () => {
     if (loggingOut) return;
     setLoggingOut(true);
@@ -197,6 +206,18 @@ export function DashboardShell({ children }: { children: ReactNode }) {
       setLoggingOut(false);
     }
   };
+
+  if (authState === "loading") {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 text-sm font-semibold text-slate-700">
+        Checking session...
+      </div>
+    );
+  }
+
+  if (authState === "unauthenticated") {
+    return null;
+  }
 
   return (
     <div className="flex min-h-screen">

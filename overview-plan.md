@@ -31,3 +31,4 @@ Goal: replace mock data on `/overview` with real per-user data sourced from our 
 Notes:
 - External task source remains the email verification API; Supabase caches per-user task metadata for aggregation/safety.
 - API keys remain per-user; task ingestion uses the resolved per-user external key (dashboard key). Current dev key (`9a56…e47b`) cannot create keys via `/api-keys` (401), so new users will need either a key with that permission or a fallback to serve Supabase-only tasks until a proper key flow is in place.
+- Auth guard hardening: dashboard shell now hides/redirects when unauthenticated (uses shared `resolveAuthState` helper); ensures signed-out users only see auth pages and avoids sidebar/header/footer flashes on load.

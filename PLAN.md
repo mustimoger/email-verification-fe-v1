@@ -43,6 +43,8 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
   Explanation: Provides user-facing auth entry, aligns with design (node `65:3385` signup, `65:3343` signin), and logs/returns errors instead of hardcoded fallbacks. Remember/terms checkboxes are functional; “Forget Password?” is a placeholder link for future reset flow.
 - [x] Auth-gated data fetching — Guarded dashboard API calls until a session exists and show friendly prompts instead of 401s. Added JWKS-based Supabase token validation with `audience=\"authenticated\"` for RS256/HS256 and correct JWKS URL (`/.well-known/jwks.json`).  
   Explanation: Prevents unauthorized calls and fixes “Invalid or expired authentication token” caused by audience/JWKS validation gaps. Pending: adjust `test_settings_missing_env_raises` separately.
+- [x] Dashboard shell gating — Sidebar/topbar/footer now render only when authenticated; shell redirects to `/signin` and returns `null` for signed-out users. Added shared `resolveAuthState` helper and a unit test for guard logic.  
+  Explanation: Ensures signed-out users only see auth pages (per screenshot_1), eliminating dashboard chrome flashes when no session is present.
 
 ## Current sprint: Initial Verify page (first state only)
 - [x] Pull Figma specs for the initial Verify page (layout, spacing, colors, interaction notes) via Figma MCP to drive implementation.  

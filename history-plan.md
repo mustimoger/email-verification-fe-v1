@@ -19,3 +19,4 @@ Tasks
 
 Notes
 - Supabase tables in place: `tasks` (seeded for user musti), `cached_api_keys` (with `key_plain` + `integration`), `api_usage`, `profiles`, `user_credits`. `/api/tasks` already upserts list/detail to keep Supabase current; upload polling fills the gap until `task_id` is returned.
+- Auth guard update: dashboard shell now redirects/hides for unauthenticated users (shared `resolveAuthState`), so History is never visible without a session and chrome does not flash while redirecting.
