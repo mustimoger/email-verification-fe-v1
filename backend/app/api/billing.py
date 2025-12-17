@@ -158,13 +158,23 @@ async def _resolve_customer_and_address(user: AuthContext) -> Tuple[str, str]:
                     if addr_id:
                         logger.info(
                             "billing.address.reused",
-                            extra={"user_id": user.user_id, "customer_id": customer.id, "address_id": addr_id},
+                            extra={
+                                "user_id": user.user_id,
+                                "customer_id": customer.id,
+                                "address_id": addr_id,
+                                "conflict_details": exc.details,
+                            },
                         )
                         return addr_id
             except Exception as inner_exc:  # noqa: BLE001
                 logger.error(
                     "billing.address.conflict_no_match",
-                    extra={"user_id": user.user_id, "customer_id": customer.id, "error": str(inner_exc)},
+                    extra={
+                        "user_id": user.user_id,
+                        "customer_id": customer.id,
+                        "error": str(inner_exc),
+                        "conflict_details": exc.details,
+                    },
                 )
             raise
 
@@ -189,14 +199,14 @@ async def _resolve_customer_and_address(user: AuthContext) -> Tuple[str, str]:
                         customer = CustomerResponse.model_validate(first)
                         logger.info(
                             "billing.customer.reused",
-                            extra={"user_id": user.user_id, "customer_id": customer.id},
+                            extra={"user_id": user.user_id, "customer_id": customer.id, "conflict_details": exc.details},
                         )
                     else:
                         raise
                 except Exception:
                     logger.error(
                         "billing.customer.conflict_no_match",
-                        extra={"user_id": user.user_id, "email": profile["email"]},
+                        extra={"user_id": user.user_id, "email": profile["email"], "conflict_details": exc.details},
                     )
                     raise HTTPException(status_code=exc.status_code, detail="Paddle customer conflict") from exc
             else:
