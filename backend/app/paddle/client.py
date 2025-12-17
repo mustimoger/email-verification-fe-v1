@@ -148,12 +148,39 @@ class PaddleAPIClient:
         return await self._parse(response, PriceResponse)
 
     async def search_customers(self, search: str) -> dict:
-        response = await self._request("GET", f"/customers?search={search}")
+        response = await self._request("GET", "/customers", params={"search": search})
+        return self._parse_response_generic(response)  # returns dict with data/meta
+
+    async def list_customers(self, email: Optional[str] = None) -> dict:
+        params = {"email": email} if email else None
+        response = await self._request("GET", "/customers", params=params)
         return self._parse_response_generic(response)  # returns dict with data/meta
 
     async def list_addresses(self, customer_id: str):
         response = await self._request("GET", f"/customers/{customer_id}/addresses")
         return self._parse_response_generic(response)  # returns dict with data/meta
+
+    def _parse_response_generic(self, response: httpx.Response):
+        if response.status_code >= 400:
+            detail = None
+            try:
+                detail = response.json()
+            except Exception:
+                detail = response.text
+            logger.warning(
+                "paddle.error",
+                extra={"status_code": response.status_code, "detail": detail},
+            )
+            raise PaddleAPIError(status_code=response.status_code, message="Paddle API error", details=detail)
+        try:
+            return response.json()
+        except Exception as exc:  # noqa: BLE001
+            logger.error("paddle.invalid_json", extra={"error": str(exc)})
+            raise PaddleAPIError(
+                status_code=response.status_code,
+                message="Unable to parse Paddle API response",
+                details=str(exc),
+            ) from exc
 
 
 def get_paddle_client() -> PaddleAPIClient:

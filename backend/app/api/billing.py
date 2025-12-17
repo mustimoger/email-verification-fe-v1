@@ -121,6 +121,17 @@ async def _resolve_customer_and_address(user: AuthContext) -> Tuple[str, str]:
 
     profile = supabase_client.fetch_profile(user.user_id)
     if not profile or not profile.get("email"):
+        # Backfill profile email from auth claims if Supabase profile is missing
+        claim_email = user.claims.get("email") or user.claims.get("email_address")
+        user_metadata = user.claims.get("user_metadata") if isinstance(user.claims.get("user_metadata"), dict) else {}
+        display_name = user_metadata.get("display_name") or user_metadata.get("full_name") or user.claims.get("name")
+        if claim_email:
+            profile = supabase_client.upsert_profile(user.user_id, claim_email, display_name)
+            logger.info(
+                "billing.profile.backfilled",
+                extra={"user_id": user.user_id, "from_claims": True, "has_email": bool(profile.get("email"))},
+            )
+    if not profile or not profile.get("email"):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User profile email is required for billing")
 
     config = get_paddle_config()
@@ -178,46 +189,43 @@ async def _resolve_customer_and_address(user: AuthContext) -> Tuple[str, str]:
                 )
             raise
 
-        last_conflict_details: Any = None
-        search_res: Any = None
+    last_conflict_details: Any = None
+    search_res: Any = None
+    try:
+        customer: CustomerResponse
         try:
-            customer: CustomerResponse
-            try:
-                customer = await client.create_customer(
-                    CreateCustomerRequest(
-                        email=profile["email"],
-                        name=profile.get("display_name"),
-                        custom_data={"user_id": user.user_id},
-                    )
+            customer = await client.create_customer(
+                CreateCustomerRequest(
+                    email=profile["email"],
+                    name=profile.get("display_name"),
+                    custom_data={"user_id": user.user_id},
                 )
-            except PaddleAPIError as exc:
-                # If conflict, try to find existing customer by search/email
-                if exc.status_code == status.HTTP_409_CONFLICT:
-                    last_conflict_details = exc.details
-                    try:
-                        search_res = await client.search_customers(profile["email"])
-                        items = []
-                        if isinstance(search_res, dict):
-                            items = search_res.get("data") or search_res.get("customers") or []
-                        if items:
-                            first = items[0]
-                            customer = CustomerResponse.model_validate(first)
-                            logger.info(
-                                "billing.customer.reused",
-                                extra={"user_id": user.user_id, "customer_id": customer.id, "conflict_details": exc.details},
-                            )
-                        else:
-                            logger.error(
-                                "billing.customer.conflict_no_match",
-                                extra={
-                                    "user_id": user.user_id,
-                                    "email": profile["email"],
-                                    "conflict_details": exc.details,
-                                    "search_res": search_res,
-                                },
-                            )
-                            raise
-                    except Exception:
+            )
+        except PaddleAPIError as exc:
+            # If conflict, try to find existing customer by search/email
+            if exc.status_code == status.HTTP_409_CONFLICT:
+                last_conflict_details = exc.details
+                try:
+                    # Prefer deterministic email filter over fuzzy search to reuse existing customers reliably; fall back to fuzzy
+                    search_res = {}
+                    search_res_email = await client.list_customers(email=profile["email"])
+                    search_res["email_filter"] = search_res_email
+                    items = []
+                    if isinstance(search_res_email, dict):
+                        items = search_res_email.get("data") or search_res_email.get("customers") or []
+                    if not items:
+                        search_res_fuzzy = await client.search_customers(profile["email"])
+                        search_res["search"] = search_res_fuzzy
+                        if isinstance(search_res_fuzzy, dict):
+                            items = search_res_fuzzy.get("data") or search_res_fuzzy.get("customers") or []
+                    if items:
+                        first = items[0]
+                        customer = CustomerResponse.model_validate(first)
+                        logger.info(
+                            "billing.customer.reused",
+                            extra={"user_id": user.user_id, "customer_id": customer.id, "conflict_details": exc.details},
+                        )
+                    else:
                         logger.error(
                             "billing.customer.conflict_no_match",
                             extra={
@@ -227,12 +235,23 @@ async def _resolve_customer_and_address(user: AuthContext) -> Tuple[str, str]:
                                 "search_res": search_res,
                             },
                         )
-                        raise HTTPException(
-                            status_code=exc.status_code,
-                            detail={"error": "paddle_customer_conflict", "details": last_conflict_details, "search": search_res},
-                        ) from exc
-                else:
-                    raise
+                        raise
+                except Exception:
+                    logger.error(
+                        "billing.customer.conflict_no_match",
+                        extra={
+                            "user_id": user.user_id,
+                            "email": profile["email"],
+                            "conflict_details": exc.details,
+                            "search_res": search_res,
+                        },
+                    )
+                    raise HTTPException(
+                        status_code=exc.status_code,
+                        detail={"error": "paddle_customer_conflict", "details": last_conflict_details, "search": search_res},
+                    ) from exc
+            else:
+                raise
 
         address_id = await create_or_reuse_address(customer)
         upsert_paddle_ids(user.user_id, customer.id, address_id)

@@ -28,6 +28,7 @@ export default function PricingPage() {
   const [error, setError] = useState<string | null>(null);
   const [checkoutScript, setCheckoutScript] = useState<string | null>(null);
   const [clientSideToken, setClientSideToken] = useState<string | null>(null);
+  const [environment, setEnvironment] = useState<"sandbox" | "production" | undefined>(undefined);
   const [plans, setPlans] = useState<Plan[]>([]);
 
   useEffect(() => {
@@ -40,6 +41,9 @@ export default function PricingPage() {
         if (!isMounted) return;
         setCheckoutScript(resp.checkout_script || null);
         setClientSideToken(resp.client_side_token || null);
+        if (resp.status === "sandbox" || resp.status === "production") {
+          setEnvironment(resp.status);
+        }
 
         const mapped: Plan[] = resp.plans.map((plan) => {
           // pick the first price entry for display
@@ -81,7 +85,7 @@ export default function PricingPage() {
       return;
     }
     try {
-      const billing = await getBillingClient({ token: clientSideToken });
+      const billing = await getBillingClient({ token: clientSideToken, environment });
       const session = await billingApi.createTransaction({ price_id: plan.priceId });
       console.info("[pricing] transaction created", session);
       billing.Checkout.open({ transactionId: session.id });

@@ -33,8 +33,9 @@ def upsert_profile(user_id: str, email: Optional[str], display_name: Optional[st
         payload["email"] = email
     if display_name is not None:
         payload["display_name"] = display_name
-    res = sb.table("profiles").upsert(payload, on_conflict="user_id").select("*").limit(1).execute()
+    res = sb.table("profiles").upsert(payload, on_conflict="user_id").execute()
     data: List[Dict[str, Any]] = res.data or []
+    # supabase-py upsert may return the inserted row or empty; fall back to payload
     return data[0] if data else payload
 
 
