@@ -178,7 +178,7 @@ export default function AccountPage() {
               type="button"
               onClick={handleUpdate}
               disabled={saving || passwordSaving || loading}
-              className="w-40 rounded-lg bg-amber-300 px-4 py-2 text-sm font-bold text-slate-800 shadow-sm transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4c61cc]"
+              className="w-40 cursor-pointer rounded-lg bg-amber-300 px-4 py-2 text-sm font-bold text-slate-800 shadow-sm transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4c61cc]"
             >
               {saving || passwordSaving ? "Updating..." : "Update"}
             </button>
