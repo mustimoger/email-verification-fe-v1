@@ -34,3 +34,13 @@ Move external API calls to use Supabase JWT Bearer tokens with role-based access
 7) Cleanup and docs
    - Update backend config docs to remove the dev master key dependency for user flows.
    - Document the admin credential path for ops/maintenance separately.
+
+## Test script
+- `backend/scripts/test_external_api.py`: smoke tests external `/tasks`, `/api-keys`, and `/verify` using a Supabase JWT passed via `--token`.
+- Supports `--csv test-emails.csv` to POST `/verify` for each email (consumes credits); timeout is 60s per request.
+- Example:
+  ```
+  source .venv/bin/activate
+  python backend/scripts/test_external_api.py --token "<ACCESS_TOKEN>" --base-url https://email-verification.islamsaka.com/api/v1 --csv test-emails.csv
+  ```
+- Current observation: with the provided token (role=authenticated, no `app_metadata.role`), `/tasks` and `/api-keys` return empty; `/verify` works but one email timed out on SMTP (408), another returned `catchall` from cache. Tasks were not created.
