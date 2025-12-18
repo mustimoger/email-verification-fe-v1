@@ -262,7 +262,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
               onClick={handleLogout}
               disabled={loggingOut}
               className={[
-                "group flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition",
+                "group flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition cursor-pointer",
                 "text-white hover:bg-[#4c61cc]/70 hover:text-white disabled:opacity-60 disabled:cursor-not-allowed",
               ].join(" ")}
             >
