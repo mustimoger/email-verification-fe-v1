@@ -157,7 +157,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   const profileRef = useRef<HTMLDivElement | null>(null);
   const [loggingOut, setLoggingOut] = useState(false);
   const [profileName, setProfileName] = useState("Moni Roy");
-  const [profileRole, setProfileRole] = useState("Admin");
+  const [profileRole, setProfileRole] = useState("");
   const [notifications] = useState(6);
   const authState = resolveAuthState({ loading, hasSession: Boolean(session) });
 
@@ -195,8 +195,8 @@ export function DashboardShell({ children }: { children: ReactNode }) {
         const profile = await apiClient.getProfile();
         const name = profile.display_name?.trim() || profile.email?.split("@")[0] || "User";
         setProfileName(name);
-        // Keep role label user-friendly; default to Member to avoid surfacing auth role values.
-        setProfileRole("Member");
+        // Do not surface auth roles; leave blank to keep layout without showing technical values.
+        setProfileRole("");
       } catch (err) {
         console.warn("header.profile_load_failed", err);
       }
