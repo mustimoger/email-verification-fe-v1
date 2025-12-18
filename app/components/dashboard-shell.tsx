@@ -22,6 +22,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useAuth } from "./auth-provider";
 import { resolveAuthState } from "./auth-guard-utils";
+import { apiClient } from "../lib/api-client";
 
 type NavItem = {
   key: string;
@@ -59,13 +60,6 @@ const primaryNav: NavItem[] = [
   { key: "account", label: "Account", icon: User, href: "/account", available: true },
 ];
 
-const profile = {
-  name: "Moni Roy",
-  role: "Admin",
-  avatar: "/profile-image.png",
-  notifications: 6,
-};
-
 type ProfileMenuItem = {
   key: string;
   label: string;
@@ -78,10 +72,10 @@ const profileMenu: ProfileMenuItem[] = [
   { key: "logout", label: "Log out", icon: LogOut },
 ];
 
-function Avatar() {
+function Avatar({ name }: { name: string }) {
   const initials = useMemo(() => {
-    if (!profile.name) return "U";
-    const parts = profile.name.trim().split(" ").filter(Boolean);
+    if (!name) return "U";
+    const parts = name.trim().split(" ").filter(Boolean);
     const first = parts[0]?.[0] ?? "";
     const last = parts[1]?.[0] ?? "";
     return (first + last || first).toUpperCase();
@@ -92,8 +86,8 @@ function Avatar() {
   return (
     <div className="relative h-11 w-11 overflow-hidden rounded-full bg-gradient-to-br from-[#6ea8ff] via-[#f089ff] to-[#ffba7a] text-white">
       <Image
-        src={profile.avatar}
-        alt={profile.name}
+        src="/profile-image.png"
+        alt={name}
         fill
         className="object-cover"
         sizes="44px"
@@ -157,11 +151,14 @@ function NavButton({
 export function DashboardShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { signOut, session, loading } = useAuth();
+  const { signOut, session, loading, supabase } = useAuth();
   const [isNavOpen, setIsNavOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement | null>(null);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [profileName, setProfileName] = useState("Moni Roy");
+  const [profileRole, setProfileRole] = useState("Admin");
+  const [notifications] = useState(6);
   const authState = resolveAuthState({ loading, hasSession: Boolean(session) });
 
   useEffect(() => {
@@ -190,6 +187,22 @@ export function DashboardShell({ children }: { children: ReactNode }) {
       router.replace("/signin");
     }
   }, [authState, pathname, router]);
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      if (!session) return;
+      try {
+        const profile = await apiClient.getProfile();
+        const name = profile.display_name?.trim() || profile.email?.split("@")[0] || "User";
+        setProfileName(name);
+        // Keep role label user-friendly; default to Member to avoid surfacing auth role values.
+        setProfileRole("Member");
+      } catch (err) {
+        console.warn("header.profile_load_failed", err);
+      }
+    };
+    void loadProfile();
+  }, [session]);
 
   const handleLogout = async () => {
     if (loggingOut) return;
@@ -300,9 +313,9 @@ export function DashboardShell({ children }: { children: ReactNode }) {
               aria-label="Notifications"
             >
               <Bell className="h-5 w-5" />
-              {profile.notifications > 0 ? (
+              {notifications > 0 ? (
                 <span className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-semibold text-white">
-                  {profile.notifications}
+                  {notifications}
                 </span>
               ) : null}
             </button>
@@ -314,13 +327,13 @@ export function DashboardShell({ children }: { children: ReactNode }) {
                 aria-haspopup="menu"
                 aria-expanded={profileMenuOpen}
               >
-                <Avatar />
+                <Avatar name={profileName} />
                 <div className="text-left">
                   <p className="text-sm font-semibold text-slate-900">
-                    {profile.name}
+                    {profileName}
                   </p>
                   <p className="text-xs font-medium text-slate-500">
-                    {profile.role}
+                    {profileRole}
                   </p>
                 </div>
                 <svg
