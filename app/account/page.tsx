@@ -59,52 +59,38 @@ export default function AccountPage() {
   const handleUpdate = async () => {
     if (!profile) return;
     setSaving(true);
+    setPasswordSaving(true);
     setError(null);
+    setPasswordError(null);
+    setPasswordSuccess(null);
     try {
       const updated = await apiClient.updateProfile(profileDraft);
       setProfile(updated);
       setProfileDraft({ email: updated.email ?? "", display_name: updated.display_name ?? "" });
+
+      if (currentPassword && newPassword) {
+        const { error: reauthError } = await supabase.auth.signInWithPassword({
+          email: updated.email ?? profile.email ?? "",
+          password: currentPassword,
+        });
+        if (reauthError) {
+          setPasswordError(reauthError.message || "Current password is incorrect.");
+          return;
+        }
+        const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
+        if (updateError) {
+          setPasswordError(updateError.message || "Failed to update password.");
+          return;
+        }
+        setPasswordSuccess("Password updated successfully.");
+        setCurrentPassword("");
+        setNewPassword("");
+      }
     } catch (err: unknown) {
-      const message = err instanceof ApiError ? err.message : "Update failed";
+      const message = err instanceof ApiError ? err.message : err instanceof Error ? err.message : "Update failed";
       setError(message);
     } finally {
       setSaving(false);
-    }
-  };
-
-  const handlePasswordUpdate = async () => {
-    if (!profile?.email) {
-      setPasswordError("Profile email is required to update password.");
-      return;
-    }
-    if (!currentPassword || !newPassword) {
-      setPasswordError("Enter current and new password.");
-      return;
-    }
-    setPasswordSaving(true);
-    setPasswordError(null);
-    setPasswordSuccess(null);
-    try {
-      const { error: reauthError } = await supabase.auth.signInWithPassword({
-        email: profile.email,
-        password: currentPassword,
-      });
-      if (reauthError) {
-        setPasswordError(reauthError.message || "Current password is incorrect.");
-        return;
-      }
-      const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
-      if (updateError) {
-        setPasswordError(updateError.message || "Failed to update password.");
-        return;
-      }
-      setPasswordSuccess("Password updated successfully.");
-      setCurrentPassword("");
-      setNewPassword("");
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to update password.";
-      setPasswordError(message);
-    } finally {
       setPasswordSaving(false);
     }
   };
@@ -191,18 +177,10 @@ export default function AccountPage() {
             <button
               type="button"
               onClick={handleUpdate}
-              disabled={saving || loading}
+              disabled={saving || passwordSaving || loading}
               className="w-40 rounded-lg bg-amber-300 px-4 py-2 text-sm font-bold text-slate-800 shadow-sm transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4c61cc]"
             >
-              {saving ? "Updating..." : "Update"}
-            </button>
-            <button
-              type="button"
-              onClick={handlePasswordUpdate}
-              disabled={passwordSaving || !currentPassword || !newPassword}
-              className="w-48 rounded-lg bg-[#4c61cc] px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-[#3f52ad] disabled:cursor-not-allowed disabled:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4c61cc]"
-            >
-              {passwordSaving ? "Updating..." : "Update Password"}
+              {saving || passwordSaving ? "Updating..." : "Update"}
             </button>
           </div>
         </div>
