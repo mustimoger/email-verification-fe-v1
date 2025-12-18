@@ -2,12 +2,12 @@ import logging
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status, UploadFile, File
-from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, EmailStr
 
 from ..core.auth import AuthContext, get_current_user
 from ..services import supabase_client
 from ..core.settings import get_settings
+from ..services.supabase_client import get_storage
 from ..services.usage import record_usage
 
 router = APIRouter(prefix="/api/account", tags=["account"])
@@ -59,22 +59,25 @@ async def upload_avatar(
     file: UploadFile = File(...),
     user: AuthContext = Depends(get_current_user),
 ):
-    import os
-    import shutil
-    from pathlib import Path
-
-    settings_path = Path(__file__).resolve().parents[2] / "uploads" / "avatars"
-    settings_path.mkdir(parents=True, exist_ok=True)
-    filename = f"{user.user_id}_{file.filename}"
-    target_path = settings_path / filename
-    with target_path.open("wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-    # Build a URL for the uploaded file served via /uploads
     settings = get_settings()
-    relative_path = f"/uploads/avatars/{filename}"
-    base = settings.next_public_api_base_url or ""
-    base_no_api = base.rsplit("/api", 1)[0] if "/api" in base else base
-    avatar_url = f"{base_no_api}{relative_path}" if base_no_api else relative_path
+    filename = f"{user.user_id}_{file.filename}"
+    storage = get_storage()
+    bucket = storage.from_("avatars")
+    # Ensure bucket exists and is public; skip if not available
+    try:
+        bucket.list()
+    except Exception as exc:  # noqa: BLE001
+        logger.error("account.avatar.bucket_error", extra={"error": str(exc)})
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Avatar storage unavailable") from exc
+
+    try:
+        bucket.upload(filename, file.file, {"contentType": file.content_type or "application/octet-stream"}, upsert=True)
+        public_url = bucket.get_public_url(filename)
+    except Exception as exc:  # noqa: BLE001
+        logger.error("account.avatar.upload_failed", extra={"error": str(exc)})
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Avatar upload failed") from exc
+
+    avatar_url = public_url.get("publicUrl") if isinstance(public_url, dict) else public_url
     updated = supabase_client.upsert_profile(user.user_id, email=None, display_name=None, avatar_url=avatar_url)
     logger.info("account.avatar.updated", extra={"user_id": user.user_id, "avatar_url": avatar_url})
     record_usage(user.user_id, path="/account/avatar", count=1)

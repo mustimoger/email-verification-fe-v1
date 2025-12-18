@@ -104,8 +104,7 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
 ## Account page
 - [x] Implemented Account page per Figma: profile card with avatar, edit link, username/email/password fields, and Update button; purchase history table with invoice download pills; total credits summary card. Uses typed data and shared shell/footer; backend wiring TBD.
 - [x] Added password update flow matching design: Current/New password fields with Supabase re-auth + password change, in-card feedback, and disabled state until fields are filled. Keeps styling consistent with existing Account card.
-- [x] Account avatar upload wired: “Edit Photo” opens file picker, uploads to backend `/api/account/avatar`, serves from `/uploads`, stores `avatar_url` in profiles, and surfaces avatar in header/account using user data.
-  Note: backend needs to be running with latest code (`uvicorn app.main:app --host 0.0.0.0 --port 8001`) so the `/api/account/avatar` route is available.
+- [x] Account avatar upload wired: “Edit Photo” opens file picker, uploads to backend `/api/account/avatar` -> Supabase Storage public URL, stores `avatar_url` in profiles, and surfaces avatar in header/account using user data. Bucket `avatars` must exist and be public in Supabase.
 
 ## Backend wiring plan (FastAPI + Supabase + external verification API)
 - [x] Establish backend structure under `/backend/app` with FastAPI app factory, logging, CORS, and pydantic settings. Decisions: Python 3.12 + pip, uploads stored locally at `backend/uploads` (10 MB max, retention configurable), Next.js -> our FastAPI -> external API. Added `.env.example`, `requirements.txt`, `settings.py`, `logging.py`, `main.py` with `/health`, and created upload dir.

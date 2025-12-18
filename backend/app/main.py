@@ -30,7 +30,6 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
     @app.get("/health")
     def health() -> dict[str, str]:

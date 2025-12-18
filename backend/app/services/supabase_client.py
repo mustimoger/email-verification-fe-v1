@@ -19,6 +19,10 @@ def get_supabase() -> Client:
     return client
 
 
+def get_storage():
+    return get_supabase().storage()
+
+
 def fetch_profile(user_id: str) -> Optional[Dict[str, Any]]:
     sb = get_supabase()
     res = sb.table("profiles").select("*").eq("user_id", user_id).limit(1).execute()
