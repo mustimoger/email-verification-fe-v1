@@ -235,7 +235,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
               alt="BoltRoute"
               width={140}
               height={32}
-              className="h-8 w-[140px]"
+              className="h-auto w-[140px]"
               priority
             />
             <button
