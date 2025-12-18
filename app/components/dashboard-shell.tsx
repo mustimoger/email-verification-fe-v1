@@ -229,12 +229,12 @@ export function DashboardShell({ children }: { children: ReactNode }) {
         aria-label="Primary"
       >
         <div className="flex h-full flex-col px-5 py-6">
-        <div className="flex items-center justify-between pl-1">
-          <Image
-            src="/logo.png"
-            alt="BoltRoute"
-            width={140}
-            height={32}
+          <div className="flex items-center justify-between">
+            <Image
+              src="/logo.png"
+              alt="BoltRoute"
+              width={140}
+              height={32}
               className="h-auto w-[140px]"
               priority
             />
