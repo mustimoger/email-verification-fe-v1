@@ -3,18 +3,18 @@ External API smoke test using a Supabase user JWT as Bearer auth.
 
 Usage:
     source ../.venv/bin/activate
-    python backend/scripts/test_external_api.py --token "<ACCESS_TOKEN>" --base-url https://email-verification.islamsaka.com/api/v1
+    python backend/scripts/test_external_api.py --token "<ACCESS_TOKEN>" --base-url https://email-verification.islamsaka.com/api/v1 --csv test-emails.csv
 
 Notes:
 - Do NOT hardcode tokens in code. Pass via --token or env TOKEN.
-- By default the script only calls list endpoints (tasks, api-keys) to avoid consuming credits.
-- Optionally pass --verify-email to exercise POST /verify (may consume credits).
+- This script will POST /verify for each email in the CSV (consumes credits).
 """
 
 import argparse
+import csv
 import json
 import sys
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import httpx
 
@@ -38,7 +38,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Smoke test external API with Supabase JWT")
     parser.add_argument("--token", help="Supabase access token (Bearer)", required=False)
     parser.add_argument("--base-url", help="External API base, e.g. https://.../api/v1", required=True)
-    parser.add_argument("--verify-email", help="Optional email to POST /verify (may consume credits)", required=False)
+    parser.add_argument("--verify-email", help="Single email to POST /verify (optional)", required=False)
+    parser.add_argument("--csv", help="CSV with column 'email' to POST /verify for each row", required=False)
     args = parser.parse_args()
 
     token = args.token or ""
@@ -52,11 +53,26 @@ def main() -> None:
         log("tasks.list", request(client, "GET", f"{args.base_url}/tasks"))
         log("api_keys.list", request(client, "GET", f"{args.base_url}/api-keys"))
 
+        emails: List[str] = []
+        if args.csv:
+            try:
+                with open(args.csv, newline="", encoding="utf-8-sig") as fh:
+                    reader = csv.DictReader(fh)
+                    for row in reader:
+                        email = row.get("email")
+                        if email:
+                            emails.append(email.strip())
+            except Exception as exc:
+                print(f"ERROR: failed to read CSV {args.csv}: {exc}", file=sys.stderr)
         if args.verify_email:
-            payload = {"email": args.verify_email}
-            log("verify.post", request(client, "POST", f"{args.base_url}/verify", json_body=payload))
+            emails.append(args.verify_email.strip())
+
+        if emails:
+            for email in emails:
+                payload = {"email": email}
+                log(f"verify.post.{email}", request(client, "POST", f"{args.base_url}/verify", json_body=payload))
         else:
-            print("\nSkipping /verify (no --verify-email provided).")
+            print("\nNo emails provided for /verify (use --csv or --verify-email).")
 
 
 if __name__ == "__main__":
