@@ -18,7 +18,8 @@ class IntegrationDefinition:
 
 
 def _default_integrations_path() -> Path:
-    return Path(__file__).resolve().parents[1] / "config" / "integrations.json"
+    # Default to backend/config/integrations.json (one level above app/)
+    return Path(__file__).resolve().parents[2] / "config" / "integrations.json"
 
 
 def _load_integrations(path: Optional[Path] = None) -> List[IntegrationDefinition]:
