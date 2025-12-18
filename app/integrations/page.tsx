@@ -16,7 +16,7 @@ const integrations = [
     name: "n8n",
     logo: "/integrations/n8n.png",
     alt: "n8n logo",
-    description: "Call the API from HTTP Request or Code nodes. Keys are universal; picking n8n just tags usage.",
+    description: "Call the API from HTTP Request or Code nodes. Keys are universal,can be used anywhere but picking n8n just tags usage.",
   },
   {
     name: "Google Sheets",
