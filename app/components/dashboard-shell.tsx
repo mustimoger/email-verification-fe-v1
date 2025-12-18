@@ -23,6 +23,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "./auth-provider";
 import { resolveAuthState } from "./auth-guard-utils";
 import { apiClient } from "../lib/api-client";
+import type { Profile } from "../lib/api-client";
 
 type NavItem = {
   key: string;
@@ -207,6 +208,19 @@ export function DashboardShell({ children }: { children: ReactNode }) {
     };
     void loadProfile();
   }, [session]);
+
+  useEffect(() => {
+    const handleProfileUpdated = (event: Event) => {
+      const detail = (event as CustomEvent<Profile>).detail;
+      if (!detail) return;
+      const name = detail.display_name?.trim() || detail.email?.split("@")[0] || "User";
+      setProfileName(name);
+      setProfileRole("");
+      setProfileAvatar(detail.avatar_url || undefined);
+    };
+    window.addEventListener("profile:updated", handleProfileUpdated as EventListener);
+    return () => window.removeEventListener("profile:updated", handleProfileUpdated as EventListener);
+  }, []);
 
   const handleLogout = async () => {
     if (loggingOut) return;

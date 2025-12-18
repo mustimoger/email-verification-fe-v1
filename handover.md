@@ -8,6 +8,7 @@
 - Added pointer cursors to account Update and sidebar Logout buttons. Header subtitle now blank (no “authenticated/Member”).
 - Fixed Supabase storage client usage: `get_storage` now returns the storage property (supabase-py 2), resolving the `/api/account/avatar` TypeError/500. Added regression test (`backend/tests/test_supabase_client.py`) and updated account test stub.
 - Avatar upload now reads bytes and passes storage3 `FileOptions` (`content-type`, `upsert`) instead of the file object; improved error logging and added regression test (`backend/tests/test_account_avatar.py`).
+- Header avatar refresh: account avatar/profile updates now dispatch a `profile:updated` event; the dashboard shell listens and updates the top-right avatar/name immediately without a page reload.
 
 ## Outstanding items / environment
 - Supabase Storage bucket `avatars` now exists and is public (created via MCP). If it’s removed later, recreate it.

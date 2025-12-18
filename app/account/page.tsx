@@ -85,6 +85,9 @@ export default function AccountPage() {
         display_name: updated.display_name ?? "",
         avatar_url: updated.avatar_url,
       });
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("profile:updated", { detail: updated }));
+      }
 
       if (currentPassword && newPassword) {
         const { error: reauthError } = await supabase.auth.signInWithPassword({
@@ -149,20 +152,23 @@ export default function AccountPage() {
                   const file = event.target.files?.[0];
                   if (!file) return;
                   try {
-                    const updated = await apiClient.uploadAvatar(file);
-                    setProfile(updated);
-                    setAvatarUrl(resolveAvatar(updated.avatar_url));
-                    setProfileDraft({
-                      email: updated.email ?? "",
-                      display_name: updated.display_name ?? "",
-                      avatar_url: updated.avatar_url,
-                    });
-                    setPasswordSuccess("Photo updated successfully.");
-                  } catch (err) {
-                    const message = err instanceof ApiError ? err.message : "Failed to update photo.";
-                    setPasswordError(message);
+                  const updated = await apiClient.uploadAvatar(file);
+                  setProfile(updated);
+                  setAvatarUrl(resolveAvatar(updated.avatar_url));
+                  setProfileDraft({
+                    email: updated.email ?? "",
+                    display_name: updated.display_name ?? "",
+                    avatar_url: updated.avatar_url,
+                  });
+                  setPasswordSuccess("Photo updated successfully.");
+                  if (typeof window !== "undefined") {
+                    window.dispatchEvent(new CustomEvent("profile:updated", { detail: updated }));
                   }
-                }}
+                } catch (err) {
+                  const message = err instanceof ApiError ? err.message : "Failed to update photo.";
+                  setPasswordError(message);
+                }
+              }}
               />
             </div>
           </div>

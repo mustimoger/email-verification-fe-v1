@@ -152,6 +152,8 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
   Explanation: `get_storage` now uses the Supabase storage property (not a callable) to stop `/api/account/avatar` 500s; added a regression test for the storage accessor and adjusted account tests for the avatar_url argument.
 - [x] Avatar upload uses bytes + correct file options.
   Explanation: `/api/account/avatar` now reads file bytes and passes storage3 `FileOptions` (`content-type`, `upsert`) so uploads succeed; improved error logging and added regression test `test_account_avatar.py`.
+- [x] Header avatar refresh.
+  Explanation: Account avatar/profile updates now broadcast a `profile:updated` event; the shared dashboard shell listens and refreshes name/avatar so the top-right profile image reflects uploads immediately without page reload.
 - [ ] External key creation blocked (401) — current dev key `9a56bd21-eba2-4f8c-bf79-791ffcf2e47b` cannot call `/api-keys`; new users hit `/api/tasks` and crash when dashboard key creation fails (UnboundLocalError). Need either a key with `/api-keys` permission or a safe fallback that skips creation and serves Supabase-only tasks.
 - [ ] TODO: (Enhancement) Add optional in-app scheduler (env-gated) to trigger retention cleanup on an interval for dev/staging when cron isn’t available; update OpenAPI (`api-docs.json`) to include maintenance route. Cron-based purge will be handled later in deployment.
 
