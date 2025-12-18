@@ -119,9 +119,11 @@ export type RevokeApiKeyResponse = {
 };
 
 export type BootstrapKeyResponse = {
-  key_id: string;
-  name: string;
-  created: boolean;
+  key_id?: string | null;
+  name?: string;
+  created?: boolean;
+  skipped?: boolean;
+  error?: unknown;
 };
 
 export type Profile = {

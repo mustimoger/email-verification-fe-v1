@@ -19,10 +19,9 @@
 - Sandbox checkout script currently from env; could swap to `https://sandbox-cdn.paddle.com/paddle/v2/paddle.js` to align domains and possibly reduce CSP noise.
 
 ## Next Steps (priority)
-1) Optional cleanup: switch sandbox checkout script to `https://sandbox-cdn.paddle.com/paddle/v2/paddle.js`, retest checkout.
-2) Cosmetic: set logo width/height auto to silence Next/Image warning.
-3) Monitor billing webhooks (if enabled) to ensure credits grant on transaction completion; transactions currently created and modal completes in sandbox.
-4) Upstream `/api-keys` 503 remains; retry once upstream is fixed.
+1) Cosmetic: set logo width/height auto to silence Next/Image warning.
+2) Monitor billing webhooks (if enabled) to ensure credits grant on transaction completion; transactions currently created and modal completes in sandbox.
+3) Upstream `/api-keys` 503 remains; retry once upstream is fixed.
 
 ## Commands/Env Notes
 - Backend run: `cd backend && source ../.venv/bin/activate && uvicorn app.main:app --host 0.0.0.0 --port 8001`

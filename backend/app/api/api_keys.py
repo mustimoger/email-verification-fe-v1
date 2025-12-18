@@ -23,9 +23,11 @@ def _is_dashboard_key(name: str | None) -> bool:
 
 
 class BootstrapKeyResponse(BaseModel):
-    key_id: str
+    key_id: str | None
     name: str
     created: bool = False
+    skipped: bool = False
+    error: str | None = None
 
 
 @router.get("/api-keys", response_model=ListAPIKeysResponse)
@@ -135,11 +137,23 @@ async def bootstrap_dashboard_key(
         )
         return BootstrapKeyResponse(key_id=key_id, name=INTERNAL_DASHBOARD_KEY_NAME, created=created)
     except ExternalAPIError as exc:
-        logger.error(
-            "route.api_keys.bootstrap_failed",
-            extra={"user_id": user.user_id, "status_code": exc.status_code, "details": exc.details},
+        # External /api-keys can be unavailable or unauthorized in sandbox; return a non-fatal response to avoid noisy 4xx.
+        logger.warning(
+            "route.api_keys.bootstrap_skipped",
+            extra={
+                "user_id": user.user_id,
+                "status_code": exc.status_code,
+                "details": exc.details,
+            },
         )
-        raise HTTPException(status_code=exc.status_code, detail=exc.details or exc.args[0])
+        record_usage(user.user_id, path="/api-keys/bootstrap", count=0)
+        return BootstrapKeyResponse(
+            key_id=already.get("key_id") if already else None,
+            name=INTERNAL_DASHBOARD_KEY_NAME,
+            created=False,
+            skipped=True,
+            error=str(exc.details or exc.args[0]),
+        )
 
 
 @router.delete("/api-keys/{api_key_id}", response_model=RevokeAPIKeyResponse)

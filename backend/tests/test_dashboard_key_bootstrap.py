@@ -4,7 +4,7 @@ from fastapi.testclient import TestClient
 
 from app.api import api_keys as api_keys_module
 from app.api.api_keys import BootstrapKeyResponse, router
-from app.clients.external import ExternalAPIClient
+from app.clients.external import ExternalAPIClient, ExternalAPIError
 from app.core.auth import AuthContext
 
 
@@ -61,12 +61,26 @@ def test_bootstrap_dashboard_key(monkeypatch, cached_key_plain):
     assert resp.status_code == 200
     data = resp.json()
     parsed = BootstrapKeyResponse(**data)
-    if cached_key_plain:
-        assert parsed.key_id == "existing-id"
-    else:
-        assert parsed.key_id == "new-key-id"
     assert parsed.name == api_keys_module.INTERNAL_DASHBOARD_KEY_NAME
-    if cached_key_plain:
-        assert parsed.created is False
-    else:
-        assert parsed.created is True
+    assert parsed.key_id == ("existing-id" if cached_key_plain else "new-key-id")
+    assert parsed.created is (not cached_key_plain)
+
+
+def test_bootstrap_dashboard_key_skips_on_external_error(monkeypatch):
+    app = _build_app(monkeypatch, cached_key_plain=False)
+    client = TestClient(app)
+
+    async def fail_resolve(user_id: str, desired_name: str, master_client):
+        raise ExternalAPIError(status_code=401, message="Invalid token", details={"error": "Invalid token"})
+
+    monkeypatch.setattr(api_keys_module, "resolve_user_api_key", fail_resolve)
+
+    resp = client.post("/api/api-keys/bootstrap")
+    assert resp.status_code == 200
+    data = resp.json()
+    parsed = BootstrapKeyResponse(**data)
+    assert parsed.key_id is None
+    assert parsed.name == api_keys_module.INTERNAL_DASHBOARD_KEY_NAME
+    assert parsed.created is False
+    assert parsed.skipped is True
+    assert parsed.error is not None
