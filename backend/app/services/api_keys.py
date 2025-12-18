@@ -60,7 +60,7 @@ def get_cached_key_by_name(user_id: str, name: str) -> Optional[Dict[str, str]]:
         data: List[Dict[str, str]] = res.data or []
         return data[0] if data else None
     except Exception as exc:
-        logger.error("api_keys.cache_lookup_failed", extra={"error": str(exc), "user_id": user_id, "name": name})
+        logger.error("api_keys.cache_lookup_failed", extra={"error": str(exc), "user_id": user_id, "cache_key_name": name})
         return None
 
 
