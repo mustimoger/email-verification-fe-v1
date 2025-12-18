@@ -169,3 +169,4 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
 - [x] Added `tasks` table (task_id PK, user_id FK, status, counts, integration, timestamps) with user/created_at index and updated_at trigger; seeded demo rows for user `959ce587-7a0e-4726-8382-e70ad89e1232` to exercise Overview/History once wired.
 - [x] File upload tasks ingestion after batch upload.  
   Explanation: Added configurable post-upload polling that captures tasks created by `/tasks/batch/upload` by fetching recent tasks with the user’s key, comparing against a baseline, and upserting into Supabase. Logging covers baseline fetch, poll attempts, and new task detection; env knobs (`UPLOAD_POLL_*`) control attempts/interval/page size.
+- [x] Header profile wiring — Sidebar/topbar profile now loads Supabase-backed user profile (display_name/email) and role from session; avatar initials derived from real name. Hardcoded placeholder removed.
