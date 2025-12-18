@@ -24,7 +24,12 @@ export default function AccountPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const { session, loading: authLoading } = useAuth();
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
+  const { session, loading: authLoading, supabase } = useAuth();
 
   useEffect(() => {
     if (!session) {
@@ -64,6 +69,43 @@ export default function AccountPage() {
       setError(message);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handlePasswordUpdate = async () => {
+    if (!profile?.email) {
+      setPasswordError("Profile email is required to update password.");
+      return;
+    }
+    if (!currentPassword || !newPassword) {
+      setPasswordError("Enter current and new password.");
+      return;
+    }
+    setPasswordSaving(true);
+    setPasswordError(null);
+    setPasswordSuccess(null);
+    try {
+      const { error: reauthError } = await supabase.auth.signInWithPassword({
+        email: profile.email,
+        password: currentPassword,
+      });
+      if (reauthError) {
+        setPasswordError(reauthError.message || "Current password is incorrect.");
+        return;
+      }
+      const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
+      if (updateError) {
+        setPasswordError(updateError.message || "Failed to update password.");
+        return;
+      }
+      setPasswordSuccess("Password updated successfully.");
+      setCurrentPassword("");
+      setNewPassword("");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to update password.";
+      setPasswordError(message);
+    } finally {
+      setPasswordSaving(false);
     }
   };
 
@@ -116,11 +158,36 @@ export default function AccountPage() {
             </div>
           </div>
 
+          <div className="mt-6 grid gap-4 lg:grid-cols-2">
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-semibold text-slate-500">Current Password</label>
+              <input
+                type="password"
+                value={currentPassword}
+                onChange={(event) => setCurrentPassword(event.target.value)}
+                className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700 shadow-inner outline-none focus:border-[#4c61cc] focus:ring-1 focus:ring-[#4c61cc]"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-semibold text-slate-500">New Password</label>
+              <input
+                type="password"
+                value={newPassword}
+                onChange={(event) => setNewPassword(event.target.value)}
+                className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700 shadow-inner outline-none focus:border-[#4c61cc] focus:ring-1 focus:ring-[#4c61cc]"
+              />
+            </div>
+          </div>
           {error ? (
             <div className="mt-3 rounded-md bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700">{error}</div>
           ) : null}
-
-          <div className="mt-6 flex justify-center">
+          {passwordError ? (
+            <div className="mt-3 rounded-md bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700">{passwordError}</div>
+          ) : null}
+          {passwordSuccess ? (
+            <div className="mt-3 rounded-md bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700">{passwordSuccess}</div>
+          ) : null}
+          <div className="mt-6 flex flex-wrap justify-center gap-3">
             <button
               type="button"
               onClick={handleUpdate}
@@ -128,6 +195,14 @@ export default function AccountPage() {
               className="w-40 rounded-lg bg-amber-300 px-4 py-2 text-sm font-bold text-slate-800 shadow-sm transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4c61cc]"
             >
               {saving ? "Updating..." : "Update"}
+            </button>
+            <button
+              type="button"
+              onClick={handlePasswordUpdate}
+              disabled={passwordSaving || !currentPassword || !newPassword}
+              className="w-48 rounded-lg bg-[#4c61cc] px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-[#3f52ad] disabled:cursor-not-allowed disabled:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4c61cc]"
+            >
+              {passwordSaving ? "Updating..." : "Update Password"}
             </button>
           </div>
         </div>
