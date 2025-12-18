@@ -114,6 +114,8 @@ def test_create_api_key_caches_secret(monkeypatch):
     ]:
         monkeypatch.setenv(key, value)
 
+    monkeypatch.setattr(api_keys_module, "get_integration_ids", lambda: ["Zapier", "n8n", "google-sheets", "custom"])
+
     def fake_user():
         return AuthContext(user_id="user-4", claims={}, token="t")
 
@@ -145,6 +147,8 @@ def test_create_api_key_rejects_dashboard(monkeypatch):
         ("SUPABASE_AUTH_COOKIE_NAME", "sb-cookie"),
     ]:
         monkeypatch.setenv(key, value)
+
+    monkeypatch.setattr(api_keys_module, "get_integration_ids", lambda: ["Zapier", "n8n", "google-sheets", "custom"])
 
     def fake_user():
         return AuthContext(user_id="user-5", claims={}, token="t")

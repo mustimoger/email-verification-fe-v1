@@ -153,6 +153,14 @@ export type UsageResponse = {
   items: UsageEntry[];
 };
 
+export type IntegrationOption = {
+  id: string;
+  label: string;
+  description: string;
+  icon?: string | null;
+  default_name?: string | null;
+};
+
 export type OverviewResponse = {
   profile: Profile;
   credits_remaining: number;
@@ -338,6 +346,7 @@ export const apiClient = {
     return request<UsageResponse>(`/usage${qs ? `?${qs}` : ""}`, { method: "GET" });
   },
   getOverview: () => request<OverviewResponse>("/overview", { method: "GET" }),
+  listIntegrations: () => request<IntegrationOption[]>("/integrations", { method: "GET" }),
 };
 
 export type ApiClient = typeof apiClient;

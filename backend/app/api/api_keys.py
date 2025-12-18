@@ -10,6 +10,7 @@ from ..services.api_keys import (
     list_cached_keys,
     resolve_user_api_key,
 )
+from ..config.integrations import get_integration_ids
 from ..services.usage import record_usage
 from ..clients.external import APIKeySummary, ListAPIKeysResponse, CreateAPIKeyResponse, RevokeAPIKeyResponse
 from pydantic import BaseModel
@@ -92,6 +93,10 @@ async def create_api_key(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="name is required")
     if _is_dashboard_key(name):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="dashboard key is reserved")
+    if integration:
+        allowed = set(get_integration_ids())
+        if integration not in allowed:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="unknown integration")
     try:
         result = await client.create_api_key(name=name)
         if not result.key:
