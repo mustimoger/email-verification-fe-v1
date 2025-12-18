@@ -20,7 +20,7 @@ def get_supabase() -> Client:
 
 
 def get_storage():
-    return get_supabase().storage()
+    return get_supabase().storage
 
 
 def fetch_profile(user_id: str) -> Optional[Dict[str, Any]]:

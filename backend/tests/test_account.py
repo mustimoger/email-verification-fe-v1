@@ -63,7 +63,11 @@ def test_update_profile(monkeypatch):
     updated = {"user_id": "u-3", "email": "new@test.com", "display_name": "New"}
     usage_calls = []
     monkeypatch.setattr(account_module, "record_usage", lambda *args, **kwargs: usage_calls.append(args))
-    monkeypatch.setattr(account_module.supabase_client, "upsert_profile", lambda uid, email, display_name: updated)
+    monkeypatch.setattr(
+        account_module.supabase_client,
+        "upsert_profile",
+        lambda uid, email, display_name, avatar_url=None: updated,
+    )
 
     client = TestClient(app)
     resp = client.patch("/api/account/profile", json={"email": "new@test.com", "display_name": "New"})

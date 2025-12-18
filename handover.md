@@ -6,6 +6,7 @@
 - Added `sslmode=require` to `DATABASE_URL` (Session Pooler).
 - Cleared stale `avatar_url` for user `c105fce3-786b-4708-987c-edb29a8c8ea0` (was pointing to localhost).
 - Added pointer cursors to account Update and sidebar Logout buttons. Header subtitle now blank (no “authenticated/Member”).
+- Fixed Supabase storage client usage: `get_storage` now returns the storage property (supabase-py 2), resolving the `/api/account/avatar` TypeError/500. Added regression test (`backend/tests/test_supabase_client.py`) and updated account test stub.
 
 ## Outstanding items / environment
 - Supabase Storage bucket `avatars` must exist and be public. MCP migration failed (auth). If missing, create via Supabase UI or provide MCP auth.
@@ -19,5 +20,5 @@
 3) If desired, set a friendly header subtitle (currently blank).
 
 ## Recent verification
-- Tests (after storage tweaks): `pytest backend/tests/test_api_keys.py tests/test_billing.py tests/test_dashboard_key_bootstrap.py` passing.
+- Tests (after storage tweaks): `pytest backend/tests/test_api_keys.py tests/test_billing.py tests/test_dashboard_key_bootstrap.py` passing. New regression: `pytest backend/tests/test_supabase_client.py backend/tests/test_account.py` passing.
 - DB pooler connection verified with psycopg (then uninstalled).

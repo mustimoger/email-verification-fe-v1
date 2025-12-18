@@ -148,6 +148,8 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
   Explanation: Added authenticated maintenance endpoint `/api/maintenance/purge-uploads` that runs retention cleanup (`purge_expired_uploads`), logging deletions and returning deleted files. Use for cron/operator calls to enforce upload retention policy.
 - [x] Post-upload task polling/backfill.
   Explanation: `/api/tasks/upload` now captures batch-upload tasks by polling `/tasks` with the user’s external key after uploads complete, comparing against a baseline, and upserting recent tasks into Supabase. Poll attempts/interval/page size are env-configurable (`UPLOAD_POLL_*`), with structured logs for baseline fetch, each poll attempt, and new task detection.
+- [x] Avatar storage client fix.
+  Explanation: `get_storage` now uses the Supabase storage property (not a callable) to stop `/api/account/avatar` 500s; added a regression test for the storage accessor and adjusted account tests for the avatar_url argument.
 - [ ] External key creation blocked (401) — current dev key `9a56bd21-eba2-4f8c-bf79-791ffcf2e47b` cannot call `/api-keys`; new users hit `/api/tasks` and crash when dashboard key creation fails (UnboundLocalError). Need either a key with `/api-keys` permission or a safe fallback that skips creation and serves Supabase-only tasks.
 - [ ] TODO: (Enhancement) Add optional in-app scheduler (env-gated) to trigger retention cleanup on an interval for dev/staging when cron isn’t available; update OpenAPI (`api-docs.json`) to include maintenance route. Cron-based purge will be handled later in deployment.
 
