@@ -71,10 +71,15 @@ async def upload_avatar(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Avatar storage unavailable") from exc
 
     try:
-        bucket.upload(filename, file.file, {"contentType": file.content_type or "application/octet-stream"}, upsert=True)
+        data = await file.read()
+        file_options = {
+            "content-type": file.content_type or "application/octet-stream",
+            "upsert": "true",
+        }
+        bucket.upload(filename, data, file_options)
         public_url = bucket.get_public_url(filename)
     except Exception as exc:  # noqa: BLE001
-        logger.error("account.avatar.upload_failed", extra={"error": str(exc)})
+        logger.error("account.avatar.upload_failed", extra={"error": str(exc), "error_type": type(exc).__name__})
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Avatar upload failed") from exc
 
     avatar_url = public_url.get("publicUrl") if isinstance(public_url, dict) else public_url
