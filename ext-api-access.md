@@ -6,7 +6,7 @@ Move external API calls to use Supabase JWT Bearer tokens with role-based access
 ## Plan (step-by-step)
 
 1) Define role claims contract
-   - Source roles from Supabase Auth `app_metadata.role` (`user` default, `admin` for operators). Optionally mirror into `profiles.role` for UI/reporting, but JWT issuance should rely on `app_metadata`.
+   - Source roles solely from Supabase Auth `app_metadata.role` (`user` default, `admin` for the single operator). Do not add a DB role column; the JWT should carry the role from `app_metadata`.
    - Document expected claims the external API enforces (e.g., `role: user|admin`, optional `is_admin: true`).
 
 2) Update token issuance
