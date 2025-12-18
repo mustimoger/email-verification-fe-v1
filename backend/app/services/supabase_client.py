@@ -26,13 +26,20 @@ def fetch_profile(user_id: str) -> Optional[Dict[str, Any]]:
     return data[0] if data else None
 
 
-def upsert_profile(user_id: str, email: Optional[str], display_name: Optional[str]) -> Dict[str, Any]:
+def upsert_profile(
+    user_id: str,
+    email: Optional[str],
+    display_name: Optional[str],
+    avatar_url: Optional[str] = None,
+) -> Dict[str, Any]:
     sb = get_supabase()
     payload: Dict[str, Any] = {"user_id": user_id}
     if email is not None:
         payload["email"] = email
     if display_name is not None:
         payload["display_name"] = display_name
+    if avatar_url is not None:
+        payload["avatar_url"] = avatar_url
     res = sb.table("profiles").upsert(payload, on_conflict="user_id").execute()
     data: List[Dict[str, Any]] = res.data or []
     # supabase-py upsert may return the inserted row or empty; fall back to payload

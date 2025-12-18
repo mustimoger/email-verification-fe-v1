@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { DashboardShell } from "../components/dashboard-shell";
 import { RequireAuth } from "../components/protected";
@@ -17,8 +17,19 @@ type Purchase = {
 };
 
 export default function AccountPage() {
+  const backendBase =
+    typeof process !== "undefined" && process.env.NEXT_PUBLIC_API_BASE_URL
+      ? process.env.NEXT_PUBLIC_API_BASE_URL.replace(/\/api$/, "")
+      : "";
+  const resolveAvatar = (url?: string | null) => {
+    if (!url || url.trim() === "") return "/profile-image.png";
+    if (url.startsWith("http://") || url.startsWith("https://")) return url;
+    return `${backendBase}${url}`;
+  };
+
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [profileDraft, setProfileDraft] = useState<{ email?: string; display_name?: string }>({});
+  const [profileDraft, setProfileDraft] = useState<{ email?: string; display_name?: string; avatar_url?: string }>({});
+  const [avatarUrl, setAvatarUrl] = useState<string>("/profile-image.png");
   const [credits, setCredits] = useState<Credits | null>(null);
   const [purchases] = useState<Purchase[]>([]);
   const [loading, setLoading] = useState(false);
@@ -30,6 +41,7 @@ export default function AccountPage() {
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
   const { session, loading: authLoading, supabase } = useAuth();
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (!session) {
@@ -44,7 +56,8 @@ export default function AccountPage() {
       try {
         const [p, c] = await Promise.all([apiClient.getProfile(), apiClient.getCredits()]);
         setProfile(p);
-        setProfileDraft({ email: p.email ?? "", display_name: p.display_name ?? "" });
+        setAvatarUrl(resolveAvatar(p.avatar_url));
+        setProfileDraft({ email: p.email ?? "", display_name: p.display_name ?? "", avatar_url: p.avatar_url });
         setCredits(c);
       } catch (err: unknown) {
         const message = err instanceof ApiError ? err.message : "Failed to load account";
@@ -66,7 +79,12 @@ export default function AccountPage() {
     try {
       const updated = await apiClient.updateProfile(profileDraft);
       setProfile(updated);
-      setProfileDraft({ email: updated.email ?? "", display_name: updated.display_name ?? "" });
+      setAvatarUrl(resolveAvatar(updated.avatar_url));
+      setProfileDraft({
+        email: updated.email ?? "",
+        display_name: updated.display_name ?? "",
+        avatar_url: updated.avatar_url,
+      });
 
       if (currentPassword && newPassword) {
         const { error: reauthError } = await supabase.auth.signInWithPassword({
@@ -113,15 +131,39 @@ export default function AccountPage() {
           <div className="flex justify-center">
             <div className="flex flex-col items-center">
               <div className="relative h-16 w-16 overflow-hidden rounded-full">
-                <Image src="/profile-image.png" alt="Profile" fill className="object-cover" sizes="64px" />
+                <Image src={avatarUrl || "/profile-image.png"} alt="Profile" fill className="object-cover" sizes="64px" />
               </div>
               <button
                 type="button"
                 className="mt-2 text-xs font-semibold text-sky-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
-                onClick={() => console.info("[account] edit photo clicked")}
+                onClick={() => fileInputRef.current?.click()}
               >
                 Edit Photo
               </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={async (event) => {
+                  const file = event.target.files?.[0];
+                  if (!file) return;
+                  try {
+                    const updated = await apiClient.uploadAvatar(file);
+                    setProfile(updated);
+                    setAvatarUrl(resolveAvatar(updated.avatar_url));
+                    setProfileDraft({
+                      email: updated.email ?? "",
+                      display_name: updated.display_name ?? "",
+                      avatar_url: updated.avatar_url,
+                    });
+                    setPasswordSuccess("Photo updated successfully.");
+                  } catch (err) {
+                    const message = err instanceof ApiError ? err.message : "Failed to update photo.";
+                    setPasswordError(message);
+                  }
+                }}
+              />
             </div>
           </div>
 

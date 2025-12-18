@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from .core.logging import configure_logging
 from .core.settings import get_settings
@@ -29,6 +30,7 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
     @app.get("/health")
     def health() -> dict[str, str]:

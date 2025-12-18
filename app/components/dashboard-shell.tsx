@@ -72,7 +72,7 @@ const profileMenu: ProfileMenuItem[] = [
   { key: "logout", label: "Log out", icon: LogOut },
 ];
 
-function Avatar({ name }: { name: string }) {
+function Avatar({ name, src }: { name: string; src?: string }) {
   const initials = useMemo(() => {
     if (!name) return "U";
     const parts = name.trim().split(" ").filter(Boolean);
@@ -86,7 +86,7 @@ function Avatar({ name }: { name: string }) {
   return (
     <div className="relative h-11 w-11 overflow-hidden rounded-full bg-gradient-to-br from-[#6ea8ff] via-[#f089ff] to-[#ffba7a] text-white">
       <Image
-        src="/profile-image.png"
+        src={src || "/profile-image.png"}
         alt={name}
         fill
         className="object-cover"
@@ -158,6 +158,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   const [loggingOut, setLoggingOut] = useState(false);
   const [profileName, setProfileName] = useState("Moni Roy");
   const [profileRole, setProfileRole] = useState("");
+  const [profileAvatar, setProfileAvatar] = useState<string | undefined>(undefined);
   const [notifications] = useState(6);
   const authState = resolveAuthState({ loading, hasSession: Boolean(session) });
 
@@ -197,6 +198,9 @@ export function DashboardShell({ children }: { children: ReactNode }) {
         setProfileName(name);
         // Do not surface auth roles; leave blank to keep layout without showing technical values.
         setProfileRole("");
+        if (profile.avatar_url) {
+          setProfileAvatar(profile.avatar_url);
+        }
       } catch (err) {
         console.warn("header.profile_load_failed", err);
       }
@@ -327,7 +331,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
                 aria-haspopup="menu"
                 aria-expanded={profileMenuOpen}
               >
-                <Avatar name={profileName} />
+                <Avatar name={profileName} src={profileAvatar} />
                 <div className="text-left">
                   <p className="text-sm font-semibold text-slate-900">
                     {profileName}

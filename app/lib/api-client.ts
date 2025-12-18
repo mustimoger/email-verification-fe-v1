@@ -130,6 +130,7 @@ export type Profile = {
   user_id: string;
   email?: string;
   display_name?: string;
+  avatar_url?: string;
   created_at?: string;
   updated_at?: string;
 };
@@ -336,6 +337,11 @@ export const apiClient = {
     }),
   getProfile: () => request<Profile>("/account/profile", { method: "GET" }),
   updateProfile: (payload: Partial<Profile>) => request<Profile>("/account/profile", { method: "PATCH", body: payload }),
+  uploadAvatar: (file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    return request<Profile>("/account/avatar", { method: "POST", body: form, isForm: true });
+  },
   getCredits: () => request<Credits>("/account/credits", { method: "GET" }),
   getUsage: (start?: string, end?: string, apiKeyId?: string) => {
     const params = new URLSearchParams();
