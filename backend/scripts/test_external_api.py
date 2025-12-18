@@ -25,7 +25,7 @@ def log(title: str, data: Dict[str, Any]) -> None:
 
 
 def request(client: httpx.Client, method: str, url: str, json_body: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-    resp = client.request(method, url, json=json_body, timeout=10)
+    resp = client.request(method, url, json=json_body, timeout=60)
     content: Any
     try:
         content = resp.json()
