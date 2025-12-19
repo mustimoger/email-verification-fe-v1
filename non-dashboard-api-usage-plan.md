@@ -33,6 +33,7 @@ Goal: track and display usage/credits for API keys used outside our app (Zapier,
 4) **Frontend wiring for external usage**
    - `/api` page: allow selecting usage view mode (per‑key vs per‑purpose). Per‑key reads from GET `/api-keys?from&to` and uses `total_requests`. Per‑purpose reads `/metrics/api-usage`.
    - Provide a single usage card with a view selector and dynamic dropdown; avoid extra UI sections to keep the design stable.
+   - Status: UI now supports both views with a selector and uses real totals; chart area shows totals when time-series is unavailable.
    - `/history`: continue showing Supabase tasks; add a “last synced” indicator and retry action if sync failed.
 
 5) **Scheduling/webhooks**

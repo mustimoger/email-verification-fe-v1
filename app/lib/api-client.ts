@@ -46,6 +46,7 @@ export type TaskResponse = {
 export type Task = {
   id?: string;
   user_id?: string;
+  api_key_id?: string;
   webhook_url?: string;
   status?: string;
   email_count?: number;
@@ -59,7 +60,12 @@ export type Task = {
 
 export type TaskEmailJob = {
   id?: string;
+  email?: {
+    email_address?: string;
+    status?: string;
+  };
   email_address?: string;
+  email_id?: string;
   status?: string;
   task_id?: string;
   created_at?: string;
@@ -74,6 +80,10 @@ export type TaskDetailResponse = {
   finished_at?: string;
   updated_at?: string;
   jobs?: TaskEmailJob[];
+  metrics?: {
+    total_email_addresses?: number;
+    verification_status?: Record<string, number>;
+  };
 };
 
 export type TaskListResponse = {
@@ -87,6 +97,7 @@ export type BatchFileUploadResponse = {
   filename?: string;
   message?: string;
   status?: string;
+  task_id?: string;
   upload_id?: string;
   uploaded_at?: string;
 };
@@ -97,6 +108,8 @@ export type ApiKeySummary = {
   created_at?: string;
   is_active?: boolean;
   last_used_at?: string;
+  purpose?: string;
+  total_requests?: number;
   integration?: string;
 };
 
@@ -152,6 +165,27 @@ export type UsageEntry = {
 
 export type UsageResponse = {
   items: UsageEntry[];
+};
+
+export type UsageSummaryPoint = {
+  date: string;
+  count: number;
+};
+
+export type UsageSummaryResponse = {
+  source: string;
+  total: number;
+  series: UsageSummaryPoint[];
+  api_key_id?: string | null;
+};
+
+export type UsagePurposeResponse = {
+  api_keys_by_purpose?: Record<string, number>;
+  last_used_at?: string;
+  requests_by_purpose?: Record<string, number>;
+  total_api_keys?: number;
+  total_requests?: number;
+  user_id?: string;
 };
 
 export type IntegrationOption = {
@@ -324,8 +358,14 @@ export const apiClient = {
     return request<BatchFileUploadResponse[]>("/tasks/upload", { method: "POST", body: form, isForm: true });
   },
   getEmail: (address: string) => request(`/emails/${encodeURIComponent(address)}`, { method: "GET" }),
-  listApiKeys: (includeInternal = false) =>
-    request<ListApiKeysResponse>(`/api-keys${includeInternal ? "?include_internal=true" : ""}`, { method: "GET" }),
+  listApiKeys: (includeInternal = false, start?: string, end?: string) => {
+    const params = new URLSearchParams();
+    if (includeInternal) params.append("include_internal", "true");
+    if (start) params.append("from", start);
+    if (end) params.append("to", end);
+    const qs = params.toString();
+    return request<ListApiKeysResponse>(`/api-keys${qs ? `?${qs}` : ""}`, { method: "GET" });
+  },
   createApiKey: (name: string, integration: string) =>
     request<CreateApiKeyResponse>("/api-keys", { method: "POST", body: { name, integration } }),
   revokeApiKey: (id: string) => request<RevokeApiKeyResponse>(`/api-keys/${id}`, { method: "DELETE" }),
@@ -350,6 +390,21 @@ export const apiClient = {
     if (apiKeyId) params.append("api_key_id", apiKeyId);
     const qs = params.toString();
     return request<UsageResponse>(`/usage${qs ? `?${qs}` : ""}`, { method: "GET" });
+  },
+  getUsageSummary: (start?: string, end?: string, apiKeyId?: string) => {
+    const params = new URLSearchParams();
+    if (start) params.append("start", start);
+    if (end) params.append("end", end);
+    if (apiKeyId) params.append("api_key_id", apiKeyId);
+    const qs = params.toString();
+    return request<UsageSummaryResponse>(`/usage/summary${qs ? `?${qs}` : ""}`, { method: "GET" });
+  },
+  getUsagePurpose: (start?: string, end?: string) => {
+    const params = new URLSearchParams();
+    if (start) params.append("from", start);
+    if (end) params.append("to", end);
+    const qs = params.toString();
+    return request<UsagePurposeResponse>(`/usage/purpose${qs ? `?${qs}` : ""}`, { method: "GET" });
   },
   getOverview: () => request<OverviewResponse>("/overview", { method: "GET" }),
   listIntegrations: () => request<IntegrationOption[]>("/integrations", { method: "GET" }),

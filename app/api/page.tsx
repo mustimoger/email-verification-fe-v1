@@ -13,11 +13,12 @@ import {
   ApiKeySummary,
   IntegrationOption,
   ListApiKeysResponse,
-  UsageEntry,
-  UsageResponse,
+  UsagePurposeResponse,
 } from "../lib/api-client";
+import { formatPurposeLabel, listPurposeOptions, summarizeKeyUsage, summarizePurposeUsage } from "./utils";
 
 type KeyStatus = "active" | "disabled";
+type UsageView = "per_key" | "per_purpose";
 
 const statusStyle: Record<KeyStatus, string> = {
   active: "bg-emerald-100 text-emerald-700",
@@ -30,15 +31,6 @@ function maskKey(id?: string) {
   return `${id.slice(0, 4)}****`;
 }
 
-function groupUsage(items: UsageEntry[]) {
-  return items.map((item) => ({
-    date: item.period_start ? new Date(item.period_start).toLocaleDateString() : "",
-    processed: item.count,
-    valid: item.count, // backend does not split valid/invalid yet; treat as total for now
-    invalid: 0,
-  }));
-}
-
 function getDefaultName(option?: IntegrationOption) {
   if (!option) return "";
   if (option.default_name && option.default_name.trim().length > 0) return option.default_name;
@@ -48,11 +40,14 @@ function getDefaultName(option?: IntegrationOption) {
 export default function ApiPage() {
   const [keys, setKeys] = useState<ApiKeySummary[]>([]);
   const [selectedKey, setSelectedKey] = useState<string>("");
+  const [usageView, setUsageView] = useState<UsageView>("per_key");
+  const [selectedPurpose, setSelectedPurpose] = useState<string>("");
   const [dateRange, setDateRange] = useState({
     from: "",
     to: "",
   });
-  const [usage, setUsage] = useState<UsageEntry[]>([]);
+  const [keyUsageKeys, setKeyUsageKeys] = useState<ApiKeySummary[] | null>(null);
+  const [purposeUsage, setPurposeUsage] = useState<UsagePurposeResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoadingKeys, setIsLoadingKeys] = useState(false);
   const [isLoadingUsage, setIsLoadingUsage] = useState(false);
@@ -65,15 +60,32 @@ export default function ApiPage() {
   const [lastPlainKey, setLastPlainKey] = useState<string | null>(null);
   const { session, loading: authLoading } = useAuth();
 
-  const chartData = useMemo(() => groupUsage(usage), [usage]);
+  const keyUsage = useMemo(
+    () => summarizeKeyUsage(keyUsageKeys ?? [], selectedKey || undefined),
+    [keyUsageKeys, selectedKey],
+  );
+  const purposeUsageSummary = useMemo(
+    () => summarizePurposeUsage(purposeUsage, selectedPurpose || undefined),
+    [purposeUsage, selectedPurpose],
+  );
+  const usageTotal = usageView === "per_key" ? keyUsage.total : purposeUsageSummary.total;
+  const hasUsageData = usageView === "per_key" ? keyUsage.hasData : purposeUsageSummary.hasData;
+  const chartData = useMemo(() => [], [usageView, keyUsageKeys, purposeUsage]);
+  const totalUsageLabel = useMemo(() => {
+    if (!hasUsageData || usageTotal === null) return "—";
+    return usageTotal.toLocaleString();
+  }, [hasUsageData, usageTotal]);
+  const purposeOptions = useMemo(() => listPurposeOptions(purposeUsage), [purposeUsage]);
 
   const isDashboardKey = (key: ApiKeySummary) => (key.name ?? "").toLowerCase() === "dashboard_api";
 
   useEffect(() => {
     if (!session) {
       setKeys([]);
-      setUsage([]);
       setSelectedKey("");
+      setSelectedPurpose("");
+      setKeyUsageKeys(null);
+      setPurposeUsage(null);
       setIntegrationOptions([]);
       setSelectedIntegrationId("");
       setKeyName("");
@@ -88,6 +100,9 @@ export default function ApiPage() {
         const list = (response.keys ?? []).filter((key) => !isDashboardKey(key));
         setKeys(list);
         setSelectedKey("");
+        setSelectedPurpose("");
+        setKeyUsageKeys(null);
+        setPurposeUsage(null);
       } catch (err: unknown) {
         const message = err instanceof ApiError ? err.message : "Failed to load API keys";
         setError(message);
@@ -120,17 +135,43 @@ export default function ApiPage() {
     void loadIntegrations();
   }, [session]);
 
+  useEffect(() => {
+    setKeyUsageKeys(null);
+    setPurposeUsage(null);
+    if (usageView === "per_purpose") {
+      setSelectedPurpose("");
+    }
+  }, [usageView]);
+
   const loadUsage = async () => {
     if (!session) return;
     setIsLoadingUsage(true);
     setError(null);
+    const rangeStart = dateRange.from || undefined;
+    const rangeEnd = dateRange.to || undefined;
+    console.info("api.usage.load", {
+      view: usageView,
+      api_key_id: selectedKey || "all",
+      purpose: selectedPurpose || "all",
+      from: rangeStart,
+      to: rangeEnd,
+    });
     try {
-      const response: UsageResponse = await apiClient.getUsage(
-        dateRange.from || undefined,
-        dateRange.to || undefined,
-        selectedKey || undefined,
-      );
-      setUsage(response.items ?? []);
+      if (usageView === "per_key") {
+        const response: ListApiKeysResponse = await apiClient.listApiKeys(false, rangeStart, rangeEnd);
+        const list = (response.keys ?? []).filter((key) => !isDashboardKey(key));
+        setKeyUsageKeys(list);
+        setPurposeUsage(null);
+        console.debug("api.usage.per_key.loaded", { count: list.length });
+      } else {
+        const response = await apiClient.getUsagePurpose(rangeStart, rangeEnd);
+        setPurposeUsage(response);
+        setKeyUsageKeys(null);
+        console.debug("api.usage.per_purpose.loaded", {
+          total_requests: response.total_requests,
+          purposes: Object.keys(response.requests_by_purpose ?? {}).length,
+        });
+      }
     } catch (err: unknown) {
       const message = err instanceof ApiError ? err.message : "Failed to load usage";
       setError(message);
@@ -238,7 +279,7 @@ export default function ApiPage() {
                   >
                     <span className="text-slate-700">{key.name}</span>
                     <span className="text-slate-700">{maskKey(key.id)}</span>
-                    <span className="text-slate-700">{key.integration ?? "—"}</span>
+                    <span className="text-slate-700">{key.integration ?? key.purpose ?? "—"}</span>
                     <span>
                       <span
                         className={[
@@ -269,25 +310,54 @@ export default function ApiPage() {
         <div className="rounded-2xl bg-white p-5 shadow-md ring-1 ring-slate-200">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <h2 className="text-lg font-extrabold text-slate-900">API Usage</h2>
+            <span className="text-sm font-semibold text-slate-600">Total: {totalUsageLabel}</span>
           </div>
 
-          <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          <div className="mt-4 grid gap-4 lg:grid-cols-3">
             <div className="flex flex-col gap-2">
               <label className="text-xs font-bold uppercase tracking-wide text-slate-700">
-                Select API key
+                Usage view
               </label>
               <select
-                value={selectedKey}
-                onChange={(event) => setSelectedKey(event.target.value)}
+                value={usageView}
+                onChange={(event) => setUsageView(event.target.value as UsageView)}
                 className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm outline-none focus:border-[#4c61cc] focus:ring-1 focus:ring-[#4c61cc]"
               >
-                <option value="">All keys</option>
-                {keys.map((key) => (
-                  <option key={key.id} value={key.id}>
-                    {key.name} ({maskKey(key.id)})
-                  </option>
-                ))}
+                <option value="per_key">Per API key</option>
+                <option value="per_purpose">Per purpose</option>
               </select>
+            </div>
+            <div className="flex flex-col gap-2">
+              <label className="text-xs font-bold uppercase tracking-wide text-slate-700">
+                {usageView === "per_key" ? "Select API key" : "Select purpose"}
+              </label>
+              {usageView === "per_key" ? (
+                <select
+                  value={selectedKey}
+                  onChange={(event) => setSelectedKey(event.target.value)}
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm outline-none focus:border-[#4c61cc] focus:ring-1 focus:ring-[#4c61cc]"
+                >
+                  <option value="">All keys</option>
+                  {keys.map((key) => (
+                    <option key={key.id} value={key.id}>
+                      {key.name} ({maskKey(key.id)})
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <select
+                  value={selectedPurpose}
+                  onChange={(event) => setSelectedPurpose(event.target.value)}
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm outline-none focus:border-[#4c61cc] focus:ring-1 focus:ring-[#4c61cc]"
+                >
+                  <option value="">All purposes</option>
+                  {purposeOptions.map((purpose) => (
+                    <option key={purpose} value={purpose}>
+                      {formatPurposeLabel(purpose)}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
 
             <div className="flex flex-col gap-2">
@@ -340,7 +410,9 @@ export default function ApiPage() {
               </div>
             ) : chartData.length === 0 ? (
               <div className="flex h-full items-center justify-center text-sm font-semibold text-slate-600">
-                No usage data available for the selected range.
+                {hasUsageData && usageTotal !== null
+                  ? `Total usage: ${usageTotal.toLocaleString()}`
+                  : "No usage data available for the selected range."}
               </div>
             ) : (
               <ResponsiveContainer>

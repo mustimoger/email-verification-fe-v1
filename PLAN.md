@@ -78,7 +78,7 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
 - [x] File upload mapping update: use `task_id` from `/tasks/batch/upload` response to fetch task detail/counts per file; remove any time-based selection.
   Explanation: Removed task list polling/time-based mapping; summary counts now come from task detail linked directly by upload response `task_id`. Fixed the stale `deriveUploadSummary` reference in the file-chip removal flow.
 - [ ] File processing in app API: parse uploaded CSV/XLSX/XLS, apply column mapping + header handling + dedupe, then call external `/tasks` with the cleaned email list (no external batch upload).
-  Explanation: External API will not support mapping/dedupe; app API must own the preprocessing step and create per-file tasks directly from parsed emails.
+  Explanation: External API will not support mapping/dedupe; app API must own the preprocessing step and create per-file tasks directly from parsed emails. Enforce limits: `UPLOAD_MAX_EMAILS_PER_TASK` (JSON `/tasks` limit is 10k) and `upload_max_mb` (raw file size cap, 10MB).
 - [ ] Supabase task_files table: persist file metadata per task (user_id, task_id, file_name, source_path, column mapping, flags) for History and downloads.
   Explanation: Needed to show file names in History and recreate annotated download files without mutating originals.
 - [ ] Multi-sheet handling: reject Excel files with multiple sheets and return a clear error to split into single-sheet files.
@@ -275,6 +275,7 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
   Planned steps:
   - Step 1 (backend): DONE — extended external client + API key route to pass `from`/`to`, added `total_requests` + `purpose` fields, added `/api/usage/purpose` proxy for `/metrics/api-usage`, and added tests + logging.  
     Explanation: This wires per‑key totals (from `/api-keys`) and per‑purpose totals (from `/metrics/api-usage`) on the backend so the UI can switch between views without local ingestion.
-  - Step 2 (frontend): update API client types + calls; add usage view selector (per‑key vs per‑purpose) and dynamic dropdown; render totals using new data sources without changing layout.
+  - Step 2 (frontend): DONE — updated API client types/calls, added usage view selector (per‑key vs per‑purpose), dynamic dropdown, and usage totals rendering without altering layout.  
+    Explanation: `/api` now lets users switch between per‑key totals (from `/api-keys`) and per‑purpose totals (from `/metrics/api-usage`) using the same card layout; the chart area shows verified totals when time-series data isn’t provided.
   - Step 3 (verification): run backend tests; note staging deploy + verification are pending if not possible in this environment.
   Explanation: External API now exposes purpose-level metrics with date filters but no per-key breakdown; we need to integrate it for non-dashboard usage or ingest tasks per key to satisfy per-key charts.
