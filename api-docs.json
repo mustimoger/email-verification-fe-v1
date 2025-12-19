@@ -15,13 +15,24 @@
         "version": "1.0"
     },
     "paths": {
-        "/api/v1/api-keys": {
+        "/api-keys": {
             "get": {
-                "description": "Returns all active API keys for the authenticated user",
+                "description": "Returns all active API keys for the authenticated user. Admins may optionally specify a target user via the `user_id` query parameter (required when the admin token does not map to a user UUID).",
                 "tags": [
                     "api-keys"
                 ],
                 "summary": "List user's API keys",
+                "parameters": [
+                    {
+                        "description": "Target user ID (UUID) - admins only",
+                        "name": "user_id",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "List of API keys",
@@ -62,16 +73,27 @@
                 },
                 "security": [
                     {
-                        "BearerAuth": []
+                        "ApiKeyAuth": []
                     }
                 ]
             },
             "post": {
-                "description": "Generates a new API key for the authenticated user. The plaintext key is returned only once and must be saved securely.",
+                "description": "Generates a new API key for the authenticated user. Admins may optionally specify a target user via the `user_id` query parameter (required when the admin token does not map to a user UUID). The plaintext key is returned only once and must be saved securely.",
                 "tags": [
                     "api-keys"
                 ],
                 "summary": "Create a new API key",
+                "parameters": [
+                    {
+                        "description": "Target user ID (UUID) - admins only",
+                        "name": "user_id",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
                 "requestBody": {
                     "content": {
                         "application/json": {
@@ -133,12 +155,12 @@
                 },
                 "security": [
                     {
-                        "BearerAuth": []
+                        "ApiKeyAuth": []
                     }
                 ]
             }
         },
-        "/api/v1/api-keys/{id}": {
+        "/api-keys/{id}": {
             "delete": {
                 "description": "Soft-deletes and deactivates an API key. Only the key owner can revoke it.",
                 "tags": [
@@ -232,7 +254,7 @@
                 },
                 "security": [
                     {
-                        "BearerAuth": []
+                        "ApiKeyAuth": []
                     }
                 ]
             }
@@ -1322,6 +1344,152 @@
                     },
                     "429": {
                         "description": "Rate limit exceeded",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ]
+            }
+        },
+        "/metrics/api-usage": {
+            "get": {
+                "description": "Returns API key usage metrics (request counts) grouped by API key purpose for the authenticated user (or an explicit user_id for admins).",
+                "tags": [
+                    "metrics"
+                ],
+                "summary": "User API usage metrics",
+                "parameters": [
+                    {
+                        "description": "Filter by user ID (UUID format) - admins only",
+                        "name": "user_id",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "API usage metrics",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/cmd_controllers.APIUsageMetricsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid query parameters",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/validation.ValidationErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ]
+            }
+        },
+        "/metrics/verifications": {
+            "get": {
+                "description": "Returns verification metrics scoped to the authenticated user (or an explicit user_id for admins).",
+                "tags": [
+                    "metrics"
+                ],
+                "summary": "User verification metrics",
+                "parameters": [
+                    {
+                        "description": "Filter by user ID (UUID format) - admins only",
+                        "name": "user_id",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Verification metrics",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/cmd_controllers.VerificationMetricsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid query parameters",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/validation.ValidationErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -2967,7 +3135,7 @@
                         }
                     },
                     {
-                        "description": "Filter tasks created after this timestamp (RFC3339 format, e.g., 2023-01-01T00:00:00Z)",
+                        "description": "Filter tasks created after this timestamp (RFC3339 format)",
                         "name": "created_after",
                         "in": "query",
                         "schema": {
@@ -2976,7 +3144,7 @@
                         }
                     },
                     {
-                        "description": "Filter tasks created before this timestamp (RFC3339 format, e.g., 2023-12-31T23:59:59Z)",
+                        "description": "Filter tasks created before this timestamp (RFC3339 format)",
                         "name": "created_before",
                         "in": "query",
                         "schema": {
@@ -2997,7 +3165,7 @@
                         }
                     },
                     "400": {
-                        "description": "Invalid query parameters (malformed UUID or timestamp format)",
+                        "description": "Invalid query parameters (malformed UUID or timestamp)",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -3053,7 +3221,7 @@
                             }
                         }
                     },
-                    "description": "Task creation request with emails, optional user ID, and optional webhook URL",
+                    "description": "Task creation request with emails and optional webhook URL",
                     "required": true
                 },
                 "responses": {
@@ -3132,10 +3300,6 @@
                                     "webhook_url": {
                                         "description": "Webhook URL for notifications",
                                         "type": "string"
-                                    },
-                                    "user_id": {
-                                        "description": "User ID (UUID format)",
-                                        "type": "string"
                                     }
                                 },
                                 "required": [
@@ -3163,83 +3327,6 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/cmd_controllers.BatchFileUploadError"
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "additionalProperties": {
-                                        "type": "string"
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ]
-            }
-        },
-        "/tasks/batch/uploads/{upload_id}": {
-            "get": {
-                "description": "Retrieve task information and status for a batch file upload using the upload_id returned from the upload endpoint",
-                "tags": [
-                    "tasks"
-                ],
-                "summary": "Get batch upload details by upload ID",
-                "parameters": [
-                    {
-                        "description": "Upload ID (UUID format)",
-                        "name": "upload_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Batch upload details",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/cmd_controllers.BatchUploadResponse"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Validation error (invalid UUID)",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "additionalProperties": {
-                                        "type": "string"
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "Upload not found",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "additionalProperties": {
-                                        "type": "string"
-                                    }
                                 }
                             }
                         }
@@ -3447,7 +3534,7 @@
     "components": {
         "securitySchemes": {
             "ApiKeyAuth": {
-                "description": "API key authorization header (Bearer token)",
+                "description": "Authorization header using a Bearer token (Supabase JWT or API key)",
                 "type": "apiKey",
                 "name": "Authorization",
                 "in": "header"
@@ -3473,6 +3560,53 @@
                     "name": {
                         "type": "string",
                         "example": "My Production Key"
+                    },
+                    "purpose": {
+                        "enum": [
+                            "zapier",
+                            "n8n",
+                            "google sheets"
+                        ],
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/models.APIKeyPurpose"
+                            }
+                        ],
+                        "example": "zapier"
+                    }
+                }
+            },
+            "cmd_controllers.APIUsageMetricsResponse": {
+                "type": "object",
+                "properties": {
+                    "api_keys_by_purpose": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    },
+                    "last_used_at": {
+                        "type": "string"
+                    },
+                    "requests_by_purpose": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    },
+                    "total_api_keys": {
+                        "type": "integer",
+                        "example": 3
+                    },
+                    "total_requests": {
+                        "type": "integer",
+                        "example": 1234
+                    },
+                    "user_id": {
+                        "type": "string",
+                        "example": "550e8400-e29b-41d4-a716-446655440000"
                     }
                 }
             },
@@ -3503,35 +3637,6 @@
                         "type": "string"
                     },
                     "uploaded_at": {
-                        "type": "string"
-                    }
-                }
-            },
-            "cmd_controllers.BatchUploadResponse": {
-                "type": "object",
-                "properties": {
-                    "created_at": {
-                        "type": "string"
-                    },
-                    "filename": {
-                        "type": "string"
-                    },
-                    "status": {
-                        "type": "string"
-                    },
-                    "task": {
-                        "$ref": "#/components/schemas/models.Task"
-                    },
-                    "task_id": {
-                        "type": "string"
-                    },
-                    "updated_at": {
-                        "type": "string"
-                    },
-                    "upload_id": {
-                        "type": "string"
-                    },
-                    "user_id": {
                         "type": "string"
                     }
                 }
@@ -3761,11 +3866,27 @@
             },
             "cmd_controllers.CreateAPIKeyRequest": {
                 "type": "object",
+                "required": [
+                    "purpose"
+                ],
                 "properties": {
                     "name": {
                         "type": "string",
                         "maxLength": 255,
                         "example": "My Production Key"
+                    },
+                    "purpose": {
+                        "enum": [
+                            "zapier",
+                            "n8n",
+                            "google sheets"
+                        ],
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/models.APIKeyPurpose"
+                            }
+                        ],
+                        "example": "zapier"
                     }
                 }
             },
@@ -3788,6 +3909,19 @@
                     "name": {
                         "type": "string",
                         "example": "My Production Key"
+                    },
+                    "purpose": {
+                        "enum": [
+                            "zapier",
+                            "n8n",
+                            "google sheets"
+                        ],
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/models.APIKeyPurpose"
+                            }
+                        ],
+                        "example": "zapier"
                     },
                     "user_id": {
                         "type": "string",
@@ -4192,6 +4326,9 @@
                             "$ref": "#/components/schemas/models.TaskEmailJob"
                         }
                     },
+                    "metrics": {
+                        "$ref": "#/components/schemas/cmd_controllers.TaskMetrics"
+                    },
                     "started_at": {
                         "type": "string"
                     },
@@ -4199,6 +4336,9 @@
                         "type": "string"
                     },
                     "user_id": {
+                        "type": "string"
+                    },
+                    "webhook_url": {
                         "type": "string"
                     }
                 }
@@ -4221,7 +4361,44 @@
                     "tasks": {
                         "type": "array",
                         "items": {
-                            "$ref": "#/components/schemas/models.Task"
+                            "$ref": "#/components/schemas/cmd_controllers.TaskSummaryResponse"
+                        }
+                    }
+                }
+            },
+            "cmd_controllers.TaskMetrics": {
+                "type": "object",
+                "properties": {
+                    "job_status": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    },
+                    "last_verification_completed_at": {
+                        "type": "string"
+                    },
+                    "last_verification_requested_at": {
+                        "type": "string"
+                    },
+                    "progress": {
+                        "type": "number",
+                        "example": 0.85
+                    },
+                    "progress_percent": {
+                        "type": "integer",
+                        "example": 85
+                    },
+                    "total_email_addresses": {
+                        "type": "integer",
+                        "example": 1234
+                    },
+                    "verification_status": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "integer",
+                            "format": "int64"
                         }
                     }
                 }
@@ -4242,10 +4419,6 @@
                             "[\"user1@example.com\"",
                             " \"user2@example.com\"]"
                         ]
-                    },
-                    "user_id": {
-                        "type": "string",
-                        "example": "550e8400-e29b-41d4-a716-446655440000"
                     },
                     "webhook_url": {
                         "type": "string",
@@ -4279,6 +4452,29 @@
                     "webhook_url": {
                         "type": "string",
                         "example": "https://example.com/webhook"
+                    }
+                }
+            },
+            "cmd_controllers.TaskSummaryResponse": {
+                "type": "object",
+                "properties": {
+                    "created_at": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "metrics": {
+                        "$ref": "#/components/schemas/cmd_controllers.TaskMetrics"
+                    },
+                    "updated_at": {
+                        "type": "string"
+                    },
+                    "user_id": {
+                        "type": "string"
+                    },
+                    "webhook_url": {
+                        "type": "string"
                     }
                 }
             },
@@ -4365,6 +4561,59 @@
                     }
                 }
             },
+            "cmd_controllers.VerificationMetricsResponse": {
+                "type": "object",
+                "properties": {
+                    "job_status": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    },
+                    "last_verification_completed_at": {
+                        "type": "string"
+                    },
+                    "last_verification_requested_at": {
+                        "type": "string"
+                    },
+                    "total_catchall": {
+                        "type": "integer",
+                        "example": 10
+                    },
+                    "total_disposable_domain_emails": {
+                        "type": "integer",
+                        "example": 5
+                    },
+                    "total_role_based": {
+                        "type": "integer",
+                        "example": 42
+                    },
+                    "total_tasks": {
+                        "type": "integer",
+                        "example": 12
+                    },
+                    "total_verifications": {
+                        "type": "integer",
+                        "example": 1234
+                    },
+                    "unique_email_addresses": {
+                        "type": "integer",
+                        "example": 1200
+                    },
+                    "user_id": {
+                        "type": "string",
+                        "example": "550e8400-e29b-41d4-a716-446655440000"
+                    },
+                    "verification_status": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    }
+                }
+            },
             "cmd_controllers.VerifyEmailRequest": {
                 "type": "object",
                 "required": [
@@ -4411,6 +4660,19 @@
                         }
                     }
                 }
+            },
+            "models.APIKeyPurpose": {
+                "type": "string",
+                "enum": [
+                    "zapier",
+                    "n8n",
+                    "google sheets"
+                ],
+                "x-enum-varnames": [
+                    "APIKeyPurposeZapier",
+                    "APIKeyPurposeN8N",
+                    "APIKeyPurposeGoogleSheets"
+                ]
             },
             "models.ConnectionType": {
                 "type": "string",

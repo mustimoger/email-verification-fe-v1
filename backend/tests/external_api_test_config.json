@@ -1,0 +1,15 @@
+{
+  "authorization_formats": [
+    "bearer",
+    "raw"
+  ],
+  "allow_mutating": true,
+  "verify_email": "murat.kural@dva.com.tr",
+  "task_emails": [
+    "murat.kural@dva.com.tr"
+  ],
+  "upload_file_path": "test-emails.csv",
+  "api_key_name": "external_api_test_key",
+  "api_key_purpose": "zapier",
+  "timeout_seconds": 60
+}
