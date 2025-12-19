@@ -77,6 +77,18 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
   Explanation: Upload flow now uses `/tasks/batch/upload` response `filename` + `task_id` to map each file to its task, fetches task detail per task id, and builds the summary from real task data without time-based selection.
 - [x] File upload mapping update: use `task_id` from `/tasks/batch/upload` response to fetch task detail/counts per file; remove any time-based selection.
   Explanation: Removed task list polling/time-based mapping; summary counts now come from task detail linked directly by upload response `task_id`. Fixed the stale `deriveUploadSummary` reference in the file-chip removal flow.
+- [ ] File processing in app API: parse uploaded CSV/XLSX/XLS, apply column mapping + header handling + dedupe, then call external `/tasks` with the cleaned email list (no external batch upload).
+  Explanation: External API will not support mapping/dedupe; app API must own the preprocessing step and create per-file tasks directly from parsed emails.
+- [ ] Supabase task_files table: persist file metadata per task (user_id, task_id, file_name, source_path, column mapping, flags) for History and downloads.
+  Explanation: Needed to show file names in History and recreate annotated download files without mutating originals.
+- [ ] Multi-sheet handling: reject Excel files with multiple sheets and return a clear error to split into single-sheet files.
+  Explanation: Only the first sheet is supported for MVP to keep parsing deterministic and avoid incorrect column mapping.
+- [ ] Verify download output: generate a new file with verification result columns appended, keep original file unchanged, and expose a download endpoint per task.
+  Explanation: Users should download verified results while original uploads remain intact; output file should be derived from stored metadata and task results.
+- [ ] Frontend verify: send column mapping + header/dedupe flags with file uploads; validate mapping before submit; wire download action to new backend endpoint.
+  Explanation: UI already collects mapping/flags, but backend needs them; download pill should trigger file download once results are ready.
+- [ ] History filenames: use task_files metadata to display file names for file-based tasks in History.
+  Explanation: Improves History readability and aligns with requirement to persist file names.
 - [x] Verify flow audit (manual + upload wiring) to capture remaining placeholders and mapping gaps.
   Explanation: Manual verify already polls `/api/tasks/{id}` and maps job statuses; upload summary logic still uses time-based task selection and references a removed `deriveUploadSummary` helper in the file-chip remove flow, so file mapping must be replaced with the new upload response `task_id` linkage.
 
@@ -221,15 +233,17 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
 - [x] Webhook credit grant uses Supabase plan catalog for credit mapping and notifies on missing/invalid mappings.
   Explanation: Webhook now resolves credits via `billing_plans` using `get_billing_plans_by_price_ids`; unmapped prices log `billing.webhook.no_credits` and do not grant credits.
 - [ ] Credit deduction on usage with atomic update and idempotency guard.
-  Explanation: Credits should decrement when tasks/verification are accepted; handle retries without double-deduction and reject when insufficient. Not implemented yet.
+  Explanation: Credits should decrement when tasks/verification are accepted; handle retries without double-deduction and reject when insufficient. Deferred per request; not implementing now.
 - [x] Priority High: Confirm Paddle webhook signature spec and align verification (or use official SDK verifier) with tests.
   Explanation: Aligned verification logic with Paddle’s official SDK implementation (ts + h1 header, HMAC of `ts:raw_body`, optional multi-signature support, time drift checks) and added focused tests. Added `PADDLE_WEBHOOK_MAX_VARIANCE_SECONDS` configuration to avoid hardcoded drift defaults.
 - [x] Priority High: Verify webhook ingress IP handling in current infra and adjust allowlist logic.
   Explanation: Added explicit proxy-aware client IP resolution for Paddle webhooks with env-driven forwarded header format + hop count, plus tests for direct/proxy paths. `PADDLE_WEBHOOK_TRUST_PROXY` is now required to avoid silent misconfiguration.
 - [x] Priority High: Enforce required address fields per target country for Paddle address creation.
   Explanation: Switched to checkout-collected addresses for global support (configurable `PADDLE_ADDRESS_MODE=checkout`) so Paddle collects country-specific fields. Address creation is skipped server-side, transactions omit `address_id`, and `paddle_customers.paddle_address_id` is now nullable; server-default mode remains available and requires full default address config.
+- [ ] Paddle webhook simulation verification — run a sandbox simulation to confirm webhook delivery and credit grants.
+  Explanation: Pending; will use Paddle MCP to send a `transaction.completed` event and confirm credits increment for a real user + price_id.
 - [ ] Priority Medium: Extend webhook event handling for subscription renewals and payment failure events.
-  Explanation: Ensure credits and entitlements remain consistent for subscription lifecycle events beyond transaction completion; add idempotent storage and tests for new event types. Not implemented yet.
+  Explanation: Out of scope for one-time credit packs; defer until subscriptions are introduced.
 - [ ] Priority Medium: Add short-lived caching for plan price lookups in `/api/billing/plans`.
   Explanation: Reduce Paddle API calls and avoid rate limits while keeping pricing reasonably fresh. Not implemented yet.
 - [ ] Priority Low: Add customer portal session endpoint + UI link for self-serve billing management.
@@ -256,5 +270,10 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
 - [x] API usage summary (dashboard) — Added `/api/usage/summary` that aggregates task counts by day from Supabase `tasks`, supports date range + `api_key_id`, and wired `/api` UI to use it.  
   Explanation: Usage chart now reads real per-task counts (email_count or derived counts) and displays totals; this covers dashboard-driven usage without relying on placeholder mapping.
 - [ ] API usage wiring (external) — Re-check the next `api-docs.json` (incoming) for the promised per‑key usage per user. Implement dual usage views on `/api`: per‑key usage (from the new per‑key endpoint once documented) and per‑purpose usage (from `/metrics/api-usage` with `from`/`to`). Add logging + tests for both paths.
-  Docs review note (current): `/metrics/api-usage` and `/metrics/verifications` only; usage grouped by purpose; `/tasks` supports `user_id` + date range only; no per‑key usage endpoint yet.
+  Docs review note (latest): Updated `api-docs.json` exposes per‑key usage in GET `/api-keys` list via `APIKeySummary.total_requests` and supports `from`/`to` date filters (by last_used_at). Purpose‑level usage remains `/metrics/api-usage`. `/tasks` still supports `user_id` + date range only.
+  Explanation: This enables per‑key totals from `/api-keys` and per‑purpose totals from `/metrics/api-usage`, matching the dual-view requirement without local ingestion.
+  Planned steps:
+  - Step 1 (backend): extend external client + API key route to pass `from`/`to`, include `total_requests` + `purpose`, add `/api/usage/purpose` proxy for `/metrics/api-usage`, add tests + logging.
+  - Step 2 (frontend): update API client types + calls; add usage view selector (per‑key vs per‑purpose) and dynamic dropdown; render totals using new data sources without changing layout.
+  - Step 3 (verification): run backend tests; note staging deploy + verification are pending if not possible in this environment.
   Explanation: External API now exposes purpose-level metrics with date filters but no per-key breakdown; we need to integrate it for non-dashboard usage or ingest tasks per key to satisfy per-key charts.
