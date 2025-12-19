@@ -68,6 +68,9 @@ class CheckoutRequest(BaseModel):
 @router.get("/plans", response_model=PlansPayload)
 async def list_plans(user: AuthContext = Depends(get_current_user)):
     config = get_paddle_config()
+    if not config.plan_definitions:
+        logger.error("billing.plans.missing_definitions")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Billing plans not configured")
     env = config.active_environment
     client = get_paddle_client()
 
@@ -273,6 +276,9 @@ async def create_transaction(
     user: AuthContext = Depends(get_current_user),
 ):
     config = get_paddle_config()
+    if not config.plan_definitions:
+        logger.error("billing.transaction.missing_definitions")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Billing plans not configured")
     # Ensure price exists in plan definitions to avoid arbitrary price injection
     allowed_price = None
     for plan in config.plan_definitions.values():

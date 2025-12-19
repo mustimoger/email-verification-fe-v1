@@ -70,6 +70,14 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
 - [ ] Summarize changes and outcomes for newcomers; pause for confirmation before proceeding to popup flow/second Verify state.
 - [x] Verify backend wiring: ingest external task metrics into Supabase on `/tasks` list/create/upload so manual/file flows surface real counts without placeholder data.
   Explanation: Added task metrics parsing (`verification_status`, `total_email_addresses`) to map counts into Supabase tasks; tests added and `pytest backend/tests` passed.
+- [ ] Frontend verify wiring (manual): replace per-email placeholder results with task detail results from `/api/tasks/{id}` and show statuses from the backend.
+  Explanation: Manual verify should use real task/job data; fallback to pending only when the backend has not produced job statuses yet.
+- [ ] Frontend verify wiring (file upload): replace synthetic per-file counts with backend task counts, and define a clear mapping between uploaded files and task records.
+  Explanation: Updated external API docs show `/tasks/batch/upload` returns `filename` + `task_id`, so we can map each uploaded file to its task deterministically; remove time-based mapping and use upload response linkage.
+- [ ] File upload mapping update: use `task_id` from `/tasks/batch/upload` response to fetch task detail/counts per file; remove any time-based selection.
+  Explanation: This avoids incorrect counts and uses the explicit file->task linkage now provided by the API.
+- [x] Verify flow audit (manual + upload wiring) to capture remaining placeholders and mapping gaps.
+  Explanation: Manual verify already polls `/api/tasks/{id}` and maps job statuses; upload summary logic still uses time-based task selection and references a removed `deriveUploadSummary` helper in the file-chip remove flow, so file mapping must be replaced with the new upload response `task_id` linkage.
 
 ## Next: Second Verify state (post-upload)
 - [x] Pull Figma specs for second Verify state via Figma MCP; captured screenshot (node `64:75`) showing results table + validation donut. Footer and shell unchanged.
@@ -199,6 +207,32 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
 - [x] Env defaults for Paddle addresses set (per user input): `PADDLE_BILLING_DEFAULT_COUNTRY=US`, line1/city/region/postal present. Explanation: satisfies auto address creation in sandbox; change to production equivalents before go-live.
 - [x] Paddle checkout conflicts resolved: deterministic email filter (`list_customers(email=...)`) with fuzzy fallback; profile email backfill from auth claims; Supabase upsert fixed for supabase-py. New user checkout (dmktadimiz@gmail.com) succeeds; Paddle customer/address reused and transactions created.
 - [x] Paddle sandbox checkout script switched to `https://sandbox-cdn.paddle.com/paddle/v2/paddle.js` to reduce CSP noise; billing tests updated and passing. Next/Image logo aspect ratio warning remains cosmetic; CSP report-only logs may still appear from Paddle/Sentry/Kaspersky. (Intentionally not addressing the Next/Image aspect-ratio warning per instruction.)
+- [x] Create 3 Paddle sandbox plans (Basic/Professional/Enterprise) as one-time USD credit packs and store their IDs + credits in Supabase; keep Custom as contact-only for now.
+  Explanation: Created Paddle sandbox products/prices with taxMode=internal and customData credits for Basic/Professional/Enterprise; IDs captured for Supabase catalog sync. Products: Basic `pro_01kcvp3asd8nb0fnp5jwmrbbsn`, Professional `pro_01kcvp3brdtca0cxzyzg2mvbke`, Enterprise `pro_01kcvp3d4zrnp5dgt8gd0szdx7`. Prices: Basic `pri_01kcvp3r27t1rc4apy168x2n8e` (USD 29), Professional `pri_01kcvp3sycsr5b47kvraf10m9a` (USD 129), Enterprise `pri_01kcvp3wceq1d9sfw6x9b96v9q` (USD 279).
+- [x] Supabase schema: created `billing_plans` table for the Paddle plan catalog.
+  Explanation: Stores Paddle product/price IDs, credits, and status so pricing and credit grants are driven by Supabase, not env config.
+- [ ] Supabase plan catalog + API wiring — read plans from Supabase instead of env and validate price_id against stored catalog.
+  Explanation: Ensures frontend plans and webhook credit grants are based on a single source of truth. Not implemented yet.
+- [x] Admin sync script — pull Paddle catalog and upsert `billing_plans` in Supabase after plan changes.
+  Explanation: Added `backend/scripts/sync_paddle_plans.py` to list products/prices and upsert Supabase rows, with status filtering and validation. Script run is pending: requires API URL + API key env/CLI overrides (not executed yet due to missing key at runtime).
+- [ ] Webhook credit grant uses Supabase plan catalog for credit mapping and notifies on missing/invalid mappings.
+  Explanation: Prevents silent mismatches; credits are granted only when price_id is known and mapped. Not implemented yet.
+- [ ] Credit deduction on usage with atomic update and idempotency guard.
+  Explanation: Credits should decrement when tasks/verification are accepted; handle retries without double-deduction and reject when insufficient. Not implemented yet.
+- [ ] Priority High: Confirm Paddle webhook signature spec and align verification (or use official SDK verifier) with tests.
+  Explanation: The current HMAC verification assumes a specific string-to-sign; to prevent false rejects or accepting invalid signatures, validate against Paddle’s official spec or switch to SDK verification and add known-good signature tests. Not implemented yet; awaiting definitive spec confirmation and decision to use SDK or manual verification.
+- [ ] Priority High: Verify webhook ingress IP handling in current infra and adjust allowlist logic.
+  Explanation: If requests traverse a proxy/CDN, `request.client.host` may be the proxy IP; add trusted forwarded header handling or disable IP allowlist when appropriate, with tests. Not implemented yet; need confirmation of deployment network path.
+- [ ] Priority High: Enforce required address fields per target country for Paddle address creation.
+  Explanation: Some countries require postal/region; add validation using configured defaults or require user-supplied fields to prevent checkout failures. Not implemented yet; need target country list to drive requirements.
+- [ ] Priority Medium: Extend webhook event handling for subscription renewals and payment failure events.
+  Explanation: Ensure credits and entitlements remain consistent for subscription lifecycle events beyond transaction completion; add idempotent storage and tests for new event types. Not implemented yet.
+- [ ] Priority Medium: Add short-lived caching for plan price lookups in `/api/billing/plans`.
+  Explanation: Reduce Paddle API calls and avoid rate limits while keeping pricing reasonably fresh. Not implemented yet.
+- [ ] Priority Low: Add customer portal session endpoint + UI link for self-serve billing management.
+  Explanation: Optional convenience feature; can be added after core billing reliability is confirmed. Not implemented yet.
+- [ ] Priority Low: Add frontend price preview for localized totals.
+  Explanation: Improves UX by showing taxes/total before checkout; defer until core flow is stable. Not implemented yet.
 
 ## Supabase schema updates
 - [x] Added `cached_api_keys` (key_id PK, user_id FK, name, created_at) with user index for API key caching.
@@ -208,3 +242,11 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
 - [x] File upload tasks ingestion after batch upload.  
   Explanation: Added configurable post-upload polling that captures tasks created by `/tasks/batch/upload` by fetching recent tasks with the user’s key, comparing against a baseline, and upserting into Supabase. Logging covers baseline fetch, poll attempts, and new task detection; env knobs (`UPLOAD_POLL_*`) control attempts/interval/page size.
 - [x] Header profile wiring — Sidebar/topbar profile now loads Supabase-backed user profile (display_name/email) and role from session; avatar initials derived from real name. Hardcoded placeholder removed.
+- [x] Account email/password sync — Require reauth for email/password changes; use Supabase Auth email confirmation flow; only update profiles.email after confirmation; sync confirmed email to profiles on login; add tests.  
+  Explanation: Added backend email guard, updated account UI to reauth + request email confirmation, synced confirmed emails on login, and added backend tests for the guarded update flow.
+- [ ] Account purchase history/invoices — Wire purchase history and invoice downloads (Paddle transactions/webhooks) into `/account` later.  
+  Explanation: `/account` still renders an empty purchase list; backend endpoints + UI wiring are needed for real invoices.
+- [x] History key scoping — Store `api_key_id` on tasks created in-app and filter `/history` by selected key; avoid mislabeling tasks when key mapping is unknown; add tests.  
+  Explanation: Added `api_key_id` to tasks + indexes, tagged tasks when key is known (dashboard cache or detail lookup), filtered Supabase queries by key, skipped external list when key-scoped to avoid mislabeling, and added tests.
+- [ ] API usage wiring — Use external metrics endpoints for non-dashboard usage (by purpose + date range), and store dashboard usage with `api_key_id` for per-key charts. If per-key external usage is required, ingest tasks per key into Supabase.  
+  Explanation: Updated external API now exposes `/metrics/api-usage` and `/metrics/verifications` with from/to filters, but still lacks per-key usage; we should use it for purpose-level summaries and keep per-key graphs backed by Supabase ingestion.

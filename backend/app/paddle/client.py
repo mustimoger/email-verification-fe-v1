@@ -160,6 +160,24 @@ class PaddleAPIClient:
         response = await self._request("GET", f"/customers/{customer_id}/addresses")
         return self._parse_response_generic(response)  # returns dict with data/meta
 
+    async def list_products(self, after: Optional[str] = None, status: Optional[list[str]] = None) -> dict:
+        params: Dict[str, Any] = {}
+        if after:
+            params["after"] = after
+        if status:
+            params["status"] = ",".join(status)
+        response = await self._request("GET", "/products", params=params or None)
+        return self._parse_response_generic(response)  # returns dict with data/meta
+
+    async def list_prices(self, after: Optional[str] = None, status: Optional[list[str]] = None) -> dict:
+        params: Dict[str, Any] = {}
+        if after:
+            params["after"] = after
+        if status:
+            params["status"] = ",".join(status)
+        response = await self._request("GET", "/prices", params=params or None)
+        return self._parse_response_generic(response)  # returns dict with data/meta
+
     def _parse_response_generic(self, response: httpx.Response):
         if response.status_code >= 400:
             detail = None

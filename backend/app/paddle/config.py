@@ -56,7 +56,10 @@ class PaddleConfig(BaseSettings):
     client_side_token: Optional[str] = Field(None, alias="PADDLE_CLIENT_SIDE_TOKEN")
     seller_id: Optional[str] = Field(None, alias="PADDLE_SELLER_ID")
 
-    plan_definitions: Dict[str, PaddlePlanDefinition] = Field(alias="PADDLE_BILLING_PLAN_DEFINITIONS")
+    plan_definitions: Optional[Dict[str, PaddlePlanDefinition]] = Field(
+        default=None,
+        alias="PADDLE_BILLING_PLAN_DEFINITIONS",
+    )
 
     sandbox_ip_allowlist: list[str] | str = Field(default_factory=list, alias="PADDLE_SANDBOX_IPS")
     production_ip_allowlist: list[str] | str = Field(default_factory=list, alias="PADDLE_PRODUCTION_IPS")
@@ -82,13 +85,15 @@ class PaddleConfig(BaseSettings):
     @field_validator("plan_definitions", mode="before")
     @classmethod
     def parse_plan_definitions(cls, value):
+        if value is None or value == "":
+            return None
         if isinstance(value, str):
             try:
                 return json.loads(value)
             except Exception as exc:  # noqa: BLE001
                 raise ValueError(f"Invalid JSON for PADDLE_BILLING_PLAN_DEFINITIONS: {exc}") from exc
         if not value:
-            raise ValueError("PADDLE_BILLING_PLAN_DEFINITIONS is required")
+            return None
         return value
 
     @field_validator("sandbox_ip_allowlist", "production_ip_allowlist", mode="before")
