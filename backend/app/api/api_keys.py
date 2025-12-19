@@ -1,5 +1,6 @@
 import logging
-from fastapi import APIRouter, Depends, HTTPException, status
+from datetime import datetime
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from ..clients.external import ExternalAPIClient, ExternalAPIError
 from ..core.auth import AuthContext, get_current_user
@@ -13,6 +14,7 @@ from ..services.api_keys import (
 from ..config.integrations import get_integration_by_id, get_integration_ids
 from ..services.usage import record_usage
 from ..clients.external import APIKeySummary, ListAPIKeysResponse, CreateAPIKeyResponse, RevokeAPIKeyResponse
+from ..services.usage_summary import normalize_range_value
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/api", tags=["api-keys"])
@@ -47,9 +49,23 @@ def get_user_external_client(user: AuthContext = Depends(get_current_user)) -> E
 async def list_api_keys(
     include_internal: bool = False,
     user_id: str | None = None,
+    range_start: str | None = Query(default=None, alias="from", description="RFC3339 start timestamp"),
+    range_end: str | None = Query(default=None, alias="to", description="RFC3339 end timestamp"),
     user: AuthContext = Depends(get_current_user),
     client: ExternalAPIClient = Depends(get_user_external_client),
 ):
+    try:
+        start_value = normalize_range_value(range_start)
+        end_value = normalize_range_value(range_end)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    if start_value and end_value:
+        start_dt = datetime.fromisoformat(start_value)
+        end_dt = datetime.fromisoformat(end_value)
+        if start_dt > end_dt:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="from must be before to")
+
     target_user_id = user.user_id
     if user_id:
         if user.role != "admin":
@@ -65,14 +81,26 @@ async def list_api_keys(
         )
     cached = {item["key_id"]: item for item in list_cached_keys(target_user_id)}
     try:
-        result = await client.list_api_keys(user_id=target_user_id if user_id else None)
+        result = await client.list_api_keys(
+            user_id=target_user_id if user_id else None,
+            start=start_value,
+            end=end_value,
+        )
         if result.keys:
             filtered_keys = [k for k in result.keys if include_internal or not _is_dashboard_key(k.name)]
             result.keys = filtered_keys
             result.count = len(filtered_keys) if filtered_keys is not None else result.count
         # With per-user JWTs, we can return the full list; fall back to cached if needed.
         record_usage(target_user_id, path="/api-keys", count=1)
-        logger.info("route.api_keys.list", extra={"user_id": target_user_id, "count": result.count})
+        logger.info(
+            "route.api_keys.list",
+            extra={
+                "user_id": target_user_id,
+                "count": result.count,
+                "from": start_value,
+                "to": end_value,
+            },
+        )
         return result
     except ExternalAPIError as exc:
         if exc.status_code in (401, 403):
@@ -84,6 +112,11 @@ async def list_api_keys(
             logger.warning(
                 "route.api_keys.list_external_failed",
                 extra={"user_id": target_user_id, "status_code": exc.status_code, "details": exc.details},
+            )
+        if start_value or end_value:
+            logger.warning(
+                "route.api_keys.list_cache_fallback_range_ignored",
+                extra={"user_id": target_user_id, "from": start_value, "to": end_value},
             )
         # Safe fallback to cached keys (if any), excluding dashboard unless requested.
         logger.warning(

@@ -129,6 +129,7 @@ class BatchFileUploadResponse(BaseModel):
     filename: Optional[str] = None
     message: Optional[str] = None
     status: Optional[str] = None
+    task_id: Optional[str] = None
     upload_id: Optional[str] = None
     uploaded_at: Optional[str] = None
 
@@ -144,12 +145,23 @@ class APIKeySummary(BaseModel):
     created_at: Optional[str] = None
     is_active: Optional[bool] = None
     last_used_at: Optional[str] = None
+    purpose: Optional[str] = None
+    total_requests: Optional[int] = None
     integration: Optional[str] = None
 
 
 class ListAPIKeysResponse(BaseModel):
     count: Optional[int] = None
     keys: Optional[List[APIKeySummary]] = None
+
+
+class APIUsageMetricsResponse(BaseModel):
+    api_keys_by_purpose: Optional[Dict[str, int]] = None
+    last_used_at: Optional[str] = None
+    requests_by_purpose: Optional[Dict[str, int]] = None
+    total_api_keys: Optional[int] = None
+    total_requests: Optional[int] = None
+    user_id: Optional[str] = None
 
 
 class CreateAPIKeyResponse(BaseModel):
@@ -237,8 +249,21 @@ class ExternalAPIClient:
 
         return await self._post_multipart("/tasks/batch/upload", data=data, files=files, model=BatchFileUploadResponse)
 
-    async def list_api_keys(self, user_id: Optional[str] = None) -> ListAPIKeysResponse:
-        params = {"user_id": user_id} if user_id else None
+    async def list_api_keys(
+        self,
+        user_id: Optional[str] = None,
+        start: Optional[str] = None,
+        end: Optional[str] = None,
+    ) -> ListAPIKeysResponse:
+        params: Dict[str, Any] = {}
+        if user_id:
+            params["user_id"] = user_id
+        if start:
+            params["from"] = start
+        if end:
+            params["to"] = end
+        if not params:
+            params = None
         return await self._get("/api-keys", ListAPIKeysResponse, params=params)
 
     async def create_api_key(self, name: str, purpose: str, user_id: Optional[str] = None) -> CreateAPIKeyResponse:
@@ -248,6 +273,23 @@ class ExternalAPIClient:
     async def revoke_api_key(self, api_key_id: str, user_id: Optional[str] = None) -> RevokeAPIKeyResponse:
         params = {"user_id": user_id} if user_id else None
         return await self._delete(f"/api-keys/{api_key_id}", RevokeAPIKeyResponse, params=params)
+
+    async def get_api_usage_metrics(
+        self,
+        user_id: Optional[str] = None,
+        start: Optional[str] = None,
+        end: Optional[str] = None,
+    ) -> APIUsageMetricsResponse:
+        params: Dict[str, Any] = {}
+        if user_id:
+            params["user_id"] = user_id
+        if start:
+            params["from"] = start
+        if end:
+            params["to"] = end
+        if not params:
+            params = None
+        return await self._get("/metrics/api-usage", APIUsageMetricsResponse, params=params)
 
     async def get_email_by_address(self, address: str) -> Dict[str, Any]:
         response = await self._request("GET", f"/emails/{address}")

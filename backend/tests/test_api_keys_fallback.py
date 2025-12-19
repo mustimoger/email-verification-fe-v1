@@ -11,7 +11,6 @@ from app.core.auth import AuthContext
 @pytest.fixture(autouse=True)
 def env(monkeypatch):
     monkeypatch.setenv("EMAIL_API_BASE_URL", "https://api.test")
-    monkeypatch.setenv("EMAIL_API_KEY", "key")
     monkeypatch.setenv("SUPABASE_URL", "https://sb.test")
     monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service_key")
     monkeypatch.setenv("SUPABASE_JWT_SECRET", "secret")
@@ -27,9 +26,9 @@ def _build_app(monkeypatch):
 
     class FakeClient(ExternalAPIClient):  # type: ignore[misc]
         def __init__(self):
-            super().__init__(base_url="https://api.test", api_key="key")
+            super().__init__(base_url="https://api.test", bearer_token="key")
 
-        async def list_api_keys(self):
+        async def list_api_keys(self, user_id=None, start=None, end=None):
             raise ExternalAPIError(status_code=503, message="auth unavailable", details={"error": "Authentication service unavailable"})
 
     monkeypatch.setattr(
@@ -42,7 +41,7 @@ def _build_app(monkeypatch):
     )
     monkeypatch.setattr(api_keys_module, "record_usage", lambda *args, **kwargs: None)
     app.dependency_overrides[api_keys_module.get_current_user] = fake_user
-    app.dependency_overrides[api_keys_module.get_external_api_client] = lambda: FakeClient()
+    app.dependency_overrides[api_keys_module.get_user_external_client] = lambda: FakeClient()
     return app
 
 
@@ -79,15 +78,15 @@ def test_list_api_keys_empty_cache_returns_empty(monkeypatch):
 
     class FakeClient(ExternalAPIClient):  # type: ignore[misc]
         def __init__(self):
-            super().__init__(base_url="https://api.test", api_key="key")
+            super().__init__(base_url="https://api.test", bearer_token="key")
 
-        async def list_api_keys(self):
+        async def list_api_keys(self, user_id=None, start=None, end=None):
             raise ExternalAPIError(status_code=503, message="auth unavailable", details={"error": "Authentication service unavailable"})
 
     monkeypatch.setattr(api_keys_module, "list_cached_keys", lambda user_id: [])
     monkeypatch.setattr(api_keys_module, "record_usage", lambda *args, **kwargs: None)
     app.dependency_overrides[api_keys_module.get_current_user] = fake_user
-    app.dependency_overrides[api_keys_module.get_external_api_client] = lambda: FakeClient()
+    app.dependency_overrides[api_keys_module.get_user_external_client] = lambda: FakeClient()
 
     client = TestClient(app)
     resp = client.get("/api/api-keys")

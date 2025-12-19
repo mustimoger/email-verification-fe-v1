@@ -241,7 +241,7 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
 - [x] Priority High: Enforce required address fields per target country for Paddle address creation.
   Explanation: Switched to checkout-collected addresses for global support (configurable `PADDLE_ADDRESS_MODE=checkout`) so Paddle collects country-specific fields. Address creation is skipped server-side, transactions omit `address_id`, and `paddle_customers.paddle_address_id` is now nullable; server-default mode remains available and requires full default address config.
 - [ ] Paddle webhook simulation verification — run a sandbox simulation to confirm webhook delivery and credit grants.
-  Explanation: Pending; will use Paddle MCP to send a `transaction.completed` event and confirm credits increment for a real user + price_id.
+  Explanation: Attempted with Paddle MCP. Simulation failed because the notification destination required `trafficSource=simulation` (created a new notification setting), but the webhook secret on the server didn't match the new endpoint secret so signature verification failed (HTTP 400). Paddle also sent a static sample payload without `custom_data`, so credit grants couldn't be validated. Next step: update the server webhook secret to the simulation destination’s secret or run a real sandbox checkout to trigger a production webhook.
 - [ ] Priority Medium: Extend webhook event handling for subscription renewals and payment failure events.
   Explanation: Out of scope for one-time credit packs; defer until subscriptions are introduced.
 - [ ] Priority Medium: Add short-lived caching for plan price lookups in `/api/billing/plans`.
@@ -273,7 +273,8 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
   Docs review note (latest): Updated `api-docs.json` exposes per‑key usage in GET `/api-keys` list via `APIKeySummary.total_requests` and supports `from`/`to` date filters (by last_used_at). Purpose‑level usage remains `/metrics/api-usage`. `/tasks` still supports `user_id` + date range only.
   Explanation: This enables per‑key totals from `/api-keys` and per‑purpose totals from `/metrics/api-usage`, matching the dual-view requirement without local ingestion.
   Planned steps:
-  - Step 1 (backend): extend external client + API key route to pass `from`/`to`, include `total_requests` + `purpose`, add `/api/usage/purpose` proxy for `/metrics/api-usage`, add tests + logging.
+  - Step 1 (backend): DONE — extended external client + API key route to pass `from`/`to`, added `total_requests` + `purpose` fields, added `/api/usage/purpose` proxy for `/metrics/api-usage`, and added tests + logging.  
+    Explanation: This wires per‑key totals (from `/api-keys`) and per‑purpose totals (from `/metrics/api-usage`) on the backend so the UI can switch between views without local ingestion.
   - Step 2 (frontend): update API client types + calls; add usage view selector (per‑key vs per‑purpose) and dynamic dropdown; render totals using new data sources without changing layout.
   - Step 3 (verification): run backend tests; note staging deploy + verification are pending if not possible in this environment.
   Explanation: External API now exposes purpose-level metrics with date filters but no per-key breakdown; we need to integrate it for non-dashboard usage or ingest tasks per key to satisfy per-key charts.
