@@ -9,6 +9,7 @@ export type HistoryRow = {
   id: string;
   date: string;
   label: string;
+  fileName?: string;
   total: number;
   valid: number;
   invalid: number;
@@ -69,6 +70,7 @@ export function mapDetailToHistoryRow(detail: TaskDetailResponse): HistoryRow | 
     id: detail.id ?? fallbackId(),
     date: formatHistoryDate(detail.created_at),
     label: detail.id ?? "Task",
+    fileName: undefined,
     total: counts.total,
     valid: counts.valid,
     invalid: counts.invalid,
@@ -89,6 +91,7 @@ export function mapTaskToHistoryRow(task: Task): HistoryRow | null {
     id: task.id,
     date: formatHistoryDate(task.created_at),
     label: task.file_name ?? task.id,
+    fileName: task.file_name ?? undefined,
     total,
     valid,
     invalid,

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { DashboardShell } from "../components/dashboard-shell";
-import { apiClient, ApiKeySummary, TaskDetailResponse, TaskListResponse, Task } from "../lib/api-client";
+import { apiClient, ApiError, ApiKeySummary, TaskDetailResponse, TaskListResponse, Task } from "../lib/api-client";
 import { RequireAuth } from "../components/protected";
 import { useAuth } from "../components/auth-provider";
 import { HistoryRow, mapDetailToHistoryRow, mapTaskToHistoryRow } from "./utils";
@@ -28,6 +28,8 @@ export default function HistoryPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [total, setTotal] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [activeDownload, setActiveDownload] = useState<string | null>(null);
   const { session } = useAuth();
 
   const dashboardKeyId = useMemo(
@@ -133,6 +135,33 @@ export default function HistoryPage() {
     return rows.length < total;
   }, [loading, loadingMore, rows.length, total]);
 
+  const handleDownload = async (row: HistoryRow) => {
+    if (!row.fileName) {
+      setDownloadError("Download unavailable for this record.");
+      return;
+    }
+    setDownloadError(null);
+    setActiveDownload(row.id);
+    try {
+      const { blob, fileName } = await apiClient.downloadTaskResults(row.id, row.fileName);
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = fileName;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+      console.info("history.download.success", { task_id: row.id, file_name: fileName });
+    } catch (err: unknown) {
+      const message = err instanceof ApiError ? err.details || err.message : "Download failed";
+      console.error("history.download.failed", { task_id: row.id, error: message });
+      setDownloadError(typeof message === "string" ? message : "Download failed");
+    } finally {
+      setActiveDownload(null);
+    }
+  };
+
   return (
     <DashboardShell>
       <RequireAuth>
@@ -159,6 +188,9 @@ export default function HistoryPage() {
             </select>
           </div>
         </div>
+        {downloadError ? (
+          <div className="mb-3 text-sm font-semibold text-rose-600">{downloadError}</div>
+        ) : null}
         <div className="overflow-hidden rounded-xl border border-slate-200">
           <div className="grid grid-cols-6 bg-slate-50 px-4 py-3 text-xs font-extrabold uppercase tracking-wide text-slate-700 md:text-sm">
             <span>Date</span>
@@ -189,14 +221,31 @@ export default function HistoryPage() {
                   <span className="text-right text-slate-700">{formatNumber(row.invalid)}</span>
                   <span className="text-right text-slate-700">{formatNumber(row.catchAll)}</span>
                   <span className="flex justify-end">
-                    <span
-                      className={[
-                        "inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold text-white shadow-sm",
-                        statusColor[row.status],
-                      ].join(" ")}
-                    >
-                      {row.status === "download" ? "Download" : "Pending"}
-                    </span>
+                    {row.status === "download" ? (
+                      row.fileName ? (
+                        <button
+                          type="button"
+                          onClick={() => void handleDownload(row)}
+                          disabled={activeDownload === row.id}
+                          className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700 transition hover:bg-emerald-200 disabled:cursor-not-allowed disabled:opacity-70"
+                        >
+                          {activeDownload === row.id ? "Downloading..." : "Download"}
+                        </button>
+                      ) : (
+                        <span className="inline-flex items-center rounded-full bg-slate-200 px-3 py-1 text-xs font-bold text-slate-600">
+                          Download
+                        </span>
+                      )
+                    ) : (
+                      <span
+                        className={[
+                          "inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold text-white shadow-sm",
+                          statusColor[row.status],
+                        ].join(" ")}
+                      >
+                        Pending
+                      </span>
+                    )}
                   </span>
                 </div>
               ))

@@ -120,6 +120,8 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
   Explanation: Added `/history` with table layout (Date, Filename/Total, Valid, Invalid, Catch-all, Action) using shared shell/footer. Status pills for Download/Pending mirror design. Uses typed sample rows and formatting helpers; ready for backend data swap.
 - [x] History filtering/pagination — Added API key selector (includes dashboard key) to scope tasks per key; supports paginated fetch (`PAGE_SIZE=10`) with Load more, richer pending status detection, and count display.  
   Explanation: History now calls backend with `api_key_id`, shows integration labels in the selector, and maps pending/processing/started/queued to the Pending pill. Load-more uses offset pagination and honors total count when provided.
+- [x] History download action — Wire the Download pill to `/api/tasks/{id}/download` for file-based tasks with minimal error feedback.  
+  Explanation: History now triggers verified file downloads using task id + stored file name and keeps Download disabled when no file is available.
 
 ## Integrations page
 - [x] Pull Figma specs via MCP and capture screenshot (node `65:339`). Design: shared shell/footer, three integration cards (Zapier, n8n, Google Sheets), text “More coming soon...”.

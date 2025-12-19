@@ -84,12 +84,15 @@ run("mapTaskToHistoryRow uses counts/status without detail fetch", () => {
     valid_count: 5,
     invalid_count: 2,
     catchall_count: 1,
+    file_name: "upload.csv",
   };
   const row = mapTaskToHistoryRow(task);
   assert(row, "row should not be null");
   assert.strictEqual(row?.id, "t4");
   assert.strictEqual(row?.total, 8);
   assert.strictEqual(row?.status, "pending");
+  assert.strictEqual(row?.fileName, "upload.csv");
+  assert.strictEqual(row?.label, "upload.csv");
 });
 
 // eslint-disable-next-line no-console

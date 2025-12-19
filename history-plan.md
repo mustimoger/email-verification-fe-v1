@@ -25,6 +25,8 @@ Tasks
 - [x] API key listing cache fallback: when external `/api-keys` is unavailable, return cached user keys from Supabase (filtering out dashboard unless requested) instead of a 5xx.  
   Explanation: Keeps History’s key selector operational even if upstream auth is down; covered by tests for include_internal and filtering.
 - [x] Webhook alternative: if external API offers global task/usage webhooks, plan to consume them for history/usage updates with polling as fallback (see `non-dashboard-api-usage-plan.md`).
+- [x] Download action: wire history “Download” pill to `/api/tasks/{id}/download` with proper error handling, keeping manual-only tasks non-downloadable.
+  Explanation: History now triggers verified file downloads using the task id and stored file name, shows a minimal error banner on failure, and keeps “Download” disabled when no file is available.
 - [x] File name support: join `task_files` to tasks list so History shows file names for file-based tasks.
   Explanation: `task_files` now stores upload metadata, `/api/tasks` joins `file_name` into task rows, and History mapping prefers `file_name` for labels. Upload limits are now split: file size enforced on uploads, manual limits enforced separately.
 
