@@ -7,6 +7,8 @@
 - [ ] Remaining pages — Verify, History, Integrations, API, Pricing, Account need to be built using the shared shell once Figma node details are provided. Use first-principles MVPs, no placeholders.
 - [ ] API integration — Wire UI to FastAPI email verification backend once endpoint schemas/contracts are known. Replace mock data with typed fetch layer + error handling/logging; avoid hardcoded fallbacks.
 - [ ] Testing and staging — Add unit/integration coverage and deploy to staging after MVP pages and API wiring are in place; verify flows end-to-end.
+- [ ] Deprecation warnings cleanup — update Supabase Python client to remove `gotrue` deprecation and adjust httpx per-request cookies in tests.
+  Explanation: Warnings only today; likely a dependency bump to `supabase`/`supabase_auth` and a small test change to set cookies on the client.
 - [ ] Enhancements — Only after MVP + tests + staging verification.
 
 Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` present locally (uncommitted). Root `/` redirects to `/overview`; main page at `app/overview/page.tsx`. A dev server may still be running on port 3001 (see handover if needed). External email verification API is reachable at `https://email-verification.islamsaka.com/api/v1/`; it accepts Supabase JWTs via `Authorization: Bearer <token>`. Supabase seeded for user `mustimoger@gmail.com` with credits and cached keys.
@@ -66,6 +68,8 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
   Explanation: Refactored shared dashboard shell (sidebar/topbar/footer) and reused it for Overview + new `/verify`. Nav now links to `/verify` (others disabled). Verify page matches Figma: manual email textarea with VERIFY CTA, results panel (shows parsed emails as pending), file upload dropzone with drag/drop + Browse, and footer links. Added front-end limits (max 5 files, 5 MB each) and log events for manual and upload flows; no backend calls yet.
 - [ ] Add basic client-side behavior/logging and minimal tests covering form state/validation wiring; leave clear integration hook for FastAPI when contracts arrive. (Logging and parsing in place; automated tests still needed.)
 - [ ] Summarize changes and outcomes for newcomers; pause for confirmation before proceeding to popup flow/second Verify state.
+- [x] Verify backend wiring: ingest external task metrics into Supabase on `/tasks` list/create/upload so manual/file flows surface real counts without placeholder data.
+  Explanation: Added task metrics parsing (`verification_status`, `total_email_addresses`) to map counts into Supabase tasks; tests added and `pytest backend/tests` passed.
 
 ## Next: Second Verify state (post-upload)
 - [x] Pull Figma specs for second Verify state via Figma MCP; captured screenshot (node `64:75`) showing results table + validation donut. Footer and shell unchanged.
@@ -174,6 +178,8 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
     Explanation: Added auth tests for admin role via `app_metadata`, top-level `role`, and `DEV_API_KEYS`. Ran `pytest backend/tests` (38 passed).
   - [x] Add admin `user_id` override for `/api/tasks` list/create/upload where external API supports it, with tests and logging.
     Explanation: Added admin-scoped `user_id` for task list/create/upload with role gating, per-user usage logging, and tests; `pytest backend/tests` passed (44 tests).
+  - [ ] Run admin JWT external API probe to validate `user_id` scoping end-to-end.
+    Explanation: Use a role-bearing admin JWT to call external `/tasks` and `/api-keys` with `user_id` and confirm scoping behavior.
 - [x] External API key purpose alignment — added `external_purpose` mapping to integrations config, removed `custom` from integrations, and sent `purpose` in external `/api-keys` create requests; updated tests to match.
   Explanation: External API requires `purpose` enum and rejects missing/invalid values; config-driven mapping avoids hardcoding and keeps UI + backend consistent. `pytest backend/tests/test_api_keys.py` passed (6 tests). External API runner succeeded for user role with Bearer auth and `purpose=zapier`.
 - [x] Removed legacy master-key tooling — removed `EMAIL_API_KEY` usage, deleted `backend/scripts/check_external_api.py`, and cleaned tests/env docs.

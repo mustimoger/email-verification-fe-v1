@@ -61,6 +61,16 @@ class VerifyEmailResponse(BaseModel):
     verification_steps: Optional[List[VerificationStep]] = None
 
 
+class TaskMetrics(BaseModel):
+    job_status: Optional[Dict[str, int]] = None
+    last_verification_completed_at: Optional[str] = None
+    last_verification_requested_at: Optional[str] = None
+    progress: Optional[float] = None
+    progress_percent: Optional[int] = None
+    total_email_addresses: Optional[int] = None
+    verification_status: Optional[Dict[str, int]] = None
+
+
 class TaskResponse(BaseModel):
     created_at: Optional[str] = None
     domain_count: Optional[int] = None
@@ -79,6 +89,7 @@ class Task(BaseModel):
     valid_count: Optional[int] = None
     invalid_count: Optional[int] = None
     catchall_count: Optional[int] = None
+    metrics: Optional[TaskMetrics] = None
     integration: Optional[str] = None
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
@@ -104,6 +115,7 @@ class TaskDetailResponse(BaseModel):
     finished_at: Optional[str] = None
     updated_at: Optional[str] = None
     jobs: Optional[List[TaskEmailJob]] = None
+    metrics: Optional[TaskMetrics] = None
 
 
 class TaskListResponse(BaseModel):

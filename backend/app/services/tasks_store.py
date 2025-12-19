@@ -3,7 +3,7 @@ from typing import Dict, Iterable, List, Optional
 
 from supabase import Client
 
-from ..clients.external import Task, TaskDetailResponse
+from ..clients.external import Task, TaskDetailResponse, TaskMetrics
 from .supabase_client import get_supabase
 
 logger = logging.getLogger(__name__)
@@ -34,18 +34,81 @@ def _task_payload(
     return payload
 
 
+def _coerce_int(value: object) -> Optional[int]:
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        logger.warning("tasks.metrics.invalid_count_value", extra={"value": value})
+        return None
+
+
+def counts_from_metrics(metrics: Optional[TaskMetrics | Dict[str, object]]) -> Optional[Dict[str, int]]:
+    if not metrics:
+        return None
+    if isinstance(metrics, dict):
+        status_counts = metrics.get("verification_status")
+    else:
+        status_counts = metrics.verification_status
+    if not isinstance(status_counts, dict) or not status_counts:
+        return None
+
+    valid = _coerce_int(status_counts.get("exists")) or 0
+    catchall = _coerce_int(status_counts.get("catchall")) or 0
+    invalid = 0
+    unknown_statuses: List[str] = []
+    for key, raw in status_counts.items():
+        if key in ("exists", "catchall"):
+            continue
+        count = _coerce_int(raw)
+        if count is None:
+            continue
+        invalid += count
+        if key not in ("not_exists", "invalid_syntax", "unknown"):
+            unknown_statuses.append(key)
+
+    if unknown_statuses:
+        logger.warning("tasks.metrics.unknown_statuses", extra={"statuses": unknown_statuses})
+
+    return {"valid": valid, "catchall": catchall, "invalid": invalid}
+
+
+def email_count_from_metrics(metrics: Optional[TaskMetrics | Dict[str, object]]) -> Optional[int]:
+    if not metrics:
+        return None
+    if isinstance(metrics, dict):
+        raw_total = metrics.get("total_email_addresses")
+    else:
+        raw_total = metrics.total_email_addresses
+    return _coerce_int(raw_total)
+
+
 def upsert_tasks_from_list(user_id: str, tasks: Iterable[Task], integration: Optional[str] = None) -> None:
     sb: Client = get_supabase()
     rows: List[Dict[str, object]] = []
     for task in tasks:
         if not task.id:
             continue
+        counts = None
+        if task.valid_count is not None or task.invalid_count is not None or task.catchall_count is not None:
+            counts = {
+                "valid": task.valid_count,
+                "invalid": task.invalid_count,
+                "catchall": task.catchall_count,
+            }
+        else:
+            counts = counts_from_metrics(task.metrics)
+        email_count = task.email_count
+        if email_count is None:
+            email_count = email_count_from_metrics(task.metrics)
         rows.append(
             _task_payload(
                 user_id=user_id,
                 task_id=task.id,
                 status=task.status if hasattr(task, "status") else None,
-                email_count=task.email_count,
+                email_count=email_count,
+                counts=counts,
                 integration=integration,
             )
         )
