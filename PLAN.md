@@ -9,14 +9,14 @@
 - [ ] Testing and staging — Add unit/integration coverage and deploy to staging after MVP pages and API wiring are in place; verify flows end-to-end.
 - [ ] Enhancements — Only after MVP + tests + staging verification.
 
-Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` present locally (uncommitted). Root `/` redirects to `/overview`; main page at `app/overview/page.tsx`. A dev server may still be running on port 3001 (see handover if needed). External email verification API is reachable at `https://email-verification.islamsaka.com/api/v1/`; shared bearer works and returns tasks (global to the key). Supabase seeded for user `mustimoger@gmail.com` with credits and cached keys; external `/tasks` currently unscoped per user.
+Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` present locally (uncommitted). Root `/` redirects to `/overview`; main page at `app/overview/page.tsx`. A dev server may still be running on port 3001 (see handover if needed). External email verification API is reachable at `https://email-verification.islamsaka.com/api/v1/`; it accepts Supabase JWTs via `Authorization: Bearer <token>`. Supabase seeded for user `mustimoger@gmail.com` with credits and cached keys.
 
 ## Data ownership & key logic (current vs intended)
 - Supabase (app-owned): profiles, user_credits, api_usage (filterable by api_key_id), cached_api_keys (key_id + name, no plaintext). No tasks stored locally.
 - cached_api_keys now includes `key_plain` (server-side use) and `integration` metadata for user-selected platforms.
-- External API (external-owned): tasks, jobs, API keys are scoped by the Bearer key used. The shared `.env` `EMAIL_API_KEY` is for development only and returns global tasks (`user_id` null).
-- Current behavior: backend proxies using the shared key; `/api` filters external key list to those cached for the signed-in user; usage can filter by selected key; history shows whatever the shared key owns.
-- Intended: each user gets their own external API key(s) (per integration/custom), stored in `cached_api_keys`, and proxy calls use that user’s key. The internal “dashboard” key for manual/file verify stays hidden from `/api`.
+- External API (external-owned): tasks, jobs, API keys are scoped by the Bearer token used (Supabase JWT or API key).
+- Current behavior: backend forwards the caller’s Supabase JWT for external `/tasks`, `/verify`, and `/api-keys`. Dashboard key bootstrap is disabled. `/api` filters external key list to those cached for the signed-in user.
+- Intended: each user gets their own external API key(s) (per integration), stored in `cached_api_keys`, and proxy calls use the user’s JWT; internal “dashboard” key remains hidden from `/api`.
 
 ## Step-by-step plan for per-user key logic
 1) DONE — Filter UI now: hide any dashboard/internal key from `/api` listings/selectors; key creation options limited to Zapier, n8n, Google Sheets, Custom (no Dashboard). Update usage selector to show “All keys” + user-owned keys only.  
@@ -55,11 +55,9 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
   Explanation: Added mapping helpers and tests for overview (status/date/count aggregation), switched Validation/Stats to use Supabase task counts, and rely solely on backend `/api/overview` data.
 - [x] API keys list fallback to Supabase cache: when external `/api-keys` fails (e.g., auth unavailable), return cached user keys from Supabase (filtering dashboard unless requested) instead of 5xx.  
   Explanation: Added cache-based fallback in `/api/api-keys`, with tests to cover internal-key filtering and include_internal behavior.
-- [x] External API diagnostic script — Added `backend/scripts/check_external_api.py` (CLI) to hit external `/tasks`, optional `/tasks/{id}`, `/verify` (opt-in), and `/api-keys` with the configured bearer to isolate upstream issues without frontend context.  
-  Explanation: Run with `source .venv/bin/activate && python backend/scripts/check_external_api.py --base-url ... --api-key ... [--include-api-keys] [--verify-email ...]`; defaults skip `/verify` to avoid consuming credits.
+- [x] External API diagnostic script — Added config-driven runner `backend/tests/external_api_test_runner.py` to hit `/tasks`, `/verify`, `/tasks/batch/upload`, and `/api-keys` with the user JWT from `key-value-pair.txt`, probing raw vs Bearer auth.
+  Explanation: Run with `source .venv/bin/activate && python backend/tests/external_api_test_runner.py`; defaults use `backend/tests/external_api_test_config.json` and `EMAIL_API_BASE_URL`.
 - [x] Webhook alternative noted — If external API later provides global usage/task webhooks, plan is to consume them (with polling as fallback). See `non-dashboard-api-usage-plan.md`.
-- [x] External API diagnostic script — Added `backend/scripts/check_external_api.py` (CLI) to hit external `/tasks`, optional `/tasks/{id}`, `/verify` (opt-in), and `/api-keys` with the configured bearer to isolate upstream issues without frontend context.  
-  Explanation: Run with `source .venv/bin/activate && python backend/scripts/check_external_api.py --base-url ... --api-key ... [--include-api-keys] [--verify-email ...]`; defaults skip `/verify` to avoid consuming credits.
 
 ## Current sprint: Initial Verify page (first state only)
 - [x] Pull Figma specs for the initial Verify page (layout, spacing, colors, interaction notes) via Figma MCP to drive implementation.  
@@ -154,8 +152,34 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
   Explanation: `/api/account/avatar` now reads file bytes and passes storage3 `FileOptions` (`content-type`, `upsert`) so uploads succeed; improved error logging and added regression test `test_account_avatar.py`.
 - [x] Header avatar refresh.
   Explanation: Account avatar/profile updates now broadcast a `profile:updated` event; the shared dashboard shell listens and refreshes name/avatar so the top-right profile image reflects uploads immediately without page reload.
-- [ ] External key creation blocked (401) — current dev key `9a56bd21-eba2-4f8c-bf79-791ffcf2e47b` cannot call `/api-keys`; new users hit `/api/tasks` and crash when dashboard key creation fails (UnboundLocalError). Need either a key with `/api-keys` permission or a safe fallback that skips creation and serves Supabase-only tasks.
+- [x] External API smoke test script.
+  Explanation: Added `backend/scripts/test_external_api.py` to hit `/tasks`, `/api-keys`, and `/verify` using a Supabase JWT. Supports `--csv` to POST `/verify` for each email (60s timeout). With the current token (role=authenticated, no app_metadata.role), `/tasks`/`/api-keys` returned empty; `/verify` returned 408 (SMTP timeout) for one email and `catchall` from cache for another; no tasks created.
+- [x] External API auth shift to Supabase JWTs.
+  Explanation: Tasks/verify/api-keys now forward the caller’s Supabase JWT (no dev master key usage); dashboard key bootstrap is disabled (returns skipped); 401/403 from external return safe responses. Added `DEV_API_KEYS` env for admin override headers and a helper script `backend/scripts/set_user_role.py` to set `app_metadata.role` (admin: mkural2016@gmail.com). `.env.example` documents the new envs.
+- [x] External API access plan updated after api-docs.json review.
+  Explanation: Documented ApiKeyAuth header usage, raw vs Bearer uncertainty, admin `user_id` requirement, and the removal plan for legacy master-key tooling before implementation.
+- [x] External API access plan extended for full endpoint validation.
+  Explanation: Added steps to validate every external endpoint for both user/admin roles, require explicit input config, and flagged the missing Playwright-based test script reference.
+- [ ] External key creation blocked (legacy) — previous dev key flow for `/api-keys` is no longer used; per-user dashboard key creation was disabled and replaced by forwarding Supabase JWTs. Keep monitoring admin-only external endpoints once role-bearing tokens are available.
 - [ ] TODO: (Enhancement) Add optional in-app scheduler (env-gated) to trigger retention cleanup on an interval for dev/staging when cron isn’t available; update OpenAPI (`api-docs.json`) to include maintenance route. Cron-based purge will be handled later in deployment.
+- [ ] External API auth finalization — confirm role claim shape and pass `user_id` for admin external calls where required.
+  Explanation: Bearer auth is confirmed and legacy master-key tooling removed; remaining work is admin scoping and role-claim alignment.
+  Progress: Added admin-only `user_id` scoping to `/api-keys` list/create/revoke and passed through to external API; tests added and `pytest backend/tests` passed. Role-claim validation is still limited to `app_metadata.role` mapping in `AuthContext`.
+  Planned steps:
+  - [x] Validate admin role claim sources (app_metadata role vs top-level role) and document the accepted shape.
+    Explanation: Auth now checks both `app_metadata.role` and top-level `role` claims for admin; non-admin role claims are logged at debug.
+  - [x] Centralize admin-claim detection in auth and reuse it in `/api/api-keys` admin gating.
+    Explanation: Admin gating now relies on `AuthContext.role` derived in auth; duplicate claim checks in `/api/api-keys` were removed to keep a single source of truth.
+  - [x] Add/adjust auth + api-keys tests for admin claim validation and rerun `pytest backend/tests`.
+    Explanation: Added auth tests for admin role via `app_metadata`, top-level `role`, and `DEV_API_KEYS`. Ran `pytest backend/tests` (38 passed).
+  - [x] Add admin `user_id` override for `/api/tasks` list/create/upload where external API supports it, with tests and logging.
+    Explanation: Added admin-scoped `user_id` for task list/create/upload with role gating, per-user usage logging, and tests; `pytest backend/tests` passed (44 tests).
+- [x] External API key purpose alignment — added `external_purpose` mapping to integrations config, removed `custom` from integrations, and sent `purpose` in external `/api-keys` create requests; updated tests to match.
+  Explanation: External API requires `purpose` enum and rejects missing/invalid values; config-driven mapping avoids hardcoding and keeps UI + backend consistent. `pytest backend/tests/test_api_keys.py` passed (6 tests). External API runner succeeded for user role with Bearer auth and `purpose=zapier`.
+- [x] Removed legacy master-key tooling — removed `EMAIL_API_KEY` usage, deleted `backend/scripts/check_external_api.py`, and cleaned tests/env docs.
+  Explanation: External API auth no longer depends on a master key; settings/tests were updated to rely on JWT Bearer flow. Ran `pytest backend/tests` (33 passed).
+- [x] External API test script upgrade — implemented config-driven runner in `backend/tests` to validate required external endpoints using the user JWT from `key-value-pair.txt` and `EMAIL_API_BASE_URL`.
+  Explanation: Added `backend/tests/external_api_test_runner.py` + `backend/tests/external_api_test_config.json`, probes raw vs Bearer auth, and exercises tasks/api-keys/verify/batch upload. Updated `backend/scripts/test_external_api.py` with `--use-config` to invoke the new runner. After updating `key-value-pair.txt` with the raw `access_token`, `Authorization: Bearer <token>` succeeded (raw token failed), and all required user endpoints passed (tasks list/detail, verify, tasks create, batch upload, api-keys list/create/delete). API key creation requires `purpose` (enum: zapier, n8n, google sheets).
 
 # Paddle Billing Integration
 - [x] Drafted initial Paddle Billing plan in `paddle.md` covering sandbox/prod config, dedicated backend folder/route, checkout + webhook flow, Supabase credit granting, and testing/simulation strategy. Explanation: establishes first-principles MVP steps using new Paddle Billing API (not Classic), env-driven config, backend-owned checkout/webhook handling, and frontend helper for Paddle.js.

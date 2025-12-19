@@ -154,15 +154,23 @@ class RevokeAPIKeyResponse(BaseModel):
 
 
 class ExternalAPIClient:
-    def __init__(self, base_url: str, api_key: str, timeout_seconds: float = 30.0, max_upload_bytes: int = 10 * 1024 * 1024):
+    def __init__(
+        self,
+        base_url: str,
+        bearer_token: str,
+        timeout_seconds: float = 30.0,
+        max_upload_bytes: int = 10 * 1024 * 1024,
+        extra_headers: Optional[Dict[str, str]] = None,
+    ):
         if not base_url:
             raise ValueError("External API base_url is required")
-        if not api_key:
-            raise ValueError("External API key is required")
+        if not bearer_token:
+            raise ValueError("External API bearer token is required")
         self.base_url = base_url.rstrip("/")
-        self.api_key = api_key
+        self.bearer_token = bearer_token
         self.timeout_seconds = timeout_seconds
         self.max_upload_bytes = max_upload_bytes
+        self.extra_headers = extra_headers or {}
 
     async def verify_email(self, email: str) -> VerifyEmailResponse:
         payload = {"email": email}
@@ -176,8 +184,16 @@ class ExternalAPIClient:
             payload["webhook_url"] = webhook_url
         return await self._post("/tasks", payload, TaskResponse)
 
-    async def list_tasks(self, limit: int = 10, offset: int = 0) -> TaskListResponse:
-        return await self._get("/tasks", TaskListResponse, params={"limit": limit, "offset": offset})
+    async def list_tasks(
+        self,
+        limit: int = 10,
+        offset: int = 0,
+        user_id: Optional[str] = None,
+    ) -> TaskListResponse:
+        params: Dict[str, Any] = {"limit": limit, "offset": offset}
+        if user_id:
+            params["user_id"] = user_id
+        return await self._get("/tasks", TaskListResponse, params=params)
 
     async def get_task_detail(self, task_id: str) -> TaskDetailResponse:
         return await self._get(f"/tasks/{task_id}", TaskDetailResponse)
@@ -209,14 +225,17 @@ class ExternalAPIClient:
 
         return await self._post_multipart("/tasks/batch/upload", data=data, files=files, model=BatchFileUploadResponse)
 
-    async def list_api_keys(self) -> ListAPIKeysResponse:
-        return await self._get("/api-keys", ListAPIKeysResponse)
+    async def list_api_keys(self, user_id: Optional[str] = None) -> ListAPIKeysResponse:
+        params = {"user_id": user_id} if user_id else None
+        return await self._get("/api-keys", ListAPIKeysResponse, params=params)
 
-    async def create_api_key(self, name: str) -> CreateAPIKeyResponse:
-        return await self._post("/api-keys", {"name": name}, CreateAPIKeyResponse)
+    async def create_api_key(self, name: str, purpose: str, user_id: Optional[str] = None) -> CreateAPIKeyResponse:
+        params = {"user_id": user_id} if user_id else None
+        return await self._post("/api-keys", {"name": name, "purpose": purpose}, CreateAPIKeyResponse, params=params)
 
-    async def revoke_api_key(self, api_key_id: str) -> RevokeAPIKeyResponse:
-        return await self._delete(f"/api-keys/{api_key_id}", RevokeAPIKeyResponse)
+    async def revoke_api_key(self, api_key_id: str, user_id: Optional[str] = None) -> RevokeAPIKeyResponse:
+        params = {"user_id": user_id} if user_id else None
+        return await self._delete(f"/api-keys/{api_key_id}", RevokeAPIKeyResponse, params=params)
 
     async def get_email_by_address(self, address: str) -> Dict[str, Any]:
         response = await self._request("GET", f"/emails/{address}")
@@ -225,7 +244,7 @@ class ExternalAPIClient:
     async def _request(self, method: str, path: str, **kwargs) -> httpx.Response:
         url = f"{self.base_url}{path}"
         headers = kwargs.pop("headers", {})
-        merged_headers = {"Authorization": f"Bearer {self.api_key}", **headers}
+        merged_headers = {"Authorization": f"Bearer {self.bearer_token}", **self.extra_headers, **headers}
         async with httpx.AsyncClient(timeout=self.timeout_seconds) as client:
             response = await client.request(method=method, url=url, headers=merged_headers, **kwargs)
         logger.info(
@@ -238,16 +257,18 @@ class ExternalAPIClient:
         response = await self._request("GET", path, params=params)
         return self._parse_response(response, model)
 
-    async def _post(self, path: str, payload: Dict[str, Any], model: type[BaseModel]):
-        response = await self._request("POST", path, json=payload)
+    async def _post(
+        self, path: str, payload: Dict[str, Any], model: type[BaseModel], params: Optional[Dict[str, Any]] = None
+    ):
+        response = await self._request("POST", path, json=payload, params=params)
         return self._parse_response(response, model)
 
     async def _post_multipart(self, path: str, data: Dict[str, Any], files: Dict[str, Any], model: type[BaseModel]):
         response = await self._request("POST", path, data=data, files=files)
         return self._parse_response(response, model)
 
-    async def _delete(self, path: str, model: type[BaseModel]):
-        response = await self._request("DELETE", path)
+    async def _delete(self, path: str, model: type[BaseModel], params: Optional[Dict[str, Any]] = None):
+        response = await self._request("DELETE", path, params=params)
         return self._parse_response(response, model)
 
     def _parse_response(self, response: httpx.Response, model: type[BaseModel]):
@@ -296,19 +317,10 @@ class ExternalAPIClient:
             ) from exc
 
 
-def get_external_api_client() -> ExternalAPIClient:
-    settings = get_settings()
-    return ExternalAPIClient(
-        base_url=settings.email_api_base_url,
-        api_key=settings.email_api_key,
-        max_upload_bytes=settings.upload_max_mb * 1024 * 1024,
-    )
-
-
 def get_external_api_client_for_key(api_key: str) -> ExternalAPIClient:
     settings = get_settings()
     return ExternalAPIClient(
         base_url=settings.email_api_base_url,
-        api_key=api_key,
+        bearer_token=api_key,
         max_upload_bytes=settings.upload_max_mb * 1024 * 1024,
     )

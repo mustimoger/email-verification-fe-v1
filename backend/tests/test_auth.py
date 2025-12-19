@@ -17,9 +17,18 @@ def _build_app():
     return app
 
 
+def _build_app_with_role():
+    app = FastAPI()
+
+    @app.get("/role")
+    def role(user=Depends(get_current_user)):
+        return {"role": user.role}
+
+    return app
+
+
 def test_auth_missing_token_returns_401(monkeypatch):
     monkeypatch.setenv("EMAIL_API_BASE_URL", "https://api.test")
-    monkeypatch.setenv("EMAIL_API_KEY", "key")
     monkeypatch.setenv("SUPABASE_URL", "https://sb.test")
     monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service_key")
     monkeypatch.setenv("SUPABASE_JWT_SECRET", "secret")
@@ -32,7 +41,6 @@ def test_auth_missing_token_returns_401(monkeypatch):
 
 def test_auth_valid_token_via_cookie(monkeypatch):
     monkeypatch.setenv("EMAIL_API_BASE_URL", "https://api.test")
-    monkeypatch.setenv("EMAIL_API_KEY", "key")
     monkeypatch.setenv("SUPABASE_URL", "https://sb.test")
     monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service_key")
     monkeypatch.setenv("SUPABASE_JWT_SECRET", "secret")
@@ -43,3 +51,50 @@ def test_auth_valid_token_via_cookie(monkeypatch):
     resp = client.get("/me", cookies={"cookie_name": token})
     assert resp.status_code == 200
     assert resp.json() == {"user_id": "user-123"}
+
+
+def test_auth_admin_role_from_app_metadata(monkeypatch):
+    monkeypatch.setenv("EMAIL_API_BASE_URL", "https://api.test")
+    monkeypatch.setenv("SUPABASE_URL", "https://sb.test")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service_key")
+    monkeypatch.setenv("SUPABASE_JWT_SECRET", "secret")
+    monkeypatch.setenv("SUPABASE_AUTH_COOKIE_NAME", "cookie_name")
+    token = jwt.encode(
+        {"sub": "user-123", "aud": "authenticated", "app_metadata": {"role": "admin"}},
+        "secret",
+        algorithm="HS256",
+    )
+    app = _build_app_with_role()
+    client = TestClient(app)
+    resp = client.get("/role", headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 200
+    assert resp.json() == {"role": "admin"}
+
+
+def test_auth_admin_role_from_top_level_claim(monkeypatch):
+    monkeypatch.setenv("EMAIL_API_BASE_URL", "https://api.test")
+    monkeypatch.setenv("SUPABASE_URL", "https://sb.test")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service_key")
+    monkeypatch.setenv("SUPABASE_JWT_SECRET", "secret")
+    monkeypatch.setenv("SUPABASE_AUTH_COOKIE_NAME", "cookie_name")
+    token = jwt.encode({"sub": "user-123", "aud": "authenticated", "role": "admin"}, "secret", algorithm="HS256")
+    app = _build_app_with_role()
+    client = TestClient(app)
+    resp = client.get("/role", headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 200
+    assert resp.json() == {"role": "admin"}
+
+
+def test_auth_admin_role_from_dev_api_key(monkeypatch):
+    monkeypatch.setenv("EMAIL_API_BASE_URL", "https://api.test")
+    monkeypatch.setenv("SUPABASE_URL", "https://sb.test")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service_key")
+    monkeypatch.setenv("SUPABASE_JWT_SECRET", "secret")
+    monkeypatch.setenv("SUPABASE_AUTH_COOKIE_NAME", "cookie_name")
+    monkeypatch.setenv("DEV_API_KEYS", "devkey")
+    token = jwt.encode({"sub": "user-123", "aud": "authenticated"}, "secret", algorithm="HS256")
+    app = _build_app_with_role()
+    client = TestClient(app)
+    resp = client.get("/role", headers={"Authorization": f"Bearer {token}", "X-Dev-Api-Key": "devkey"})
+    assert resp.status_code == 200
+    assert resp.json() == {"role": "admin"}

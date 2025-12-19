@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import time
-from typing import NamedTuple, Optional, Set
+from typing import Optional, Set
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 
@@ -9,8 +9,6 @@ from ..clients.external import (
     BatchFileUploadResponse,
     ExternalAPIClient,
     ExternalAPIError,
-    get_external_api_client_for_key,
-    get_external_api_client,
     Task,
     TaskDetailResponse,
     TaskListResponse,
@@ -19,11 +17,6 @@ from ..clients.external import (
 )
 from ..core.auth import AuthContext, get_current_user
 from ..core.settings import get_settings
-from ..services.api_keys import (
-    INTERNAL_DASHBOARD_KEY_NAME,
-    get_cached_key_by_id,
-    resolve_user_api_key,
-)
 from ..services.storage import persist_upload_file
 from ..services.tasks_store import fetch_tasks_with_counts, upsert_task_from_detail, upsert_tasks_from_list
 from ..services.usage import record_usage
@@ -32,50 +25,27 @@ router = APIRouter(prefix="/api", tags=["tasks"])
 logger = logging.getLogger(__name__)
 
 
-class ResolvedClient(NamedTuple):
-    client: ExternalAPIClient
-    key_id: str
-
-
-async def get_user_external_client(
-    api_key_id: Optional[str] = None, user: AuthContext = Depends(get_current_user)
-) -> ResolvedClient:
+def get_user_external_client(user: AuthContext = Depends(get_current_user)) -> ExternalAPIClient:
     """
-    Resolve an external API client. Use a specific cached key when api_key_id is provided; otherwise fallback to the per-user dashboard key.
+    Build an external API client using the caller's Supabase JWT.
     """
-    if api_key_id:
-        cached = get_cached_key_by_id(user.user_id, api_key_id)
-        if not cached or not cached.get("key_plain"):
-            logger.error(
-                "route.tasks.resolve_key_missing",
-                extra={"user_id": user.user_id, "api_key_id": api_key_id, "found": bool(cached)},
-            )
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="API key not found for user")
-        return ResolvedClient(client=get_external_api_client_for_key(cached["key_plain"]), key_id=api_key_id)
-
-    master_client = get_external_api_client()
-    try:
-        key_secret, key_id = await resolve_user_api_key(
-            user_id=user.user_id, desired_name=INTERNAL_DASHBOARD_KEY_NAME, master_client=master_client
-        )
-    except ExternalAPIError as exc:
-        logger.error(
-            "route.tasks.resolve_key_failed",
-            extra={"user_id": user.user_id, "status_code": exc.status_code, "details": exc.details},
-        )
-        raise HTTPException(status_code=exc.status_code, detail=exc.details or exc.args[0])
-    client = get_external_api_client_for_key(key_secret)
-    return ResolvedClient(client=client, key_id=key_id)
+    settings = get_settings()
+    return ExternalAPIClient(
+        base_url=settings.email_api_base_url,
+        bearer_token=user.token,
+        max_upload_bytes=settings.upload_max_mb * 1024 * 1024,
+    )
 
 
 async def poll_tasks_after_upload(
     client: ExternalAPIClient,
     user_id: str,
-    integration: str,
+    integration: Optional[str],
     attempts: int,
     interval_seconds: float,
     page_size: int,
     baseline_ids: Set[str],
+    list_user_id: Optional[str] = None,
 ) -> Optional[TaskListResponse]:
     """
     Poll recent tasks after an upload to capture new task_ids and upsert into Supabase.
@@ -84,7 +54,7 @@ async def poll_tasks_after_upload(
     latest: Optional[TaskListResponse] = None
     for attempt in range(1, attempts + 1):
         try:
-            latest = await client.list_tasks(limit=page_size, offset=0)
+            latest = await client.list_tasks(limit=page_size, offset=0, user_id=list_user_id)
             tasks = latest.tasks or []
             if tasks:
                 upsert_tasks_from_list(user_id, tasks, integration=integration)
@@ -115,41 +85,63 @@ async def poll_tasks_after_upload(
 async def verify_email(
     payload: dict,
     user: AuthContext = Depends(get_current_user),
-    resolved: ResolvedClient = Depends(get_user_external_client),
+    client: ExternalAPIClient = Depends(get_user_external_client),
 ):
     email = payload.get("email")
     if not email:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="email is required")
     try:
-        result = await resolved.client.verify_email(email=email)
-        record_usage(user.user_id, path="/verify", count=1, api_key_id=resolved.key_id)
+        result = await client.verify_email(email=email)
+        record_usage(user.user_id, path="/verify", count=1, api_key_id=None)
         logger.info("route.verify", extra={"user_id": user.user_id, "email": email})
         return result
     except ExternalAPIError as exc:
+        if exc.status_code in (401, 403):
+            logger.warning(
+                "route.verify.unauthorized",
+                extra={"user_id": user.user_id, "status_code": exc.status_code, "details": exc.details},
+            )
+            raise HTTPException(status_code=exc.status_code, detail="Not authorized to verify emails")
         raise HTTPException(status_code=exc.status_code, detail=exc.details or exc.args[0])
 
 
 @router.post("/tasks", response_model=TaskResponse)
 async def create_task(
     payload: dict,
+    user_id: Optional[str] = None,
     user: AuthContext = Depends(get_current_user),
-    resolved: ResolvedClient = Depends(get_user_external_client),
+    client: ExternalAPIClient = Depends(get_user_external_client),
 ):
     emails = payload.get("emails")
     webhook_url = payload.get("webhook_url")
     if not emails or not isinstance(emails, list):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="emails array is required")
     try:
-        result = await resolved.client.create_task(emails=emails, user_id=user.user_id, webhook_url=webhook_url)
-        upsert_tasks_from_list(
-            user.user_id,
-            [TaskResponse(**result.model_dump())],
-            integration=INTERNAL_DASHBOARD_KEY_NAME,
-        )
-        record_usage(user.user_id, path="/tasks", count=len(emails), api_key_id=resolved.key_id)
-        logger.info("route.tasks.create", extra={"user_id": user.user_id, "count": len(emails)})
+        target_user_id = user.user_id
+        if user_id:
+            if user.role != "admin":
+                logger.warning(
+                    "route.tasks.create.forbidden_user_id",
+                    extra={"user_id": user.user_id, "requested_user_id": user_id},
+                )
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin role required")
+            target_user_id = user_id
+            logger.info(
+                "route.tasks.create.admin_scope",
+                extra={"admin_user_id": user.user_id, "target_user_id": target_user_id},
+            )
+        result = await client.create_task(emails=emails, user_id=target_user_id, webhook_url=webhook_url)
+        upsert_tasks_from_list(target_user_id, [TaskResponse(**result.model_dump())], integration=None)
+        record_usage(target_user_id, path="/tasks", count=len(emails), api_key_id=None)
+        logger.info("route.tasks.create", extra={"user_id": target_user_id, "count": len(emails)})
         return result
     except ExternalAPIError as exc:
+        if exc.status_code in (401, 403):
+            logger.warning(
+                "route.tasks.create.unauthorized",
+                extra={"user_id": user.user_id, "status_code": exc.status_code, "details": exc.details},
+            )
+            raise HTTPException(status_code=exc.status_code, detail="Not authorized to create tasks")
         raise HTTPException(status_code=exc.status_code, detail=exc.details or exc.args[0])
 
 
@@ -158,12 +150,28 @@ async def list_tasks(
     limit: int = 10,
     offset: int = 0,
     api_key_id: Optional[str] = None,
+    user_id: Optional[str] = None,
     user: AuthContext = Depends(get_current_user),
+    client: ExternalAPIClient = Depends(get_user_external_client),
 ):
     start = time.time()
-    resolved_client: Optional[ResolvedClient] = None
+    target_user_id = user.user_id
+    list_user_id = None
+    if user_id:
+        if user.role != "admin":
+            logger.warning(
+                "route.tasks.list.forbidden_user_id",
+                extra={"user_id": user.user_id, "requested_user_id": user_id},
+            )
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin role required")
+        target_user_id = user_id
+        list_user_id = user_id
+        logger.info(
+            "route.tasks.list.admin_scope",
+            extra={"admin_user_id": user.user_id, "target_user_id": target_user_id},
+        )
     # Supabase is primary source for history; return cached tasks first
-    fallback = fetch_tasks_with_counts(user.user_id, limit=limit, offset=offset)
+    fallback = fetch_tasks_with_counts(target_user_id, limit=limit, offset=offset)
     tasks_data = fallback.get("tasks") or []
     supa_tasks: list[Task] = []
     for row in tasks_data:
@@ -183,11 +191,11 @@ async def list_tasks(
         )
     count_value = fallback.get("count") if isinstance(fallback, dict) else None
     if supa_tasks:
-        record_usage(user.user_id, path="/tasks", count=len(supa_tasks), api_key_id=api_key_id)
+        record_usage(target_user_id, path="/tasks", count=len(supa_tasks), api_key_id=api_key_id)
         logger.info(
             "route.tasks.list.supabase_primary",
             extra={
-                "user_id": user.user_id,
+                "user_id": target_user_id,
                 "limit": limit,
                 "offset": offset,
                 "returned": len(supa_tasks),
@@ -199,17 +207,14 @@ async def list_tasks(
 
     # If Supabase is empty, sync from external and upsert
     try:
-        resolved_client = await get_user_external_client(api_key_id=api_key_id, user=user)
-        external_result = await resolved_client.client.list_tasks(limit=limit, offset=offset)
+        external_result = await client.list_tasks(limit=limit, offset=offset, user_id=list_user_id)
         if external_result.tasks:
-            upsert_tasks_from_list(user.user_id, external_result.tasks, integration=INTERNAL_DASHBOARD_KEY_NAME)
-        record_usage(
-            user.user_id, path="/tasks", count=len(external_result.tasks or []), api_key_id=resolved_client.key_id
-        )
+            upsert_tasks_from_list(target_user_id, external_result.tasks, integration=None)
+        record_usage(target_user_id, path="/tasks", count=len(external_result.tasks or []), api_key_id=api_key_id)
         logger.info(
             "route.tasks.list.external_refresh",
             extra={
-                "user_id": user.user_id,
+                "user_id": target_user_id,
                 "limit": limit,
                 "offset": offset,
                 "count": external_result.count,
@@ -219,32 +224,43 @@ async def list_tasks(
         )
         return external_result
     except ExternalAPIError as exc:
-        logger.error(
-            "route.tasks.list.failed",
-            extra={
-                "user_id": user.user_id,
-                "status_code": exc.status_code,
-                "details": exc.details,
-                "duration_ms": round((time.time() - start) * 1000, 2),
-            },
-        )
+        if exc.status_code in (401, 403):
+            logger.warning(
+                "route.tasks.list.unauthorized",
+                extra={
+                    "user_id": target_user_id,
+                    "status_code": exc.status_code,
+                    "details": exc.details,
+                    "duration_ms": round((time.time() - start) * 1000, 2),
+                },
+            )
+        else:
+            logger.error(
+                "route.tasks.list.failed",
+                extra={
+                    "user_id": target_user_id,
+                    "status_code": exc.status_code,
+                    "details": exc.details,
+                    "duration_ms": round((time.time() - start) * 1000, 2),
+                },
+            )
     except Exception as exc:  # noqa: BLE001
-        logger.exception(
+        logger.error(
             "route.tasks.list.exception",
-            extra={"user_id": user.user_id, "duration_ms": round((time.time() - start) * 1000, 2)},
+            extra={"user_id": target_user_id, "duration_ms": round((time.time() - start) * 1000, 2), "error": str(exc)},
         )
 
     # Nothing in Supabase and external failed/empty
     record_usage(
-        user.user_id,
+        target_user_id,
         path="/tasks",
         count=0,
-        api_key_id=resolved_client.key_id if resolved_client else api_key_id,
+        api_key_id=api_key_id,
     )
     logger.info(
         "route.tasks.list.empty_fallback",
         extra={
-            "user_id": user.user_id,
+            "user_id": target_user_id,
             "limit": limit,
             "offset": offset,
             "duration_ms": round((time.time() - start) * 1000, 2),
@@ -258,11 +274,11 @@ async def get_task_detail(
     task_id: str,
     user: AuthContext = Depends(get_current_user),
     api_key_id: Optional[str] = None,
-    resolved: ResolvedClient = Depends(get_user_external_client),
+    client: ExternalAPIClient = Depends(get_user_external_client),
 ):
     start = time.time()
     try:
-        result = await resolved.client.get_task_detail(task_id)
+        result = await client.get_task_detail(task_id)
         if result.jobs is not None:
             counts = {"valid": 0, "invalid": 0, "catchall": 0}
             for job in result.jobs:
@@ -273,8 +289,8 @@ async def get_task_detail(
                     counts["catchall"] += 1
                 else:
                     counts["invalid"] += 1
-            upsert_task_from_detail(user.user_id, result, counts=counts, integration=INTERNAL_DASHBOARD_KEY_NAME)
-        record_usage(user.user_id, path="/tasks/{id}", count=1, api_key_id=resolved.key_id)
+                upsert_task_from_detail(user.user_id, result, counts=counts, integration=None)
+        record_usage(user.user_id, path="/tasks/{id}", count=1, api_key_id=api_key_id)
         logger.info(
             "route.tasks.detail",
             extra={
@@ -285,7 +301,8 @@ async def get_task_detail(
         )
         return result
     except ExternalAPIError as exc:
-        logger.error(
+        level = logger.warning if exc.status_code in (401, 403) else logger.error
+        level(
             "route.tasks.detail.failed",
             extra={
                 "user_id": user.user_id,
@@ -295,7 +312,7 @@ async def get_task_detail(
                 "duration_ms": round((time.time() - start) * 1000, 2),
             },
         )
-        raise HTTPException(status_code=exc.status_code, detail=exc.details or exc.args[0])
+        raise HTTPException(status_code=exc.status_code, detail=exc.details or "Unable to fetch task detail")
     except Exception as exc:  # noqa: BLE001
         logger.exception(
             "route.tasks.detail.exception",
@@ -312,48 +329,70 @@ async def get_task_detail(
 async def upload_task_file(
     files: list[UploadFile] = File(...),
     webhook_url: Optional[str] = Form(default=None),
+    user_id: Optional[str] = None,
     user: AuthContext = Depends(get_current_user),
-    resolved: ResolvedClient = Depends(get_user_external_client),
+    client: ExternalAPIClient = Depends(get_user_external_client),
 ):
     settings = get_settings()
     responses: list[BatchFileUploadResponse] = []
     baseline_ids: Set[str] = set()
+    target_user_id = user.user_id
+    list_user_id = None
+    if user_id:
+        if user.role != "admin":
+            logger.warning(
+                "route.tasks.upload.forbidden_user_id",
+                extra={"user_id": user.user_id, "requested_user_id": user_id},
+            )
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin role required")
+        target_user_id = user_id
+        list_user_id = user_id
+        logger.info(
+            "route.tasks.upload.admin_scope",
+            extra={"admin_user_id": user.user_id, "target_user_id": target_user_id},
+        )
 
     try:
-        baseline = await resolved.client.list_tasks(limit=settings.upload_poll_page_size, offset=0)
+        baseline = await client.list_tasks(limit=settings.upload_poll_page_size, offset=0, user_id=list_user_id)
         baseline_ids = {task.id for task in baseline.tasks or [] if task and task.id}
         if baseline.tasks:
-            upsert_tasks_from_list(user.user_id, baseline.tasks, integration=INTERNAL_DASHBOARD_KEY_NAME)
+            upsert_tasks_from_list(target_user_id, baseline.tasks, integration=None)
     except ExternalAPIError as exc:
         logger.warning(
             "route.tasks.upload.baseline_failed",
-            extra={"user_id": user.user_id, "status_code": exc.status_code, "details": exc.details},
+            extra={"user_id": target_user_id, "status_code": exc.status_code, "details": exc.details},
         )
 
     for file in files:
         try:
             saved_path, data = await persist_upload_file(
-                upload=file, user_id=user.user_id, max_bytes=settings.upload_max_mb * 1024 * 1024
+                upload=file, user_id=target_user_id, max_bytes=settings.upload_max_mb * 1024 * 1024
             )
-            result = await resolved.client.upload_batch_file(
-                filename=file.filename or "upload", content=data, user_id=user.user_id, webhook_url=webhook_url
+            result = await client.upload_batch_file(
+                filename=file.filename or "upload", content=data, user_id=target_user_id, webhook_url=webhook_url
             )
-            record_usage(user.user_id, path="/tasks/batch/upload", count=1, api_key_id=resolved.key_id)
+            record_usage(target_user_id, path="/tasks/batch/upload", count=1, api_key_id=None)
             logger.info(
                 "route.tasks.upload",
-                extra={"user_id": user.user_id, "filename": file.filename, "saved_path": str(saved_path)},
+                extra={"user_id": target_user_id, "filename": file.filename, "saved_path": str(saved_path)},
             )
             responses.append(result)
         except ExternalAPIError as exc:
+            if exc.status_code in (401, 403):
+                logger.warning(
+                    "route.tasks.upload.unauthorized",
+                    extra={"user_id": target_user_id, "status_code": exc.status_code, "details": exc.details},
+                )
             raise HTTPException(status_code=exc.status_code, detail=exc.details or exc.args[0])
 
     await poll_tasks_after_upload(
-        client=resolved.client,
-        user_id=user.user_id,
-        integration=INTERNAL_DASHBOARD_KEY_NAME,
+        client=client,
+        user_id=target_user_id,
+        integration=None,
         attempts=settings.upload_poll_attempts,
         interval_seconds=settings.upload_poll_interval_seconds,
         page_size=settings.upload_poll_page_size,
         baseline_ids=baseline_ids,
+        list_user_id=list_user_id,
     )
     return responses

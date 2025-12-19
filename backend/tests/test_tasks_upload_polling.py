@@ -9,7 +9,7 @@ class FakeClient:
         self.results = results
         self.calls = 0
 
-    async def list_tasks(self, limit: int, offset: int):
+    async def list_tasks(self, limit: int, offset: int, user_id: str | None = None):
         self.calls += 1
         idx = min(self.calls - 1, len(self.results) - 1)
         return self.results[idx]

@@ -17,6 +17,7 @@ class AuthContext(BaseModel):
     user_id: str
     claims: Dict[str, Any]
     token: str
+    role: str = "user"
 
 
 def _extract_token(authorization: Optional[str], cookie_token: Optional[str]) -> Optional[str]:
@@ -27,6 +28,18 @@ def _extract_token(authorization: Optional[str], cookie_token: Optional[str]) ->
     if cookie_token:
         return cookie_token.strip()
     return None
+
+
+def _extract_role_claim(claims: Dict[str, Any]) -> tuple[Optional[str], Optional[str]]:
+    app_metadata = claims.get("app_metadata") if isinstance(claims, dict) else None
+    if isinstance(app_metadata, dict):
+        role = app_metadata.get("role")
+        if isinstance(role, str) and role.strip():
+            return role.strip(), "app_metadata.role"
+    top_level_role = claims.get("role") if isinstance(claims, dict) else None
+    if isinstance(top_level_role, str) and top_level_role.strip():
+        return top_level_role.strip(), "role"
+    return None, None
 
 
 def _decode_supabase_jwt(token: str, secret: str) -> Dict[str, Any]:
@@ -81,6 +94,7 @@ def _decode_supabase_jwt_with_jwks(token: str, jwks_url: str) -> Dict[str, Any]:
 def get_current_user(
     request: Request,
     authorization: Optional[str] = Header(default=None),
+    dev_api_key: Optional[str] = Header(default=None, alias="x-dev-api-key"),
     settings=Depends(get_settings),
 ) -> AuthContext:
     cookie_token = request.cookies.get(settings.supabase_auth_cookie_name)
@@ -102,12 +116,32 @@ def get_current_user(
         logger.warning("auth.missing_sub", extra={"claims_keys": list(claims.keys())})
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid auth token")
 
+    role = "user"
+    role_source = None
+    role_claim, role_source = _extract_role_claim(claims)
+    if role_claim:
+        if role_claim == "admin":
+            role = "admin"
+        else:
+            logger.debug(
+                "auth.role_claim_non_admin",
+                extra={"user_id": user_id, "role_claim": role_claim, "role_source": role_source},
+            )
+    else:
+        logger.debug("auth.role_claim_missing", extra={"user_id": user_id})
+    dev_keys = settings.dev_api_keys if isinstance(settings.dev_api_keys, list) else [settings.dev_api_keys]
+    if dev_api_key and dev_keys and dev_api_key in dev_keys:
+        role = "admin"
+        role_source = "dev_api_key"
+
     logger.debug(
         "auth.authenticated",
         extra={
             "user_id": user_id,
             "has_cookie": bool(cookie_token),
             "has_authorization": bool(authorization),
+            "role": role,
+            "role_source": role_source,
         },
     )
-    return AuthContext(user_id=user_id, claims=claims, token=token)
+    return AuthContext(user_id=user_id, claims=claims, token=token, role=role)

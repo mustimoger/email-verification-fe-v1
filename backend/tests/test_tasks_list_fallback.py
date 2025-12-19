@@ -11,7 +11,6 @@ from app.core.auth import AuthContext
 @pytest.fixture(autouse=True)
 def env(monkeypatch):
     monkeypatch.setenv("EMAIL_API_BASE_URL", "https://api.test")
-    monkeypatch.setenv("EMAIL_API_KEY", "key")
     monkeypatch.setenv("SUPABASE_URL", "https://sb.test")
     monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service_key")
     monkeypatch.setenv("SUPABASE_JWT_SECRET", "secret")
@@ -26,11 +25,11 @@ def _build_app(monkeypatch):
         return AuthContext(user_id="user-fallback", claims={}, token="t")
 
     class FakeClient:
-        async def list_tasks(self, limit: int, offset: int):
+        async def list_tasks(self, limit: int, offset: int, user_id: str | None = None):
             return TaskListResponse(count=0, tasks=[])
 
-    async def fake_resolved(api_key_id=None, user=fake_user()):
-        return tasks_module.ResolvedClient(client=FakeClient(), key_id="dashboard")
+    async def fake_resolved():
+        return FakeClient()
 
     monkeypatch.setattr(tasks_module, "record_usage", lambda *args, **kwargs: None)
     monkeypatch.setattr(

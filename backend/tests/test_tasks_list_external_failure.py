@@ -3,15 +3,14 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from app.api import tasks as tasks_module
-from app.api.tasks import ResolvedClient, router
-from app.clients.external import ExternalAPIError, TaskListResponse
+from app.api.tasks import router
+from app.clients.external import ExternalAPIError
 from app.core.auth import AuthContext
 
 
 @pytest.fixture(autouse=True)
 def env(monkeypatch):
   monkeypatch.setenv("EMAIL_API_BASE_URL", "https://api.test")
-  monkeypatch.setenv("EMAIL_API_KEY", "key")
   monkeypatch.setenv("SUPABASE_URL", "https://sb.test")
   monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service_key")
   monkeypatch.setenv("SUPABASE_JWT_SECRET", "secret")
@@ -26,11 +25,11 @@ def _build_app(monkeypatch):
     return AuthContext(user_id="user-external-fail", claims={}, token="t")
 
   class FakeClient:
-    async def list_tasks(self, limit: int, offset: int):
+    async def list_tasks(self, limit: int, offset: int, user_id: str | None = None):
       raise ExternalAPIError(status_code=401, message="unauthorized")
 
-  async def fake_resolved(api_key_id=None, user=fake_user()):
-    return ResolvedClient(client=FakeClient(), key_id="dashboard")
+  async def fake_resolved():
+    return FakeClient()
 
   monkeypatch.setattr(tasks_module, "record_usage", lambda *args, **kwargs: None)
   monkeypatch.setattr(
@@ -52,4 +51,3 @@ def test_tasks_list_handles_external_failure(monkeypatch):
   data = resp.json()
   assert data["count"] == 0
   assert data["tasks"] == []
-
