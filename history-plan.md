@@ -14,6 +14,8 @@ Tasks
 - [x] Supabase fallback for history data: when external tasks are empty/unavailable, list tasks from Supabase cache with stored counts/status so seeded/user tasks render.  
   Explanation: `/api/tasks` now falls back to Supabase `tasks` (with counts/status) and logs the fallback. Frontend maps tasks with counts directly (no detail fetch needed) and still calls detail for tasks lacking counts. Added backend fallback test and extended mapping helpers to use cached counts.
 - [ ] Post-upload future tweak: when external upload starts returning `task_id`, drop or reduce polling in `/api/tasks/upload` and upsert directly from response.
+- [x] Key-scoped history — Add `api_key_id` to the tasks table, store it when tasks are created via our dashboard (or when detail fetch passes a key), and filter `/api/tasks` by `api_key_id` when provided.  
+  Explanation: Added `api_key_id` column + indexes in Supabase, updated task upserts to include `api_key_id` when known, and filtered Supabase task queries by key. When `api_key_id` is supplied and no cached tasks exist, the API returns an empty list (logged) rather than mixing unscoped external tasks. Added backend tests for key-scoped behavior and updated polling/upsert tests.
 - [x] Supabase as primary source for history: return Supabase tasks first, only hit external `/tasks` when Supabase is empty to refresh cache.  
   Explanation: `/api/tasks` now reads from Supabase `tasks` as the primary source (with counts/status/integration). If Supabase has rows, it returns them immediately and logs usage; external fetch is only attempted when Supabase is empty, with upsert on success. Ensures history always shows cached/seeded data even when external tasks list is empty.
 - [x] External failure fallback: when Supabase is empty and external `/tasks` fails, respond with an empty list without crashing; added regression test to prevent UnboundLocal errors.  
@@ -23,6 +25,8 @@ Tasks
 - [x] API key listing cache fallback: when external `/api-keys` is unavailable, return cached user keys from Supabase (filtering out dashboard unless requested) instead of a 5xx.  
   Explanation: Keeps History’s key selector operational even if upstream auth is down; covered by tests for include_internal and filtering.
 - [x] Webhook alternative: if external API offers global task/usage webhooks, plan to consume them for history/usage updates with polling as fallback (see `non-dashboard-api-usage-plan.md`).
+- [ ] File name support: join `task_files` to tasks list so History shows file names for file-based tasks.
+  Explanation: History should show uploaded file names; requires a `task_files` table and backend join before frontend mapping. Enforce task creation limits in the upload flow (`UPLOAD_MAX_EMAILS_PER_TASK` for parsed emails, `upload_max_mb` for file size).
 
 Notes
 - Supabase tables in place: `tasks` (seeded for user musti), `cached_api_keys` (with `key_plain` + `integration`), `api_usage`, `profiles`, `user_credits`. `/api/tasks` already upserts list/detail to keep Supabase current; upload polling fills the gap until `task_id` is returned.

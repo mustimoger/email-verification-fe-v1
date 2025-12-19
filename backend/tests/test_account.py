@@ -57,7 +57,7 @@ def test_update_profile(monkeypatch):
     app = _build_app()
 
     def fake_user():
-        return AuthContext(user_id="u-3", claims={}, token="t")
+        return AuthContext(user_id="u-3", claims={"email": "new@test.com"}, token="t")
 
     app.dependency_overrides[account_module.get_current_user] = fake_user
     updated = {"user_id": "u-3", "email": "new@test.com", "display_name": "New"}
@@ -73,6 +73,50 @@ def test_update_profile(monkeypatch):
     resp = client.patch("/api/account/profile", json={"email": "new@test.com", "display_name": "New"})
     assert resp.status_code == 200
     assert resp.json()["email"] == "new@test.com"
+    assert usage_calls
+
+
+def test_update_profile_email_mismatch(monkeypatch):
+    app = _build_app()
+
+    def fake_user():
+        return AuthContext(user_id="u-5", claims={"email": "old@test.com"}, token="t")
+
+    app.dependency_overrides[account_module.get_current_user] = fake_user
+    usage_calls = []
+    monkeypatch.setattr(account_module, "record_usage", lambda *args, **kwargs: usage_calls.append(args))
+    monkeypatch.setattr(
+        account_module.supabase_client,
+        "upsert_profile",
+        lambda uid, email, display_name, avatar_url=None: {"user_id": uid, "email": email, "display_name": display_name},
+    )
+
+    client = TestClient(app)
+    resp = client.patch("/api/account/profile", json={"email": "new@test.com"})
+    assert resp.status_code == 403
+    assert usage_calls == []
+
+
+def test_update_profile_email_match(monkeypatch):
+    app = _build_app()
+
+    def fake_user():
+        return AuthContext(user_id="u-6", claims={"email": "same@test.com"}, token="t")
+
+    app.dependency_overrides[account_module.get_current_user] = fake_user
+    updated = {"user_id": "u-6", "email": "same@test.com", "display_name": "Same"}
+    usage_calls = []
+    monkeypatch.setattr(account_module, "record_usage", lambda *args, **kwargs: usage_calls.append(args))
+    monkeypatch.setattr(
+        account_module.supabase_client,
+        "upsert_profile",
+        lambda uid, email, display_name, avatar_url=None: updated,
+    )
+
+    client = TestClient(app)
+    resp = client.patch("/api/account/profile", json={"email": "same@test.com", "display_name": "Same"})
+    assert resp.status_code == 200
+    assert resp.json()["email"] == "same@test.com"
     assert usage_calls
 
 

@@ -23,10 +23,12 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
+from urllib.parse import parse_qs, urlparse
 
-ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
+BACKEND_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = BACKEND_ROOT.parent
+if str(BACKEND_ROOT) not in sys.path:
+    sys.path.insert(0, str(BACKEND_ROOT))
 
 from app.paddle.client import PaddleAPIClient, PaddleAPIError  # noqa: E402
 from app.paddle.config import PaddleEnvironmentConfig  # noqa: E402
@@ -40,6 +42,58 @@ def setup_logging() -> None:
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s %(message)s",
     )
+
+
+def _load_dotenv_file(path: Path) -> int:
+    if not path.exists():
+        return 0
+    loaded = 0
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        key, value = _split_env_line(line)
+        if not key:
+            continue
+        if key not in os.environ:
+            os.environ[key] = value
+            loaded += 1
+    return loaded
+
+
+def _split_env_line(line: str) -> tuple[Optional[str], str]:
+    if "=" not in line:
+        return None, ""
+    key, raw_value = line.split("=", 1)
+    key = key.strip()
+    if not key:
+        return None, ""
+    value = raw_value.strip()
+    value = _strip_inline_comment(value)
+    if (value.startswith('"') and value.endswith('"')) or (value.startswith("'") and value.endswith("'")):
+        value = value[1:-1]
+    return key, value
+
+
+def _strip_inline_comment(value: str) -> str:
+    in_single = False
+    in_double = False
+    for idx, char in enumerate(value):
+        if char == "'" and not in_double:
+            in_single = not in_single
+        elif char == '"' and not in_single:
+            in_double = not in_double
+        elif char == "#" and not in_single and not in_double:
+            if idx == 0 or value[idx - 1].isspace():
+                return value[:idx].rstrip()
+    return value
+
+
+def load_dotenv() -> None:
+    loaded = 0
+    loaded += _load_dotenv_file(REPO_ROOT / ".env")
+    loaded += _load_dotenv_file(BACKEND_ROOT / ".env")
+    logger.info("sync_paddle_plans.env_loaded", extra={"loaded": loaded})
 
 
 def _parse_csv_list(value: Optional[str]) -> Optional[List[str]]:
@@ -56,21 +110,43 @@ def _extract_list(payload: Dict[str, Any], keys: Iterable[str]) -> List[Dict[str
     return []
 
 
+def _extract_after_from_url(value: str) -> Optional[str]:
+    try:
+        parsed = urlparse(value)
+    except Exception:  # noqa: BLE001
+        return None
+    qs = parse_qs(parsed.query)
+    after_values = qs.get("after")
+    if after_values:
+        return str(after_values[0])
+    return None
+
+
+def _normalize_next_cursor(value: Any) -> Optional[str]:
+    if not value:
+        return None
+    cursor_str = str(value)
+    if cursor_str.startswith("http"):
+        extracted = _extract_after_from_url(cursor_str)
+        if not extracted:
+            logger.warning("sync_paddle_plans.next_cursor_unparsed", extra={"value": cursor_str})
+            return None
+        return extracted
+    return cursor_str
+
+
 def _extract_next_cursor(payload: Dict[str, Any]) -> Optional[str]:
     meta = payload.get("meta")
     if isinstance(meta, dict):
         pagination = meta.get("pagination")
         if isinstance(pagination, dict):
-            next_cursor = pagination.get("next")
+            next_cursor = _normalize_next_cursor(pagination.get("next"))
             if next_cursor:
-                return str(next_cursor)
-        next_cursor = meta.get("next")
+                return next_cursor
+        next_cursor = _normalize_next_cursor(meta.get("next"))
         if next_cursor:
-            return str(next_cursor)
-    next_cursor = payload.get("next")
-    if next_cursor:
-        return str(next_cursor)
-    return None
+            return next_cursor
+    return _normalize_next_cursor(payload.get("next"))
 
 
 def _extract_custom_data(payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -179,18 +255,18 @@ async def run_sync(
         product_map[str(product_id)] = product
 
     rows: List[Dict[str, Any]] = []
-    invalid_prices = 0
+    skipped_prices = 0
     for price in prices:
         price_id = price.get("id")
         if not price_id:
             logger.warning("sync_paddle_plans.price_missing_id", extra={"price": price})
-            invalid_prices += 1
+            skipped_prices += 1
             continue
 
         product_id = price.get("product_id") or price.get("productId")
         if not product_id:
             logger.error("sync_paddle_plans.price_missing_product", extra={"price_id": price_id})
-            invalid_prices += 1
+            skipped_prices += 1
             continue
 
         product = product_map.get(str(product_id), {})
@@ -199,13 +275,13 @@ async def run_sync(
 
         plan_key = price_custom.get("plan_key") or product_custom.get("plan_key")
         if not plan_key:
-            logger.error("sync_paddle_plans.missing_plan_key", extra={"price_id": price_id, "product_id": product_id})
-            invalid_prices += 1
+            logger.warning("sync_paddle_plans.missing_plan_key", extra={"price_id": price_id, "product_id": product_id})
+            skipped_prices += 1
             continue
 
         credits = _coerce_int(price_custom.get("credits"), "credits", str(price_id))
         if credits is None or credits < 0:
-            invalid_prices += 1
+            skipped_prices += 1
             continue
 
         unit_price = _extract_unit_price(price)
@@ -216,19 +292,19 @@ async def run_sync(
                 "sync_paddle_plans.missing_price_fields",
                 extra={"price_id": price_id, "amount": unit_price.get("amount"), "currency": currency},
             )
-            invalid_prices += 1
+            skipped_prices += 1
             continue
 
         status = price.get("status")
         if not status:
             logger.error("sync_paddle_plans.missing_status", extra={"price_id": price_id})
-            invalid_prices += 1
+            skipped_prices += 1
             continue
 
         plan_name = product.get("name") or price.get("name")
         if not plan_name:
             logger.error("sync_paddle_plans.missing_plan_name", extra={"price_id": price_id, "product_id": product_id})
-            invalid_prices += 1
+            skipped_prices += 1
             continue
 
         description = price.get("description") or product.get("description")
@@ -249,12 +325,12 @@ async def run_sync(
             }
         )
 
-    if invalid_prices:
-        logger.error("sync_paddle_plans.invalid_prices", extra={"count": invalid_prices})
-        return 1
     if not rows:
         logger.error("sync_paddle_plans.no_prices_to_sync")
         return 1
+
+    if skipped_prices:
+        logger.warning("sync_paddle_plans.skipped_prices", extra={"count": skipped_prices})
 
     sb = get_supabase()
     result = sb.table("billing_plans").upsert(rows, on_conflict="paddle_price_id").execute()
@@ -266,6 +342,7 @@ async def run_sync(
 
 def main() -> None:
     setup_logging()
+    load_dotenv()
     parser = argparse.ArgumentParser(description="Sync Paddle catalog into Supabase billing_plans.")
     parser.add_argument(
         "--environment",

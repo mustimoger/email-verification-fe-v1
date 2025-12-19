@@ -3,6 +3,8 @@ import os
 from pathlib import Path
 from typing import Tuple
 
+from slugify import slugify
+
 from fastapi import HTTPException, UploadFile, status
 
 logger = logging.getLogger(__name__)
@@ -10,6 +12,29 @@ logger = logging.getLogger(__name__)
 
 def _uploads_root() -> Path:
     return Path(__file__).resolve().parents[3] / "uploads"
+
+
+def uploads_root() -> Path:
+    return _uploads_root()
+
+
+def relative_upload_path(path: Path) -> str:
+    return str(path.relative_to(_uploads_root()))
+
+
+def absolute_upload_path(relative_path: str) -> Path:
+    return _uploads_root() / relative_path
+
+
+def build_output_path(user_id: str, original_name: str, task_id: str) -> Tuple[Path, str]:
+    root = _uploads_root() / user_id / "outputs"
+    root.mkdir(parents=True, exist_ok=True)
+    base = Path(original_name)
+    safe_stem = slugify(base.stem)
+    if not safe_stem:
+        safe_stem = f"task-{task_id}"
+    filename = f"{safe_stem}-verified-{task_id}{base.suffix}"
+    return root / filename, filename
 
 
 async def persist_upload_file(upload: UploadFile, user_id: str, max_bytes: int) -> Tuple[Path, bytes]:

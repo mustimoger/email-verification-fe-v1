@@ -17,6 +17,11 @@
     "paths": {
         "/api-keys": {
             "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "Returns all active API keys for the authenticated user. Admins may optionally specify a target user via the `user_id` query parameter (required when the admin token does not map to a user UUID).",
                 "tags": [
                     "api-keys"
@@ -31,6 +36,24 @@
                             "type": "string",
                             "format": "uuid"
                         }
+                    },
+                    {
+                        "description": "Filter API keys by last_used_at from this timestamp (RFC3339 format)",
+                        "name": "from",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date-time"
+                        }
+                    },
+                    {
+                        "description": "Filter API keys by last_used_at up to this timestamp (RFC3339 format)",
+                        "name": "to",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date-time"
+                        }
                     }
                 ],
                 "responses": {
@@ -40,6 +63,16 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/cmd_controllers.ListAPIKeysResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid query parameters",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/validation.ValidationErrorResponse"
                                 }
                             }
                         }
@@ -70,14 +103,14 @@
                             }
                         }
                     }
-                },
+                }
+            },
+            "post": {
                 "security": [
                     {
                         "ApiKeyAuth": []
                     }
-                ]
-            },
-            "post": {
+                ],
                 "description": "Generates a new API key for the authenticated user. Admins may optionally specify a target user via the `user_id` query parameter (required when the admin token does not map to a user UUID). The plaintext key is returned only once and must be saved securely.",
                 "tags": [
                     "api-keys"
@@ -152,16 +185,16 @@
                             }
                         }
                     }
-                },
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ]
+                }
             }
         },
         "/api-keys/{id}": {
             "delete": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "Soft-deletes and deactivates an API key. Only the key owner can revoke it.",
                 "tags": [
                     "api-keys"
@@ -251,16 +284,16 @@
                             }
                         }
                     }
-                },
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ]
+                }
             }
         },
         "/disposable_domains": {
             "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "Get a paginated list of all disposable domains",
                 "tags": [
                     "disposable_domains"
@@ -326,14 +359,14 @@
                             }
                         }
                     }
-                },
+                }
+            },
+            "post": {
                 "security": [
                     {
                         "ApiKeyAuth": []
                     }
-                ]
-            },
-            "post": {
+                ],
                 "description": "Create a new disposable domain entry",
                 "tags": [
                     "disposable_domains"
@@ -410,16 +443,16 @@
                             }
                         }
                     }
-                },
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ]
+                }
             }
         },
         "/disposable_domains/bulk": {
             "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "Create multiple disposable domains in a single request (max 100)",
                 "tags": [
                     "disposable_domains"
@@ -493,14 +526,14 @@
                             }
                         }
                     }
-                },
+                }
+            },
+            "delete": {
                 "security": [
                     {
                         "ApiKeyAuth": []
                     }
-                ]
-            },
-            "delete": {
+                ],
                 "description": "Delete multiple disposable domains in a single request (max 100)",
                 "tags": [
                     "disposable_domains"
@@ -574,16 +607,16 @@
                             }
                         }
                     }
-                },
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ]
+                }
             }
         },
         "/disposable_domains/{id}": {
             "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "Get detailed information about a specific disposable domain",
                 "tags": [
                     "disposable_domains"
@@ -661,14 +694,14 @@
                             }
                         }
                     }
-                },
+                }
+            },
+            "put": {
                 "security": [
                     {
                         "ApiKeyAuth": []
                     }
-                ]
-            },
-            "put": {
+                ],
                 "description": "Update an existing disposable domain",
                 "tags": [
                     "disposable_domains"
@@ -770,14 +803,14 @@
                             }
                         }
                     }
-                },
+                }
+            },
+            "delete": {
                 "security": [
                     {
                         "ApiKeyAuth": []
                     }
-                ]
-            },
-            "delete": {
+                ],
                 "description": "Delete a specific disposable domain",
                 "tags": [
                     "disposable_domains"
@@ -848,16 +881,16 @@
                             }
                         }
                     }
-                },
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ]
+                }
             }
         },
         "/domains": {
             "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "Get a paginated list of all verified domains with their validation results",
                 "tags": [
                     "domains"
@@ -931,16 +964,16 @@
                             }
                         }
                     }
-                },
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ]
+                }
             }
         },
         "/domains/{domain}": {
             "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "Get detailed information about a specific domain validation result by name",
                 "tags": [
                     "domains"
@@ -1025,16 +1058,16 @@
                             }
                         }
                     }
-                },
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ]
+                }
             }
         },
         "/domains/{id}": {
             "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "Get detailed information about a specific domain validation result",
                 "tags": [
                     "domains"
@@ -1120,16 +1153,16 @@
                             }
                         }
                     }
-                },
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ]
+                }
             }
         },
         "/emails": {
             "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "Get a paginated list of all verified emails with their verification results",
                 "tags": [
                     "emails"
@@ -1195,16 +1228,16 @@
                             }
                         }
                     }
-                },
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ]
+                }
             }
         },
         "/emails/{address}": {
             "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "Get detailed information about a specific email verification result by email address",
                 "tags": [
                     "emails"
@@ -1281,16 +1314,16 @@
                             }
                         }
                     }
-                },
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ]
+                }
             }
         },
         "/emails/{id}": {
             "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "Get detailed information about a specific email verification result",
                 "tags": [
                     "emails"
@@ -1368,16 +1401,16 @@
                             }
                         }
                     }
-                },
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ]
+                }
             }
         },
         "/metrics/api-usage": {
             "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "Returns API key usage metrics (request counts) grouped by API key purpose for the authenticated user (or an explicit user_id for admins).",
                 "tags": [
                     "metrics"
@@ -1391,6 +1424,24 @@
                         "schema": {
                             "type": "string",
                             "format": "uuid"
+                        }
+                    },
+                    {
+                        "description": "Filter API usage metrics from this timestamp based on last_used_at (RFC3339 format)",
+                        "name": "from",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date-time"
+                        }
+                    },
+                    {
+                        "description": "Filter API usage metrics up to this timestamp based on last_used_at (RFC3339 format)",
+                        "name": "to",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date-time"
                         }
                     }
                 ],
@@ -1441,16 +1492,16 @@
                             }
                         }
                     }
-                },
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ]
+                }
             }
         },
         "/metrics/verifications": {
             "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "Returns verification metrics scoped to the authenticated user (or an explicit user_id for admins).",
                 "tags": [
                     "metrics"
@@ -1464,6 +1515,24 @@
                         "schema": {
                             "type": "string",
                             "format": "uuid"
+                        }
+                    },
+                    {
+                        "description": "Filter verification metrics from this timestamp (RFC3339 format)",
+                        "name": "from",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date-time"
+                        }
+                    },
+                    {
+                        "description": "Filter verification metrics up to this timestamp (RFC3339 format)",
+                        "name": "to",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date-time"
                         }
                     }
                 ],
@@ -1514,16 +1583,16 @@
                             }
                         }
                     }
-                },
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ]
+                }
             }
         },
         "/proxies": {
             "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "Get a paginated list of proxies with optional filtering",
                 "tags": [
                     "proxies"
@@ -1671,14 +1740,14 @@
                             }
                         }
                     }
-                },
+                }
+            },
+            "post": {
                 "security": [
                     {
                         "ApiKeyAuth": []
                     }
-                ]
-            },
-            "post": {
+                ],
                 "description": "Create a new proxy configuration for email verification with optional connectivity testing",
                 "tags": [
                     "proxies"
@@ -1755,16 +1824,16 @@
                             }
                         }
                     }
-                },
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ]
+                }
             }
         },
         "/proxies/bulk": {
             "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "Create multiple proxy configurations in a single request",
                 "tags": [
                     "proxies"
@@ -1838,14 +1907,14 @@
                             }
                         }
                     }
-                },
+                }
+            },
+            "delete": {
                 "security": [
                     {
                         "ApiKeyAuth": []
                     }
-                ]
-            },
-            "delete": {
+                ],
                 "description": "Delete multiple proxies in a single request",
                 "tags": [
                     "proxies"
@@ -1902,16 +1971,16 @@
                             }
                         }
                     }
-                },
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ]
+                }
             }
         },
         "/proxies/bulk/import": {
             "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "Import multiple proxies from a text file. Each line should be in format: USERNAME:PASSWORD@HOST:PORT",
                 "tags": [
                     "proxies"
@@ -2025,16 +2094,16 @@
                             }
                         }
                     }
-                },
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ]
+                }
             }
         },
         "/proxies/{id}": {
             "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "Get detailed information about a specific proxy",
                 "tags": [
                     "proxies"
@@ -2120,14 +2189,14 @@
                             }
                         }
                     }
-                },
+                }
+            },
+            "put": {
                 "security": [
                     {
                         "ApiKeyAuth": []
                     }
-                ]
-            },
-            "put": {
+                ],
                 "description": "Update an existing proxy configuration with optional connectivity testing",
                 "tags": [
                     "proxies"
@@ -2229,14 +2298,14 @@
                             }
                         }
                     }
-                },
+                }
+            },
+            "delete": {
                 "security": [
                     {
                         "ApiKeyAuth": []
                     }
-                ]
-            },
-            "delete": {
+                ],
                 "description": "Delete a specific proxy",
                 "tags": [
                     "proxies"
@@ -2307,16 +2376,16 @@
                             }
                         }
                     }
-                },
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ]
+                }
             }
         },
         "/role_patterns": {
             "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "Get a paginated list of role patterns with optional filtering by category, domain, or active status",
                 "tags": [
                     "role_patterns"
@@ -2407,14 +2476,14 @@
                             }
                         }
                     }
-                },
+                }
+            },
+            "post": {
                 "security": [
                     {
                         "ApiKeyAuth": []
                     }
-                ]
-            },
-            "post": {
+                ],
                 "description": "Create a new role pattern for role-based email detection",
                 "tags": [
                     "role_patterns"
@@ -2478,16 +2547,16 @@
                             }
                         }
                     }
-                },
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ]
+                }
             }
         },
         "/role_patterns/bulk": {
             "put": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "Update multiple role patterns in a single request",
                 "tags": [
                     "role_patterns"
@@ -2561,14 +2630,14 @@
                             }
                         }
                     }
-                },
+                }
+            },
+            "post": {
                 "security": [
                     {
                         "ApiKeyAuth": []
                     }
-                ]
-            },
-            "post": {
+                ],
                 "description": "Create multiple role patterns in a single request",
                 "tags": [
                     "role_patterns"
@@ -2642,14 +2711,14 @@
                             }
                         }
                     }
-                },
+                }
+            },
+            "delete": {
                 "security": [
                     {
                         "ApiKeyAuth": []
                     }
-                ]
-            },
-            "delete": {
+                ],
                 "description": "Delete multiple role patterns in a single request",
                 "tags": [
                     "role_patterns"
@@ -2723,16 +2792,16 @@
                             }
                         }
                     }
-                },
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ]
+                }
             }
         },
         "/role_patterns/refresh_cache": {
             "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "Force a refresh of the role pattern cache to reload all active patterns",
                 "tags": [
                     "role_patterns"
@@ -2775,16 +2844,16 @@
                             }
                         }
                     }
-                },
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ]
+                }
             }
         },
         "/role_patterns/status": {
             "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "Get information about the role-based detector status including refresh time and pattern count",
                 "tags": [
                     "role_patterns"
@@ -2827,16 +2896,16 @@
                             }
                         }
                     }
-                },
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ]
+                }
             }
         },
         "/role_patterns/{id}": {
             "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "Get detailed information about a specific role pattern",
                 "tags": [
                     "role_patterns"
@@ -2914,14 +2983,14 @@
                             }
                         }
                     }
-                },
+                }
+            },
+            "put": {
                 "security": [
                     {
                         "ApiKeyAuth": []
                     }
-                ]
-            },
-            "put": {
+                ],
                 "description": "Update an existing role pattern",
                 "tags": [
                     "role_patterns"
@@ -3010,14 +3079,14 @@
                             }
                         }
                     }
-                },
+                }
+            },
+            "delete": {
                 "security": [
                     {
                         "ApiKeyAuth": []
                     }
-                ]
-            },
-            "delete": {
+                ],
                 "description": "Delete a specific role pattern",
                 "tags": [
                     "role_patterns"
@@ -3088,16 +3157,16 @@
                             }
                         }
                     }
-                },
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ]
+                }
             }
         },
         "/tasks": {
             "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "Get a paginated list of verification tasks with optional filtering by user ID and creation date range",
                 "tags": [
                     "tasks"
@@ -3200,14 +3269,14 @@
                             }
                         }
                     }
-                },
+                }
+            },
+            "post": {
                 "security": [
                     {
                         "ApiKeyAuth": []
                     }
-                ]
-            },
-            "post": {
+                ],
                 "description": "Creates a new task for bulk email verification with a maximum of 10,000 emails per task. Emails are grouped by domain and queued for processing. Optionally configure a webhook URL to receive notifications when verification completes.",
                 "tags": [
                     "tasks"
@@ -3271,16 +3340,16 @@
                             }
                         }
                     }
-                },
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ]
+                }
             }
         },
         "/tasks/batch/upload": {
             "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "Upload a file containing email addresses for batch verification. File size limit and allowed formats are determined by server configuration. Returns immediately with upload confirmation while processing happens in background.",
                 "tags": [
                     "tasks"
@@ -3344,16 +3413,16 @@
                             }
                         }
                     }
-                },
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ]
+                }
             }
         },
         "/tasks/{id}": {
             "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "Get detailed information about a specific task including all email verification job results with email, host, and domain relationships",
                 "tags": [
                     "tasks"
@@ -3431,16 +3500,16 @@
                             }
                         }
                     }
-                },
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ]
+                }
             }
         },
         "/verify": {
             "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "Performs real-time verification of a single email address with comprehensive validation including syntax, domain, SMTP, and inbox checks",
                 "tags": [
                     "verification"
@@ -3517,12 +3586,7 @@
                             }
                         }
                     }
-                },
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ]
+                }
             }
         }
     },
@@ -3565,7 +3629,8 @@
                         "enum": [
                             "zapier",
                             "n8n",
-                            "google sheets"
+                            "google sheets",
+                            "custom"
                         ],
                         "allOf": [
                             {
@@ -3573,6 +3638,10 @@
                             }
                         ],
                         "example": "zapier"
+                    },
+                    "total_requests": {
+                        "type": "integer",
+                        "example": 1234
                     }
                 }
             },
@@ -3631,6 +3700,9 @@
                         "type": "string"
                     },
                     "status": {
+                        "type": "string"
+                    },
+                    "task_id": {
                         "type": "string"
                     },
                     "upload_id": {
@@ -3879,7 +3951,8 @@
                         "enum": [
                             "zapier",
                             "n8n",
-                            "google sheets"
+                            "google sheets",
+                            "custom"
                         ],
                         "allOf": [
                             {
@@ -3914,7 +3987,8 @@
                         "enum": [
                             "zapier",
                             "n8n",
-                            "google sheets"
+                            "google sheets",
+                            "custom"
                         ],
                         "allOf": [
                             {
@@ -4666,12 +4740,14 @@
                 "enum": [
                     "zapier",
                     "n8n",
-                    "google sheets"
+                    "google sheets",
+                    "custom"
                 ],
                 "x-enum-varnames": [
                     "APIKeyPurposeZapier",
                     "APIKeyPurposeN8N",
-                    "APIKeyPurposeGoogleSheets"
+                    "APIKeyPurposeGoogleSheets",
+                    "APIKeyPurposeCustom"
                 ]
             },
             "models.ConnectionType": {

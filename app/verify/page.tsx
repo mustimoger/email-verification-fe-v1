@@ -1,105 +1,37 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { DragEvent } from "react";
 import { AlertCircle, UploadCloud, X } from "lucide-react";
 import { Cell, Pie, PieChart as RePieChart, ResponsiveContainer } from "recharts";
 
 import { DashboardShell } from "../components/dashboard-shell";
-import { apiClient, ApiError } from "../lib/api-client";
+import { apiClient, ApiError, type LimitsResponse } from "../lib/api-client";
+import { buildColumnOptions, FileColumnError, readFileColumnInfo, type FileColumnInfo } from "./file-columns";
+import {
+  buildUploadSummary,
+  createUploadLinks,
+  formatNumber,
+  mapTaskDetailToResults,
+  mapUploadResultsToLinks,
+  mapVerifyFallbackResults,
+  normalizeEmails,
+  type UploadSummary,
+  type VerificationResult,
+} from "./utils";
 
-type VerificationResult = {
-  email: string;
-  status: "pending" | string;
-  message: string;
-};
-
-type FileVerificationStatus = "download" | "pending";
-
-type FileVerification = {
-  fileName: string;
-  totalEmails: number;
-  valid: number;
-  catchAll: number;
-  invalid: number;
-  status: FileVerificationStatus;
-};
-
-type UploadSummary = {
-  totalEmails: number;
-  uploadDate: string;
-  files: FileVerification[];
-  aggregates: {
-    valid: number;
-    catchAll: number;
-    invalid: number;
-  };
-};
-
-const MAX_FILES = 5;
-const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024;
-
-function normalizeEmails(raw: string) {
-  const tokens: string[] = [];
-  raw
-    .split("\n")
-    .map((line) => line.split(","))
-    .flat()
-    .forEach((piece) => {
-      const value = piece.trim();
-      if (value) tokens.push(value);
-    });
-  return Array.from(new Set(tokens));
-}
-
-function formatNumber(value: number) {
-  return new Intl.NumberFormat().format(value);
-}
-
-function deriveUploadSummary(selectedFiles: File[]): UploadSummary {
-  const files: FileVerification[] = selectedFiles.map((file, index) => {
-    const base = Math.max(50, Math.round((file.size || file.name.length * 10) / 256));
-    const valid = Math.max(10, Math.round(base * 0.78));
-    const catchAll = Math.max(0, Math.round(base * 0.05));
-    const invalid = Math.max(1, base - valid - catchAll);
-    const totalEmails = valid + catchAll + invalid;
-    const status: FileVerificationStatus = index === selectedFiles.length - 1 ? "pending" : "download";
-
-    return {
-      fileName: file.name,
-      totalEmails,
-      valid,
-      catchAll,
-      invalid,
-      status,
-    };
-  });
-
-  const aggregates = files.reduce(
-    (acc, file) => ({
-      valid: acc.valid + file.valid,
-      catchAll: acc.catchAll + file.catchAll,
-      invalid: acc.invalid + file.invalid,
-    }),
-    { valid: 0, catchAll: 0, invalid: 0 },
-  );
-
-  const totalEmails = files.reduce((sum, file) => sum + file.totalEmails, 0);
-  const uploadDate = new Date().toLocaleDateString(undefined, {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-
-  return { files, aggregates, totalEmails, uploadDate };
-}
+const TASK_POLL_ATTEMPTS = 3;
+const TASK_POLL_INTERVAL_MS = 2000;
 
 export default function VerifyPage() {
   const [inputValue, setInputValue] = useState("");
   const [results, setResults] = useState<VerificationResult[]>([]);
   const [errors, setErrors] = useState<string | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
+  const [limits, setLimits] = useState<LimitsResponse | null>(null);
+  const [limitsError, setLimitsError] = useState<string | null>(null);
   const [files, setFiles] = useState<File[]>([]);
+  const [fileColumns, setFileColumns] = useState<Record<string, FileColumnInfo>>({});
   const [uploadSummary, setUploadSummary] = useState<UploadSummary | null>(null);
   const [flowStage, setFlowStage] = useState<"idle" | "popup1" | "popup2" | "summary">("idle");
   const [columnMapping, setColumnMapping] = useState<Record<string, string>>({});
@@ -108,6 +40,76 @@ export default function VerifyPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const pollRef = useRef({ active: false });
+  const parseRef = useRef(0);
+
+  const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  useEffect(() => {
+    let active = true;
+    const loadLimits = async () => {
+      try {
+        const data = await apiClient.getLimits();
+        if (!active) return;
+        setLimits(data);
+        setLimitsError(null);
+        console.info("verify.limits.loaded", { manual_max_emails: data.manual_max_emails, upload_max_mb: data.upload_max_mb });
+      } catch (err: unknown) {
+        if (!active) return;
+        const message = err instanceof ApiError ? err.details || err.message : "Unable to load limits";
+        console.error("verify.limits.load_failed", { error: message });
+        setLimitsError("Unable to load verification limits. Please refresh.");
+      }
+    };
+    loadLimits();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const pollTaskDetail = async (taskId: string, emails: string[]) => {
+    pollRef.current.active = true;
+    for (let attempt = 1; attempt <= TASK_POLL_ATTEMPTS; attempt += 1) {
+      try {
+        const detail = await apiClient.getTask(taskId);
+        if (detail?.jobs && detail.jobs.length > 0) {
+          const mapped = mapTaskDetailToResults(emails, detail);
+          setResults(mapped);
+          const hasPending = detail.jobs.some((job) => {
+            const status = (job.status || "").toLowerCase();
+            return status === "pending" || status === "processing";
+          });
+          if (!hasPending) {
+            pollRef.current.active = false;
+            return;
+          }
+        }
+      } catch (err: unknown) {
+        const message = err instanceof ApiError ? err.details || err.message : "Task lookup failed";
+        console.error("verify.task_poll_failed", { taskId, attempt, error: message });
+      }
+      if (attempt < TASK_POLL_ATTEMPTS) {
+        await wait(TASK_POLL_INTERVAL_MS);
+      }
+    }
+    pollRef.current.active = false;
+  };
+
+  const fetchTaskDetailWithRetries = async (taskId: string) => {
+    for (let attempt = 1; attempt <= TASK_POLL_ATTEMPTS; attempt += 1) {
+      try {
+        const detail = await apiClient.getTask(taskId);
+        return detail;
+      } catch (err: unknown) {
+        const message = err instanceof ApiError ? err.details || err.message : "Task lookup failed";
+        console.error("verify.task_detail_fetch_failed", { taskId, attempt, error: message });
+      }
+      if (attempt < TASK_POLL_ATTEMPTS) {
+        await wait(TASK_POLL_INTERVAL_MS);
+      }
+    }
+    return null;
+  };
 
   const handleVerify = async () => {
     const parsed = normalizeEmails(inputValue);
@@ -116,18 +118,33 @@ export default function VerifyPage() {
       setResults([]);
       return;
     }
+    if (!limits) {
+      setErrors(limitsError ?? "Unable to load verification limits. Please refresh.");
+      setResults([]);
+      return;
+    }
+    const manualLimit = Number(limits.manual_max_emails);
+    if (!Number.isFinite(manualLimit) || manualLimit <= 0) {
+      setErrors("Verification limits are unavailable. Please refresh.");
+      setResults([]);
+      return;
+    }
+    if (parsed.length > manualLimit) {
+      console.warn("verify.manual_limit_exceeded", { count: parsed.length, limit: manualLimit });
+      setErrors(`You can verify up to ${manualLimit} emails at once.`);
+      setResults([]);
+      return;
+    }
     setErrors(null);
     setIsSubmitting(true);
     try {
       const response = await apiClient.createTask(parsed);
       const taskId = response.id ?? null;
-      const updated: VerificationResult[] = parsed.map((email) => ({
-        email,
-        status: "pending",
-        message: taskId ? `Task ${taskId}` : "Task queued",
-      }));
-      setResults(updated);
+      setResults(mapVerifyFallbackResults(parsed, taskId));
       setToast(taskId ? `Task created (${parsed.length} emails)` : `Task queued (${parsed.length} emails)`);
+      if (taskId) {
+        await pollTaskDetail(taskId, parsed);
+      }
     } catch (err: unknown) {
       const message = err instanceof ApiError ? err.details || err.message : "Verification failed";
       setErrors(typeof message === "string" ? message : "Verification failed");
@@ -141,19 +158,26 @@ export default function VerifyPage() {
       setFileError("No files selected.");
       return;
     }
-    const incoming = Array.from(fileList);
-    if (incoming.length > MAX_FILES) {
-      setFileError(`Select up to ${MAX_FILES} files at once.`);
+    if (!limits) {
+      setFileError(limitsError ?? "Unable to load upload limits. Please refresh.");
       return;
     }
-    const tooLarge = incoming.find((file) => file.size > MAX_FILE_SIZE_BYTES);
+    const maxMb = Number(limits.upload_max_mb);
+    if (!Number.isFinite(maxMb) || maxMb <= 0) {
+      setFileError("Upload limits are unavailable. Please refresh.");
+      return;
+    }
+    const incoming = Array.from(fileList);
+    const maxBytes = maxMb * 1024 * 1024;
+    const tooLarge = incoming.find((file) => file.size > maxBytes);
     if (tooLarge) {
-      setFileError(`${tooLarge.name} exceeds the 5 MB limit.`);
+      setFileError(`${tooLarge.name} exceeds the ${maxMb} MB limit.`);
       return;
     }
     setFileError(null);
     setFiles(incoming);
-    const summary = deriveUploadSummary(incoming);
+    const initialLinks = createUploadLinks(incoming);
+    const summary = buildUploadSummary(incoming, initialLinks, new Map());
     setUploadSummary(summary);
     setFlowStage("popup1");
     setColumnMapping(Object.fromEntries(summary.files.map((file) => [file.fileName, ""])));
@@ -172,6 +196,7 @@ export default function VerifyPage() {
 
   const resetUpload = () => {
     setFiles([]);
+    setFileColumns({});
     setUploadSummary(null);
     setFlowStage("idle");
     setColumnMapping({});
@@ -181,7 +206,15 @@ export default function VerifyPage() {
   };
 
   const validationSlices = useMemo(() => {
-    if (!uploadSummary || uploadSummary.totalEmails === 0) {
+    if (
+      !uploadSummary ||
+      uploadSummary.totalEmails === null ||
+      uploadSummary.totalEmails === undefined ||
+      uploadSummary.totalEmails === 0 ||
+      uploadSummary.aggregates.valid === null ||
+      uploadSummary.aggregates.catchAll === null ||
+      uploadSummary.aggregates.invalid === null
+    ) {
       return [];
     }
     return [
@@ -192,7 +225,15 @@ export default function VerifyPage() {
   }, [uploadSummary]);
 
   const validPercent = useMemo(() => {
-    if (!uploadSummary || uploadSummary.totalEmails === 0) return 0;
+    if (
+      !uploadSummary ||
+      uploadSummary.totalEmails === null ||
+      uploadSummary.totalEmails === undefined ||
+      uploadSummary.totalEmails === 0 ||
+      uploadSummary.aggregates.valid === null
+    ) {
+      return null;
+    }
     return Math.round((uploadSummary.aggregates.valid / uploadSummary.totalEmails) * 100);
   }, [uploadSummary]);
 
@@ -212,14 +253,41 @@ export default function VerifyPage() {
         setFileError("No file to upload.");
         return;
       }
+      setFileError(null);
+      const startedAt = new Date().toISOString();
       const uploadResults = await apiClient.uploadTaskFiles(files);
-      const summary = deriveUploadSummary(files);
+      const { links, unmatched, orphaned } = mapUploadResultsToLinks(files, uploadResults);
+      const taskIds = links.map((link) => link.taskId).filter((id): id is string => Boolean(id));
+      const details = await Promise.all(taskIds.map((taskId) => fetchTaskDetailWithRetries(taskId)));
+      const detailsByTaskId = new Map<string, NonNullable<(typeof details)[number]>>();
+      taskIds.forEach((taskId, index) => {
+        const detail = details[index];
+        if (detail) {
+          detailsByTaskId.set(taskId, detail);
+        }
+      });
+      const summary = buildUploadSummary(files, links, detailsByTaskId, startedAt);
       setUploadSummary(summary);
       setFlowStage("summary");
       setToast("Upload submitted");
+      const pendingFiles = summary.files.filter((file) => file.taskId && file.status === "pending");
+      if (unmatched > 0) {
+        setFileError("Some uploads did not return a task id. Check History for updates.");
+      } else if (pendingFiles.length > 0) {
+        setFileError("Processing is still running. Check History for the latest status.");
+      }
+      if (unmatched > 0 || orphaned.length > 0) {
+        console.warn("verify.upload_mapping_incomplete", {
+          unmatched,
+          orphaned_count: orphaned.length,
+          orphaned_filenames: orphaned.map((entry) => entry.filename ?? "unknown"),
+        });
+      }
       console.info("[verify/upload] uploaded", {
         upload_ids: uploadResults.map((r) => r.upload_id),
         files: files.map((f) => f.name),
+        task_ids: taskIds,
+        unmatched,
       });
     } catch (err: unknown) {
       const message = err instanceof ApiError ? err.details || err.message : "Upload failed";
@@ -348,7 +416,7 @@ export default function VerifyPage() {
                 <div className="flex items-center justify-between">
                   <h3 className="text-base font-extrabold text-slate-900">Verify Emails</h3>
                   <span className="text-sm font-semibold text-slate-600">
-                    {uploadSummary.totalEmails} emails detected
+                    {formatNumber(uploadSummary.totalEmails)} emails detected
                   </span>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -364,8 +432,16 @@ export default function VerifyPage() {
                         onClick={() => {
                           const nextFiles = files.filter((f) => f.name !== file.fileName);
                           setFiles(nextFiles);
-                          const nextSummary = deriveUploadSummary(nextFiles);
-                          setUploadSummary(nextFiles.length ? nextSummary : null);
+                          const nextSummary = nextFiles.length
+                            ? buildUploadSummary(nextFiles, createUploadLinks(nextFiles), new Map())
+                            : null;
+                          setUploadSummary(nextSummary);
+                          setColumnMapping((prev) => {
+                            if (nextFiles.length === 0) return {};
+                            const next = { ...prev };
+                            delete next[file.fileName];
+                            return next;
+                          });
                           if (nextFiles.length === 0) setFlowStage("idle");
                         }}
                         aria-label={`Remove ${file.fileName}`}
@@ -400,7 +476,7 @@ export default function VerifyPage() {
                 <div className="flex items-center justify-between">
                   <h3 className="text-base font-extrabold text-slate-900">Assign Email Column</h3>
                   <span className="text-sm font-semibold text-slate-600">
-                    {uploadSummary.totalEmails} emails detected
+                    {formatNumber(uploadSummary.totalEmails)} emails detected
                   </span>
                 </div>
                 <div className="space-y-2">
@@ -518,7 +594,9 @@ export default function VerifyPage() {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-xs font-bold uppercase tracking-wide text-slate-700">Valid Emails</p>
-                        <p className="text-3xl font-extrabold text-slate-900">{validPercent}%</p>
+                        <p className="text-3xl font-extrabold text-slate-900">
+                          {validPercent === null ? "—" : `${validPercent}%`}
+                        </p>
                       </div>
                     </div>
                     <div className="h-64">

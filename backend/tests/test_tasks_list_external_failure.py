@@ -35,7 +35,7 @@ def _build_app(monkeypatch):
   monkeypatch.setattr(
     tasks_module,
     "fetch_tasks_with_counts",
-    lambda user_id, limit=10, offset=0: {"count": 0, "tasks": []},
+    lambda user_id, limit=10, offset=0, api_key_id=None: {"count": 0, "tasks": []},
   )
   app.dependency_overrides[tasks_module.get_current_user] = fake_user
   app.dependency_overrides[tasks_module.get_user_external_client] = fake_resolved

@@ -33,11 +33,12 @@ def _build_app(monkeypatch, fake_user, fake_client, *, use_supabase: bool = Fals
     monkeypatch.setattr(tasks_module, "upsert_tasks_from_list", lambda *args, **kwargs: None)
     monkeypatch.setattr(tasks_module, "poll_tasks_after_upload", fake_poll)
     monkeypatch.setattr(tasks_module, "persist_upload_file", fake_persist)
+    monkeypatch.setattr(tasks_module, "get_cached_key_by_name", lambda *args, **kwargs: None)
     if use_supabase:
         monkeypatch.setattr(
             tasks_module,
             "fetch_tasks_with_counts",
-            lambda user_id, limit=10, offset=0: {
+            lambda user_id, limit=10, offset=0, api_key_id=None: {
                 "count": 1,
                 "tasks": [
                     {
@@ -54,7 +55,11 @@ def _build_app(monkeypatch, fake_user, fake_client, *, use_supabase: bool = Fals
             },
         )
     else:
-        monkeypatch.setattr(tasks_module, "fetch_tasks_with_counts", lambda *args, **kwargs: {"count": 0, "tasks": []})
+        monkeypatch.setattr(
+            tasks_module,
+            "fetch_tasks_with_counts",
+            lambda *args, **kwargs: {"count": 0, "tasks": []},
+        )
 
     app.dependency_overrides[tasks_module.get_current_user] = fake_user
     app.dependency_overrides[tasks_module.get_user_external_client] = lambda: fake_client

@@ -78,9 +78,13 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
 - [x] File upload mapping update: use `task_id` from `/tasks/batch/upload` response to fetch task detail/counts per file; remove any time-based selection.
   Explanation: Removed task list polling/time-based mapping; summary counts now come from task detail linked directly by upload response `task_id`. Fixed the stale `deriveUploadSummary` reference in the file-chip removal flow.
 - [ ] File processing in app API: parse uploaded CSV/XLSX/XLS, apply column mapping + header handling + dedupe, then call external `/tasks` with the cleaned email list (no external batch upload).
-  Explanation: External API will not support mapping/dedupe; app API must own the preprocessing step and create per-file tasks directly from parsed emails. Enforce limits: `UPLOAD_MAX_EMAILS_PER_TASK` (JSON `/tasks` limit is 10k) and `upload_max_mb` (raw file size cap, 10MB).
-- [ ] Supabase task_files table: persist file metadata per task (user_id, task_id, file_name, source_path, column mapping, flags) for History and downloads.
-  Explanation: Needed to show file names in History and recreate annotated download files without mutating originals.
+  Explanation: External API will not support mapping/dedupe; app API must own preprocessing and create per-file tasks directly from parsed emails. Backend upload parsing now ignores email-count limits and only enforces file size; frontend still must send mapping metadata and handle errors.
+- [x] Manual verify limit: add `MANUAL_MAX_EMAILS` to backend settings; enforce in `/api/tasks` (manual copy/paste) and surface to UI via runtime limits endpoint.
+  Explanation: Added `manual_max_emails` setting and enforcement in `/api/tasks`, plus runtime UI validation from `/api/limits` with clear errors when limits can’t be loaded.
+- [x] Runtime limits endpoint: add `/api/limits` (auth-required) returning `manual_max_emails` and `upload_max_mb`; UI must fetch at runtime and avoid hardcoded values.
+  Explanation: `/api/limits` now returns upload and manual limits with auth; Verify page loads limits on mount and uses them for manual and upload validation (no hardcoded sizes).
+- [x] Supabase task_files table: persist file metadata per task (user_id, task_id, file_name, source_path, column mapping, flags) for History and downloads.
+  Explanation: Added `task_files` table with file metadata + column info and indexes to link tasks to uploads for History and download output generation.
 - [ ] Multi-sheet handling: reject Excel files with multiple sheets and return a clear error to split into single-sheet files.
   Explanation: Only the first sheet is supported for MVP to keep parsing deterministic and avoid incorrect column mapping.
 - [ ] Verify download output: generate a new file with verification result columns appended, keep original file unchanged, and expose a download endpoint per task.
@@ -241,7 +245,7 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
 - [x] Priority High: Enforce required address fields per target country for Paddle address creation.
   Explanation: Switched to checkout-collected addresses for global support (configurable `PADDLE_ADDRESS_MODE=checkout`) so Paddle collects country-specific fields. Address creation is skipped server-side, transactions omit `address_id`, and `paddle_customers.paddle_address_id` is now nullable; server-default mode remains available and requires full default address config.
 - [ ] Paddle webhook simulation verification — run a sandbox simulation to confirm webhook delivery and credit grants.
-  Explanation: Attempted with Paddle MCP. Simulation failed because the notification destination required `trafficSource=simulation` (created a new notification setting), but the webhook secret on the server didn't match the new endpoint secret so signature verification failed (HTTP 400). Paddle also sent a static sample payload without `custom_data`, so credit grants couldn't be validated. Next step: update the server webhook secret to the simulation destination’s secret or run a real sandbox checkout to trigger a production webhook.
+  Explanation: Attempted with Paddle MCP to the new ngrok simulation destination (`codex-test-simulation`), but ngrok returned 502 (ERR_NGROK_8012: upstream localhost:8001 refused). This indicates the webhook target isn’t reachable from ngrok. Additionally, Paddle simulation payloads are static and omit `custom_data`, so credits can’t be validated via simulation even if delivery succeeds. Next step: run FastAPI on the same machine as ngrok (or point ngrok to a reachable upstream), set the simulation destination’s endpoint secret in the backend, and re-run for connectivity validation; use a real sandbox checkout for credit grant validation.
 - [ ] Priority Medium: Extend webhook event handling for subscription renewals and payment failure events.
   Explanation: Out of scope for one-time credit packs; defer until subscriptions are introduced.
 - [ ] Priority Medium: Add short-lived caching for plan price lookups in `/api/billing/plans`.

@@ -59,7 +59,6 @@ def test_avatar_upload_reads_bytes_and_sets_profile(monkeypatch):
             supabase_service_role_key="service",
             supabase_jwt_secret="secret",
             email_api_base_url="http://example.com",
-            email_api_key="key",
             supabase_auth_cookie_name="sb",
         ),
     )

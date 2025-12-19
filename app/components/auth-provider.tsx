@@ -24,6 +24,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const bootstrapAttemptedRef = useRef(false);
+  const profileSyncRef = useRef<{ userId: string; email: string } | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -62,6 +63,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     };
     void bootstrap();
+  }, [session]);
+
+  useEffect(() => {
+    if (!session?.user?.email) {
+      profileSyncRef.current = null;
+      return;
+    }
+    const userId = session.user.id;
+    const email = session.user.email;
+    if (profileSyncRef.current?.userId === userId && profileSyncRef.current.email === email) {
+      return;
+    }
+    const syncProfileEmail = async () => {
+      try {
+        await apiClient.updateProfile({ email });
+        profileSyncRef.current = { userId, email };
+        console.info("auth.profile_email_synced", { userId });
+      } catch (err) {
+        console.warn("auth.profile_email_sync_failed", err);
+      }
+    };
+    void syncProfileEmail();
   }, [session]);
 
   const value = useMemo<AuthContextValue>(

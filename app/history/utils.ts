@@ -38,7 +38,7 @@ export function deriveCounts(detail: TaskDetailResponse): { total: number; valid
   let invalid = 0;
   let catchAll = 0;
   jobs.forEach((job: TaskEmailJob) => {
-    const status = job.status;
+    const status = job.email?.status ?? job.status;
     switch (status) {
       case "exists":
         valid += 1;
@@ -88,7 +88,7 @@ export function mapTaskToHistoryRow(task: Task): HistoryRow | null {
   return {
     id: task.id,
     date: formatHistoryDate(task.created_at),
-    label: task.id,
+    label: task.file_name ?? task.id,
     total,
     valid,
     invalid,

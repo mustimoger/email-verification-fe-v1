@@ -35,7 +35,7 @@ def _build_app(monkeypatch):
     monkeypatch.setattr(
         tasks_module,
         "fetch_tasks_with_counts",
-        lambda user_id, limit=10, offset=0: {
+        lambda user_id, limit=10, offset=0, api_key_id=None: {
             "count": 2,
             "tasks": [
                 {

@@ -17,9 +17,7 @@ def test_retention_deletes_old_when_no_credits(monkeypatch):
             f.write("data")
         old_ts = time.time() - (190 * 24 * 3600)
         os.utime(file_path, (old_ts, old_ts))
-
         monkeypatch.setenv("EMAIL_API_BASE_URL", "https://api.test")
-        monkeypatch.setenv("EMAIL_API_KEY", "key")
         monkeypatch.setenv("SUPABASE_URL", "https://sb.test")
         monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service_key")
         monkeypatch.setenv("SUPABASE_JWT_SECRET", "secret")
@@ -44,9 +42,7 @@ def test_retention_keeps_recent_when_has_credits(monkeypatch):
             f.write("data")
         recent_ts = time.time()
         os.utime(file_path, (recent_ts, recent_ts))
-
         monkeypatch.setenv("EMAIL_API_BASE_URL", "https://api.test")
-        monkeypatch.setenv("EMAIL_API_KEY", "key")
         monkeypatch.setenv("SUPABASE_URL", "https://sb.test")
         monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service_key")
         monkeypatch.setenv("SUPABASE_JWT_SECRET", "secret")

@@ -54,6 +54,7 @@ export type Task = {
   invalid_count?: number;
   catchall_count?: number;
   integration?: string;
+  file_name?: string;
   created_at?: string;
   updated_at?: string;
 };
@@ -100,6 +101,11 @@ export type BatchFileUploadResponse = {
   task_id?: string;
   upload_id?: string;
   uploaded_at?: string;
+};
+
+export type LimitsResponse = {
+  manual_max_emails: number;
+  upload_max_mb: number;
 };
 
 export type ApiKeySummary = {
@@ -408,6 +414,7 @@ export const apiClient = {
   },
   getOverview: () => request<OverviewResponse>("/overview", { method: "GET" }),
   listIntegrations: () => request<IntegrationOption[]>("/integrations", { method: "GET" }),
+  getLimits: () => request<LimitsResponse>("/limits", { method: "GET" }),
 };
 
 export type ApiClient = typeof apiClient;

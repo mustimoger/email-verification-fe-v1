@@ -54,7 +54,7 @@ Medium priority
 4) **Subscription lifecycle coverage**
    - Handle renewals, payment failures, and other subscription events consistently.
    - Ensure idempotent persistence and credit grants remain correct.
-   - Status: not implemented.
+   - Status: deferred; not required for one-time credit packs.
 
 5) **Plan price lookup caching**
    - Add short-lived caching for `/api/billing/plans` price fetches to reduce API load.
@@ -137,4 +137,8 @@ Admin sync script (MVP)
 5) **Credit deduction on usage**
    - Atomically decrement credits when tasks/verification are accepted.
    - Reject if insufficient; log and return explicit errors.
-   - Status: not implemented.
+   - Status: TODO (deferred per request); not implementing now.
+
+6) **Webhook simulation verification**
+   - Run a sandbox webhook simulation (`transaction.completed`) and confirm credits increment for a real user.
+   - Status: attempted; simulation used static sample payload without `custom_data` and failed signature verification because the simulation notification setting uses a different endpoint secret. Needs server secret update or a real sandbox checkout to validate credit grants.

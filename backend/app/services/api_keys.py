@@ -83,7 +83,7 @@ def get_cached_key_by_id(user_id: str, key_id: str) -> Optional[Dict[str, str]]:
 
 
 async def resolve_user_api_key(
-    user_id: str, desired_name: str, master_client: ExternalAPIClient
+    user_id: str, desired_name: str, master_client: ExternalAPIClient, purpose: str
 ) -> Tuple[str, str]:
     """
     Return (key_secret, key_id) for the user's key with the given name, creating and caching it if missing.
@@ -103,7 +103,9 @@ async def resolve_user_api_key(
         )
 
     try:
-        created: CreateAPIKeyResponse = await master_client.create_api_key(name=desired_name)
+        if not purpose:
+            raise ExternalAPIError(status_code=400, message="API key purpose is required")
+        created: CreateAPIKeyResponse = await master_client.create_api_key(name=desired_name, purpose=purpose)
         key_secret = created.key or created.id
         if not key_secret:
             raise ExternalAPIError(status_code=500, message="External API did not return key secret")

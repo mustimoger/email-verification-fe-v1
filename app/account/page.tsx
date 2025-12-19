@@ -48,6 +48,10 @@ export default function AccountPage() {
       setProfile(null);
       setCredits(null);
       setError(null);
+      setPasswordError(null);
+      setPasswordSuccess(null);
+      setCurrentPassword("");
+      setNewPassword("");
       return;
     }
     const load = async () => {
@@ -76,8 +80,59 @@ export default function AccountPage() {
     setError(null);
     setPasswordError(null);
     setPasswordSuccess(null);
+    const currentEmail = (session?.user?.email ?? profile.email ?? "").trim();
+    const nextEmail = (profileDraft.email ?? "").trim();
+    const hasEmailInput = nextEmail.length > 0;
+    const emailChanged = hasEmailInput && currentEmail.length > 0 && nextEmail !== currentEmail;
+    const passwordChanged = newPassword.trim().length > 0;
+    const needsReauth = emailChanged || passwordChanged;
     try {
-      const updated = await apiClient.updateProfile(profileDraft);
+      if (hasEmailInput && !currentEmail) {
+        setPasswordError("Current email is unavailable. Please sign in again.");
+        return;
+      }
+      if (needsReauth) {
+        if (!currentPassword) {
+          setPasswordError("Enter your current password to update email or password.");
+          return;
+        }
+        const { error: reauthError } = await supabase.auth.signInWithPassword({
+          email: currentEmail,
+          password: currentPassword,
+        });
+        if (reauthError) {
+          setPasswordError(reauthError.message || "Current password is incorrect.");
+          return;
+        }
+      }
+
+      if (passwordChanged) {
+        const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
+        if (updateError) {
+          setPasswordError(updateError.message || "Failed to update password.");
+          return;
+        }
+        console.info("account.password.updated");
+      }
+
+      if (emailChanged) {
+        const { error: emailError } = await supabase.auth.updateUser({ email: nextEmail });
+        if (emailError) {
+          setPasswordError(emailError.message || "Failed to update email.");
+          return;
+        }
+        console.info("account.email.change_requested");
+        setProfileDraft((prev) => ({ ...prev, email: currentEmail }));
+      }
+
+      const profilePayload: Partial<Profile> = {
+        display_name: profileDraft.display_name ?? "",
+        avatar_url: profileDraft.avatar_url,
+      };
+      if (!emailChanged && nextEmail.length > 0) {
+        profilePayload.email = nextEmail;
+      }
+      const updated = await apiClient.updateProfile(profilePayload);
       setProfile(updated);
       setAvatarUrl(resolveAvatar(updated.avatar_url));
       setProfileDraft({
@@ -88,25 +143,19 @@ export default function AccountPage() {
       if (typeof window !== "undefined") {
         window.dispatchEvent(new CustomEvent("profile:updated", { detail: updated }));
       }
+      console.info("account.profile.updated");
 
-      if (currentPassword && newPassword) {
-        const { error: reauthError } = await supabase.auth.signInWithPassword({
-          email: updated.email ?? profile.email ?? "",
-          password: currentPassword,
-        });
-        if (reauthError) {
-          setPasswordError(reauthError.message || "Current password is incorrect.");
-          return;
-        }
-        const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
-        if (updateError) {
-          setPasswordError(updateError.message || "Failed to update password.");
-          return;
-        }
+      if (emailChanged && passwordChanged) {
+        setPasswordSuccess(`Password updated. Verify ${nextEmail} and relogin to complete the email change.`);
+      } else if (emailChanged) {
+        setPasswordSuccess(`Verification sent to ${nextEmail}. Please confirm it and relogin.`);
+      } else if (passwordChanged) {
         setPasswordSuccess("Password updated successfully.");
-        setCurrentPassword("");
-        setNewPassword("");
+      } else {
+        setPasswordSuccess("Profile updated successfully.");
       }
+      setCurrentPassword("");
+      setNewPassword("");
     } catch (err: unknown) {
       const message = err instanceof ApiError ? err.message : err instanceof Error ? err.message : "Update failed";
       setError(message);

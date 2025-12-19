@@ -15,6 +15,7 @@ class IntegrationDefinition:
     description: str
     icon: Optional[str] = None
     default_name: Optional[str] = None
+    external_purpose: Optional[str] = None
 
 
 def _default_integrations_path() -> Path:
@@ -36,6 +37,7 @@ def _load_integrations(path: Optional[Path] = None) -> List[IntegrationDefinitio
                     description=str(item.get("description") or "").strip(),
                     icon=item.get("icon"),
                     default_name=item.get("default_name"),
+                    external_purpose=item.get("external_purpose"),
                 )
             )
         return [i for i in integrations if i.id]
@@ -51,3 +53,10 @@ def get_integrations() -> List[IntegrationDefinition]:
 
 def get_integration_ids() -> List[str]:
     return [integration.id for integration in get_integrations()]
+
+
+def get_integration_by_id(integration_id: str) -> Optional[IntegrationDefinition]:
+    for integration in get_integrations():
+        if integration.id == integration_id:
+            return integration
+    return None

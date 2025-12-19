@@ -91,6 +91,7 @@ class Task(BaseModel):
     catchall_count: Optional[int] = None
     metrics: Optional[TaskMetrics] = None
     integration: Optional[str] = None
+    file_name: Optional[str] = None
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
 

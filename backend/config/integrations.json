@@ -4,27 +4,23 @@
     "label": "Zapier",
     "description": "Use Webhooks/Code steps to call the API with your key. Keys are universal; picking Zapier just tags usage.",
     "icon": "/integrations/zapier.png",
-    "default_name": "Zapier"
+    "default_name": "Zapier",
+    "external_purpose": "zapier"
   },
   {
     "id": "n8n",
     "label": "n8n",
     "description": "Call the API from HTTP Request or Code nodes. Keys are universal and can be used anywhere; selecting n8n just tags usage.",
     "icon": "/integrations/n8n.png",
-    "default_name": "n8n"
+    "default_name": "n8n",
+    "external_purpose": "n8n"
   },
   {
     "id": "google-sheets",
     "label": "Google Sheets",
     "description": "Use Apps Script or connectors to hit the API. Integration selection only tags usage; keys are universal.",
     "icon": "/integrations/google-sheets.png",
-    "default_name": "Google Sheets"
-  },
-  {
-    "id": "custom",
-    "label": "Custom",
-    "description": "Use this key in your own app/service. Keys are universal; this tag helps organize usage by platform.",
-    "icon": null,
-    "default_name": ""
+    "default_name": "Google Sheets",
+    "external_purpose": "google sheets"
   }
 ]

@@ -27,4 +27,4 @@
 ps1:INFORM USER WHEN YOU HAVE TO VIOLATE ANY OF ABOVE RULES.
 ps2:tell me what you plan to do first before starting code updates.
 ps3:never forget rules from AGENTS.md file.
-ps4:push to github BEFORE EVERY MAJOR CHANGE AND AT THE BEGINNING OF OUR CONVERSATION and ask me for GitHub repository URL 
+ps4:push to github BEFORE EVERY MAJOR CHANGE AND AT THE BEGINNING OF OUR CONVERSATION

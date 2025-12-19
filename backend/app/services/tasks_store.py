@@ -5,6 +5,7 @@ from supabase import Client
 
 from ..clients.external import Task, TaskDetailResponse, TaskMetrics
 from .supabase_client import get_supabase
+from .task_files_store import fetch_task_files
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +17,7 @@ def _task_payload(
     email_count: Optional[int],
     counts: Optional[Dict[str, Optional[int]]] = None,
     integration: Optional[str] = None,
+    api_key_id: Optional[str] = None,
 ) -> Dict[str, object]:
     payload: Dict[str, object] = {"task_id": task_id, "user_id": user_id}
     if status is not None:
@@ -24,6 +26,8 @@ def _task_payload(
         payload["email_count"] = email_count
     if integration:
         payload["integration"] = integration
+    if api_key_id:
+        payload["api_key_id"] = api_key_id
     if counts:
         if counts.get("valid") is not None:
             payload["valid_count"] = counts["valid"]
@@ -84,7 +88,12 @@ def email_count_from_metrics(metrics: Optional[TaskMetrics | Dict[str, object]])
     return _coerce_int(raw_total)
 
 
-def upsert_tasks_from_list(user_id: str, tasks: Iterable[Task], integration: Optional[str] = None) -> None:
+def upsert_tasks_from_list(
+    user_id: str,
+    tasks: Iterable[Task],
+    integration: Optional[str] = None,
+    api_key_id: Optional[str] = None,
+) -> None:
     sb: Client = get_supabase()
     rows: List[Dict[str, object]] = []
     for task in tasks:
@@ -110,6 +119,7 @@ def upsert_tasks_from_list(user_id: str, tasks: Iterable[Task], integration: Opt
                 email_count=email_count,
                 counts=counts,
                 integration=integration,
+                api_key_id=api_key_id,
             )
         )
     if not rows:
@@ -122,7 +132,11 @@ def upsert_tasks_from_list(user_id: str, tasks: Iterable[Task], integration: Opt
 
 
 def upsert_task_from_detail(
-    user_id: str, detail: TaskDetailResponse, counts: Optional[Dict[str, int]] = None, integration: Optional[str] = None
+    user_id: str,
+    detail: TaskDetailResponse,
+    counts: Optional[Dict[str, int]] = None,
+    integration: Optional[str] = None,
+    api_key_id: Optional[str] = None,
 ) -> None:
     if not detail.id:
         return
@@ -133,6 +147,7 @@ def upsert_task_from_detail(
         email_count=len(detail.jobs or []) if detail.jobs is not None else None,
         counts=counts,
         integration=integration,
+        api_key_id=api_key_id,
     )
     sb: Client = get_supabase()
     try:
@@ -166,7 +181,12 @@ def fetch_task_summary(user_id: str, limit: int = 5) -> Dict[str, object]:
     return {"counts": counts, "recent": recent}
 
 
-def fetch_tasks_with_counts(user_id: str, limit: int = 10, offset: int = 0) -> Dict[str, object]:
+def fetch_tasks_with_counts(
+    user_id: str,
+    limit: int = 10,
+    offset: int = 0,
+    api_key_id: Optional[str] = None,
+) -> Dict[str, object]:
     """
     Fetch tasks from Supabase with stored counts/status for history fallback.
     Returns dict with tasks list and optional total count when available.
@@ -174,15 +194,17 @@ def fetch_tasks_with_counts(user_id: str, limit: int = 10, offset: int = 0) -> D
     sb: Client = get_supabase()
     end = offset + limit - 1
     try:
-        res = (
-            sb.table("tasks")
-            .select("*", count="exact")
-            .eq("user_id", user_id)
-            .order("created_at", desc=True)
-            .range(offset, end if end >= offset else offset)
-            .execute()
-        )
+        query = sb.table("tasks").select("*", count="exact").eq("user_id", user_id)
+        if api_key_id:
+            query = query.eq("api_key_id", api_key_id)
+        res = query.order("created_at", desc=True).range(offset, end if end >= offset else offset).execute()
         data = res.data or []
+        task_ids = [row.get("task_id") for row in data if row.get("task_id")]
+        file_names = fetch_task_files(user_id, task_ids) if task_ids else {}
+        for row in data:
+            task_id = row.get("task_id")
+            if task_id and task_id in file_names:
+                row["file_name"] = file_names[task_id]
         total = res.count if hasattr(res, "count") else None
         return {"tasks": data, "count": total}
     except Exception as exc:  # noqa: BLE001

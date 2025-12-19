@@ -7,13 +7,16 @@ Usage:
 
 Notes:
 - Do NOT hardcode tokens in code. Pass via --token or env TOKEN.
+- Token should include app_metadata.role (user/admin) since external API enforces roles.
 - This script will POST /verify for each email in the CSV (consumes credits).
 """
 
 import argparse
 import csv
 import json
+import runpy
 import sys
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import httpx
@@ -36,11 +39,24 @@ def request(client: httpx.Client, method: str, url: str, json_body: Optional[Dic
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Smoke test external API with Supabase JWT")
+    parser.add_argument(
+        "--use-config",
+        action="store_true",
+        help="Run the config-driven test runner in backend/tests instead of this legacy CLI.",
+    )
     parser.add_argument("--token", help="Supabase access token (Bearer)", required=False)
     parser.add_argument("--base-url", help="External API base, e.g. https://.../api/v1", required=True)
     parser.add_argument("--verify-email", help="Single email to POST /verify (optional)", required=False)
     parser.add_argument("--csv", help="CSV with column 'email' to POST /verify for each row", required=False)
     args = parser.parse_args()
+
+    if args.use_config:
+        runner_path = Path(__file__).resolve().parents[1] / "tests" / "external_api_test_runner.py"
+        if not runner_path.exists():
+            print(f"ERROR: test runner not found at {runner_path}", file=sys.stderr)
+            sys.exit(1)
+        runpy.run_path(str(runner_path), run_name="__main__")
+        return
 
     token = args.token or ""
     if not token:

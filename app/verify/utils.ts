@@ -1,7 +1,7 @@
 "use client";
 
-import { Task, TaskDetailResponse, TaskEmailJob } from "../lib/api-client";
-import { PENDING_STATES, formatHistoryDate } from "../history/utils";
+import { BatchFileUploadResponse, TaskDetailResponse, TaskEmailJob } from "../lib/api-client";
+import { PENDING_STATES, deriveCounts, formatHistoryDate } from "../history/utils";
 
 export type VerificationResult = {
   email: string;
@@ -30,6 +30,12 @@ export type UploadSummary = {
     catchAll: number | null;
     invalid: number | null;
   };
+};
+
+export type UploadTaskLink = {
+  fileName: string;
+  taskId: string | null;
+  uploadId: string | null;
 };
 
 export function normalizeEmails(raw: string): string[] {
@@ -75,75 +81,92 @@ export function mapVerifyFallbackResults(emails: string[], taskId?: string | nul
   }));
 }
 
-function parseDate(value?: string): number | null {
-  if (!value) return null;
-  const parsed = new Date(value).getTime();
-  if (Number.isNaN(parsed)) return null;
-  return parsed;
+export function createUploadLinks(files: File[]): UploadTaskLink[] {
+  return files.map((file) => ({
+    fileName: file.name,
+    taskId: null,
+    uploadId: null,
+  }));
 }
 
-function selectTasksForUpload(tasks: Task[], uploadStartedAt?: string): Task[] {
-  const startMs = parseDate(uploadStartedAt);
-  if (startMs === null) {
-    return tasks;
-  }
-  const recent = tasks.filter((task) => {
-    const createdMs = parseDate(task.created_at);
-    return createdMs !== null && createdMs >= startMs;
+export function mapUploadResultsToLinks(
+  files: File[],
+  uploadResults: BatchFileUploadResponse[],
+): { links: UploadTaskLink[]; unmatched: number; orphaned: BatchFileUploadResponse[] } {
+  const buckets = new Map<string, BatchFileUploadResponse[]>();
+  const orphaned: BatchFileUploadResponse[] = [];
+  uploadResults.forEach((result) => {
+    const name = result.filename;
+    if (!name) {
+      orphaned.push(result);
+      return;
+    }
+    const list = buckets.get(name) ?? [];
+    list.push(result);
+    buckets.set(name, list);
   });
-  return recent.length ? recent : tasks;
-}
 
-function extractCounts(task: Task): {
-  total: number | null;
-  valid: number | null;
-  invalid: number | null;
-  catchAll: number | null;
-} {
-  const valid = task.valid_count ?? null;
-  const invalid = task.invalid_count ?? null;
-  const catchAll = task.catchall_count ?? null;
-  if (task.email_count !== undefined && task.email_count !== null) {
-    return { total: task.email_count, valid, invalid, catchAll };
-  }
-  if (valid !== null && invalid !== null && catchAll !== null) {
-    return { total: valid + invalid + catchAll, valid, invalid, catchAll };
-  }
-  return { total: null, valid, invalid, catchAll };
+  let unmatched = 0;
+  const links = files.map((file) => {
+    const list = buckets.get(file.name);
+    const matched = list?.shift();
+    if (!matched) {
+      unmatched += 1;
+      return { fileName: file.name, taskId: null, uploadId: null };
+    }
+    const taskId = matched.task_id ?? null;
+    if (!taskId) {
+      unmatched += 1;
+    }
+    return {
+      fileName: file.name,
+      taskId,
+      uploadId: matched.upload_id ?? null,
+    };
+  });
+
+  return { links, unmatched, orphaned };
 }
 
 export function buildUploadSummary(
   files: File[],
-  tasks: Task[],
+  links: UploadTaskLink[],
+  detailsByTaskId: Map<string, TaskDetailResponse>,
   uploadStartedAt?: string,
-): { summary: UploadSummary; unmatched: number } {
-  const candidates = selectTasksForUpload(tasks, uploadStartedAt);
-  const matchedTasks = candidates.slice(0, files.length);
-  const unmatched = files.length - matchedTasks.length;
+): UploadSummary {
   const fileRows = files.map((file, index) => {
-    const task = matchedTasks[index];
-    if (!task) {
-      return {
-        fileName: file.name,
-        totalEmails: null,
-        valid: null,
-        catchAll: null,
-        invalid: null,
-        status: "pending" as const,
-        taskId: null,
-      };
+    const link = links[index];
+    const taskId = link?.taskId ?? null;
+    const detail = taskId ? detailsByTaskId.get(taskId) : undefined;
+    const jobs = detail?.jobs ?? [];
+    const hasPending = jobs.some((job) => {
+      const status = (job.status || "").toLowerCase();
+      return status ? PENDING_STATES.has(status) : false;
+    });
+    let totalEmails: number | null = null;
+    let valid: number | null = null;
+    let invalid: number | null = null;
+    let catchAll: number | null = null;
+    if (detail && jobs.length > 0 && !hasPending) {
+      const counts = deriveCounts(detail);
+      totalEmails = counts.total;
+      valid = counts.valid;
+      invalid = counts.invalid;
+      catchAll = counts.catchAll;
     }
-    const counts = extractCounts(task);
-    const statusRaw = (task.status || "").toLowerCase();
-    const status: FileVerificationStatus = statusRaw && PENDING_STATES.has(statusRaw) ? "pending" : "download";
+    const metricsTotal = detail?.metrics?.total_email_addresses;
+    if (metricsTotal !== undefined && metricsTotal !== null) {
+      totalEmails = metricsTotal;
+    }
+    const status: FileVerificationStatus = detail && jobs.length > 0 && !hasPending ? "download" : "pending";
     return {
       fileName: file.name,
-      totalEmails: counts.total,
-      valid: counts.valid,
-      catchAll: counts.catchAll,
-      invalid: counts.invalid,
+      totalEmails,
+      valid,
+      catchAll,
+      invalid,
       status,
-      taskId: task.id ?? null,
+      taskId,
     };
   });
 
@@ -169,16 +192,13 @@ export function buildUploadSummary(
 
   const uploadDate = formatHistoryDate(uploadStartedAt);
   return {
-    summary: {
-      totalEmails: hasTotals ? totalEmails : null,
-      uploadDate,
-      files: fileRows,
-      aggregates: {
-        valid: hasTotals ? totalValid : null,
-        catchAll: hasTotals ? totalCatchAll : null,
-        invalid: hasTotals ? totalInvalid : null,
-      },
+    totalEmails: hasTotals ? totalEmails : null,
+    uploadDate,
+    files: fileRows,
+    aggregates: {
+      valid: hasTotals ? totalValid : null,
+      catchAll: hasTotals ? totalCatchAll : null,
+      invalid: hasTotals ? totalInvalid : null,
     },
-    unmatched,
   };
 }

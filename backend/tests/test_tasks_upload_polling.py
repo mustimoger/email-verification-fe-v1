@@ -21,7 +21,9 @@ def test_poll_tasks_after_upload_stops_on_new_task(monkeypatch):
     monkeypatch.setattr(
         tasks_module,
         "upsert_tasks_from_list",
-        lambda user_id, tasks, integration=None: captured.append((user_id, integration, [task.id for task in tasks])),
+        lambda user_id, tasks, integration=None, api_key_id=None: captured.append(
+            (user_id, integration, api_key_id, [task.id for task in tasks])
+        ),
     )
 
     client = FakeClient(
@@ -45,7 +47,7 @@ def test_poll_tasks_after_upload_stops_on_new_task(monkeypatch):
 
     # Should have stopped once the new task appeared and upserted latest list
     assert client.calls == 2
-    assert captured[-1] == ("user-1", "dashboard_api", ["t1", "t2"])
+    assert captured[-1] == ("user-1", "dashboard_api", None, ["t1", "t2"])
 
 
 def test_poll_tasks_after_upload_handles_no_new_tasks(monkeypatch):
@@ -54,7 +56,9 @@ def test_poll_tasks_after_upload_handles_no_new_tasks(monkeypatch):
     monkeypatch.setattr(
         tasks_module,
         "upsert_tasks_from_list",
-        lambda user_id, tasks, integration=None: calls.append((user_id, integration, [task.id for task in tasks])),
+        lambda user_id, tasks, integration=None, api_key_id=None: calls.append(
+            (user_id, integration, api_key_id, [task.id for task in tasks])
+        ),
     )
 
     client = FakeClient(
@@ -78,4 +82,4 @@ def test_poll_tasks_after_upload_handles_no_new_tasks(monkeypatch):
 
     # Should exhaust attempts when no new ids appear
     assert client.calls == 2
-    assert calls[-1] == ("user-2", "dashboard_api", ["a"])
+    assert calls[-1] == ("user-2", "dashboard_api", None, ["a"])

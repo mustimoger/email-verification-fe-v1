@@ -50,6 +50,23 @@ def get_profile(user: AuthContext = Depends(get_current_user)):
 
 @router.patch("/profile", response_model=ProfileResponse)
 def update_profile(payload: ProfileUpdateRequest, user: AuthContext = Depends(get_current_user)):
+    token_email = None
+    if isinstance(user.claims, dict):
+        token_email = user.claims.get("email")
+    if payload.email is not None:
+        if not token_email or payload.email != token_email:
+            logger.warning(
+                "account.profile.email_mismatch",
+                extra={
+                    "user_id": user.user_id,
+                    "token_email": token_email,
+                    "payload_email": payload.email,
+                },
+            )
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Email change must be confirmed before updating profile",
+            )
     updated = supabase_client.upsert_profile(
         user.user_id, email=payload.email, display_name=payload.display_name, avatar_url=payload.avatar_url
     )
