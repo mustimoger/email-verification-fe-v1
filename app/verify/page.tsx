@@ -39,6 +39,7 @@ export default function VerifyPage() {
   const [removeDuplicates, setRemoveDuplicates] = useState<boolean>(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [activeDownload, setActiveDownload] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const pollRef = useRef({ active: false });
   const parseRef = useRef(0);
@@ -153,7 +154,7 @@ export default function VerifyPage() {
     }
   };
 
-  const handleFilesSelected = (fileList: FileList | null) => {
+  const handleFilesSelected = async (fileList: FileList | null) => {
     if (!fileList || fileList.length === 0) {
       setFileError("No files selected.");
       return;
@@ -168,30 +169,68 @@ export default function VerifyPage() {
       return;
     }
     const incoming = Array.from(fileList);
+    const fileNames = incoming.map((file) => file.name);
+    if (new Set(fileNames).size !== fileNames.length) {
+      setFileError("Duplicate file names detected. Please rename files before uploading.");
+      return;
+    }
     const maxBytes = maxMb * 1024 * 1024;
     const tooLarge = incoming.find((file) => file.size > maxBytes);
     if (tooLarge) {
       setFileError(`${tooLarge.name} exceeds the ${maxMb} MB limit.`);
       return;
     }
+    const parseId = parseRef.current + 1;
+    parseRef.current = parseId;
     setFileError(null);
-    setFiles(incoming);
-    const initialLinks = createUploadLinks(incoming);
-    const summary = buildUploadSummary(incoming, initialLinks, new Map());
-    setUploadSummary(summary);
-    setFlowStage("popup1");
-    setColumnMapping(Object.fromEntries(summary.files.map((file) => [file.fileName, ""])));
+    try {
+      const results = await Promise.all(incoming.map((file) => readFileColumnInfo(file)));
+      if (parseRef.current !== parseId) return;
+      const nextColumns = results.reduce<Record<string, FileColumnInfo>>((acc, info) => {
+        acc[info.fileName] = info;
+        return acc;
+      }, {});
+      setFileColumns(nextColumns);
+      setFiles(incoming);
+      const initialLinks = createUploadLinks(incoming);
+      const summary = buildUploadSummary(incoming, initialLinks, new Map());
+      setUploadSummary(summary);
+      setFlowStage("popup1");
+      setColumnMapping(Object.fromEntries(summary.files.map((file) => [file.fileName, ""])));
+      console.info("verify.file_columns.loaded", {
+        files: results.map((info) => ({ name: info.fileName, columns: info.columnCount })),
+      });
+      console.info("[verify/upload] files selected", {
+        count: incoming.length,
+        names: incoming.map((f) => f.name),
+        totalEmails: summary.totalEmails,
+      });
+    } catch (err: unknown) {
+      if (parseRef.current !== parseId) return;
+      const message =
+        err instanceof FileColumnError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : "Unable to read file columns.";
+      console.error("verify.file_columns.failed", {
+        error: message,
+        details: err instanceof FileColumnError ? err.details : undefined,
+      });
+      setFileError(message);
+      setFiles([]);
+      setFileColumns({});
+      setUploadSummary(null);
+      setFlowStage("idle");
+      setColumnMapping({});
+      return;
+    }
 
-    console.info("[verify/upload] files selected", {
-      count: incoming.length,
-      names: incoming.map((f) => f.name),
-      totalEmails: summary.totalEmails,
-    });
   };
 
   const handleDrop = (event: DragEvent<HTMLDivElement>) => {
     event.preventDefault();
-    handleFilesSelected(event.dataTransfer.files);
+    void handleFilesSelected(event.dataTransfer.files);
   };
 
   const resetUpload = () => {
@@ -253,9 +292,30 @@ export default function VerifyPage() {
         setFileError("No file to upload.");
         return;
       }
+      const missingColumns = files.filter((file) => !columnMapping[file.name]);
+      if (missingColumns.length > 0) {
+        setFileError("Select the email column for every file before proceeding.");
+        return;
+      }
+      const invalidColumns = files.filter((file) => {
+        const mapping = columnMapping[file.name];
+        const info = fileColumns[file.name];
+        if (!mapping || !info) return true;
+        return !buildColumnOptions(info, firstRowHasLabels).some((option) => option.value === mapping);
+      });
+      if (invalidColumns.length > 0) {
+        setFileError("Email column selections are invalid. Please reselect and try again.");
+        return;
+      }
       setFileError(null);
       const startedAt = new Date().toISOString();
-      const uploadResults = await apiClient.uploadTaskFiles(files);
+      const metadata = files.map((file) => ({
+        file_name: file.name,
+        email_column: columnMapping[file.name],
+        first_row_has_labels: firstRowHasLabels,
+        remove_duplicates: removeDuplicates,
+      }));
+      const uploadResults = await apiClient.uploadTaskFiles(files, metadata);
       const { links, unmatched, orphaned } = mapUploadResultsToLinks(files, uploadResults);
       const taskIds = links.map((link) => link.taskId).filter((id): id is string => Boolean(id));
       const details = await Promise.all(taskIds.map((taskId) => fetchTaskDetailWithRetries(taskId)));
@@ -294,6 +354,37 @@ export default function VerifyPage() {
       setFileError(typeof message === "string" ? message : "Upload failed");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleDownload = async (file: UploadSummary["files"][number]) => {
+    if (!file.taskId) {
+      setFileError("Download unavailable for this file.");
+      return;
+    }
+    if (!file.fileName) {
+      setFileError("Download unavailable without a file name.");
+      return;
+    }
+    setFileError(null);
+    setActiveDownload(file.taskId);
+    try {
+      const { blob, fileName } = await apiClient.downloadTaskResults(file.taskId, file.fileName);
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = fileName;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+      console.info("verify.download.success", { task_id: file.taskId, file_name: fileName });
+    } catch (err: unknown) {
+      const message = err instanceof ApiError ? err.details || err.message : "Download failed";
+      console.error("verify.download.failed", { task_id: file.taskId, error: message });
+      setFileError(typeof message === "string" ? message : "Download failed");
+    } finally {
+      setActiveDownload(null);
     }
   };
 
@@ -394,7 +485,7 @@ export default function VerifyPage() {
                   accept=".csv, .xlsx, .xls"
                   multiple
                   className="hidden"
-                  onChange={(event) => handleFilesSelected(event.target.files)}
+                  onChange={(event) => void handleFilesSelected(event.target.files)}
                 />
               </div>
             </div>
@@ -437,6 +528,12 @@ export default function VerifyPage() {
                             : null;
                           setUploadSummary(nextSummary);
                           setColumnMapping((prev) => {
+                            if (nextFiles.length === 0) return {};
+                            const next = { ...prev };
+                            delete next[file.fileName];
+                            return next;
+                          });
+                          setFileColumns((prev) => {
                             if (nextFiles.length === 0) return {};
                             const next = { ...prev };
                             delete next[file.fileName];
@@ -491,8 +588,14 @@ export default function VerifyPage() {
                         className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-sm font-semibold text-slate-700 focus:border-[#4c61cc] focus:ring-1 focus:ring-[#4c61cc]"
                       >
                         <option value="">Select email column</option>
-                        <option value="email">Email</option>
-                        <option value="address">Address</option>
+                        {(fileColumns[file.fileName]
+                          ? buildColumnOptions(fileColumns[file.fileName], firstRowHasLabels)
+                          : []
+                        ).map((option) => (
+                          <option key={`${file.fileName}-${option.value}`} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
                       </select>
                     </div>
                   ))}
@@ -575,15 +678,20 @@ export default function VerifyPage() {
                           <span className="text-center text-emerald-600">{formatNumber(file.valid)}</span>
                           <span className="text-center text-rose-600">{formatNumber(file.invalid)}</span>
                           <span className="flex justify-end">
-                            <span
-                              className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-bold ${
-                                file.status === "download"
-                                  ? "bg-emerald-100 text-emerald-700"
-                                  : "bg-slate-200 text-slate-600"
-                              }`}
-                            >
-                              {file.status === "download" ? "Download" : "Pending"}
-                            </span>
+                            {file.status === "download" && file.taskId ? (
+                              <button
+                                type="button"
+                                onClick={() => void handleDownload(file)}
+                                disabled={activeDownload === file.taskId}
+                                className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700 transition hover:bg-emerald-200 disabled:cursor-not-allowed disabled:opacity-70"
+                              >
+                                {activeDownload === file.taskId ? "Downloading..." : "Download"}
+                              </button>
+                            ) : (
+                              <span className="inline-flex items-center rounded-full bg-slate-200 px-3 py-1 text-xs font-bold text-slate-600">
+                                Pending
+                              </span>
+                            )}
                           </span>
                         </div>
                       ))}

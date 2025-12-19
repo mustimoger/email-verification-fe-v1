@@ -103,6 +103,13 @@ export type BatchFileUploadResponse = {
   uploaded_at?: string;
 };
 
+export type UploadFileMetadata = {
+  file_name: string;
+  email_column: string;
+  first_row_has_labels: boolean;
+  remove_duplicates: boolean;
+};
+
 export type LimitsResponse = {
   manual_max_emails: number;
   upload_max_mb: number;
@@ -343,6 +350,51 @@ async function request<T>(
   return data as T;
 }
 
+const extractFilename = (value: string | null): string | null => {
+  if (!value) return null;
+  const parts = value.split(";").map((part) => part.trim());
+  const match = parts.find((part) => part.toLowerCase().startsWith("filename="));
+  if (!match) return null;
+  const raw = match.split("=").slice(1).join("=").trim();
+  if (!raw) return null;
+  if (raw.startsWith("\"") && raw.endsWith("\"")) {
+    return raw.slice(1, -1);
+  }
+  return raw;
+};
+
+const downloadFile = async (path: string, fallbackFileName: string) => {
+  const url = `${API_BASE}${path}`;
+  const headers: Record<string, string> = {};
+  const token = await getAccessToken();
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  const res = await fetch(url, {
+    method: "GET",
+    headers,
+    credentials: "include",
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    let data: unknown = null;
+    if (text) {
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = text;
+      }
+    }
+    const detail = (data as { detail?: unknown })?.detail;
+    const message = typeof detail === "string" && detail.trim().length > 0 ? detail : res.statusText;
+    console.error("api.download_failed", { path, status: res.status, message, details: data });
+    throw new ApiError(res.status, message, data);
+  }
+  const blob = await res.blob();
+  const resolvedName = extractFilename(res.headers.get("content-disposition")) || fallbackFileName;
+  return { blob, fileName: resolvedName };
+};
+
 export const apiClient = {
   verifyEmail: (email: string) => request<VerifyEmailResponse>("/verify", { method: "POST", body: { email } }),
   createTask: (emails: string[], webhook_url?: string) =>
@@ -357,9 +409,10 @@ export const apiClient = {
       `/tasks/${taskId}${apiKeyId ? `?api_key_id=${encodeURIComponent(apiKeyId)}` : ""}`,
       { method: "GET" },
     ),
-  uploadTaskFiles: (files: File[], webhook_url?: string) => {
+  uploadTaskFiles: (files: File[], metadata: UploadFileMetadata[], webhook_url?: string) => {
     const form = new FormData();
     files.forEach((file) => form.append("files", file));
+    form.append("file_metadata", JSON.stringify(metadata));
     if (webhook_url) form.append("webhook_url", webhook_url);
     return request<BatchFileUploadResponse[]>("/tasks/upload", { method: "POST", body: form, isForm: true });
   },
@@ -415,6 +468,8 @@ export const apiClient = {
   getOverview: () => request<OverviewResponse>("/overview", { method: "GET" }),
   listIntegrations: () => request<IntegrationOption[]>("/integrations", { method: "GET" }),
   getLimits: () => request<LimitsResponse>("/limits", { method: "GET" }),
+  downloadTaskResults: (taskId: string, fallbackFileName: string) =>
+    downloadFile(`/tasks/${encodeURIComponent(taskId)}/download`, fallbackFileName),
 };
 
 export type ApiClient = typeof apiClient;

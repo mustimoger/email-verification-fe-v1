@@ -25,7 +25,6 @@ def test_manual_limit_blocks_large_payload(monkeypatch):
     monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service_key")
     monkeypatch.setenv("SUPABASE_JWT_SECRET", "secret")
     monkeypatch.setenv("SUPABASE_AUTH_COOKIE_NAME", "cookie_name")
-    monkeypatch.setenv("UPLOAD_MAX_EMAILS_PER_TASK", "10000")
     monkeypatch.setenv("MANUAL_MAX_EMAILS", "2")
 
     def fake_user():

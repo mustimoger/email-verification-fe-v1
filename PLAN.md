@@ -11,6 +11,12 @@
   Explanation: Warnings only today; likely a dependency bump to `supabase`/`supabase_auth` and a small test change to set cookies on the client.
 - [ ] Enhancements — Only after MVP + tests + staging verification.
 
+## Runtime limits alignment (batch vs upload)
+- [x] Step 1 — remove `upload_max_emails_per_task` requirement and any upload email-count enforcement so file uploads are only size-limited.
+  Explanation: Deleted the unused settings/env/tests wiring for `upload_max_emails_per_task` so startup no longer fails when it’s missing. Upload parsing already passes `max_emails=None`, so file uploads remain unlimited in email count while keeping the 10 MB size guard.
+- [ ] Step 2 — align batch/manual verification limit to 10,000 via `MANUAL_MAX_EMAILS` and reflect in env/test defaults.
+  Explanation: Pending confirmation. This will set the batch endpoint limit to 10,000 without adding any new upload email-count enforcement.
+
 Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` present locally (uncommitted). Root `/` redirects to `/overview`; main page at `app/overview/page.tsx`. A dev server may still be running on port 3001 (see handover if needed). External email verification API is reachable at `https://email-verification.islamsaka.com/api/v1/`; it accepts Supabase JWTs via `Authorization: Bearer <token>`. Supabase seeded for user `mustimoger@gmail.com` with credits and cached keys.
 
 ## Data ownership & key logic (current vs intended)
@@ -87,12 +93,12 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
   Explanation: Added `task_files` table with file metadata + column info and indexes to link tasks to uploads for History and download output generation.
 - [ ] Multi-sheet handling: reject Excel files with multiple sheets and return a clear error to split into single-sheet files.
   Explanation: Only the first sheet is supported for MVP to keep parsing deterministic and avoid incorrect column mapping.
-- [ ] Verify download output: generate a new file with verification result columns appended, keep original file unchanged, and expose a download endpoint per task.
-  Explanation: Users should download verified results while original uploads remain intact; output file should be derived from stored metadata and task results.
-- [ ] Frontend verify: send column mapping + header/dedupe flags with file uploads; validate mapping before submit; wire download action to new backend endpoint.
-  Explanation: UI already collects mapping/flags, but backend needs them; download pill should trigger file download once results are ready.
-- [ ] History filenames: use task_files metadata to display file names for file-based tasks in History.
-  Explanation: Improves History readability and aligns with requirement to persist file names.
+- [x] Verify download output: generate a new file with verification result columns appended, keep original file unchanged, and expose a download endpoint per task.
+  Explanation: Backend now generates verified output with appended columns and exposes `/api/tasks/{id}/download`; output is cached per task file and originals remain unchanged.
+- [x] Frontend verify: send column mapping + header/dedupe flags with file uploads; validate mapping before submit; wire download action to new backend endpoint.
+  Explanation: Verify now reads columns locally, sends `file_metadata`, validates mapping before upload, and triggers downloads from the summary using `/api/tasks/{id}/download`.
+- [x] History filenames: use task_files metadata to display file names for file-based tasks in History.
+  Explanation: Tasks now attach `file_name` from `task_files`, and History mapping prefers it for labels.
 - [x] Verify flow audit (manual + upload wiring) to capture remaining placeholders and mapping gaps.
   Explanation: Manual verify already polls `/api/tasks/{id}` and maps job statuses; upload summary logic still uses time-based task selection and references a removed `deriveUploadSummary` helper in the file-chip remove flow, so file mapping must be replaced with the new upload response `task_id` linkage.
 

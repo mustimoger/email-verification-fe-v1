@@ -26,7 +26,6 @@ class Settings(BaseSettings):
     backend_cors_origins: List[str] | str = ["http://localhost:3000", "https://boltroute.ai", "https://www.boltroute.ai"]
 
     upload_max_mb: int = 10
-    upload_max_emails_per_task: int
     manual_max_emails: int
     upload_retention_days: int = 180
     upload_retention_when_credits: Literal["non_zero", "always", "never"] = "non_zero"
@@ -75,7 +74,7 @@ class Settings(BaseSettings):
             return parts
         return value
 
-    @field_validator("upload_max_emails_per_task", "manual_max_emails", "upload_poll_attempts", "upload_poll_page_size")
+    @field_validator("manual_max_emails", "upload_poll_attempts", "upload_poll_page_size")
     @classmethod
     def positive_int(cls, value):
         if value <= 0:
