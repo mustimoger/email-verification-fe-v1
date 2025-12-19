@@ -14,7 +14,6 @@ from ..paddle.client import (
     CreateCustomerRequest,
     CreateAddressRequest,
     PriceResponse,
-    CustomerResponse,
 )
 from ..paddle.config import get_paddle_config
 from ..paddle.webhook import verify_webhook
@@ -123,10 +122,71 @@ async def list_plans(user: AuthContext = Depends(get_current_user)):
     )
 
 
-async def _resolve_customer_and_address(user: AuthContext) -> Tuple[str, str]:
+async def _resolve_customer_and_address(user: AuthContext) -> Tuple[str, Optional[str]]:
+    config = get_paddle_config()
+    address_mode = config.address_mode
+    client = get_paddle_client()
+
+    async def create_or_reuse_address(customer_id: str) -> str:
+        # Attempt to reuse an existing address if creation conflicts
+        try:
+            address = await client.create_address(
+                CreateAddressRequest(
+                    customer_id=customer_id,
+                    country_code=config.default_country,
+                    postal_code=config.default_postal_code,
+                    region=config.default_region,
+                    city=config.default_city,
+                    first_line=config.default_line1,
+                )
+            )
+            return address.id
+        except PaddleAPIError as exc:
+            if exc.status_code != status.HTTP_409_CONFLICT:
+                raise
+            try:
+                addr_res = await client.list_addresses(customer_id)
+                items = getattr(addr_res, "data", None) or getattr(addr_res, "addresses", None) or []
+                if items:
+                    first = items[0]
+                    addr_id = first.get("id") if isinstance(first, dict) else getattr(first, "id", None)
+                    if addr_id:
+                        logger.info(
+                            "billing.address.reused",
+                            extra={
+                                "user_id": user.user_id,
+                                "customer_id": customer_id,
+                                "address_id": addr_id,
+                                "conflict_details": exc.details,
+                            },
+                        )
+                        return addr_id
+            except Exception as inner_exc:  # noqa: BLE001
+                logger.error(
+                    "billing.address.conflict_no_match",
+                    extra={
+                        "user_id": user.user_id,
+                        "customer_id": customer_id,
+                        "error": str(inner_exc),
+                        "conflict_details": exc.details,
+                    },
+                )
+            raise
+
     existing = get_paddle_ids(user.user_id)
     if existing:
-        return existing
+        customer_id, address_id = existing
+        if address_id:
+            return customer_id, address_id
+        if address_mode == "checkout":
+            logger.info(
+                "billing.address.skipped_checkout",
+                extra={"user_id": user.user_id, "customer_id": customer_id},
+            )
+            return customer_id, None
+        address_id = await create_or_reuse_address(customer_id)
+        upsert_paddle_ids(user.user_id, customer_id, address_id)
+        return customer_id, address_id
 
     profile = supabase_client.fetch_profile(user.user_id)
     if not profile or not profile.get("email"):
@@ -142,61 +202,6 @@ async def _resolve_customer_and_address(user: AuthContext) -> Tuple[str, str]:
             )
     if not profile or not profile.get("email"):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User profile email is required for billing")
-
-    config = get_paddle_config()
-    default_country = config.default_country
-    if not default_country:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Paddle billing default country is not configured",
-        )
-
-    client = get_paddle_client()
-    async def create_or_reuse_address(customer: CustomerResponse) -> str:
-        # Attempt to reuse an existing address if creation conflicts
-        try:
-            address = await client.create_address(
-                CreateAddressRequest(
-                    customer_id=customer.id,
-                    country_code=default_country,
-                    postal_code=config.default_postal_code,
-                    region=config.default_region,
-                    city=config.default_city,
-                    first_line=config.default_line1,
-                )
-            )
-            return address.id
-        except PaddleAPIError as exc:
-            if exc.status_code != status.HTTP_409_CONFLICT:
-                raise
-            try:
-                addr_res = await client.list_addresses(customer.id)
-                items = getattr(addr_res, "data", None) or getattr(addr_res, "addresses", None) or []
-                if items:
-                    first = items[0]
-                    addr_id = first.get("id") if isinstance(first, dict) else getattr(first, "id", None)
-                    if addr_id:
-                        logger.info(
-                            "billing.address.reused",
-                            extra={
-                                "user_id": user.user_id,
-                                "customer_id": customer.id,
-                                "address_id": addr_id,
-                                "conflict_details": exc.details,
-                            },
-                        )
-                        return addr_id
-            except Exception as inner_exc:  # noqa: BLE001
-                logger.error(
-                    "billing.address.conflict_no_match",
-                    extra={
-                        "user_id": user.user_id,
-                        "customer_id": customer.id,
-                        "error": str(inner_exc),
-                        "conflict_details": exc.details,
-                    },
-                )
-            raise
 
     last_conflict_details: Any = None
     search_res: Any = None
@@ -262,9 +267,17 @@ async def _resolve_customer_and_address(user: AuthContext) -> Tuple[str, str]:
             else:
                 raise
 
-        address_id = await create_or_reuse_address(customer)
-        upsert_paddle_ids(user.user_id, customer.id, address_id)
-        return customer.id, address_id
+        customer_id = customer.id
+        if address_mode == "checkout":
+            upsert_paddle_ids(user.user_id, customer_id, None)
+            logger.info(
+                "billing.address.skipped_checkout",
+                extra={"user_id": user.user_id, "customer_id": customer_id},
+            )
+            return customer_id, None
+        address_id = await create_or_reuse_address(customer_id)
+        upsert_paddle_ids(user.user_id, customer_id, address_id)
+        return customer_id, address_id
     except PaddleAPIError as exc:
         logger.error(
             "billing.customer_address.error",

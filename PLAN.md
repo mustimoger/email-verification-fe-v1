@@ -67,6 +67,7 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
 - [x] Implement `/verify` using the shared sidebar/topbar shell: manual entry form + results display + file upload dropzone UI per design; enable nav entry (Overview shell reuse). Include footer per design.  
   Explanation: Refactored shared dashboard shell (sidebar/topbar/footer) and reused it for Overview + new `/verify`. Nav now links to `/verify` (others disabled). Verify page matches Figma: manual email textarea with VERIFY CTA, results panel (shows parsed emails as pending), file upload dropzone with drag/drop + Browse, and footer links. Added front-end limits (max 5 files, 5 MB each) and log events for manual and upload flows; no backend calls yet.
 - [ ] Add basic client-side behavior/logging and minimal tests covering form state/validation wiring; leave clear integration hook for FastAPI when contracts arrive. (Logging and parsing in place; automated tests still needed.)
+  Explanation: Added verify mapping unit tests (`tests/verify-mapping.test.ts`) covering upload mapping and task-detail result mapping; form state/validation tests still outstanding.
 - [ ] Summarize changes and outcomes for newcomers; pause for confirmation before proceeding to popup flow/second Verify state.
 - [x] Verify backend wiring: ingest external task metrics into Supabase on `/tasks` list/create/upload so manual/file flows surface real counts without placeholder data.
   Explanation: Added task metrics parsing (`verification_status`, `total_email_addresses`) to map counts into Supabase tasks; tests added and `pytest backend/tests` passed.
@@ -225,8 +226,8 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
   Explanation: Aligned verification logic with Paddle’s official SDK implementation (ts + h1 header, HMAC of `ts:raw_body`, optional multi-signature support, time drift checks) and added focused tests. Added `PADDLE_WEBHOOK_MAX_VARIANCE_SECONDS` configuration to avoid hardcoded drift defaults.
 - [x] Priority High: Verify webhook ingress IP handling in current infra and adjust allowlist logic.
   Explanation: Added explicit proxy-aware client IP resolution for Paddle webhooks with env-driven forwarded header format + hop count, plus tests for direct/proxy paths. `PADDLE_WEBHOOK_TRUST_PROXY` is now required to avoid silent misconfiguration.
-- [ ] Priority High: Enforce required address fields per target country for Paddle address creation.
-  Explanation: Some countries require postal/region; add validation using configured defaults or require user-supplied fields to prevent checkout failures. Not implemented yet; need target country list to drive requirements.
+- [x] Priority High: Enforce required address fields per target country for Paddle address creation.
+  Explanation: Switched to checkout-collected addresses for global support (configurable `PADDLE_ADDRESS_MODE=checkout`) so Paddle collects country-specific fields. Address creation is skipped server-side, transactions omit `address_id`, and `paddle_customers.paddle_address_id` is now nullable; server-default mode remains available and requires full default address config.
 - [ ] Priority Medium: Extend webhook event handling for subscription renewals and payment failure events.
   Explanation: Ensure credits and entitlements remain consistent for subscription lifecycle events beyond transaction completion; add idempotent storage and tests for new event types. Not implemented yet.
 - [ ] Priority Medium: Add short-lived caching for plan price lookups in `/api/billing/plans`.
@@ -241,6 +242,8 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
 - [x] Added `key_plain` column + user/name index on `cached_api_keys` to store per-user external key secrets for server-side proxying; reserved dashboard keys stay hidden from `/api`.
 - [x] Added `integration` column + (user_id, integration) index to `cached_api_keys` to persist user-selected integration for each key.
 - [x] Added `tasks` table (task_id PK, user_id FK, status, counts, integration, timestamps) with user/created_at index and updated_at trigger; seeded demo rows for user `959ce587-7a0e-4726-8382-e70ad89e1232` to exercise Overview/History once wired.
+- [x] Made `paddle_customers.paddle_address_id` nullable to support checkout-collected addresses.
+  Explanation: Allows storing Paddle customer IDs without requiring a server-created address when `PADDLE_ADDRESS_MODE=checkout`.
 - [x] File upload tasks ingestion after batch upload.  
   Explanation: Added configurable post-upload polling that captures tasks created by `/tasks/batch/upload` by fetching recent tasks with the user’s key, comparing against a baseline, and upserting into Supabase. Logging covers baseline fetch, poll attempts, and new task detection; env knobs (`UPLOAD_POLL_*`) control attempts/interval/page size.
 - [x] Header profile wiring — Sidebar/topbar profile now loads Supabase-backed user profile (display_name/email) and role from session; avatar initials derived from real name. Hardcoded placeholder removed.

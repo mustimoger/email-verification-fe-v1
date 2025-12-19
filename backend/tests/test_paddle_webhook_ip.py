@@ -20,6 +20,7 @@ def _load_config(
     monkeypatch.setenv("PADDLE_BILLING_SANDBOX_WEBHOOK_SECRET", "test_webhook_secret")
     monkeypatch.setenv("PADDLE_WEBHOOK_MAX_VARIANCE_SECONDS", "5")
     monkeypatch.setenv("PADDLE_WEBHOOK_TRUST_PROXY", "true" if trust_proxy else "false")
+    monkeypatch.setenv("PADDLE_ADDRESS_MODE", "checkout")
     if allowlist is not None:
         monkeypatch.setenv("PADDLE_SANDBOX_IPS", allowlist)
     if trust_proxy:

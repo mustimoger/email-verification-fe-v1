@@ -64,6 +64,7 @@ class PaddleConfig(BaseSettings):
     sandbox_ip_allowlist: list[str] | str = Field(default_factory=list, alias="PADDLE_SANDBOX_IPS")
     production_ip_allowlist: list[str] | str = Field(default_factory=list, alias="PADDLE_PRODUCTION_IPS")
 
+    address_mode: Optional[Literal["checkout", "server_default"]] = Field(None, alias="PADDLE_ADDRESS_MODE")
     default_country: Optional[str] = Field(None, alias="PADDLE_BILLING_DEFAULT_COUNTRY")
     default_postal_code: Optional[str] = Field(None, alias="PADDLE_BILLING_DEFAULT_POSTAL")
     default_region: Optional[str] = Field(None, alias="PADDLE_BILLING_DEFAULT_REGION")
@@ -135,6 +136,22 @@ class PaddleConfig(BaseSettings):
             raise ValueError("PADDLE_CLIENT_SIDE_TOKEN is required when checkout is enabled")
         if self.webhook_trust_proxy is None:
             raise ValueError("PADDLE_WEBHOOK_TRUST_PROXY is required")
+        if self.address_mode is None:
+            raise ValueError("PADDLE_ADDRESS_MODE is required")
+        if self.address_mode == "server_default":
+            missing_address = []
+            if not self.default_country:
+                missing_address.append("PADDLE_BILLING_DEFAULT_COUNTRY")
+            if not self.default_line1:
+                missing_address.append("PADDLE_BILLING_DEFAULT_LINE1")
+            if not self.default_city:
+                missing_address.append("PADDLE_BILLING_DEFAULT_CITY")
+            if not self.default_region:
+                missing_address.append("PADDLE_BILLING_DEFAULT_REGION")
+            if not self.default_postal_code:
+                missing_address.append("PADDLE_BILLING_DEFAULT_POSTAL")
+            if missing_address:
+                raise ValueError(f"Missing Paddle default address settings: {', '.join(missing_address)}")
         if self.webhook_trust_proxy:
             proxy_missing = []
             if not self.webhook_forwarded_header:

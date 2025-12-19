@@ -21,6 +21,7 @@ def env(monkeypatch):
     monkeypatch.setenv("PADDLE_BILLING_SANDBOX_WEBHOOK_SECRET", "test_webhook_secret")
     monkeypatch.setenv("PADDLE_WEBHOOK_MAX_VARIANCE_SECONDS", "5")
     monkeypatch.setenv("PADDLE_WEBHOOK_TRUST_PROXY", "false")
+    monkeypatch.setenv("PADDLE_ADDRESS_MODE", "checkout")
     monkeypatch.setenv(
         "PADDLE_BILLING_PLAN_DEFINITIONS",
         json.dumps(
@@ -35,8 +36,6 @@ def env(monkeypatch):
             }
         ),
     )
-    monkeypatch.setenv("PADDLE_BILLING_DEFAULT_COUNTRY", "US")
-    monkeypatch.setenv("PADDLE_BILLING_DEFAULT_LINE1", "123 Test St")
     get_paddle_config.cache_clear()
 
 
@@ -50,7 +49,7 @@ def _build_app(monkeypatch, fake_user, overrides=None):
     return app
 
 
-def test_create_transaction_creates_customer_and_address(monkeypatch):
+def test_create_transaction_creates_customer_checkout_address(monkeypatch):
     created = {}
 
     class FakeClient:
@@ -91,10 +90,11 @@ def test_create_transaction_creates_customer_and_address(monkeypatch):
     resp = client.post("/api/billing/transactions", json={"price_id": "pri_monthly"})
     assert resp.status_code == 200, resp.text
     assert created["customer"]["email"] == "user@example.com"
-    assert created["address"]["country_code"] == "US"
     assert created["transaction"]["customer_id"] == "ctm_test"
     assert created["transaction"]["items"][0]["price_id"] == "pri_monthly"
-    assert created.get("upsert") == ("ctm_test", "add_test")
+    assert "address" not in created
+    assert created["transaction"]["address_id"] is None
+    assert created.get("upsert") == ("ctm_test", None)
 
 
 def test_webhook_grants_credits(monkeypatch):

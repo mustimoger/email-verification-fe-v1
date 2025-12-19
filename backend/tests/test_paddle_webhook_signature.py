@@ -16,6 +16,7 @@ def _load_config(monkeypatch, max_variance_seconds: int):
     monkeypatch.setenv("PADDLE_BILLING_SANDBOX_WEBHOOK_SECRET", "test_webhook_secret")
     monkeypatch.setenv("PADDLE_WEBHOOK_MAX_VARIANCE_SECONDS", str(max_variance_seconds))
     monkeypatch.setenv("PADDLE_WEBHOOK_TRUST_PROXY", "false")
+    monkeypatch.setenv("PADDLE_ADDRESS_MODE", "checkout")
     get_paddle_config.cache_clear()
     return get_paddle_config()
 

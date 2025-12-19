@@ -31,7 +31,7 @@ class TransactionItem(BaseModel):
 
 class CreateTransactionRequest(BaseModel):
     customer_id: str
-    address_id: str
+    address_id: Optional[str] = None
     items: list[TransactionItem]
     custom_data: Optional[Dict[str, Any]] = None
     metadata: Optional[Dict[str, Any]] = None
@@ -128,7 +128,7 @@ class PaddleAPIClient:
         return model.model_validate(payload)
 
     async def create_transaction(self, payload: CreateTransactionRequest) -> CreateTransactionResponse:
-        response = await self._request("POST", "/transactions", json=payload.model_dump(mode="json"))
+        response = await self._request("POST", "/transactions", json=payload.model_dump(mode="json", exclude_none=True))
         return await self._parse(response, CreateTransactionResponse)
 
     async def create_customer(self, payload: CreateCustomerRequest) -> CustomerResponse:

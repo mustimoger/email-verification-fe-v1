@@ -48,7 +48,7 @@ High priority
 3) **Address requirement validation per country**
    - Enforce required address fields based on target country rules (postal/region, etc.).
    - Fail fast with clear logs if required defaults are missing.
-   - Status: not implemented; requires target country list.
+   - Status: implemented via checkout-collected addresses (`PADDLE_ADDRESS_MODE=checkout`) so Paddle enforces country-specific fields at checkout; server-default mode remains optional with strict defaults required.
 
 Medium priority
 4) **Subscription lifecycle coverage**
