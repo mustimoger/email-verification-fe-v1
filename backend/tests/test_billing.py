@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 from app.api import billing as billing_module
 from app.api.billing import router as billing_router
 from app.core.auth import AuthContext
+from app.paddle.config import get_paddle_config
 
 
 @pytest.fixture(autouse=True)
@@ -18,6 +19,8 @@ def env(monkeypatch):
     monkeypatch.setenv("PADDLE_BILLING_SANDBOX_API_KEY", "pdl_sdbx_apikey_test")
     monkeypatch.setenv("PADDLE_BILLING_SANDBOX_CHECKOUT_SCRIPT", "https://sandbox-cdn.paddle.com/paddle/v2/paddle.js")
     monkeypatch.setenv("PADDLE_BILLING_SANDBOX_WEBHOOK_SECRET", "test_webhook_secret")
+    monkeypatch.setenv("PADDLE_WEBHOOK_MAX_VARIANCE_SECONDS", "5")
+    monkeypatch.setenv("PADDLE_WEBHOOK_TRUST_PROXY", "false")
     monkeypatch.setenv(
         "PADDLE_BILLING_PLAN_DEFINITIONS",
         json.dumps(
@@ -34,6 +37,7 @@ def env(monkeypatch):
     )
     monkeypatch.setenv("PADDLE_BILLING_DEFAULT_COUNTRY", "US")
     monkeypatch.setenv("PADDLE_BILLING_DEFAULT_LINE1", "123 Test St")
+    get_paddle_config.cache_clear()
 
 
 def _build_app(monkeypatch, fake_user, overrides=None):
@@ -74,6 +78,11 @@ def test_create_transaction_creates_customer_and_address(monkeypatch):
     monkeypatch.setattr(billing_module, "get_paddle_client", lambda: FakeClient())
     monkeypatch.setattr(billing_module, "get_paddle_ids", lambda user_id: None)
     monkeypatch.setattr(billing_module, "upsert_paddle_ids", lambda user_id, c, a: created.setdefault("upsert", (c, a)))
+    monkeypatch.setattr(
+        billing_module,
+        "get_billing_plan_by_price_id",
+        lambda price_id: {"paddle_price_id": price_id, "credits": 500, "status": "active"},
+    )
     monkeypatch.setattr(billing_module.supabase_client, "fetch_profile", lambda user_id: {"email": "user@example.com", "display_name": "Test"})
 
     app = _build_app(monkeypatch, fake_user)
@@ -91,7 +100,7 @@ def test_create_transaction_creates_customer_and_address(monkeypatch):
 def test_webhook_grants_credits(monkeypatch):
     granted = {}
 
-    def fake_verify_webhook(raw_body, signature_header, remote_ip):
+    def fake_verify_webhook(raw_body, signature_header, remote_ip, headers=None):
         return True
 
     def fake_record_event(**kwargs):
@@ -106,6 +115,11 @@ def test_webhook_grants_credits(monkeypatch):
     monkeypatch.setattr(billing_module, "verify_webhook", fake_verify_webhook)
     monkeypatch.setattr(billing_module, "record_billing_event", lambda **kwargs: fake_record_event(**kwargs))
     monkeypatch.setattr(billing_module, "grant_credits", fake_grant_credits)
+    monkeypatch.setattr(
+        billing_module,
+        "get_billing_plans_by_price_ids",
+        lambda price_ids: [{"paddle_price_id": "pri_monthly", "credits": 500}],
+    )
 
     app = _build_app(monkeypatch, lambda: AuthContext(user_id="u", claims={}, token="t"))
     client = TestClient(app)

@@ -16,7 +16,7 @@ Goal: add Paddle Billing (new API, not Classic) for pricing/checkout/subscriptio
 ## Step-by-step plan (MVP first)
 1) **Config loader (sandbox/prod switch):** centralize Paddle Billing settings (base URL, API key, client-side token, webhook secret, checkout script URL, plan definitions) with explicit env validation; select sandbox vs prod via `PADDLE_STATUS`. Fail fast when required values are missing.
 2) **Paddle HTTP client + MCP alignment:** implement a lightweight Paddle Billing client (or reuse MCP read calls during dev) covering create/list products/prices and create transaction/checkout links. Attach seller metadata and user identifiers (Supabase user_id/email) in `custom_data`/`metadata` to map back on webhooks.
-3) **Catalog/plan mapping:** parse `PADDLE_BILLING_PLAN_DEFINITIONS` (product_id/price_id/credits metadata). Add a small Supabase cache/table if needed for display, but primary source remains env + Paddle list verification. Provide an endpoint to return available plans to the frontend with price IDs and credit payloads.
+3) **Catalog/plan mapping:** use Supabase `billing_plans` as the source of truth (synced from Paddle). Provide an endpoint to return available plans to the frontend with price IDs, credits, amount, and currency; reject unknown price_ids at transaction time.
 4) **Checkout/session endpoint:** backend route that takes a plan/price_id and quantity, creates a Paddle Billing transaction (or checkout) server-side, and returns the checkout URL/ID for Paddle.js. Include customer creation/upsert (using email + supabase user_id in metadata) before transaction creation. Log and propagate errors; no client-side secrets.
 5) **Frontend wiring:** load Paddle.js from env `PADDLE_BILLING_*_CHECKOUT_SCRIPT`, initialize with `PADDLE_CLIENT_SIDE_TOKEN`, and call the backend checkout endpoint from the pricing buy buttons. Handle success/cancel redirects and show errors without silent fallbacks.
 6) **Webhook ingestion:** add `/api/paddle/webhook` route verifying HMAC/signature and IP allowlists (use sandbox/prod IP lists). Store raw events with dedupe (event_id) and process relevant types: `transaction.completed`, `subscription.*`, `payment.*`. Map events to user via metadata; log and skip if mapping fails.
@@ -36,14 +36,14 @@ Goal: add Paddle Billing (new API, not Classic) for pricing/checkout/subscriptio
 ## Open TODOs (prioritized)
 High priority
 1) **Webhook signature verification alignment**
-   - Confirm the exact Paddle signing spec (string-to-sign + header format) or switch to the official SDK verifier.
-   - Add tests with known-good signatures to prevent false rejects.
-   - Status: not implemented; requires explicit spec confirmation and decision on SDK vs manual verification.
+   - Confirmed signing scheme via official Paddle SDK implementation (`Paddle-Signature` header, `ts` + `h1` values, HMAC-SHA256 of `ts:raw_body`).
+   - Added verification tests and time drift checks with `PADDLE_WEBHOOK_MAX_VARIANCE_SECONDS`.
+   - Status: implemented.
 
 2) **Webhook ingress IP handling**
-   - Confirm whether webhooks are behind a proxy/CDN and, if so, use trusted forwarded headers or disable IP allowlist.
-   - Add tests for allowlist behavior in proxied vs direct setups.
-   - Status: not implemented; requires deployment network path confirmation.
+   - Added proxy-aware client IP resolution with configurable header format + hop count.
+   - Added tests for direct and proxied allowlist resolution.
+   - Status: implemented (requires env to set `PADDLE_WEBHOOK_TRUST_PROXY` and forwarding settings).
 
 3) **Address requirement validation per country**
    - Enforce required address fields based on target country rules (postal/region, etc.).
@@ -113,25 +113,26 @@ Admin sync script (MVP)
 - Script: `backend/scripts/sync_paddle_plans.py`
 - Requires `PADDLE_STATUS` and the matching `PADDLE_BILLING_*_API_URL` + `PADDLE_BILLING_*_API_KEY`, or pass `--environment/--api-url/--api-key`.
 - Example: `PYTHONPATH=backend python backend/scripts/sync_paddle_plans.py --product-status active,archived --price-status active,archived`
+- Behavior: normalizes pagination cursors, skips invalid rows with warnings, and fails only if no valid rows are produced.
 
 1) **Create Paddle sandbox products/prices for 3 plans**
    - Basic, Professional, Enterprise (Custom is contact-only).
    - Store the resulting Paddle product_id/price_id in Supabase (not in code/env).
-   - Status: not implemented; ready to create once you approve the implementation step.
+   - Status: implemented; sandbox products/prices created and IDs captured for Supabase sync.
 
 2) **Supabase-backed plan catalog**
    - New table (e.g., `billing_plans`) with plan_name, paddle_product_id, paddle_price_id, credits, currency, amount, metadata.
    - `/api/billing/plans` reads from this table and returns pricing + credits to the frontend.
-   - Status: not implemented.
+   - Status: implemented; `billing_plans` is now the catalog source for `/api/billing/plans`.
 
 3) **Transaction creation uses catalog validation**
    - `/api/billing/transactions` validates incoming price_id against catalog and injects supabase_user_id into custom_data.
-   - Status: not implemented.
+   - Status: implemented; transactions reject unknown price_ids and include `supabase_user_id` in custom_data.
 
 4) **Webhook credit grants use catalog mapping**
    - On transaction completion, map price_id → credits from Supabase catalog and increment `user_credits`.
    - Keep idempotency via `billing_events`.
-   - Status: not implemented.
+   - Status: implemented; webhook uses `billing_plans` mapping and logs when no credits are found.
 
 5) **Credit deduction on usage**
    - Atomically decrement credits when tasks/verification are accepted.

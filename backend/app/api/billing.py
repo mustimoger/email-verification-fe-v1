@@ -16,9 +16,14 @@ from ..paddle.client import (
     PriceResponse,
     CustomerResponse,
 )
-from ..paddle.config import get_paddle_config, PaddlePlanDefinition
+from ..paddle.config import get_paddle_config
 from ..paddle.webhook import verify_webhook
 from ..services.billing_events import record_billing_event
+from ..services.billing_plans import (
+    get_billing_plan_by_price_id,
+    get_billing_plans_by_price_ids,
+    list_billing_plans,
+)
 from ..services.credits import grant_credits
 from ..services import supabase_client
 from ..services.paddle_store import get_paddle_ids, upsert_paddle_ids
@@ -68,45 +73,46 @@ class CheckoutRequest(BaseModel):
 @router.get("/plans", response_model=PlansPayload)
 async def list_plans(user: AuthContext = Depends(get_current_user)):
     config = get_paddle_config()
-    if not config.plan_definitions:
-        logger.error("billing.plans.missing_definitions")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Billing plans not configured")
     env = config.active_environment
-    client = get_paddle_client()
-
-    price_details: Dict[str, Dict[str, Any]] = {}
-    unique_price_ids = {p.price_id for definition in config.plan_definitions.values() for p in definition.prices.values()}
-    for price_id in unique_price_ids:
-        try:
-            price_obj = await client.get_price(price_id)  # type: ignore[arg-type]
-            price_details[price_id] = {
-                "amount": price_obj.unit_price.amount,
-                "currency_code": price_obj.unit_price.currency_code,
-            }
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("billing.plans.price_lookup_failed", extra={"price_id": price_id, "error": str(exc)})
+    plan_rows = list_billing_plans()
+    if not plan_rows:
+        logger.error("billing.plans.missing_catalog")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Billing plans not configured")
 
     plans: list[PlanResponse] = []
-    for name, definition in config.plan_definitions.items():
-        plan = PaddlePlanDefinition.model_validate(definition)
-        prices: Dict[str, PlanPrice] = {}
-        for price_name, price_def in plan.prices.items():
-            details = price_details.get(price_def.price_id, {})
-            prices[price_name] = PlanPrice(
-                price_id=price_def.price_id,
-                metadata=price_def.metadata,
-                quantity=price_def.quantity,
-                amount=details.get("amount"),
-                currency_code=details.get("currency_code"),
+    for row in plan_rows:
+        price_id = row.get("paddle_price_id")
+        product_id = row.get("paddle_product_id")
+        plan_name = row.get("plan_name")
+        if not price_id or not product_id or not plan_name:
+            logger.error("billing.plans.invalid_row", extra={"row": row})
+            continue
+        price_metadata = row.get("custom_data") if isinstance(row.get("custom_data"), dict) else {}
+        plan_metadata: Dict[str, Any] = {}
+        if row.get("credits") is not None:
+            plan_metadata["credits"] = row.get("credits")
+        if row.get("plan_key"):
+            plan_metadata["plan_key"] = row.get("plan_key")
+        prices = {
+            "one_time": PlanPrice(
+                price_id=price_id,
+                metadata=price_metadata,
+                quantity=1,
+                amount=row.get("amount"),
+                currency_code=row.get("currency"),
             )
+        }
         plans.append(
             PlanResponse(
-                name=name,
-                product_id=plan.product_id,
-                metadata=plan.metadata,
+                name=plan_name,
+                product_id=product_id,
+                metadata=plan_metadata,
                 prices=prices,
             )
         )
+    if not plans:
+        logger.error("billing.plans.empty_catalog")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Billing plans not configured")
     return PlansPayload(
         status=config.status,
         checkout_enabled=config.checkout_enabled,
@@ -276,19 +282,8 @@ async def create_transaction(
     user: AuthContext = Depends(get_current_user),
 ):
     config = get_paddle_config()
-    if not config.plan_definitions:
-        logger.error("billing.transaction.missing_definitions")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Billing plans not configured")
-    # Ensure price exists in plan definitions to avoid arbitrary price injection
-    allowed_price = None
-    for plan in config.plan_definitions.values():
-        for price_def in plan.prices.values():
-            if price_def.price_id == payload.price_id:
-                allowed_price = price_def
-                break
-        if allowed_price:
-            break
-    if not allowed_price:
+    plan_row = get_billing_plan_by_price_id(payload.price_id)
+    if not plan_row:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unknown price_id")
 
     try:
@@ -320,7 +315,7 @@ async def paddle_webhook(request: Request):
     raw_body = await request.body()
     remote_ip = request.client.host if request.client else None
     signature_header = request.headers.get("Paddle-Signature") or request.headers.get("Paddle-signature")
-    verify_webhook(raw_body=raw_body, signature_header=signature_header, remote_ip=remote_ip)
+    verify_webhook(raw_body=raw_body, signature_header=signature_header, remote_ip=remote_ip, headers=request.headers)
     try:
         payload = await request.json()
     except Exception as exc:  # noqa: BLE001
@@ -353,19 +348,6 @@ async def paddle_webhook(request: Request):
         logger.warning("billing.webhook.missing_user", extra={"event_id": event_id, "event_type": event_type})
         return {"received": True}
 
-    config = get_paddle_config()
-    # Compute credits from price_ids using plan definitions metadata
-    price_to_credits: Dict[str, int] = {}
-    for plan in config.plan_definitions.values():
-        for price_def in plan.prices.values():
-            credits_val = 0
-            if isinstance(price_def.metadata, dict) and "credits" in price_def.metadata:
-                try:
-                    credits_val = int(price_def.metadata["credits"])
-                except Exception:
-                    credits_val = 0
-            price_to_credits[price_def.price_id] = credits_val
-
     total_credits = 0
     price_ids: list[str] = []
     for item in items:
@@ -377,6 +359,23 @@ async def paddle_webhook(request: Request):
         if not price_id:
             continue
         price_ids.append(price_id)
+    plan_rows = get_billing_plans_by_price_ids(price_ids)
+    price_to_credits: Dict[str, int] = {}
+    for row in plan_rows:
+        try:
+            credits_val = int(row.get("credits") or 0)
+        except Exception:
+            credits_val = 0
+        price_to_credits[str(row.get("paddle_price_id"))] = credits_val
+
+    for item in items:
+        price_id = None
+        quantity = 1
+        if isinstance(item, dict):
+            price_id = item.get("price_id") or (item.get("price") or {}).get("id")
+            quantity = item.get("quantity") or 1
+        if not price_id:
+            continue
         credits_per_unit = price_to_credits.get(price_id, 0)
         try:
             qty_int = int(quantity)

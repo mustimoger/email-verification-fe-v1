@@ -69,6 +69,14 @@ class PaddleConfig(BaseSettings):
     default_region: Optional[str] = Field(None, alias="PADDLE_BILLING_DEFAULT_REGION")
     default_city: Optional[str] = Field(None, alias="PADDLE_BILLING_DEFAULT_CITY")
     default_line1: Optional[str] = Field(None, alias="PADDLE_BILLING_DEFAULT_LINE1")
+    webhook_max_variance_seconds: Optional[int] = Field(None, alias="PADDLE_WEBHOOK_MAX_VARIANCE_SECONDS")
+    webhook_trust_proxy: Optional[bool] = Field(None, alias="PADDLE_WEBHOOK_TRUST_PROXY")
+    webhook_forwarded_header: Optional[str] = Field(None, alias="PADDLE_WEBHOOK_FORWARDED_HEADER")
+    webhook_forwarded_format: Optional[Literal["x_forwarded_for", "forwarded"]] = Field(
+        None,
+        alias="PADDLE_WEBHOOK_FORWARDED_FORMAT",
+    )
+    webhook_proxy_hops: Optional[int] = Field(None, alias="PADDLE_WEBHOOK_PROXY_HOPS")
 
     sandbox_api_url: Optional[str] = Field(None, alias="PADDLE_BILLING_SANDBOX_API_URL")
     sandbox_api_key: Optional[str] = Field(None, alias="PADDLE_BILLING_SANDBOX_API_KEY")
@@ -125,6 +133,20 @@ class PaddleConfig(BaseSettings):
             raise ValueError(f"Missing Paddle {env} settings: {', '.join(missing)}")
         if self.checkout_enabled and not self.client_side_token:
             raise ValueError("PADDLE_CLIENT_SIDE_TOKEN is required when checkout is enabled")
+        if self.webhook_trust_proxy is None:
+            raise ValueError("PADDLE_WEBHOOK_TRUST_PROXY is required")
+        if self.webhook_trust_proxy:
+            proxy_missing = []
+            if not self.webhook_forwarded_header:
+                proxy_missing.append("PADDLE_WEBHOOK_FORWARDED_HEADER")
+            if not self.webhook_forwarded_format:
+                proxy_missing.append("PADDLE_WEBHOOK_FORWARDED_FORMAT")
+            if self.webhook_proxy_hops is None:
+                proxy_missing.append("PADDLE_WEBHOOK_PROXY_HOPS")
+            if proxy_missing:
+                raise ValueError(f"Missing Paddle webhook proxy settings: {', '.join(proxy_missing)}")
+            if self.webhook_proxy_hops < 1:
+                raise ValueError("PADDLE_WEBHOOK_PROXY_HOPS must be greater than zero")
         return self
 
     @property

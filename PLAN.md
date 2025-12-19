@@ -70,12 +70,12 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
 - [ ] Summarize changes and outcomes for newcomers; pause for confirmation before proceeding to popup flow/second Verify state.
 - [x] Verify backend wiring: ingest external task metrics into Supabase on `/tasks` list/create/upload so manual/file flows surface real counts without placeholder data.
   Explanation: Added task metrics parsing (`verification_status`, `total_email_addresses`) to map counts into Supabase tasks; tests added and `pytest backend/tests` passed.
-- [ ] Frontend verify wiring (manual): replace per-email placeholder results with task detail results from `/api/tasks/{id}` and show statuses from the backend.
-  Explanation: Manual verify should use real task/job data; fallback to pending only when the backend has not produced job statuses yet.
-- [ ] Frontend verify wiring (file upload): replace synthetic per-file counts with backend task counts, and define a clear mapping between uploaded files and task records.
-  Explanation: Updated external API docs show `/tasks/batch/upload` returns `filename` + `task_id`, so we can map each uploaded file to its task deterministically; remove time-based mapping and use upload response linkage.
-- [ ] File upload mapping update: use `task_id` from `/tasks/batch/upload` response to fetch task detail/counts per file; remove any time-based selection.
-  Explanation: This avoids incorrect counts and uses the explicit file->task linkage now provided by the API.
+- [x] Frontend verify wiring (manual): replace per-email placeholder results with task detail results from `/api/tasks/{id}` and show statuses from the backend.
+  Explanation: Manual verify now creates a task, shows pending rows, and polls `/api/tasks/{id}` to map real job statuses into the results list; pending is shown until jobs arrive.
+- [x] Frontend verify wiring (file upload): replace synthetic per-file counts with backend task counts, and define a clear mapping between uploaded files and task records.
+  Explanation: Upload flow now uses `/tasks/batch/upload` response `filename` + `task_id` to map each file to its task, fetches task detail per task id, and builds the summary from real task data without time-based selection.
+- [x] File upload mapping update: use `task_id` from `/tasks/batch/upload` response to fetch task detail/counts per file; remove any time-based selection.
+  Explanation: Removed task list polling/time-based mapping; summary counts now come from task detail linked directly by upload response `task_id`. Fixed the stale `deriveUploadSummary` reference in the file-chip removal flow.
 - [x] Verify flow audit (manual + upload wiring) to capture remaining placeholders and mapping gaps.
   Explanation: Manual verify already polls `/api/tasks/{id}` and maps job statuses; upload summary logic still uses time-based task selection and references a removed `deriveUploadSummary` helper in the file-chip remove flow, so file mapping must be replaced with the new upload response `task_id` linkage.
 
@@ -204,6 +204,8 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
 - [x] Supabase schema: created `billing_events` table (event_id PK, user_id FK, event_type, transaction_id, price_ids[], credits_granted, raw jsonb, created_at + user index) with comments for diagnostics/idempotency. Explanation: enables webhook dedupe and credit grants storage for Paddle events.
 - [x] Auto Paddle customer/address creation and pricing wiring: backend now creates/reuses Paddle Customer + Address per user (from profile email + default address config), stores mapping in `paddle_customers`, and uses it for transactions. Pricing page fetches plans and triggers transactions without client-provided IDs. Explanation: aligns dev flow with prod without hardcoded IDs; requires `PADDLE_BILLING_DEFAULT_COUNTRY` (+ optional address defaults) and user email in profile.
 - [x] Billing tests added (`backend/tests/test_billing.py`) covering customer/address auto-create on transaction and credit grant on webhook events using plan metadata. Explanation: ensures MVP billing flow works and remains idempotent under test doubles.
+- [ ] Re-run billing tests after webhook credit mapping changes.
+  Explanation: Webhook credit mapping now pulls from `billing_plans`; tests were updated but the post-change run has not been reconfirmed in this session.
 - [x] Env defaults for Paddle addresses set (per user input): `PADDLE_BILLING_DEFAULT_COUNTRY=US`, line1/city/region/postal present. Explanation: satisfies auto address creation in sandbox; change to production equivalents before go-live.
 - [x] Paddle checkout conflicts resolved: deterministic email filter (`list_customers(email=...)`) with fuzzy fallback; profile email backfill from auth claims; Supabase upsert fixed for supabase-py. New user checkout (dmktadimiz@gmail.com) succeeds; Paddle customer/address reused and transactions created.
 - [x] Paddle sandbox checkout script switched to `https://sandbox-cdn.paddle.com/paddle/v2/paddle.js` to reduce CSP noise; billing tests updated and passing. Next/Image logo aspect ratio warning remains cosmetic; CSP report-only logs may still appear from Paddle/Sentry/Kaspersky. (Intentionally not addressing the Next/Image aspect-ratio warning per instruction.)
@@ -211,18 +213,18 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
   Explanation: Created Paddle sandbox products/prices with taxMode=internal and customData credits for Basic/Professional/Enterprise; IDs captured for Supabase catalog sync. Products: Basic `pro_01kcvp3asd8nb0fnp5jwmrbbsn`, Professional `pro_01kcvp3brdtca0cxzyzg2mvbke`, Enterprise `pro_01kcvp3d4zrnp5dgt8gd0szdx7`. Prices: Basic `pri_01kcvp3r27t1rc4apy168x2n8e` (USD 29), Professional `pri_01kcvp3sycsr5b47kvraf10m9a` (USD 129), Enterprise `pri_01kcvp3wceq1d9sfw6x9b96v9q` (USD 279).
 - [x] Supabase schema: created `billing_plans` table for the Paddle plan catalog.
   Explanation: Stores Paddle product/price IDs, credits, and status so pricing and credit grants are driven by Supabase, not env config.
-- [ ] Supabase plan catalog + API wiring — read plans from Supabase instead of env and validate price_id against stored catalog.
-  Explanation: Ensures frontend plans and webhook credit grants are based on a single source of truth. Not implemented yet.
+- [x] Supabase plan catalog + API wiring — read plans from Supabase instead of env and validate price_id against stored catalog.
+  Explanation: Added `backend/app/services/billing_plans.py` and rewired `/api/billing/plans` + `/api/billing/transactions` to use `billing_plans` as the single source of truth, rejecting unknown price_ids and returning plan metadata/amount/currency from Supabase.
 - [x] Admin sync script — pull Paddle catalog and upsert `billing_plans` in Supabase after plan changes.
-  Explanation: Added `backend/scripts/sync_paddle_plans.py` to list products/prices and upsert Supabase rows, with status filtering and validation. Script run is pending: requires API URL + API key env/CLI overrides (not executed yet due to missing key at runtime).
-- [ ] Webhook credit grant uses Supabase plan catalog for credit mapping and notifies on missing/invalid mappings.
-  Explanation: Prevents silent mismatches; credits are granted only when price_id is known and mapped. Not implemented yet.
+  Explanation: Added `backend/scripts/sync_paddle_plans.py` to list products/prices and upsert Supabase rows, with status filtering and validation. Script now normalizes next cursors and skips invalid rows with warnings; it only fails if no valid rows are produced.
+- [x] Webhook credit grant uses Supabase plan catalog for credit mapping and notifies on missing/invalid mappings.
+  Explanation: Webhook now resolves credits via `billing_plans` using `get_billing_plans_by_price_ids`; unmapped prices log `billing.webhook.no_credits` and do not grant credits.
 - [ ] Credit deduction on usage with atomic update and idempotency guard.
   Explanation: Credits should decrement when tasks/verification are accepted; handle retries without double-deduction and reject when insufficient. Not implemented yet.
-- [ ] Priority High: Confirm Paddle webhook signature spec and align verification (or use official SDK verifier) with tests.
-  Explanation: The current HMAC verification assumes a specific string-to-sign; to prevent false rejects or accepting invalid signatures, validate against Paddle’s official spec or switch to SDK verification and add known-good signature tests. Not implemented yet; awaiting definitive spec confirmation and decision to use SDK or manual verification.
-- [ ] Priority High: Verify webhook ingress IP handling in current infra and adjust allowlist logic.
-  Explanation: If requests traverse a proxy/CDN, `request.client.host` may be the proxy IP; add trusted forwarded header handling or disable IP allowlist when appropriate, with tests. Not implemented yet; need confirmation of deployment network path.
+- [x] Priority High: Confirm Paddle webhook signature spec and align verification (or use official SDK verifier) with tests.
+  Explanation: Aligned verification logic with Paddle’s official SDK implementation (ts + h1 header, HMAC of `ts:raw_body`, optional multi-signature support, time drift checks) and added focused tests. Added `PADDLE_WEBHOOK_MAX_VARIANCE_SECONDS` configuration to avoid hardcoded drift defaults.
+- [x] Priority High: Verify webhook ingress IP handling in current infra and adjust allowlist logic.
+  Explanation: Added explicit proxy-aware client IP resolution for Paddle webhooks with env-driven forwarded header format + hop count, plus tests for direct/proxy paths. `PADDLE_WEBHOOK_TRUST_PROXY` is now required to avoid silent misconfiguration.
 - [ ] Priority High: Enforce required address fields per target country for Paddle address creation.
   Explanation: Some countries require postal/region; add validation using configured defaults or require user-supplied fields to prevent checkout failures. Not implemented yet; need target country list to drive requirements.
 - [ ] Priority Medium: Extend webhook event handling for subscription renewals and payment failure events.
@@ -248,5 +250,8 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
   Explanation: `/account` still renders an empty purchase list; backend endpoints + UI wiring are needed for real invoices.
 - [x] History key scoping — Store `api_key_id` on tasks created in-app and filter `/history` by selected key; avoid mislabeling tasks when key mapping is unknown; add tests.  
   Explanation: Added `api_key_id` to tasks + indexes, tagged tasks when key is known (dashboard cache or detail lookup), filtered Supabase queries by key, skipped external list when key-scoped to avoid mislabeling, and added tests.
-- [ ] API usage wiring — Use external metrics endpoints for non-dashboard usage (by purpose + date range), and store dashboard usage with `api_key_id` for per-key charts. If per-key external usage is required, ingest tasks per key into Supabase.  
-  Explanation: Updated external API now exposes `/metrics/api-usage` and `/metrics/verifications` with from/to filters, but still lacks per-key usage; we should use it for purpose-level summaries and keep per-key graphs backed by Supabase ingestion.
+- [x] API usage summary (dashboard) — Added `/api/usage/summary` that aggregates task counts by day from Supabase `tasks`, supports date range + `api_key_id`, and wired `/api` UI to use it.  
+  Explanation: Usage chart now reads real per-task counts (email_count or derived counts) and displays totals; this covers dashboard-driven usage without relying on placeholder mapping.
+- [ ] API usage wiring (external) — Re-check the next `api-docs.json` (incoming) for the promised per‑key usage per user. Implement dual usage views on `/api`: per‑key usage (from the new per‑key endpoint once documented) and per‑purpose usage (from `/metrics/api-usage` with `from`/`to`). Add logging + tests for both paths.
+  Docs review note (current): `/metrics/api-usage` and `/metrics/verifications` only; usage grouped by purpose; `/tasks` supports `user_id` + date range only; no per‑key usage endpoint yet.
+  Explanation: External API now exposes purpose-level metrics with date filters but no per-key breakdown; we need to integrate it for non-dashboard usage or ingest tasks per key to satisfy per-key charts.
