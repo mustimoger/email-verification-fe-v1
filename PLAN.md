@@ -43,7 +43,7 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
    Explanation: `backend/tests/test_api_keys.py` validates per-user key creation/caching and filters, ensuring dashboard key stays hidden and secrets are cached; logging already present on resolve/create paths.
 
 ### Next options
-- Wire retention/cleanup: enforce upload retention based on credits and retention days; add scheduled cleanup hook and logging.
+- Wire retention/cleanup: removed (uploads are external).
 - Link integrations: add actionable links/CTAs for Zapier/n8n/Google Sheets and per-integration guides; surface integration metadata in UI where helpful.
 - Expand history filtering: add richer status mapping and pagination; consider date range filters aligned with usage filters.
 - Auth enhancements: password reset flow and improved session refresh handling.
@@ -159,7 +159,7 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
   Explanation: Added `clients/external.py` with pydantic models, async httpx calls, unified error handling, and 10 MB upload guard; covers verify, create/list/detail tasks, file upload, and API key list/create/revoke with Bearer auth.
 - [x] Routes for frontend pages: verify (manual + file upload), tasks/history listing, task detail, emails lookup, API keys CRUD, usage (Supabase-backed), account/profile (Supabase-backed stub), health.
   Explanation: Routers split: tasks (verify/create/list/detail/upload), api-keys (list/create/revoke + cache), account (profile/credits), usage (Supabase-backed). Upload supports multiple files sequentially; usage logging into Supabase after external calls.
-- [ ] Storage and housekeeping: enforce 10 MB uploads, save under `backend/uploads`, expose retention rule (default keep up to 180 days when user has non-zero credits, configurable via env) and log cleanup actions.
+- [x] Storage and housekeeping: local upload retention removed since uploads are external; housekeeping hooks deleted.
   Explanation: Matches requirement to retain files while users have credits, with env overrides to avoid disk bloat. Retention helper exists; scheduled hook still needed.
 - [x] CORS/Env setup: default allow `http://localhost:3000`; read extra origins from env (staging/prod) via comma-separated `BACKEND_CORS_ORIGINS`. Added `.env.example` documenting keys (`EMAIL_API_BASE_URL/KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET`, `DATABASE_URL`, `NEXT_PUBLIC_API_BASE_URL`, `BACKEND_CORS_ORIGINS`, `LOG_LEVEL`, `APP_ENV`, `UPLOAD_RETENTION_DAYS`).
   Explanation: Keeps secrets out of code and makes allowed origins configurable without redeploys. Added validator to split comma-separated origins; `.env.example` lists required keys with dev placeholders.
@@ -176,7 +176,7 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
 - [x] Added account and usage routes under `/api`: profile get/patch, credits fetch, and usage listing with optional date filters; all authenticated.
   Explanation: Frontend can now read/update profile info, get remaining credits, and fetch usage records from Supabase instead of mocks.
 - [ ] Implement usage ingestion, account updates for all fields, and retention enforcement hooks; wire frontend to backend and add tests.
-  Explanation: Usage logging added on verify/tasks/api-keys/account profile & credits & usage list; account profile uses EmailStr validation and has backend tests. Remaining: broaden account fields if needed and add retention scheduling/ingestion for other routes as required.
+  Explanation: Usage logging added on verify/tasks/api-keys/account profile & credits & usage list; account profile uses EmailStr validation and has backend tests. Remaining: broaden account fields if needed; retention hooks removed with externalized uploads.
 - [x] Repair API keys cache service after leftover patch artifacts.
   Explanation: Recreated `backend/app/services/api_keys.py` to restore `cache_api_key`/`list_cached_keys` with Supabase upsert/select and logging; removed broken patch markers that would have caused import errors.
 - [x] Frontend env fix for API client.
@@ -188,9 +188,9 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
 - [x] Per-user key resolution + integration metadata.
   Explanation: Tasks/verify now resolve a per-user hidden `dashboard_api` key; optional `api_key_id` query selects another user-owned key. API key creation caches secrets and integration metadata (`integration` column), listing can include internal keys when requested, and frontend API page creation sends integration choice. History page now offers a key selector (including dashboard) to filter task history per key.
 - [x] Storage/retention cleanup hook.
-  Explanation: Added authenticated maintenance endpoint `/api/maintenance/purge-uploads` that runs retention cleanup (`purge_expired_uploads`), logging deletions and returning deleted files. Use for cron/operator calls to enforce upload retention policy.
-- [ ] Remove upload retention/maintenance logic now that file uploads are fully external; delete retention service + maintenance endpoint, remove retention settings/tests/docs references, and update plan notes.
-  Explanation: Pending implementation; required to prevent dead code and incorrect ops guidance after local uploads were removed.
+  Explanation: Removed alongside retention logic since uploads are now external-only.
+- [x] Remove upload retention/maintenance logic now that file uploads are fully external; delete retention service + maintenance endpoint, remove retention settings/tests/docs references, and update plan notes.
+  Explanation: Deleted retention service/tests and maintenance endpoint; settings cleaned; plan updated to avoid incorrect ops guidance.
 - [x] Post-upload task polling/backfill.
   Explanation: `/api/tasks/upload` now captures batch-upload tasks by polling `/tasks` with the user’s external key after uploads complete, comparing against a baseline, and upserting recent tasks into Supabase. Poll attempts/interval/page size are env-configurable (`UPLOAD_POLL_*`), with structured logs for baseline fetch, each poll attempt, and new task detection.
 - [x] Avatar storage client fix.
@@ -212,7 +212,7 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
 - [x] External API access plan extended for full endpoint validation.
   Explanation: Added steps to validate every external endpoint for both user/admin roles, require explicit input config, and flagged the missing Playwright-based test script reference.
 - [ ] External key creation blocked (legacy) — previous dev key flow for `/api-keys` is no longer used; per-user dashboard key creation was disabled and replaced by forwarding Supabase JWTs. Keep monitoring admin-only external endpoints once role-bearing tokens are available.
-- [ ] TODO: (Enhancement) Add optional in-app scheduler (env-gated) to trigger retention cleanup on an interval for dev/staging when cron isn’t available; update OpenAPI (`api-docs.json`) to include maintenance route. Cron-based purge will be handled later in deployment.
+- [ ] TODO: (Enhancement) Add optional in-app scheduler (env-gated) for future background jobs unrelated to uploads.
 - [ ] External API auth finalization — confirm role claim shape and pass `user_id` for admin external calls where required.
   Explanation: Bearer auth is confirmed and legacy master-key tooling removed; remaining work is admin scoping and role-claim alignment.
   Progress: Added admin-only `user_id` scoping to `/api-keys` list/create/revoke and passed through to external API; tests added and `pytest backend/tests` passed. Role-claim validation is still limited to `app_metadata.role` mapping in `AuthContext`.
@@ -268,6 +268,8 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
   Explanation: Switched to checkout-collected addresses for global support (configurable `PADDLE_ADDRESS_MODE=checkout`) so Paddle collects country-specific fields. Address creation is skipped server-side, transactions omit `address_id`, and `paddle_customers.paddle_address_id` is now nullable; server-default mode remains available and requires full default address config.
 - [ ] Paddle webhook simulation verification — run a sandbox simulation to confirm webhook delivery and credit grants.
   Explanation: Attempted with Paddle MCP to the new ngrok simulation destination (`codex-test-simulation`), but ngrok returned 502 (ERR_NGROK_8012: upstream localhost:8001 refused). This indicates the webhook target isn’t reachable from ngrok. Additionally, Paddle simulation payloads are static and omit `custom_data`, so credits can’t be validated via simulation even if delivery succeeds. Next step: run FastAPI on the same machine as ngrok (or point ngrok to a reachable upstream), set the simulation destination’s endpoint secret in the backend, and re-run for connectivity validation; use a real sandbox checkout for credit grant validation.
+- [x] Clarified Paddle hardening task statuses in `paddle.md` for newcomer visibility.
+  Explanation: Added explicit status lines for each hardening item so it’s clear which tasks are pending vs completed.
 - [ ] Priority Medium: Extend webhook event handling for subscription renewals and payment failure events.
   Explanation: Out of scope for one-time credit packs; defer until subscriptions are introduced.
 - [ ] Priority Medium: Add short-lived caching for plan price lookups in `/api/billing/plans`.

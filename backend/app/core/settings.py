@@ -27,8 +27,6 @@ class Settings(BaseSettings):
 
     upload_max_mb: int = 10
     manual_max_emails: int
-    upload_retention_days: int = 180
-    upload_retention_when_credits: Literal["non_zero", "always", "never"] = "non_zero"
     upload_poll_attempts: int = 3
     upload_poll_interval_seconds: float = 2.0
     upload_poll_page_size: int = 20
