@@ -12,6 +12,8 @@
 - [ ] Enhancements — Only after MVP + tests + staging verification.
 - [x] UI verification — `/api` usage views (per‑key/per‑purpose) with and without date range.
   Explanation: Verified locally using the session JSON from `key-value-pair.txt`. Per‑key view shows “Total: —” and “No usage data” both with no date range and with a valid RFC3339 range (no keys/usage for this user). Per‑purpose view loads options (Zapier, n8n, Google Sheets, Custom) and shows “Total: 0” both with no date range and with a date range. No blocking errors observed.
+- [ ] UI re-verification — `/api` usage views with real data (keys/tasks created).
+  Explanation: Attempted re-test after user generated data; Supabase client rejected the refresh token in `key-value-pair.txt` (“Invalid Refresh Token: Already Used”) and redirected to `/signin`. Need a fresh session JSON or test credentials to complete re-verification.
 
 ## Runtime limits alignment (batch vs upload)
 - [x] Step 1 — remove `upload_max_emails_per_task` requirement and any upload email-count enforcement so file uploads are only size-limited.
