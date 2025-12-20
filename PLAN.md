@@ -86,7 +86,7 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
 - [x] File upload mapping update: use `task_id` from `/tasks/batch/upload` response to fetch task detail/counts per file; remove any time-based selection.
   Explanation: Removed task list polling/time-based mapping; summary counts now come from task detail linked directly by upload response `task_id`. Fixed the stale `deriveUploadSummary` reference in the file-chip removal flow.
 - [x] External-native file upload: forward each file to external `/tasks/batch/upload` with `email_column` derived from the user’s manual mapping (column letter -> 1-based index string), skip local parsing/dedupe, and keep existing UI mapping flow unchanged.
-  Explanation: Upload now proxies the file to the external API with `email_column` (1-based index), ignores local dedupe/row flags (logs this), and still stores minimal metadata for History without parsing emails.
+  Explanation: Upload now proxies the file to the external API with `email_column` (1-based index), ignores local dedupe/row flags (logs this), and still stores minimal metadata for History without parsing emails. External API now supports deduplication server-side, so skipping local dedupe does not risk double counting.
 - [x] Validate `task_files` schema (nullable `source_path`/`output_path`/`email_column_index`) before removing local file storage; adjust persistence to avoid invalid writes.
   Explanation: `task_files.source_path` is NOT NULL, so local file persistence stays in place for now; schema change is deferred to the external-download step to avoid breaking writes.
 - [x] Manual verify limit: add `MANUAL_MAX_EMAILS` to backend settings; enforce in `/api/tasks` (manual copy/paste) and surface to UI via runtime limits endpoint.
@@ -126,6 +126,8 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
   Explanation: History now calls backend with `api_key_id`, shows integration labels in the selector, and maps pending/processing/started/queued to the Pending pill. Load-more uses offset pagination and honors total count when provided.
 - [x] History download action — Wire the Download pill to `/api/tasks/{id}/download` for file-based tasks with minimal error feedback.  
   Explanation: History now triggers verified file downloads using task id + stored file name and keeps Download disabled when no file is available.
+- [x] History download proxy — Switch `/api/tasks/{id}/download` to proxy external downloads directly (no local output generation), and add backend tests.  
+  Explanation: The download route now validates file-backed tasks and streams external download content with passthrough headers; local output writing is removed. Added `backend/tests/test_tasks_download_proxy.py` to cover missing-file and success cases.
 
 ## Integrations page
 - [x] Pull Figma specs via MCP and capture screenshot (node `65:339`). Design: shared shell/footer, three integration cards (Zapier, n8n, Google Sheets), text “More coming soon...”.

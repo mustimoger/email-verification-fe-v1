@@ -12,6 +12,7 @@ Goal: track and display usage/credits for API keys used outside our app (Zapier,
 - `/metrics/api-usage` (GET): usage grouped by API key purpose; supports `from`/`to` (RFC3339) + optional `user_id` for admins.
 - `/metrics/verifications` (GET): verification metrics with `from`/`to` filters and totals.
 - Per‑key totals available via `/api-keys` (`total_requests`, `last_used_at`); no time‑series endpoint yet.
+- External API performs deduplication server-side for all endpoints (per external dev); app-side dedupe is optional and primarily for UX/metadata.
 
 ## Plan (steps)
 0) **Re-check updated api-docs.json**
