@@ -308,7 +308,7 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
 - [x] Fix Supabase credits upsert in webhook grant path.
   Explanation: Removed the unsupported `.select().limit()` chain on `upsert()` for `user_credits` and now fetches the row in a separate query, preventing an AttributeError that caused webhook 500s; error logging now includes details in the message.
 - [x] Backend file logging + time-based cleanup for uvicorn logs (no manual copy/paste).
-  Explanation: Added opt-in timed rotating file logging via explicit env settings (path/when/interval/backup_count) and a unit test that verifies logs are written to disk; also fixed reserved LogRecord key usage (`filename` -> `file_name`) to prevent logging crashes once file handlers are attached. Staging deploy/verification not performed because no procedure was provided.
+  Explanation: Added opt-in timed rotating file logging via explicit env settings (path/when/interval/backup_count) and a unit test that verifies logs are written to disk; attached the file handler to `uvicorn`, `uvicorn.error`, and `uvicorn.access` loggers so uvicorn output is captured; fixed reserved LogRecord key usage (`filename` -> `file_name`) to prevent logging crashes once file handlers are attached. Staging deploy/verification not performed because no procedure was provided.
 - [x] Clarified Paddle hardening task statuses in `paddle.md` for newcomer visibility.
   Explanation: Added explicit status lines for each hardening item so it’s clear which tasks are pending vs completed.
 - [ ] Priority Medium: Extend webhook event handling for subscription renewals and payment failure events.
