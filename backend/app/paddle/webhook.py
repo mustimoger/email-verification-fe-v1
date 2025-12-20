@@ -151,9 +151,33 @@ def verify_ip_allowlist(config: PaddleConfig, remote_ip: str):
         if config.status == "production"
         else config.sandbox_ip_allowlist
     )
-    if allowed and remote_ip not in allowed:
-        logger.warning("paddle.webhook.ip_blocked", extra={"ip": remote_ip, "env": config.status})
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="IP not allowed")
+    if not allowed:
+        return
+    parsed_allowlist: List[ipaddress.IPv4Network | ipaddress.IPv6Network] = []
+    invalid_entries: List[str] = []
+    for entry in allowed:
+        try:
+            parsed_allowlist.append(ipaddress.ip_network(entry, strict=False))
+        except ValueError:
+            invalid_entries.append(entry)
+    if invalid_entries:
+        logger.warning(
+            "paddle.webhook.allowlist_invalid_entries",
+            extra={"entries": invalid_entries, "env": config.status},
+        )
+    if not parsed_allowlist:
+        logger.error("paddle.webhook.allowlist_empty", extra={"env": config.status})
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="IP allowlist invalid")
+    try:
+        remote_address = ipaddress.ip_address(remote_ip)
+    except ValueError as exc:
+        logger.warning("paddle.webhook.remote_ip_invalid", extra={"ip": remote_ip})
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Remote IP invalid") from exc
+    for network in parsed_allowlist:
+        if remote_address in network:
+            return
+    logger.warning("paddle.webhook.ip_blocked", extra={"ip": remote_ip, "env": config.status})
+    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="IP not allowed")
 
 
 def verify_signature(config: PaddleConfig, raw_body: bytes, signature_header: Optional[str]):

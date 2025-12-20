@@ -84,10 +84,11 @@ Low priority
    - What: allow `PADDLE_*_IPS` entries to be either exact IPs or CIDR ranges.
    - Why: Paddle may publish IP ranges; exact matching will reject legitimate webhooks.
    - How:
-     - Parse allowlist entries as `ipaddress.ip_network` when possible, otherwise fall back to `ipaddress.ip_address`.
-     - Validate entries at startup; log and skip invalid entries rather than silently failing.
-     - Extend webhook IP tests to cover single IP + CIDR range cases.
-   - Status: not implemented.
+      - Parse allowlist entries as `ipaddress.ip_network` when possible, otherwise fall back to `ipaddress.ip_address`.
+      - Validate entries at startup; log and skip invalid entries rather than silently failing.
+      - Extend webhook IP tests to cover single IP + CIDR range cases.
+   - Status: implemented.
+   - Implementation: `verify_ip_allowlist` now parses allowlist entries as networks with CIDR support, logs invalid entries, and rejects webhooks if the allowlist is configured but contains no valid entries; tests cover CIDR, mixed invalid entries, and invalid‑only allowlists.
 
 3) **Reject future timestamps in signature verification**
    - What: treat timestamps too far in the future as invalid, not just stale past timestamps.

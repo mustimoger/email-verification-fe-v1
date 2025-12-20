@@ -260,6 +260,8 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
   Explanation: Webhook now resolves credits via `billing_plans` using `get_billing_plans_by_price_ids`; unmapped prices log `billing.webhook.no_credits` and do not grant credits.
 - [x] Atomic billing event insert for webhook idempotency.
   Explanation: Replaced the read‑then‑upsert in `record_billing_event` with a single insert guarded by unique‑violation handling so duplicate webhooks cannot double‑grant credits; added a unit test to confirm duplicates are ignored.
+- [x] CIDR-aware Paddle webhook IP allowlist.
+  Explanation: `verify_ip_allowlist` now accepts CIDR ranges and single IPs, logs invalid entries, and fails safely if the configured allowlist contains no valid entries; tests cover CIDR and mixed/invalid cases.
 - [ ] Credit deduction on usage with atomic update and idempotency guard.
   Explanation: Credits should decrement when tasks/verification are accepted; handle retries without double-deduction and reject when insufficient. Deferred per request; not implementing now.
 - [x] Priority High: Confirm Paddle webhook signature spec and align verification (or use official SDK verifier) with tests.

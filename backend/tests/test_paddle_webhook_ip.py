@@ -71,3 +71,27 @@ def test_allowlist_blocks_unknown_ip(monkeypatch):
     with pytest.raises(HTTPException) as exc:
         verify_ip_allowlist(config, "203.0.113.11")
     assert exc.value.status_code == 403
+
+
+def test_allowlist_allows_cidr(monkeypatch):
+    config = _load_config(monkeypatch, trust_proxy=False, allowlist="203.0.113.0/24")
+    verify_ip_allowlist(config, "203.0.113.11")
+
+
+def test_allowlist_blocks_outside_cidr(monkeypatch):
+    config = _load_config(monkeypatch, trust_proxy=False, allowlist="203.0.113.0/24")
+    with pytest.raises(HTTPException) as exc:
+        verify_ip_allowlist(config, "203.0.114.1")
+    assert exc.value.status_code == 403
+
+
+def test_allowlist_skips_invalid_entries(monkeypatch):
+    config = _load_config(monkeypatch, trust_proxy=False, allowlist="203.0.113.0/24,not-an-ip")
+    verify_ip_allowlist(config, "203.0.113.11")
+
+
+def test_allowlist_invalid_only_raises(monkeypatch):
+    config = _load_config(monkeypatch, trust_proxy=False, allowlist="not-an-ip")
+    with pytest.raises(HTTPException) as exc:
+        verify_ip_allowlist(config, "203.0.113.11")
+    assert exc.value.status_code == 500
