@@ -17,7 +17,7 @@
 - [ ] Step 2 — align batch/manual verification limit to 10,000 via `MANUAL_MAX_EMAILS` and reflect in env/test defaults.
   Explanation: Pending confirmation. This will set the batch endpoint limit to 10,000 without adding any new upload email-count enforcement.
 
-Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` present locally (uncommitted). Root `/` redirects to `/overview`; main page at `app/overview/page.tsx`. A dev server may still be running on port 3001 (see handover if needed). External email verification API is reachable at `https://email-verification.islamsaka.com/api/v1/`; it accepts Supabase JWTs via `Authorization: Bearer <token>`. Supabase seeded for user `mustimoger@gmail.com` with credits and cached keys.
+Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` present locally (uncommitted). Root `/` redirects to `/overview`; main page at `app/overview/page.tsx`. A dev server may still be running on port 3001 (see handover if needed). External email verification API is reachable at `https://email-verification.islamsaka.com/api/v1/`; it accepts Supabase JWTs via `Authorization: Bearer <token>`. External usage endpoints return lifetime totals when no `from`/`to` is provided, and range totals when `from`/`to` is provided (per external dev). Supabase seeded for user `mustimoger@gmail.com` with credits and cached keys.
 
 ## Data ownership & key logic (current vs intended)
 - Supabase (app-owned): profiles, user_credits, api_usage (filterable by api_key_id), cached_api_keys (key_id + name, no plaintext). No tasks stored locally.

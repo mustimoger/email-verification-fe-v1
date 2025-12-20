@@ -11,12 +11,12 @@ Goal: track and display usage/credits for API keys used outside our app (Zapier,
 - `/tasks/batch/upload` (POST file; upstream to add task_id mapping per convo)
 - `/metrics/api-usage` (GET): usage grouped by API key purpose; supports `from`/`to` (RFC3339) + optional `user_id` for admins.
 - `/metrics/verifications` (GET): verification metrics with `from`/`to` filters and totals.
-- No per‑key usage endpoint; per‑key + date range requires local ingestion.
+- Per‑key totals available via `/api-keys` (`total_requests`, `last_used_at`); no time‑series endpoint yet.
 
 ## Plan (steps)
 0) **Re-check updated api-docs.json**
-   - Done (latest docs): GET `/api-keys` list now includes `APIKeySummary.total_requests` and accepts `from`/`to` (filtered by `last_used_at`), providing per‑key totals. `/metrics/api-usage` still returns purpose‑level totals. `/tasks` filtering supports `user_id` and date range only, no `api_key_id` filter.
-   - Why: We can implement per‑key usage directly from `/api-keys` and per‑purpose usage from `/metrics/api-usage` without local ingestion.
+   - Done (latest docs + dev clarification): GET `/api-keys` includes `APIKeySummary.total_requests` and accepts `from`/`to` (RFC3339). If `from`/`to` are omitted, totals are lifetime; if provided, totals are range‑scoped. `/metrics/api-usage` returns purpose‑level totals with the same `from`/`to` semantics. `/tasks` filtering supports `user_id` and date range only, no `api_key_id` filter.
+   - Why: We can implement per‑key usage directly from `/api-keys` and per‑purpose usage from `/metrics/api-usage` without local ingestion, and default to lifetime totals when no date range is selected.
 
 1) **Reliable key listing/creation**
    - Ensure `/api-keys` calls use real Supabase JWT, handle upstream 500s with cache fallback, and surface empty state gracefully in UI. Add structured logs to detect upstream failures.
