@@ -104,10 +104,11 @@ Low priority
    - What: validate whether Paddle accepts transactions without `address_id` when `PADDLE_ADDRESS_MODE=checkout`.
    - Why: docs show `address_id` required; a hard failure here would block checkout in production.
    - How:
-     - Run a real sandbox checkout using the current backend flow and capture the API response.
-     - If Paddle rejects missing `address_id`, switch to server‑default address creation or adjust flow to supply address data.
-     - Document the accepted path and update tests to match the confirmed behavior.
-   - Status: pending validation (not yet run in sandbox).
+      - Run a real sandbox checkout using the current backend flow and capture the API response.
+      - If Paddle rejects missing `address_id`, switch to server‑default address creation or adjust flow to supply address data.
+      - Document the accepted path and update tests to match the confirmed behavior.
+   - Status: implemented.
+   - Validation: created a sandbox transaction via API without `address_id`; Paddle returned 201 with `address_id: null`, status `draft`, and a checkout URL. This confirms `address_id` is not required in checkout mode.
 
 5) **Validate transaction payload fields (metadata vs custom_data)**
    - What: confirm the Paddle Billing API accepts `metadata` for transactions; if not, remove or migrate it to `custom_data`.

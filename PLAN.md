@@ -266,6 +266,8 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
   Explanation: `verify_ip_allowlist` now accepts CIDR ranges and single IPs, logs invalid entries, and fails safely if the configured allowlist contains no valid entries; tests cover CIDR and mixed/invalid cases.
 - [x] Bidirectional webhook timestamp drift checks.
   Explanation: `verify_signature` now rejects timestamps outside the configured drift window in both past and future directions, with tests covering future timestamps.
+- [x] Validated Paddle transaction address requirement in checkout mode.
+  Explanation: Created a sandbox transaction without `address_id`; Paddle accepted it (201), returned `address_id: null`, and issued a checkout URL. This confirms address collection can occur at checkout when `PADDLE_ADDRESS_MODE=checkout`.
 - [ ] Credit deduction on usage with atomic update and idempotency guard.
   Explanation: Credits should decrement when tasks/verification are accepted; handle retries without double-deduction and reject when insufficient. Deferred per request; not implementing now.
 - [x] Priority High: Confirm Paddle webhook signature spec and align verification (or use official SDK verifier) with tests.
