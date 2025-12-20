@@ -157,6 +157,7 @@ class APIKeySummary(BaseModel):
     purpose: Optional[str] = None
     total_requests: Optional[int] = None
     integration: Optional[str] = None
+    key_preview: Optional[str] = None
 
 
 class ListAPIKeysResponse(BaseModel):

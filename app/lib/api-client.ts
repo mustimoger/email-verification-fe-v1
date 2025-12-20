@@ -124,6 +124,7 @@ export type ApiKeySummary = {
   purpose?: string;
   total_requests?: number;
   integration?: string;
+  key_preview?: string;
 };
 
 export type ListApiKeysResponse = {

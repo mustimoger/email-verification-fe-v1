@@ -140,6 +140,8 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
 
 ## API page
 - [x] Implement simplified API page: card 1 with API keys table (name, masked key, status pill, edit action); card 2 with usage controls (API key dropdown, date range, actions) and line chart placeholder with mock data/empty state. Shared shell/footer reused; console logs for future backend wiring.
+- [x] Update API key display to show masked secret preview (first 3 chars + `***`) instead of masked key ID.
+  Explanation: Backend now reads cached `key_plain` and derives `key_preview`, returning it alongside API key summaries. UI uses `key_preview` for the table and selector, avoiding ID display. Ran `pytest backend/tests/test_api_keys.py` and `tests/api-usage-utils.test.ts`.
 
 ## Pricing page
 - [x] Implemented Pricing page per Figma: four tier cards in a grid, each with title, “Credits Never Expire” note, price (last card “Contact Us”), feature list, and “Start Verification” CTA. Shared shell/footer reused; typed feature data for now.

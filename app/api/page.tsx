@@ -25,10 +25,10 @@ const statusStyle: Record<KeyStatus, string> = {
   disabled: "bg-slate-200 text-slate-600",
 };
 
-function maskKey(id?: string) {
-  if (!id) return "";
-  if (id.length <= 4) return id;
-  return `${id.slice(0, 4)}****`;
+function maskKeyPreview(preview?: string) {
+  if (!preview) return "";
+  if (preview.length <= 3) return preview;
+  return `${preview.slice(0, 3)}***`;
 }
 
 function getDefaultName(option?: IntegrationOption) {
@@ -278,7 +278,7 @@ export default function ApiPage() {
                     className="grid grid-cols-5 items-center px-4 py-3 text-sm font-semibold text-slate-800 md:text-base"
                   >
                     <span className="text-slate-700">{key.name}</span>
-                    <span className="text-slate-700">{maskKey(key.id)}</span>
+                    <span className="text-slate-700">{maskKeyPreview(key.key_preview)}</span>
                     <span className="text-slate-700">{key.integration ?? key.purpose ?? "—"}</span>
                     <span>
                       <span
@@ -340,7 +340,7 @@ export default function ApiPage() {
                   <option value="">All keys</option>
                   {keys.map((key) => (
                     <option key={key.id} value={key.id}>
-                      {key.name} ({maskKey(key.id)})
+                      {key.name} ({maskKeyPreview(key.key_preview)})
                     </option>
                   ))}
                 </select>

@@ -36,6 +36,7 @@ Goal: track and display usage/credits for API keys used outside our app (Zapier,
    - `/api` page: allow selecting usage view mode (per‑key vs per‑purpose). Per‑key reads from GET `/api-keys?from&to` and uses `total_requests`. Per‑purpose reads `/metrics/api-usage`.
    - Provide a single usage card with a view selector and dynamic dropdown; avoid extra UI sections to keep the design stable.
    - Status: UI now supports both views with a selector and uses real totals; chart area shows totals when time-series is unavailable.
+   - Completed: API key table/selector now display masked secret preview (first 3 chars + `***`) using `key_preview` returned by the backend from cached secrets.
    - Verification: completed locally with session JSON. Per‑key view showed “Total: —” and “No usage data” for both no‑range and date‑range (no keys/usage for this user). Per‑purpose view loaded options (Zapier, n8n, Google Sheets, Custom) and showed “Total: 0” for both no‑range and date‑range.
    - Re-verification: completed with refreshed session JSON. `/api` page loaded but API keys list was still empty (selector only “All keys”), so per‑key totals remained “—/No usage data.” Per‑purpose totals returned `0` with purpose options loaded. Console still showed a refresh-token warning; may require a brand‑new session if this continues.
    - `/history`: continue showing Supabase tasks; add a “last synced” indicator and retry action if sync failed.

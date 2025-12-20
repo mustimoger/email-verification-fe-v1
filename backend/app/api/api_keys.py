@@ -25,6 +25,16 @@ def _is_dashboard_key(name: str | None) -> bool:
     return (name or "").lower() == INTERNAL_DASHBOARD_KEY_NAME
 
 
+def _build_key_preview(secret: str | None) -> str | None:
+    if not secret:
+        return None
+    trimmed = secret.strip()
+    if trimmed == "":
+        return None
+    preview = trimmed[:3]
+    return f"{preview}***"
+
+
 class BootstrapKeyResponse(BaseModel):
     key_id: str | None
     name: str
@@ -88,6 +98,11 @@ async def list_api_keys(
         )
         if result.keys:
             filtered_keys = [k for k in result.keys if include_internal or not _is_dashboard_key(k.name)]
+            for key in filtered_keys:
+                cached_entry = cached.get(key.id or "")
+                if cached_entry:
+                    key.integration = cached_entry.get("integration") or key.integration
+                    key.key_preview = _build_key_preview(cached_entry.get("key_plain"))
             result.keys = filtered_keys
             result.count = len(filtered_keys) if filtered_keys is not None else result.count
         # With per-user JWTs, we can return the full list; fall back to cached if needed.
@@ -131,6 +146,7 @@ async def list_api_keys(
                     name=item.get("name"),
                     integration=item.get("integration"),
                     is_active=True,
+                    key_preview=_build_key_preview(item.get("key_plain")),
                 )
                 for item in cached.values()
                 if include_internal or not _is_dashboard_key(item.get("name"))

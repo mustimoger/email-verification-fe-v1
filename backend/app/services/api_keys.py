@@ -43,7 +43,12 @@ def list_cached_keys(user_id: str) -> List[Dict[str, str]]:
     """
     sb = get_supabase()
     try:
-        res = sb.table("cached_api_keys").select("key_id,name,integration").eq("user_id", user_id).execute()
+        res = (
+            sb.table("cached_api_keys")
+            .select("key_id,name,integration,key_plain")
+            .eq("user_id", user_id)
+            .execute()
+        )
         items: List[Dict[str, str]] = res.data or []
         logger.info("api_keys.cache_list", extra={"user_id": user_id, "count": len(items)})
         return items
