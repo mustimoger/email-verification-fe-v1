@@ -10,8 +10,8 @@
 - [ ] Deprecation warnings cleanup — update Supabase Python client to remove `gotrue` deprecation and adjust httpx per-request cookies in tests.
   Explanation: Warnings only today; likely a dependency bump to `supabase`/`supabase_auth` and a small test change to set cookies on the client.
 - [ ] Enhancements — Only after MVP + tests + staging verification.
-- [ ] UI verification — `/api` usage views (per‑key/per‑purpose) with and without date range.
-  Explanation: Attempted local verification with Playwright; `/api` redirected to `/signin` because the stored localStorage value is a raw JWT, not the full Supabase session JSON. Need a valid session payload (localStorage key/value) or test credentials to complete verification.
+- [x] UI verification — `/api` usage views (per‑key/per‑purpose) with and without date range.
+  Explanation: Verified locally using the session JSON from `key-value-pair.txt`. Per‑key view shows “Total: —” and “No usage data” both with no date range and with a valid RFC3339 range (no keys/usage for this user). Per‑purpose view loads options (Zapier, n8n, Google Sheets, Custom) and shows “Total: 0” both with no date range and with a date range. No blocking errors observed.
 
 ## Runtime limits alignment (batch vs upload)
 - [x] Step 1 — remove `upload_max_emails_per_task` requirement and any upload email-count enforcement so file uploads are only size-limited.
@@ -85,9 +85,10 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
   Explanation: Upload flow now uses `/tasks/batch/upload` response `filename` + `task_id` to map each file to its task, fetches task detail per task id, and builds the summary from real task data without time-based selection.
 - [x] File upload mapping update: use `task_id` from `/tasks/batch/upload` response to fetch task detail/counts per file; remove any time-based selection.
   Explanation: Removed task list polling/time-based mapping; summary counts now come from task detail linked directly by upload response `task_id`. Fixed the stale `deriveUploadSummary` reference in the file-chip removal flow.
-- [ ] External-native file upload: forward each file to external `/tasks/batch/upload` with `email_column` derived from the user’s manual mapping (column letter -> 1-based index string), skip local parsing/dedupe, and keep existing UI mapping flow unchanged.
-  Explanation: External API now supports file upload with `email_column`, so the app should no longer parse or dedupe locally. The UI keeps manual column selection; backend only normalizes the mapping and proxies the upload.
-- [ ] Validate `task_files` schema (nullable `source_path`/`output_path`/`email_column_index`) before removing local file storage; adjust persistence to avoid invalid writes.
+- [x] External-native file upload: forward each file to external `/tasks/batch/upload` with `email_column` derived from the user’s manual mapping (column letter -> 1-based index string), skip local parsing/dedupe, and keep existing UI mapping flow unchanged.
+  Explanation: Upload now proxies the file to the external API with `email_column` (1-based index), ignores local dedupe/row flags (logs this), and still stores minimal metadata for History without parsing emails.
+- [x] Validate `task_files` schema (nullable `source_path`/`output_path`/`email_column_index`) before removing local file storage; adjust persistence to avoid invalid writes.
+  Explanation: `task_files.source_path` is NOT NULL, so local file persistence stays in place for now; schema change is deferred to the external-download step to avoid breaking writes.
 - [x] Manual verify limit: add `MANUAL_MAX_EMAILS` to backend settings; enforce in `/api/tasks` (manual copy/paste) and surface to UI via runtime limits endpoint.
   Explanation: Added `manual_max_emails` setting and enforcement in `/api/tasks`, plus runtime UI validation from `/api/limits` with clear errors when limits can’t be loaded.
 - [x] Runtime limits endpoint: add `/api/limits` (auth-required) returning `manual_max_emails` and `upload_max_mb`; UI must fetch at runtime and avoid hardcoded values.
