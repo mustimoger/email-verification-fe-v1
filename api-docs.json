@@ -3369,6 +3369,14 @@
                                     "webhook_url": {
                                         "description": "Webhook URL for notifications",
                                         "type": "string"
+                                    },
+                                    "email_column": {
+                                        "description": "Optional email column header or 1-based index (CSV/XLSX only)",
+                                        "type": "string"
+                                    },
+                                    "column": {
+                                        "description": "Alias for email_column",
+                                        "type": "string"
                                     }
                                 },
                                 "required": [
@@ -3491,6 +3499,114 @@
                         "description": "Internal server error",
                         "content": {
                             "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/tasks/{id}/download": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Download task verification results in CSV, TXT, or XLSX format",
+                "tags": [
+                    "tasks"
+                ],
+                "summary": "Download task verification results",
+                "parameters": [
+                    {
+                        "description": "Task ID (UUID format)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "description": "Task ID (UUID format)",
+                        "name": "task_id",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "description": "File format: csv, txt, xlsx",
+                        "name": "format",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "default": "csv"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "File download",
+                        "content": {
+                            "application/octet-stream": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request",
+                        "content": {
+                            "application/octet-stream": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "content": {
+                            "application/octet-stream": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Task not found",
+                        "content": {
+                            "application/octet-stream": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "content": {
+                            "application/octet-stream": {
                                 "schema": {
                                     "type": "object",
                                     "additionalProperties": {
