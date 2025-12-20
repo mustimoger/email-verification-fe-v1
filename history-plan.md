@@ -24,7 +24,7 @@ Tasks
   Explanation: Prevents late key-creation attempts during history fetches and reinforces “frontend reads Supabase, backend talks to external API” flow.
 - [x] API key listing cache fallback: when external `/api-keys` is unavailable, return cached user keys from Supabase (filtering out dashboard unless requested) instead of a 5xx.  
   Explanation: Keeps History’s key selector operational even if upstream auth is down; covered by tests for include_internal and filtering.
-- [x] Webhook alternative: if external API offers global task/usage webhooks, plan to consume them for history/usage updates with polling as fallback (see `non-dashboard-api-usage-plan.md`).
+- [x] Webhook alternative: if external API offers global task/usage webhooks, plan to consume them for history/usage updates with polling as fallback (see `verify-plan.md`).
 - [x] Download action: wire history “Download” pill to `/api/tasks/{id}/download` with proper error handling, keeping manual-only tasks non-downloadable.
   Explanation: History now triggers verified file downloads using the task id and stored file name, shows a minimal error banner on failure, and keeps “Download” disabled when no file is available.
 - [x] External-native download: remove local output generation and proxy downloads directly from the external `/tasks/{id}/download` endpoint (optional format passthrough), while keeping task-file gating and adding backend tests.

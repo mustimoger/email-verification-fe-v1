@@ -10,6 +10,8 @@
 - [ ] Deprecation warnings cleanup — update Supabase Python client to remove `gotrue` deprecation and adjust httpx per-request cookies in tests.
   Explanation: Warnings only today; likely a dependency bump to `supabase`/`supabase_auth` and a small test change to set cookies on the client.
 - [ ] Enhancements — Only after MVP + tests + staging verification.
+- [x] Planning doc rename: `non-dashboard-api-usage-plan.md` -> `verify-plan.md`.
+  Explanation: Renamed the external usage plan doc per request and updated references across planning docs to avoid broken links.
 - [x] UI verification — `/api` usage views (per‑key/per‑purpose) with and without date range.
   Explanation: Verified locally using the session JSON from `key-value-pair.txt`. Per‑key view shows “Total: —” and “No usage data” both with no date range and with a valid RFC3339 range (no keys/usage for this user). Per‑purpose view loads options (Zapier, n8n, Google Sheets, Custom) and shows “Total: 0” both with no date range and with a date range. No blocking errors observed.
 - [x] UI re-verification — `/api` usage views with real data (keys/tasks created).
@@ -69,7 +71,7 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
   Explanation: Added cache-based fallback in `/api/api-keys`, with tests to cover internal-key filtering and include_internal behavior.
 - [x] External API diagnostic script — Added config-driven runner `backend/tests/external_api_test_runner.py` to hit `/tasks`, `/verify`, `/tasks/batch/upload`, and `/api-keys` with the user JWT from `key-value-pair.txt`, probing raw vs Bearer auth.
   Explanation: Run with `source .venv/bin/activate && python backend/tests/external_api_test_runner.py`; defaults use `backend/tests/external_api_test_config.json` and `EMAIL_API_BASE_URL`.
-- [x] Webhook alternative noted — If external API later provides global usage/task webhooks, plan is to consume them (with polling as fallback). See `non-dashboard-api-usage-plan.md`.
+- [x] Webhook alternative noted — If external API later provides global usage/task webhooks, plan is to consume them (with polling as fallback). See `verify-plan.md`.
 
 ## Current sprint: Initial Verify page (first state only)
 - [x] Pull Figma specs for the initial Verify page (layout, spacing, colors, interaction notes) via Figma MCP to drive implementation.  
