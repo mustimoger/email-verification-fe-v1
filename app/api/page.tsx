@@ -13,6 +13,7 @@ import {
   ApiKeySummary,
   IntegrationOption,
   ListApiKeysResponse,
+  UsageSummaryResponse,
   UsagePurposeResponse,
 } from "../lib/api-client";
 import {
@@ -54,6 +55,7 @@ export default function ApiPage() {
   });
   const [keyUsageKeys, setKeyUsageKeys] = useState<ApiKeySummary[] | null>(null);
   const [purposeUsage, setPurposeUsage] = useState<UsagePurposeResponse | null>(null);
+  const [usageSummary, setUsageSummary] = useState<UsageSummaryResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoadingKeys, setIsLoadingKeys] = useState(false);
   const [isLoadingUsage, setIsLoadingUsage] = useState(false);
@@ -76,7 +78,7 @@ export default function ApiPage() {
   );
   const usageTotal = usageView === "per_key" ? keyUsage.total : purposeUsageSummary.total;
   const hasUsageData = usageView === "per_key" ? keyUsage.hasData : purposeUsageSummary.hasData;
-  const chartData = useMemo(() => [], [usageView, keyUsageKeys, purposeUsage]);
+  const chartData = useMemo(() => usageSummary?.series ?? [], [usageSummary]);
   const totalUsageLabel = useMemo(() => {
     if (!hasUsageData || usageTotal === null) return "—";
     return usageTotal.toLocaleString();
@@ -92,6 +94,7 @@ export default function ApiPage() {
       setSelectedPurpose("");
       setKeyUsageKeys(null);
       setPurposeUsage(null);
+      setUsageSummary(null);
       setIntegrationOptions([]);
       setSelectedIntegrationId("");
       setKeyName("");
@@ -144,6 +147,7 @@ export default function ApiPage() {
   useEffect(() => {
     setKeyUsageKeys(null);
     setPurposeUsage(null);
+    setUsageSummary(null);
     if (usageView === "per_purpose") {
       setSelectedPurpose("");
     }
@@ -184,6 +188,24 @@ export default function ApiPage() {
           total_requests: response.total_requests,
           purposes: Object.keys(response.requests_by_purpose ?? {}).length,
         });
+      }
+      try {
+        const summary = await apiClient.getUsageSummary(
+          rangeStart,
+          rangeEnd,
+          usageView === "per_key" ? selectedKey || undefined : undefined,
+        );
+        setUsageSummary(summary);
+        console.debug("api.usage.summary.loaded", {
+          source: summary.source,
+          points: summary.series.length,
+          api_key_id: summary.api_key_id ?? null,
+        });
+      } catch (err: unknown) {
+        const message = err instanceof ApiError ? err.message : "Failed to load usage chart";
+        console.error("api.usage.summary.failed", { error: message });
+        setUsageSummary(null);
+        setError(message);
       }
     } catch (err: unknown) {
       const message = err instanceof ApiError ? err.message : "Failed to load usage";
@@ -443,21 +465,7 @@ export default function ApiPage() {
                   />
                   <Line
                     type="monotone"
-                    dataKey="valid"
-                    stroke="#00b69b"
-                    strokeWidth={3}
-                    dot={{ r: 5, fill: "#00b69b", strokeWidth: 2, stroke: "white" }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="invalid"
-                    stroke="#ff6b6b"
-                    strokeWidth={3}
-                    dot={{ r: 5, fill: "#ff6b6b", strokeWidth: 2, stroke: "white" }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="processed"
+                    dataKey="count"
                     stroke="#3b82f6"
                     strokeWidth={3}
                     dot={{ r: 5, fill: "#3b82f6", strokeWidth: 2, stroke: "white" }}

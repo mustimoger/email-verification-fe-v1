@@ -44,7 +44,7 @@ async def persist_upload_file(upload: UploadFile, user_id: str, max_bytes: int) 
     if len(data) > max_bytes:
         logger.warning(
             "upload.too_large",
-            extra={"filename": safe_name, "size": len(data), "max_bytes": max_bytes, "user_id": user_id},
+            extra={"file_name": safe_name, "size": len(data), "max_bytes": max_bytes, "user_id": user_id},
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -57,6 +57,6 @@ async def persist_upload_file(upload: UploadFile, user_id: str, max_bytes: int) 
     target.write_bytes(data)
     logger.info(
         "upload.saved",
-        extra={"filename": safe_name, "bytes": len(data), "path": str(target), "user_id": user_id},
+        extra={"file_name": safe_name, "bytes": len(data), "path": str(target), "user_id": user_id},
     )
     return target, data

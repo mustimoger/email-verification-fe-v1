@@ -12,7 +12,7 @@
 -  Implement new features,updates as follows:
    --Implement SIMPLEST version that solves the core problem
    --Test it thoroughly (unit + integration)
-   --Deploy to staging
+   --Deploy to main
    --Verify it works perfectly
    --ONLY THEN add enhancements
 - When i ask you to do any code changes, proceed with implementation as follows:

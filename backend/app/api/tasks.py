@@ -466,7 +466,7 @@ async def upload_task_file(
                     "route.tasks.upload.flags_ignored",
                     extra={
                         "user_id": target_user_id,
-                        "filename": file.filename,
+                        "file_name": file.filename,
                         "remove_duplicates": metadata.remove_duplicates,
                         "first_row_has_labels": metadata.first_row_has_labels,
                     },
@@ -484,7 +484,7 @@ async def upload_task_file(
             if not task_id:
                 logger.error(
                     "route.tasks.upload.missing_task_id",
-                    extra={"user_id": target_user_id, "filename": file.filename, "upload_id": result.upload_id},
+                    extra={"user_id": target_user_id, "file_name": file.filename, "upload_id": result.upload_id},
                 )
                 raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Task id missing from upload response")
             upsert_tasks_from_list(
@@ -518,7 +518,7 @@ async def upload_task_file(
                 "route.tasks.upload",
                 extra={
                     "user_id": target_user_id,
-                    "filename": file.filename,
+                    "file_name": file.filename,
                     "task_id": task_id,
                     "upload_id": result.upload_id,
                 },

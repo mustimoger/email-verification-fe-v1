@@ -10,6 +10,10 @@ class Settings(BaseSettings):
 
     app_env: Literal["local", "staging", "prod"] = "local"
     log_level: Literal["debug", "info", "warning", "error", "critical"] = "info"
+    log_file_path: Optional[str] = None
+    log_file_when: Optional[Literal["S", "M", "H", "D", "W0", "W1", "W2", "W3", "W4", "W5", "W6", "midnight"]] = None
+    log_file_interval: Optional[int] = None
+    log_file_backup_count: Optional[int] = None
 
     email_api_base_url: str
     dev_api_keys: List[str] | str = []

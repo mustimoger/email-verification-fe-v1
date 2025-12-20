@@ -18,10 +18,10 @@ Goal: deliver reliable API key management and usage visibility on `/api` for ext
 ## Remaining tasks (MVP)
 - [x] Date range input: switch to native date inputs and convert selected dates to RFC3339 (`from`/`to`), logging invalid or partial ranges instead of silently failing.
   Explanation: inputs now use `type="date"` and convert to RFC3339 start/end‑of‑day ranges; invalid or partial ranges surface a UI error and log `api.usage.range.invalid`.
-- [ ] Usage chart: load `/api/usage/summary` with selected date range + api_key_id and render a real chart from its series.
-  Explanation: we have a Supabase‑backed time series; use it so the chart is not empty when data exists.
+- [x] Usage chart: load `/api/usage/summary` with selected date range + api_key_id and render a real chart from its series.
+  Explanation: `/api` now fetches `/api/usage/summary` alongside usage totals and renders a real line chart when `series` data exists; logs `api.usage.summary.loaded` or `api.usage.summary.failed` for diagnostics.
 - [ ] Verification: add/update minimal tests for date range conversion and ensure `/api` renders the chart when series data is present.
-  Explanation: prevents regressions where the UI accepts dates but fails to pass valid RFC3339 or render the series.
+  Explanation: Added unit tests for date range conversion (see `tests/api-usage-utils.test.ts`). UI verification via Playwright is blocked because the provided session triggers `Invalid Refresh Token: Already Used` and redirects to `/signin`. Provide a fresh session to complete the chart verification.
 
 ## Notes
 - Keep UI layout and styling unchanged; only replace inputs and data plumbing.

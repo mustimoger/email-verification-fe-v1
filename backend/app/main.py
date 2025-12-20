@@ -19,7 +19,13 @@ from .api.debug import router as debug_router
 
 def create_app() -> FastAPI:
     settings = get_settings()
-    configure_logging(settings.log_level)
+    configure_logging(
+        settings.log_level,
+        log_file_path=settings.log_file_path,
+        log_file_when=settings.log_file_when,
+        log_file_interval=settings.log_file_interval,
+        log_file_backup_count=settings.log_file_backup_count,
+    )
 
     app = FastAPI(title="Email Verification Backend", version="0.1.0")
 

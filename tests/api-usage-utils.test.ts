@@ -4,6 +4,7 @@ import { ApiKeySummary, UsagePurposeResponse } from "../app/lib/api-client";
 import {
   formatPurposeLabel,
   listPurposeOptions,
+  resolveDateRange,
   summarizeKeyUsage,
   summarizePurposeUsage,
 } from "../app/api/utils";
@@ -82,6 +83,41 @@ run("formatPurposeLabel normalizes labels", () => {
   assert.strictEqual(formatPurposeLabel("google sheets"), "Google Sheets");
   assert.strictEqual(formatPurposeLabel("custom_api"), "Custom Api");
   assert.strictEqual(formatPurposeLabel("n8n"), "N8n");
+});
+
+run("resolveDateRange returns empty when no dates provided", () => {
+  const result = resolveDateRange({ from: "", to: "" });
+  assert.deepStrictEqual(result, {});
+});
+
+run("resolveDateRange rejects invalid start date", () => {
+  const result = resolveDateRange({ from: "2025-13-40", to: "2025-01-10" });
+  assert.deepStrictEqual(result, { error: "Invalid start date." });
+});
+
+run("resolveDateRange rejects invalid end date", () => {
+  const result = resolveDateRange({ from: "2025-01-10", to: "2025-02-31" });
+  assert.deepStrictEqual(result, { error: "Invalid end date." });
+});
+
+run("resolveDateRange rejects partial ranges", () => {
+  const missingEnd = resolveDateRange({ from: "2025-01-10", to: "" });
+  assert.deepStrictEqual(missingEnd, { error: "End date is required when start date is set." });
+  const missingStart = resolveDateRange({ from: "", to: "2025-01-10" });
+  assert.deepStrictEqual(missingStart, { error: "Start date is required when end date is set." });
+});
+
+run("resolveDateRange rejects start after end", () => {
+  const result = resolveDateRange({ from: "2025-01-20", to: "2025-01-10" });
+  assert.deepStrictEqual(result, { error: "Start date must be before end date." });
+});
+
+run("resolveDateRange returns UTC day boundaries", () => {
+  const result = resolveDateRange({ from: "2025-01-02", to: "2025-01-05" });
+  assert.deepStrictEqual(result, {
+    start: "2025-01-02T00:00:00.000Z",
+    end: "2025-01-05T23:59:59.999Z",
+  });
 });
 
 // eslint-disable-next-line no-console

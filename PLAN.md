@@ -154,6 +154,10 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
   Explanation: Backend now reads cached `key_plain` and derives `key_preview`, returning it alongside API key summaries. UI uses `key_preview` for the table and selector, avoiding ID display. Ran `pytest backend/tests/test_api_keys.py` and `tests/api-usage-utils.test.ts`.
 - [x] Date range input — switched to native date inputs and convert selected dates to RFC3339 (`from`/`to`) with validation/logging.
   Explanation: `/api` now uses date pickers and converts to start/end‑of‑day UTC ISO timestamps; invalid/partial ranges surface an error and log `api.usage.range.invalid`.
+- [x] Usage chart — load `/api/usage/summary` and render a real line chart when series data exists.
+  Explanation: `/api` now fetches `/api/usage/summary` alongside usage totals and renders a single‑line chart from the returned series.
+- [ ] API page verification — Tests for date range conversion added; UI chart verification pending due to session refresh token errors.
+  Explanation: `tests/api-usage-utils.test.ts` now covers RFC3339 range conversion. Playwright verification of `/api` chart was blocked because the stored session caused `Invalid Refresh Token: Already Used` and redirected to `/signin`. A fresh session is required to confirm the chart renders in the UI.
 - [ ] Detailed API page plan now tracked in `api-plan.md`.
 - [ ] API usage date range — Switch to native date inputs, validate/convert to RFC3339 for `from`/`to`, and log invalid ranges instead of silently failing.
 - [ ] API usage chart — Load `/api/usage/summary` with the selected range/key and render a real chart; keep the total/empty states for cases with no series data.
@@ -303,6 +307,8 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
   Explanation: Verified via Paddle MCP that transaction `txn_01kcyc3pp35qadh4wwa64k9mkz` (Enterprise, 500,000 credits, USD 279.00, `customData.supabase_user_id=c105fce3-786b-4708-987c-edb29a8c8ea0`) completed at `2025-12-20T17:15:26Z`. The `ngrok2` destination (`ntfset_01kcybh89r74rwqm28g5rwjd52`) shows delivered events for `transaction.created`, `transaction.ready`, `transaction.updated` (ready/paid/completed), `transaction.paid`, and `transaction.completed`. Supabase check: `billing_events` has `event_id=evt_01kcyc4mdf09brkv9xgh5wt0z7` with `credits_granted=500000` for the transaction and user, and `billing_plans` maps the Enterprise price to 500,000 credits. Warning: there is no `user_credits` row for `c105fce3-786b-4708-987c-edb29a8c8ea0`. Root cause fix applied in `set_credits`; re-run a sandbox checkout to confirm credits now persist and mark complete.
 - [x] Fix Supabase credits upsert in webhook grant path.
   Explanation: Removed the unsupported `.select().limit()` chain on `upsert()` for `user_credits` and now fetches the row in a separate query, preventing an AttributeError that caused webhook 500s; error logging now includes details in the message.
+- [x] Backend file logging + time-based cleanup for uvicorn logs (no manual copy/paste).
+  Explanation: Added opt-in timed rotating file logging via explicit env settings (path/when/interval/backup_count) and a unit test that verifies logs are written to disk; also fixed reserved LogRecord key usage (`filename` -> `file_name`) to prevent logging crashes once file handlers are attached. Staging deploy/verification not performed because no procedure was provided.
 - [x] Clarified Paddle hardening task statuses in `paddle.md` for newcomer visibility.
   Explanation: Added explicit status lines for each hardening item so it’s clear which tasks are pending vs completed.
 - [ ] Priority Medium: Extend webhook event handling for subscription renewals and payment failure events.
