@@ -22,7 +22,6 @@ from ..clients.external import (
 from ..core.auth import AuthContext, get_current_user
 from ..core.settings import get_settings
 from ..services.file_processing import _column_letters_to_index
-from ..services.storage import persist_upload_file, relative_upload_path
 from ..services.task_files_store import fetch_task_file, upsert_task_file
 from ..services.tasks_store import fetch_tasks_with_counts, upsert_task_from_detail, upsert_tasks_from_list
 from ..services.api_keys import INTERNAL_DASHBOARD_KEY_NAME, get_cached_key_by_name
@@ -473,9 +472,7 @@ async def upload_task_file(
                     },
                 )
             email_column_value, email_column_index = normalize_email_column_mapping(metadata.email_column)
-            saved_path, data = await persist_upload_file(
-                upload=file, user_id=target_user_id, max_bytes=settings.upload_max_mb * 1024 * 1024
-            )
+            data = await file.read()
             result = await client.upload_batch_file(
                 filename=file.filename or "upload",
                 content=data,
@@ -511,7 +508,7 @@ async def upload_task_file(
                 task_id=task_id,
                 file_name=file.filename or "upload",
                 file_extension=Path(file.filename or "upload").suffix.lower(),
-                source_path=relative_upload_path(saved_path),
+                source_path=None,
                 email_column=metadata.email_column,
                 email_column_index=email_column_index,
                 first_row_has_labels=metadata.first_row_has_labels,
@@ -522,7 +519,6 @@ async def upload_task_file(
                 extra={
                     "user_id": target_user_id,
                     "filename": file.filename,
-                    "saved_path": str(saved_path),
                     "task_id": task_id,
                     "upload_id": result.upload_id,
                 },

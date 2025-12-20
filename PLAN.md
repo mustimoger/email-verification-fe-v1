@@ -90,7 +90,7 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
 - [x] External-native file upload: forward each file to external `/tasks/batch/upload` with `email_column` derived from the user’s manual mapping (column letter -> 1-based index string), skip local parsing/dedupe, and keep existing UI mapping flow unchanged.
   Explanation: Upload now proxies the file to the external API with `email_column` (1-based index), ignores local dedupe/row flags (logs this), and still stores minimal metadata for History without parsing emails. External API now supports deduplication server-side, so skipping local dedupe does not risk double counting.
 - [x] Validate `task_files` schema (nullable `source_path`/`output_path`/`email_column_index`) before removing local file storage; adjust persistence to avoid invalid writes.
-  Explanation: `task_files.source_path` is NOT NULL, so local file persistence stays in place for now; schema change is deferred to the external-download step to avoid breaking writes.
+  Explanation: Applied migration to make `task_files.source_path` nullable, then removed local file persistence so uploads are fully external-native.
 - [x] Manual verify limit: add `MANUAL_MAX_EMAILS` to backend settings; enforce in `/api/tasks` (manual copy/paste) and surface to UI via runtime limits endpoint.
   Explanation: Added `manual_max_emails` setting and enforcement in `/api/tasks`, plus runtime UI validation from `/api/limits` with clear errors when limits can’t be loaded.
 - [x] Runtime limits endpoint: add `/api/limits` (auth-required) returning `manual_max_emails` and `upload_max_mb`; UI must fetch at runtime and avoid hardcoded values.
@@ -100,7 +100,7 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
 - [x] Multi-sheet handling: reject Excel files with multiple sheets and return a clear error to split into single-sheet files.
   Explanation: Client-side column reader already blocks multi-sheet spreadsheets to keep column mapping deterministic.
 - [x] External-native download: proxy external `/tasks/{id}/download` (format=csv|txt|xlsx) and stop generating local output files.
-  Explanation: Download now proxies the external response (content + Content-Disposition) and removes local output generation/caching. Local uploads are still saved to satisfy `task_files.source_path` NOT NULL until a schema change is planned.
+  Explanation: Download proxies the external response (content + Content-Disposition); local output generation/caching removed.
 - [x] Frontend verify: send column mapping + header/dedupe flags with file uploads; validate mapping before submit; wire download action to new backend endpoint.
   Explanation: Verify now reads columns locally, sends `file_metadata`, validates mapping before upload, and triggers downloads from the summary using `/api/tasks/{id}/download`.
 - [x] History filenames: use task_files metadata to display file names for file-based tasks in History.

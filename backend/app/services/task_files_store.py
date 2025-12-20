@@ -14,7 +14,7 @@ def upsert_task_file(
     task_id: str,
     file_name: str,
     file_extension: str,
-    source_path: str,
+    source_path: Optional[str],
     email_column: str,
     email_column_index: int,
     first_row_has_labels: bool,
