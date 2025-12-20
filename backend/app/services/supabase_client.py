@@ -51,18 +51,34 @@ def upsert_profile(
 
 
 def fetch_credits(user_id: str) -> int:
+    row = fetch_credits_row(user_id)
+    return int(row["credits_remaining"]) if row else 0
+
+
+def fetch_credits_row(user_id: str) -> Optional[Dict[str, Any]]:
     sb = get_supabase()
-    res = sb.table("user_credits").select("credits_remaining").eq("user_id", user_id).limit(1).execute()
+    res = sb.table("user_credits").select("*").eq("user_id", user_id).limit(1).execute()
     data: List[Dict[str, Any]] = res.data or []
-    return int(data[0]["credits_remaining"]) if data else 0
+    return data[0] if data else None
 
 
 def set_credits(user_id: str, credits_remaining: int) -> Dict[str, Any]:
     sb = get_supabase()
     payload = {"user_id": user_id, "credits_remaining": credits_remaining}
     res = sb.table("user_credits").upsert(payload, on_conflict="user_id").select("*").limit(1).execute()
+    error = getattr(res, "error", None)
+    if error:
+        logger.error("supabase.credits.upsert_failed", extra={"user_id": user_id, "error": str(error)})
+        raise RuntimeError("Credits upsert failed")
     data: List[Dict[str, Any]] = res.data or []
-    return data[0] if data else payload
+    if data:
+        return data[0]
+    row = fetch_credits_row(user_id)
+    if row:
+        logger.warning("supabase.credits.upsert_no_data", extra={"user_id": user_id})
+        return row
+    logger.error("supabase.credits.upsert_missing_row", extra={"user_id": user_id})
+    raise RuntimeError("Credits upsert returned no row")
 
 
 def increment_credits(user_id: str, delta: int) -> Dict[str, Any]:

@@ -17,7 +17,7 @@ from ..paddle.client import (
 )
 from ..paddle.config import get_paddle_config
 from ..paddle.webhook import verify_webhook
-from ..services.billing_events import record_billing_event
+from ..services.billing_events import delete_billing_event, record_billing_event
 from ..services.billing_plans import (
     get_billing_plan_by_price_id,
     get_billing_plans_by_price_ids,
@@ -427,7 +427,22 @@ async def paddle_webhook(request: Request):
     if not is_new:
         return {"received": True}
 
-    grant_credits(user_id, total_credits)
+    try:
+        grant_credits(user_id, total_credits)
+    except Exception as exc:  # noqa: BLE001
+        delete_billing_event(event_id)
+        logger.error(
+            "billing.webhook.credits_failed",
+            extra={
+                "event_id": event_id,
+                "user_id": user_id,
+                "credits": total_credits,
+                "price_ids": price_ids,
+                "error": str(exc),
+            },
+        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Credit grant failed")
+
     logger.info(
         "billing.webhook.credits_granted",
         extra={"event_id": event_id, "user_id": user_id, "credits": total_credits, "price_ids": price_ids},

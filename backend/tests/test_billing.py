@@ -176,3 +176,48 @@ def test_webhook_grants_credits(monkeypatch):
     assert resp.status_code == 200
     assert granted["credits"] == 500
     assert granted["user_id"] == "user-abc"
+
+
+def test_webhook_credit_grant_failure_deletes_event(monkeypatch):
+    deleted = {}
+
+    def fake_verify_webhook(raw_body, signature_header, remote_ip, headers=None):
+        return True
+
+    def fake_record_event(**_kwargs):
+        return True
+
+    def fake_grant_credits(_user_id, _credits):
+        raise RuntimeError("boom")
+
+    def fake_delete_event(event_id):
+        deleted["event_id"] = event_id
+        return True
+
+    monkeypatch.setattr(billing_module, "verify_webhook", fake_verify_webhook)
+    monkeypatch.setattr(billing_module, "record_billing_event", fake_record_event)
+    monkeypatch.setattr(billing_module, "grant_credits", fake_grant_credits)
+    monkeypatch.setattr(billing_module, "delete_billing_event", fake_delete_event)
+    monkeypatch.setattr(
+        billing_module,
+        "get_billing_plans_by_price_ids",
+        lambda price_ids: [{"paddle_price_id": "pri_monthly", "credits": 500}],
+    )
+
+    app = _build_app(monkeypatch, lambda: AuthContext(user_id="u", claims={}, token="t"))
+    client = TestClient(app)
+
+    payload = {
+        "event_id": "evt_1",
+        "event_type": "transaction.completed",
+        "data": {
+            "transaction": {
+                "id": "txn_1",
+                "items": [{"price_id": "pri_monthly", "quantity": 1}],
+                "custom_data": {"supabase_user_id": "user-abc"},
+            }
+        },
+    }
+    resp = client.post("/api/billing/webhook", json=payload, headers={"Paddle-Signature": "ts=1;v1=valid"})
+    assert resp.status_code == 500
+    assert deleted["event_id"] == "evt_1"

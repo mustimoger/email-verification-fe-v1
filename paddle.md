@@ -124,10 +124,11 @@ Low priority
    - What: prove the full flow: transaction → Paddle webhook → `billing_events` → `user_credits`.
    - Why: simulation payloads omit `custom_data` and cannot validate user mapping or credit grants.
    - How:
-     - Ensure the webhook endpoint is reachable from Paddle (ngrok or public staging).
-     - Align the notification destination’s secret with backend config and allowlist.
-     - Run a real sandbox purchase and verify Supabase rows + credit balance updates.
-   - Status: pending (needs reachable webhook + real sandbox checkout).
+      - Ensure the webhook endpoint is reachable from Paddle (ngrok or public staging).
+      - Align the notification destination’s secret with backend config and allowlist.
+      - Run a real sandbox purchase and verify Supabase rows + credit balance updates.
+   - Status: in progress (webhook delivered; Supabase verification pending).
+   - Progress: real sandbox Enterprise purchase completed; Paddle delivered `transaction.completed` to `ngrok2` destination. Supabase `billing_events`/`user_credits` verification is blocked until Supabase MCP auth is provided.
 
 ## MVP plan catalog + credits wiring (new)
 Scope: one-time credit packs (non-recurring), credits never expire.

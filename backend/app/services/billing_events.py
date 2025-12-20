@@ -67,3 +67,17 @@ def record_billing_event(
         logger.error("billing.event.record_failed", extra={"event_id": event_id, "error": str(exc)})
         # Fail open: return False to avoid double grant until table exists
         return False
+
+
+def delete_billing_event(event_id: str) -> bool:
+    sb = get_supabase()
+    try:
+        _table(sb).delete().eq("event_id", event_id).execute()
+        logger.info("billing.event.deleted", extra={"event_id": event_id})
+        return True
+    except APIError as exc:
+        logger.error("billing.event.delete_failed", extra={"event_id": event_id, "error": exc.json()})
+        return False
+    except Exception as exc:  # noqa: BLE001
+        logger.error("billing.event.delete_failed", extra={"event_id": event_id, "error": str(exc)})
+        return False
