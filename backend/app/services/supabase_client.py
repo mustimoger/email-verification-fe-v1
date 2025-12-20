@@ -65,10 +65,14 @@ def fetch_credits_row(user_id: str) -> Optional[Dict[str, Any]]:
 def set_credits(user_id: str, credits_remaining: int) -> Dict[str, Any]:
     sb = get_supabase()
     payload = {"user_id": user_id, "credits_remaining": credits_remaining}
-    res = sb.table("user_credits").upsert(payload, on_conflict="user_id").select("*").limit(1).execute()
+    res = sb.table("user_credits").upsert(payload, on_conflict="user_id").execute()
     error = getattr(res, "error", None)
     if error:
-        logger.error("supabase.credits.upsert_failed", extra={"user_id": user_id, "error": str(error)})
+        logger.error(
+            "supabase.credits.upsert_failed error=%s",
+            error,
+            extra={"user_id": user_id},
+        )
         raise RuntimeError("Credits upsert failed")
     data: List[Dict[str, Any]] = res.data or []
     if data:
