@@ -1,4 +1,5 @@
 import logging
+from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 import httpx
@@ -126,6 +127,13 @@ class TaskListResponse(BaseModel):
     tasks: Optional[List[Task]] = None
 
 
+@dataclass
+class DownloadedFile:
+    content: bytes
+    content_type: Optional[str] = None
+    content_disposition: Optional[str] = None
+
+
 class BatchFileUploadResponse(BaseModel):
     filename: Optional[str] = None
     message: Optional[str] = None
@@ -229,6 +237,7 @@ class ExternalAPIClient:
         content: bytes,
         user_id: Optional[str] = None,
         webhook_url: Optional[str] = None,
+        email_column: Optional[str] = None,
     ) -> BatchFileUploadResponse:
         if len(content) > self.max_upload_bytes:
             logger.warning(
@@ -245,10 +254,32 @@ class ExternalAPIClient:
         data: Dict[str, Any] = {}
         if webhook_url:
             data["webhook_url"] = webhook_url
+        if email_column:
+            data["email_column"] = email_column
         if user_id:
             data["user_id"] = user_id
 
         return await self._post_multipart("/tasks/batch/upload", data=data, files=files, model=BatchFileUploadResponse)
+
+    async def download_task_results(self, task_id: str, file_format: Optional[str] = None) -> DownloadedFile:
+        params = {"format": file_format} if file_format else None
+        response = await self._request("GET", f"/tasks/{task_id}/download", params=params)
+        if response.status_code >= 400:
+            detail = None
+            try:
+                detail = response.json()
+            except Exception:
+                detail = response.text
+            logger.warning(
+                "external_api.error",
+                extra={"status_code": response.status_code, "detail": detail},
+            )
+            raise ExternalAPIError(status_code=response.status_code, message="External API error", details=detail)
+        return DownloadedFile(
+            content=response.content,
+            content_type=response.headers.get("content-type"),
+            content_disposition=response.headers.get("content-disposition"),
+        )
 
     async def list_api_keys(
         self,

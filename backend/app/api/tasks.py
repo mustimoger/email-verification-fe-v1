@@ -2,14 +2,15 @@ import asyncio
 import json
 import logging
 import time
+from pathlib import Path
 from typing import Optional, Set
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
-from fastapi.responses import FileResponse
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Response, UploadFile, status
 from pydantic import BaseModel
 
 from ..clients.external import (
     BatchFileUploadResponse,
+    DownloadedFile,
     ExternalAPIClient,
     ExternalAPIError,
     Task,
@@ -20,14 +21,9 @@ from ..clients.external import (
 )
 from ..core.auth import AuthContext, get_current_user
 from ..core.settings import get_settings
-from ..services.file_processing import FileProcessingError, parse_emails_from_upload, write_verified_output
-from ..services.storage import (
-    absolute_upload_path,
-    build_output_path,
-    persist_upload_file,
-    relative_upload_path,
-)
-from ..services.task_files_store import fetch_task_file, update_task_file_output, upsert_task_file
+from ..services.file_processing import _column_letters_to_index
+from ..services.storage import persist_upload_file, relative_upload_path
+from ..services.task_files_store import fetch_task_file, upsert_task_file
 from ..services.tasks_store import fetch_tasks_with_counts, upsert_task_from_detail, upsert_tasks_from_list
 from ..services.api_keys import INTERNAL_DASHBOARD_KEY_NAME, get_cached_key_by_name
 from ..services.usage import record_usage
@@ -63,6 +59,21 @@ def resolve_task_api_key_id(user_id: str, api_key_id: Optional[str]) -> Optional
         return cached["key_id"]
     logger.info("tasks.api_key_id.unavailable", extra={"user_id": user_id})
     return None
+
+
+def normalize_email_column_mapping(email_column: str) -> tuple[str, int]:
+    if not email_column:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email column is required")
+    trimmed = email_column.strip()
+    if not trimmed:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email column is required")
+    index = _column_letters_to_index(trimmed)
+    if index is None or index < 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email column must be a column letter or 1-based index",
+        )
+    return str(index + 1), index
 
 
 async def poll_tasks_after_upload(
@@ -451,39 +462,50 @@ async def upload_task_file(
             metadata = metadata_by_name.get(file.filename or "")
             if not metadata:
                 raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing file metadata")
+            if metadata.remove_duplicates or not metadata.first_row_has_labels:
+                logger.info(
+                    "route.tasks.upload.flags_ignored",
+                    extra={
+                        "user_id": target_user_id,
+                        "filename": file.filename,
+                        "remove_duplicates": metadata.remove_duplicates,
+                        "first_row_has_labels": metadata.first_row_has_labels,
+                    },
+                )
+            email_column_value, email_column_index = normalize_email_column_mapping(metadata.email_column)
             saved_path, data = await persist_upload_file(
                 upload=file, user_id=target_user_id, max_bytes=settings.upload_max_mb * 1024 * 1024
             )
-            parsed = parse_emails_from_upload(
+            result = await client.upload_batch_file(
                 filename=file.filename or "upload",
-                data=data,
-                email_column=metadata.email_column,
-                first_row_has_labels=metadata.first_row_has_labels,
-                remove_duplicates=metadata.remove_duplicates,
-                max_emails=None,
-            )
-            result = await client.create_task(
-                emails=parsed.emails,
+                content=data,
                 user_id=target_user_id,
                 webhook_url=webhook_url,
+                email_column=email_column_value,
             )
-            task_id = result.id
+            task_id = result.task_id
             if not task_id:
-                raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Task id missing from response")
+                logger.error(
+                    "route.tasks.upload.missing_task_id",
+                    extra={"user_id": target_user_id, "filename": file.filename, "upload_id": result.upload_id},
+                )
+                raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Task id missing from upload response")
             upsert_tasks_from_list(
                 target_user_id,
                 [
                     Task(
                         id=task_id,
                         user_id=target_user_id,
-                        email_count=result.email_count or len(parsed.emails),
-                        created_at=result.created_at,
+                        status=result.status,
                     )
                 ],
                 integration=None,
                 api_key_id=resolved_api_key_id,
             )
-            record_usage(target_user_id, path="/tasks", count=len(parsed.emails), api_key_id=None)
+            logger.info(
+                "route.tasks.upload.usage_skipped",
+                extra={"user_id": target_user_id, "task_id": task_id, "reason": "email_count_unknown"},
+            )
             task_file_id = upsert_task_file(
                 user_id=target_user_id,
                 task_id=task_id,
@@ -491,7 +513,7 @@ async def upload_task_file(
                 file_extension=Path(file.filename or "upload").suffix.lower(),
                 source_path=relative_upload_path(saved_path),
                 email_column=metadata.email_column,
-                email_column_index=parsed.email_column_index,
+                email_column_index=email_column_index,
                 first_row_has_labels=metadata.first_row_has_labels,
                 remove_duplicates=metadata.remove_duplicates,
             )
@@ -502,14 +524,17 @@ async def upload_task_file(
                     "filename": file.filename,
                     "saved_path": str(saved_path),
                     "task_id": task_id,
-                    "email_count": len(parsed.emails),
+                    "upload_id": result.upload_id,
                 },
             )
             responses.append(
                 BatchFileUploadResponse(
-                    filename=file.filename,
+                    filename=result.filename or file.filename,
                     task_id=task_id,
-                    upload_id=task_file_id,
+                    upload_id=result.upload_id,
+                    uploaded_at=result.uploaded_at,
+                    status=result.status,
+                    message=result.message,
                 )
             )
         except ExternalAPIError as exc:
@@ -519,12 +544,6 @@ async def upload_task_file(
                     extra={"user_id": target_user_id, "status_code": exc.status_code, "details": exc.details},
                 )
             raise HTTPException(status_code=exc.status_code, detail=exc.details or exc.args[0])
-        except FileProcessingError as exc:
-            logger.warning(
-                "route.tasks.upload.file_processing_failed",
-                extra={"user_id": target_user_id, "filename": file.filename, "error": str(exc), "details": exc.details},
-            )
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
     return responses
 
@@ -532,6 +551,7 @@ async def upload_task_file(
 @router.get("/tasks/{task_id}/download")
 async def download_task_results(
     task_id: str,
+    file_format: Optional[str] = Query(default=None, alias="format"),
     user_id: Optional[str] = None,
     user: AuthContext = Depends(get_current_user),
     client: ExternalAPIClient = Depends(get_user_external_client),
@@ -550,37 +570,44 @@ async def download_task_results(
             extra={"admin_user_id": user.user_id, "target_user_id": target_user_id},
         )
 
-    task_file = fetch_task_file(target_user_id, task_id)
-    if not task_file:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task file not found")
-
-    source_path = absolute_upload_path(task_file["source_path"])
-    output_path_value = task_file.get("output_path")
-    if output_path_value:
-        output_path = absolute_upload_path(output_path_value)
-        if output_path.exists():
-            return FileResponse(output_path, filename=output_path.name)
-
     try:
-        detail = await client.get_task_detail(task_id)
+        task_file = fetch_task_file(target_user_id, task_id)
+        if not task_file:
+            logger.info("route.tasks.download.missing_file", extra={"user_id": target_user_id, "task_id": task_id})
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task file not found")
+        download: DownloadedFile = await client.download_task_results(task_id=task_id, file_format=file_format)
     except ExternalAPIError as exc:
-        raise HTTPException(status_code=exc.status_code, detail=exc.details or "Unable to fetch task detail")
-
-    output_path, output_name = build_output_path(target_user_id, task_file["file_name"], task_id)
-    try:
-        write_verified_output(
-            source_path=source_path,
-            output_path=output_path,
-            email_column_index=task_file["email_column_index"],
-            first_row_has_labels=task_file["first_row_has_labels"],
-            task_detail=detail.model_dump(),
-        )
-        update_task_file_output(target_user_id, task_id, relative_upload_path(output_path))
-    except FileProcessingError as exc:
         logger.warning(
-            "route.tasks.download.file_processing_failed",
-            extra={"user_id": target_user_id, "task_id": task_id, "error": str(exc), "details": exc.details},
+            "route.tasks.download.external_failed",
+            extra={"user_id": target_user_id, "task_id": task_id, "status_code": exc.status_code, "details": exc.details},
         )
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=exc.status_code, detail=exc.details or "Unable to fetch task download"
+        ) from exc
 
-    return FileResponse(output_path, filename=output_name)
+    content_type = download.content_type
+    if not content_type:
+        logger.warning(
+            "route.tasks.download.missing_content_type",
+            extra={"user_id": target_user_id, "task_id": task_id},
+        )
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Upstream download missing content type")
+
+    response_headers: dict[str, str] = {}
+    content_disposition = download.content_disposition
+    if content_disposition:
+        response_headers["Content-Disposition"] = content_disposition
+    logger.debug(
+        "route.tasks.download.headers",
+        extra={
+            "user_id": target_user_id,
+            "task_id": task_id,
+            "content_type": content_type,
+            "has_content_disposition": bool(content_disposition),
+        },
+    )
+    logger.info(
+        "route.tasks.download",
+        extra={"user_id": target_user_id, "task_id": task_id, "format": file_format},
+    )
+    return Response(content=download.content, media_type=content_type, headers=response_headers)

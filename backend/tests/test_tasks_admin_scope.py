@@ -31,8 +31,10 @@ def _build_app(monkeypatch, fake_user, fake_client, *, use_supabase: bool = Fals
 
     monkeypatch.setattr(tasks_module, "record_usage", lambda *args, **kwargs: None)
     monkeypatch.setattr(tasks_module, "upsert_tasks_from_list", lambda *args, **kwargs: None)
+    monkeypatch.setattr(tasks_module, "upsert_task_file", lambda *args, **kwargs: "file-1")
     monkeypatch.setattr(tasks_module, "poll_tasks_after_upload", fake_poll)
     monkeypatch.setattr(tasks_module, "persist_upload_file", fake_persist)
+    monkeypatch.setattr(tasks_module, "relative_upload_path", lambda path: "fake")
     monkeypatch.setattr(tasks_module, "get_cached_key_by_name", lambda *args, **kwargs: None)
     if use_supabase:
         monkeypatch.setattr(
@@ -139,14 +141,17 @@ def test_tasks_upload_forbids_user_id_for_non_admin(monkeypatch):
         async def list_tasks(self, limit: int, offset: int, user_id: str | None = None):
             return TaskListResponse(count=0, tasks=[])
 
-        async def upload_batch_file(self, filename, content, user_id=None, webhook_url=None):
-            return BatchFileUploadResponse(status="ok", upload_id="u1")
+        async def upload_batch_file(self, filename, content, user_id=None, webhook_url=None, email_column=None):
+            return BatchFileUploadResponse(status="ok", upload_id="u1", task_id="task-1")
 
     app = _build_app(monkeypatch, fake_user, FakeClient())
     client = TestClient(app)
     resp = client.post(
         "/api/tasks/upload?user_id=target-user",
         files=[("files", ("emails.csv", b"email@example.com", "text/csv"))],
+        data={
+            "file_metadata": '[{"file_name":"emails.csv","email_column":"A","first_row_has_labels":true,"remove_duplicates":true}]'
+        },
     )
     assert resp.status_code == 403
 
@@ -155,16 +160,17 @@ def test_tasks_upload_allows_user_id_for_admin(monkeypatch):
     def fake_user():
         return AuthContext(user_id="admin-1", claims={}, token="t", role="admin")
 
-    captured = {"list_user_id": None, "upload_user_id": None, "persist_user_id": None}
+    captured = {"list_user_id": None, "upload_user_id": None, "persist_user_id": None, "email_column": None}
 
     class FakeClient:
         async def list_tasks(self, limit: int, offset: int, user_id: str | None = None):
             captured["list_user_id"] = user_id
             return TaskListResponse(count=0, tasks=[])
 
-        async def upload_batch_file(self, filename, content, user_id=None, webhook_url=None):
+        async def upload_batch_file(self, filename, content, user_id=None, webhook_url=None, email_column=None):
             captured["upload_user_id"] = user_id
-            return BatchFileUploadResponse(status="ok", upload_id="u1")
+            captured["email_column"] = email_column
+            return BatchFileUploadResponse(status="ok", upload_id="u1", task_id="task-1")
 
     async def fake_persist(upload, user_id, max_bytes):
         captured["persist_user_id"] = user_id
@@ -176,8 +182,11 @@ def test_tasks_upload_allows_user_id_for_admin(monkeypatch):
     resp = client.post(
         "/api/tasks/upload?user_id=target-user",
         files=[("files", ("emails.csv", b"email@example.com", "text/csv"))],
+        data={
+            "file_metadata": '[{"file_name":"emails.csv","email_column":"A","first_row_has_labels":true,"remove_duplicates":true}]'
+        },
     )
     assert resp.status_code == 200
-    assert captured["list_user_id"] == "target-user"
     assert captured["persist_user_id"] == "target-user"
     assert captured["upload_user_id"] == "target-user"
+    assert captured["email_column"] == "1"

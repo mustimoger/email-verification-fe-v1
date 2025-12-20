@@ -97,8 +97,8 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
   Explanation: Added `task_files` table with file metadata + column info and indexes to link tasks to uploads for History and download output generation.
 - [x] Multi-sheet handling: reject Excel files with multiple sheets and return a clear error to split into single-sheet files.
   Explanation: Client-side column reader already blocks multi-sheet spreadsheets to keep column mapping deterministic.
-- [ ] External-native download: proxy external `/tasks/{id}/download` (format=csv|txt|xlsx) and stop generating local output files.
-  Explanation: External API now provides downloads; local output generation will be removed to avoid duplicated processing and storage.
+- [x] External-native download: proxy external `/tasks/{id}/download` (format=csv|txt|xlsx) and stop generating local output files.
+  Explanation: Download now proxies the external response (content + Content-Disposition) and removes local output generation/caching. Local uploads are still saved to satisfy `task_files.source_path` NOT NULL until a schema change is planned.
 - [x] Frontend verify: send column mapping + header/dedupe flags with file uploads; validate mapping before submit; wire download action to new backend endpoint.
   Explanation: Verify now reads columns locally, sends `file_metadata`, validates mapping before upload, and triggers downloads from the summary using `/api/tasks/{id}/download`.
 - [x] History filenames: use task_files metadata to display file names for file-based tasks in History.
