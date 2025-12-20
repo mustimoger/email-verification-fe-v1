@@ -15,7 +15,13 @@ import {
   ListApiKeysResponse,
   UsagePurposeResponse,
 } from "../lib/api-client";
-import { formatPurposeLabel, listPurposeOptions, summarizeKeyUsage, summarizePurposeUsage } from "./utils";
+import {
+  formatPurposeLabel,
+  listPurposeOptions,
+  resolveDateRange,
+  summarizeKeyUsage,
+  summarizePurposeUsage,
+} from "./utils";
 
 type KeyStatus = "active" | "disabled";
 type UsageView = "per_key" | "per_purpose";
@@ -147,8 +153,15 @@ export default function ApiPage() {
     if (!session) return;
     setIsLoadingUsage(true);
     setError(null);
-    const rangeStart = dateRange.from || undefined;
-    const rangeEnd = dateRange.to || undefined;
+    const resolvedRange = resolveDateRange(dateRange);
+    if (resolvedRange.error) {
+      setError(resolvedRange.error);
+      console.warn("api.usage.range.invalid", { error: resolvedRange.error, from: dateRange.from, to: dateRange.to });
+      setIsLoadingUsage(false);
+      return;
+    }
+    const rangeStart = resolvedRange.start;
+    const rangeEnd = resolvedRange.end;
     console.info("api.usage.load", {
       view: usageView,
       api_key_id: selectedKey || "all",
@@ -367,6 +380,7 @@ export default function ApiPage() {
               <div className="flex items-center gap-2">
                 <div className="relative w-full">
                   <input
+                    type="date"
                     value={dateRange.from}
                     onChange={(event) => setDateRange((prev) => ({ ...prev, from: event.target.value }))}
                     className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm outline-none focus:border-[#4c61cc] focus:ring-1 focus:ring-[#4c61cc]"
@@ -375,6 +389,7 @@ export default function ApiPage() {
                 </div>
                 <div className="relative w-full">
                   <input
+                    type="date"
                     value={dateRange.to}
                     onChange={(event) => setDateRange((prev) => ({ ...prev, to: event.target.value }))}
                     className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm outline-none focus:border-[#4c61cc] focus:ring-1 focus:ring-[#4c61cc]"

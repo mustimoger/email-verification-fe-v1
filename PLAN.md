@@ -152,6 +152,11 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
 - [x] Implement simplified API page: card 1 with API keys table (name, masked key, status pill, edit action); card 2 with usage controls (API key dropdown, date range, actions) and line chart placeholder with mock data/empty state. Shared shell/footer reused; console logs for future backend wiring.
 - [x] Update API key display to show masked secret preview (first 3 chars + `***`) instead of masked key ID.
   Explanation: Backend now reads cached `key_plain` and derives `key_preview`, returning it alongside API key summaries. UI uses `key_preview` for the table and selector, avoiding ID display. Ran `pytest backend/tests/test_api_keys.py` and `tests/api-usage-utils.test.ts`.
+- [x] Date range input — switched to native date inputs and convert selected dates to RFC3339 (`from`/`to`) with validation/logging.
+  Explanation: `/api` now uses date pickers and converts to start/end‑of‑day UTC ISO timestamps; invalid/partial ranges surface an error and log `api.usage.range.invalid`.
+- [ ] Detailed API page plan now tracked in `api-plan.md`.
+- [ ] API usage date range — Switch to native date inputs, validate/convert to RFC3339 for `from`/`to`, and log invalid ranges instead of silently failing.
+- [ ] API usage chart — Load `/api/usage/summary` with the selected range/key and render a real chart; keep the total/empty states for cases with no series data.
 
 ## Pricing page
 - [x] Implemented Pricing page per Figma: four tier cards in a grid, each with title, “Credits Never Expire” note, price (last card “Contact Us”), feature list, and “Start Verification” CTA. Shared shell/footer reused; typed feature data for now.
