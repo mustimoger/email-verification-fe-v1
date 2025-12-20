@@ -69,6 +69,62 @@ Low priority
    - Use Paddle price preview to show localized totals before checkout.
    - Status: not implemented.
 
+## Hardening tasks from review (step-by-step)
+1) **Make webhook idempotency atomic**
+   - What: replace the read-then-upsert pattern with a single insert that relies on the `billing_events.event_id` uniqueness.
+   - Why: the current race condition can double‑grant credits when Paddle retries or sends parallel webhooks.
+   - How:
+      - Use an insert into `billing_events` and treat unique‑violation responses as "already processed".
+      - Only grant credits when the insert succeeds; log and return safely on duplicates or errors.
+      - Add a focused test that sends two identical events concurrently and asserts only one grant.
+   - Status: implemented.
+   - Implementation: switched `record_billing_event` to a single insert guarded by Postgres unique‑violation handling and added a unit test to confirm duplicates are ignored.
+
+2) **Support CIDR ranges in webhook IP allowlist**
+   - What: allow `PADDLE_*_IPS` entries to be either exact IPs or CIDR ranges.
+   - Why: Paddle may publish IP ranges; exact matching will reject legitimate webhooks.
+   - How:
+     - Parse allowlist entries as `ipaddress.ip_network` when possible, otherwise fall back to `ipaddress.ip_address`.
+     - Validate entries at startup; log and skip invalid entries rather than silently failing.
+     - Extend webhook IP tests to cover single IP + CIDR range cases.
+   - Status: not implemented.
+
+3) **Reject future timestamps in signature verification**
+   - What: treat timestamps too far in the future as invalid, not just stale past timestamps.
+   - Why: prevents replay abuse and aligns with symmetric clock‑skew handling.
+   - How:
+     - Use `PADDLE_WEBHOOK_MAX_VARIANCE_SECONDS` as a bidirectional drift window.
+     - Reject when `abs(now - ts) > max_variance`; log with the delta for diagnostics.
+     - Add tests for both "too old" and "too far in the future".
+   - Status: not implemented.
+
+4) **Confirm transaction address requirements in checkout mode**
+   - What: validate whether Paddle accepts transactions without `address_id` when `PADDLE_ADDRESS_MODE=checkout`.
+   - Why: docs show `address_id` required; a hard failure here would block checkout in production.
+   - How:
+     - Run a real sandbox checkout using the current backend flow and capture the API response.
+     - If Paddle rejects missing `address_id`, switch to server‑default address creation or adjust flow to supply address data.
+     - Document the accepted path and update tests to match the confirmed behavior.
+   - Status: pending validation (not yet run in sandbox).
+
+5) **Validate transaction payload fields (metadata vs custom_data)**
+   - What: confirm the Paddle Billing API accepts `metadata` for transactions; if not, remove or migrate it to `custom_data`.
+   - Why: unsupported fields can cause 4xx errors and break checkout.
+   - How:
+     - Create a sandbox transaction with `metadata` via API and verify acceptance.
+     - If rejected, drop `metadata` from `CreateTransactionRequest` and move required data into `custom_data`.
+     - Add a test ensuring payload serialization matches the confirmed API spec.
+   - Status: pending validation (not yet run in sandbox).
+
+6) **End‑to‑end webhook delivery + credit grant verification**
+   - What: prove the full flow: transaction → Paddle webhook → `billing_events` → `user_credits`.
+   - Why: simulation payloads omit `custom_data` and cannot validate user mapping or credit grants.
+   - How:
+     - Ensure the webhook endpoint is reachable from Paddle (ngrok or public staging).
+     - Align the notification destination’s secret with backend config and allowlist.
+     - Run a real sandbox purchase and verify Supabase rows + credit balance updates.
+   - Status: pending (needs reachable webhook + real sandbox checkout).
+
 ## MVP plan catalog + credits wiring (new)
 Scope: one-time credit packs (non-recurring), credits never expire.
 
@@ -101,6 +157,7 @@ Confirmed MVP plan details (sandbox)
   - Basic: product `pro_01kcvp3asd8nb0fnp5jwmrbbsn`, price `pri_01kcvp3r27t1rc4apy168x2n8e`
   - Professional: product `pro_01kcvp3brdtca0cxzyzg2mvbke`, price `pri_01kcvp3sycsr5b47kvraf10m9a`
   - Enterprise: product `pro_01kcvp3d4zrnp5dgt8gd0szdx7`, price `pri_01kcvp3wceq1d9sfw6x9b96v9q`
+  - Test cleanup: archived Innovator product `pro_01kakhfn0sws0f7fwqret3byp9` and price `pri_01kakhgmqjkjre4tf8wgx4208c` to keep the catalog aligned with real plans.
 
 Plan changes (best-practice)
 - Source of truth for billing catalog is Paddle. Supabase mirrors it for dashboard + credits mapping.

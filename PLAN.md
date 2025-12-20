@@ -258,6 +258,8 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
   Explanation: Added `backend/scripts/sync_paddle_plans.py` to list products/prices and upsert Supabase rows, with status filtering and validation. Script now normalizes next cursors and skips invalid rows with warnings; it only fails if no valid rows are produced.
 - [x] Webhook credit grant uses Supabase plan catalog for credit mapping and notifies on missing/invalid mappings.
   Explanation: Webhook now resolves credits via `billing_plans` using `get_billing_plans_by_price_ids`; unmapped prices log `billing.webhook.no_credits` and do not grant credits.
+- [x] Atomic billing event insert for webhook idempotency.
+  Explanation: Replaced the read‑then‑upsert in `record_billing_event` with a single insert guarded by unique‑violation handling so duplicate webhooks cannot double‑grant credits; added a unit test to confirm duplicates are ignored.
 - [ ] Credit deduction on usage with atomic update and idempotency guard.
   Explanation: Credits should decrement when tasks/verification are accepted; handle retries without double-deduction and reject when insufficient. Deferred per request; not implementing now.
 - [x] Priority High: Confirm Paddle webhook signature spec and align verification (or use official SDK verifier) with tests.
