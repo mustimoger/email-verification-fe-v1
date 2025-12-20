@@ -34,7 +34,6 @@ class CreateTransactionRequest(BaseModel):
     address_id: Optional[str] = None
     items: list[TransactionItem]
     custom_data: Optional[Dict[str, Any]] = None
-    metadata: Optional[Dict[str, Any]] = None
 
 
 class CreateTransactionResponse(BaseModel):

@@ -97,6 +97,43 @@ def test_create_transaction_creates_customer_checkout_address(monkeypatch):
     assert created.get("upsert") == ("ctm_test", None)
 
 
+def test_create_transaction_rejects_metadata(monkeypatch):
+    called = {"resolve": False, "client": False}
+
+    async def fake_resolve(user):
+        called["resolve"] = True
+        return "ctm_test", None
+
+    class FakeClient:
+        async def create_transaction(self, payload):
+            called["client"] = True
+            class Obj:
+                id = "txn_test"
+            return Obj()
+
+    def fake_user():
+        return AuthContext(user_id="user-1", claims={}, token="t")
+
+    monkeypatch.setattr(billing_module, "_resolve_customer_and_address", fake_resolve)
+    monkeypatch.setattr(billing_module, "get_paddle_client", lambda: FakeClient())
+    monkeypatch.setattr(
+        billing_module,
+        "get_billing_plan_by_price_id",
+        lambda price_id: {"paddle_price_id": price_id, "credits": 500, "status": "active"},
+    )
+
+    app = _build_app(monkeypatch, fake_user)
+    client = TestClient(app)
+
+    resp = client.post(
+        "/api/billing/transactions",
+        json={"price_id": "pri_monthly", "metadata": {"test": "value"}},
+    )
+    assert resp.status_code == 400
+    assert called["resolve"] is False
+    assert called["client"] is False
+
+
 def test_webhook_grants_credits(monkeypatch):
     granted = {}
 

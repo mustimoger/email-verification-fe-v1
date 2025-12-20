@@ -114,10 +114,11 @@ Low priority
    - What: confirm the Paddle Billing API accepts `metadata` for transactions; if not, remove or migrate it to `custom_data`.
    - Why: unsupported fields can cause 4xx errors and break checkout.
    - How:
-     - Create a sandbox transaction with `metadata` via API and verify acceptance.
-     - If rejected, drop `metadata` from `CreateTransactionRequest` and move required data into `custom_data`.
-     - Add a test ensuring payload serialization matches the confirmed API spec.
-   - Status: pending validation (not yet run in sandbox).
+      - Create a sandbox transaction with `metadata` via API and verify acceptance.
+      - If rejected, drop `metadata` from `CreateTransactionRequest` and move required data into `custom_data`.
+      - Add a test ensuring payload serialization matches the confirmed API spec.
+   - Status: implemented.
+   - Validation: sandbox transaction with `metadata` returned 201, but `metadata` was not present in the GET response; to avoid silent loss, the API now rejects `metadata` and instructs clients to use `custom_data`.
 
 6) **End‑to‑end webhook delivery + credit grant verification**
    - What: prove the full flow: transaction → Paddle webhook → `billing_events` → `user_credits`.

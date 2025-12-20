@@ -270,6 +270,8 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
   Explanation: `verify_signature` now rejects timestamps outside the configured drift window in both past and future directions, with tests covering future timestamps.
 - [x] Validated Paddle transaction address requirement in checkout mode.
   Explanation: Created a sandbox transaction without `address_id`; Paddle accepted it (201), returned `address_id: null`, and issued a checkout URL. This confirms address collection can occur at checkout when `PADDLE_ADDRESS_MODE=checkout`.
+- [x] Validated transaction payload fields (metadata vs custom_data).
+  Explanation: Sandbox transactions accepted `metadata` but did not return it on GET; to avoid silent loss, the billing API now rejects `metadata` and requires `custom_data`, with a test to enforce the behavior.
 - [ ] Credit deduction on usage with atomic update and idempotency guard.
   Explanation: Credits should decrement when tasks/verification are accepted; handle retries without double-deduction and reject when insufficient. Deferred per request; not implementing now.
 - [x] Priority High: Confirm Paddle webhook signature spec and align verification (or use official SDK verifier) with tests.

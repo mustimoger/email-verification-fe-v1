@@ -298,6 +298,19 @@ async def create_transaction(
     plan_row = get_billing_plan_by_price_id(payload.price_id)
     if not plan_row:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unknown price_id")
+    if payload.metadata is not None:
+        logger.warning(
+            "billing.transaction.metadata_unsupported",
+            extra={
+                "user_id": user.user_id,
+                "price_id": payload.price_id,
+                "metadata_keys": list(payload.metadata.keys()),
+            },
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="metadata is not supported; use custom_data",
+        )
 
     try:
         customer_id, address_id = await _resolve_customer_and_address(user)
@@ -307,7 +320,6 @@ async def create_transaction(
             address_id=address_id,
             items=[TransactionItem(price_id=payload.price_id, quantity=payload.quantity)],
             custom_data={**(payload.custom_data or {}), "supabase_user_id": user.user_id},
-            metadata=payload.metadata,
         )
         result = await client.create_transaction(tx_payload)
         logger.info(
