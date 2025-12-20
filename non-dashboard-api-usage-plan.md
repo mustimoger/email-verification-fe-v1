@@ -37,7 +37,7 @@ Goal: track and display usage/credits for API keys used outside our app (Zapier,
    - Provide a single usage card with a view selector and dynamic dropdown; avoid extra UI sections to keep the design stable.
    - Status: UI now supports both views with a selector and uses real totals; chart area shows totals when time-series is unavailable.
    - Verification: completed locally with session JSON. Per‑key view showed “Total: —” and “No usage data” for both no‑range and date‑range (no keys/usage for this user). Per‑purpose view loaded options (Zapier, n8n, Google Sheets, Custom) and showed “Total: 0” for both no‑range and date‑range.
-   - Re-verification: blocked after data creation — Supabase auth rejected the refresh token in `key-value-pair.txt` (“Invalid Refresh Token: Already Used”), redirecting to `/signin`. Need a fresh session JSON or test credentials.
+   - Re-verification: completed with refreshed session JSON. `/api` page loaded but API keys list was still empty (selector only “All keys”), so per‑key totals remained “—/No usage data.” Per‑purpose totals returned `0` with purpose options loaded. Console still showed a refresh-token warning; may require a brand‑new session if this continues.
    - `/history`: continue showing Supabase tasks; add a “last synced” indicator and retry action if sync failed.
 
 5) **Scheduling/webhooks**

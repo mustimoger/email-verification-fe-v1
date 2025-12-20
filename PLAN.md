@@ -12,8 +12,8 @@
 - [ ] Enhancements — Only after MVP + tests + staging verification.
 - [x] UI verification — `/api` usage views (per‑key/per‑purpose) with and without date range.
   Explanation: Verified locally using the session JSON from `key-value-pair.txt`. Per‑key view shows “Total: —” and “No usage data” both with no date range and with a valid RFC3339 range (no keys/usage for this user). Per‑purpose view loads options (Zapier, n8n, Google Sheets, Custom) and shows “Total: 0” both with no date range and with a date range. No blocking errors observed.
-- [ ] UI re-verification — `/api` usage views with real data (keys/tasks created).
-  Explanation: Attempted re-test after user generated data; Supabase client rejected the refresh token in `key-value-pair.txt` (“Invalid Refresh Token: Already Used”) and redirected to `/signin`. Need a fresh session JSON or test credentials to complete re-verification.
+- [x] UI re-verification — `/api` usage views with real data (keys/tasks created).
+  Explanation: Re-tested with refreshed session JSON. `/api` page loaded, but API Keys table still showed “No API keys yet” and the per-key selector only contained “All keys.” Per‑key totals stayed “—” with “No usage data,” and per‑purpose totals were `0` (options loaded: Custom, Zapier, n8n, Google Sheets). Console still logged a refresh-token warning (“Invalid Refresh Token: Already Used”), but the session remained active enough to load usage views; may need a brand‑new session if this persists.
 
 ## Runtime limits alignment (batch vs upload)
 - [x] Step 1 — remove `upload_max_emails_per_task` requirement and any upload email-count enforcement so file uploads are only size-limited.
@@ -189,6 +189,8 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
   Explanation: Tasks/verify now resolve a per-user hidden `dashboard_api` key; optional `api_key_id` query selects another user-owned key. API key creation caches secrets and integration metadata (`integration` column), listing can include internal keys when requested, and frontend API page creation sends integration choice. History page now offers a key selector (including dashboard) to filter task history per key.
 - [x] Storage/retention cleanup hook.
   Explanation: Added authenticated maintenance endpoint `/api/maintenance/purge-uploads` that runs retention cleanup (`purge_expired_uploads`), logging deletions and returning deleted files. Use for cron/operator calls to enforce upload retention policy.
+- [ ] Remove upload retention/maintenance logic now that file uploads are fully external; delete retention service + maintenance endpoint, remove retention settings/tests/docs references, and update plan notes.
+  Explanation: Pending implementation; required to prevent dead code and incorrect ops guidance after local uploads were removed.
 - [x] Post-upload task polling/backfill.
   Explanation: `/api/tasks/upload` now captures batch-upload tasks by polling `/tasks` with the user’s external key after uploads complete, comparing against a baseline, and upserting recent tasks into Supabase. Poll attempts/interval/page size are env-configurable (`UPLOAD_POLL_*`), with structured logs for baseline fetch, each poll attempt, and new task detection.
 - [x] Avatar storage client fix.
