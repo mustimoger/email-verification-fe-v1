@@ -83,24 +83,24 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
   Explanation: Upload flow now uses `/tasks/batch/upload` response `filename` + `task_id` to map each file to its task, fetches task detail per task id, and builds the summary from real task data without time-based selection.
 - [x] File upload mapping update: use `task_id` from `/tasks/batch/upload` response to fetch task detail/counts per file; remove any time-based selection.
   Explanation: Removed task list polling/time-based mapping; summary counts now come from task detail linked directly by upload response `task_id`. Fixed the stale `deriveUploadSummary` reference in the file-chip removal flow.
-- [ ] File processing in app API: parse uploaded CSV/XLSX/XLS, apply column mapping + header handling + dedupe, then call external `/tasks` with the cleaned email list (no external batch upload).
-  Explanation: External API will not support mapping/dedupe; app API must own preprocessing and create per-file tasks directly from parsed emails. Backend upload parsing now ignores email-count limits and only enforces file size; frontend still must send mapping metadata and handle errors.
+- [ ] External-native file upload: forward each file to external `/tasks/batch/upload` with `email_column` derived from the user’s manual mapping (column letter -> 1-based index string), skip local parsing/dedupe, and keep existing UI mapping flow unchanged.
+  Explanation: External API now supports file upload with `email_column`, so the app should no longer parse or dedupe locally. The UI keeps manual column selection; backend only normalizes the mapping and proxies the upload.
 - [x] Manual verify limit: add `MANUAL_MAX_EMAILS` to backend settings; enforce in `/api/tasks` (manual copy/paste) and surface to UI via runtime limits endpoint.
   Explanation: Added `manual_max_emails` setting and enforcement in `/api/tasks`, plus runtime UI validation from `/api/limits` with clear errors when limits can’t be loaded.
 - [x] Runtime limits endpoint: add `/api/limits` (auth-required) returning `manual_max_emails` and `upload_max_mb`; UI must fetch at runtime and avoid hardcoded values.
   Explanation: `/api/limits` now returns upload and manual limits with auth; Verify page loads limits on mount and uses them for manual and upload validation (no hardcoded sizes).
 - [x] Supabase task_files table: persist file metadata per task (user_id, task_id, file_name, source_path, column mapping, flags) for History and downloads.
   Explanation: Added `task_files` table with file metadata + column info and indexes to link tasks to uploads for History and download output generation.
-- [ ] Multi-sheet handling: reject Excel files with multiple sheets and return a clear error to split into single-sheet files.
-  Explanation: Only the first sheet is supported for MVP to keep parsing deterministic and avoid incorrect column mapping.
-- [x] Verify download output: generate a new file with verification result columns appended, keep original file unchanged, and expose a download endpoint per task.
-  Explanation: Backend now generates verified output with appended columns and exposes `/api/tasks/{id}/download`; output is cached per task file and originals remain unchanged.
+- [x] Multi-sheet handling: reject Excel files with multiple sheets and return a clear error to split into single-sheet files.
+  Explanation: Client-side column reader already blocks multi-sheet spreadsheets to keep column mapping deterministic.
+- [ ] External-native download: proxy external `/tasks/{id}/download` (format=csv|txt|xlsx) and stop generating local output files.
+  Explanation: External API now provides downloads; local output generation will be removed to avoid duplicated processing and storage.
 - [x] Frontend verify: send column mapping + header/dedupe flags with file uploads; validate mapping before submit; wire download action to new backend endpoint.
   Explanation: Verify now reads columns locally, sends `file_metadata`, validates mapping before upload, and triggers downloads from the summary using `/api/tasks/{id}/download`.
 - [x] History filenames: use task_files metadata to display file names for file-based tasks in History.
   Explanation: Tasks now attach `file_name` from `task_files`, and History mapping prefers it for labels.
 - [x] Verify flow audit (manual + upload wiring) to capture remaining placeholders and mapping gaps.
-  Explanation: Manual verify already polls `/api/tasks/{id}` and maps job statuses; upload summary logic still uses time-based task selection and references a removed `deriveUploadSummary` helper in the file-chip remove flow, so file mapping must be replaced with the new upload response `task_id` linkage.
+  Explanation: Manual verify polls `/api/tasks/{id}` and maps job statuses; file uploads map counts by `task_id` returned from the upload response and no longer rely on time-based matching.
 
 ## Next: Second Verify state (post-upload)
 - [x] Pull Figma specs for second Verify state via Figma MCP; captured screenshot (node `64:75`) showing results table + validation donut. Footer and shell unchanged.
@@ -197,6 +197,8 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
   Explanation: Documented ApiKeyAuth header usage, raw vs Bearer uncertainty, admin `user_id` requirement, and the removal plan for legacy master-key tooling before implementation.
 - [x] External usage endpoints alignment confirmed (no code changes).
   Explanation: `/api-keys` and `/metrics/api-usage` already accept `from`/`to` and are wired through backend + frontend; omitting the range returns lifetime totals, passing a range returns range totals per external dev.
+- [x] Usage mapping tests executed for external usage views.
+  Explanation: Ran frontend `tests/api-usage-utils.test.ts` and backend `test_api_keys.py` + `test_usage_purpose_route.py` to confirm per-key and per-purpose usage mapping with range parameters.
 - [x] External API access plan extended for full endpoint validation.
   Explanation: Added steps to validate every external endpoint for both user/admin roles, require explicit input config, and flagged the missing Playwright-based test script reference.
 - [ ] External key creation blocked (legacy) — previous dev key flow for `/api-keys` is no longer used; per-user dashboard key creation was disabled and replaced by forwarding Supabase JWTs. Keep monitoring admin-only external endpoints once role-bearing tokens are available.

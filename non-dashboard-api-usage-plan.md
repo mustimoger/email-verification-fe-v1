@@ -26,6 +26,7 @@ Goal: track and display usage/credits for API keys used outside our app (Zapier,
    - Use GET `/api-keys` with `from`/`to` to fetch per‑key totals via `total_requests` in each key summary.
    - Keep the per‑key ingestion fallback (poll `/tasks` per key) only if `/api-keys` totals prove insufficient.
    - Status: backend + frontend already pass `from`/`to` to `/api-keys` and `/metrics/api-usage` (range totals) and omit them for lifetime totals. No code changes needed for alignment; keep polling fallback only if external totals prove insufficient later.
+   - Tests: ran `tests/api-usage-utils.test.ts` plus backend `test_api_keys.py` and `test_usage_purpose_route.py` to confirm usage mapping and proxy range params.
 
 3) **Credits deduction**
    - On ingest, decrement `user_credits` by the processed email_count (or 1 for verify) for tasks belonging to that user/key. Guard against negative credits; log deductions.
