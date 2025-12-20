@@ -190,7 +190,10 @@ async def create_api_key(
         )
         result.integration = integration or name
         record_usage(target_user_id, path="/api-keys", count=1)
-        logger.info("route.api_keys.create", extra={"user_id": target_user_id, "name": name, "integration": integration})
+        logger.info(
+            "route.api_keys.create",
+            extra={"user_id": target_user_id, "key_name": name, "integration": integration},
+        )
         return result
     except ExternalAPIError as exc:
         level = logger.warning if exc.status_code in (401, 403) else logger.error

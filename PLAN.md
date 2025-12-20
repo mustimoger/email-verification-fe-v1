@@ -229,6 +229,8 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
     Explanation: Use a role-bearing admin JWT to call external `/tasks` and `/api-keys` with `user_id` and confirm scoping behavior.
 - [x] External API key purpose alignment — added `external_purpose` mapping to integrations config, removed `custom` from integrations, and sent `purpose` in external `/api-keys` create requests; updated tests to match.
   Explanation: External API requires `purpose` enum and rejects missing/invalid values; config-driven mapping avoids hardcoding and keeps UI + backend consistent. `pytest backend/tests/test_api_keys.py` passed (6 tests). External API runner succeeded for user role with Bearer auth and `purpose=zapier`.
+- [x] Fix API key creation logging crash.
+  Explanation: Replaced reserved LogRecord `name` key in `extra` with `key_name` to avoid `KeyError` on `/api/api-keys` create; ran `pytest backend/tests/test_api_keys.py` (9 passed).
 - [x] Removed legacy master-key tooling — removed `EMAIL_API_KEY` usage, deleted `backend/scripts/check_external_api.py`, and cleaned tests/env docs.
   Explanation: External API auth no longer depends on a master key; settings/tests were updated to rely on JWT Bearer flow. Ran `pytest backend/tests` (33 passed).
 - [x] External API test script upgrade — implemented config-driven runner in `backend/tests` to validate required external endpoints using the user JWT from `key-value-pair.txt` and `EMAIL_API_BASE_URL`.

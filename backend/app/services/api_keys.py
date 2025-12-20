@@ -25,7 +25,13 @@ def cache_api_key(
         sb.table("cached_api_keys").upsert(payload, on_conflict="key_id").execute()
         logger.info(
             "api_keys.cached",
-            extra={"user_id": user_id, "key_id": key_id, "name": name, "integration": integration, "has_secret": bool(key_plain)},
+            extra={
+                "user_id": user_id,
+                "key_id": key_id,
+                "key_name": name,
+                "integration": integration,
+                "has_secret": bool(key_plain),
+            },
         )
     except Exception as exc:
         logger.error("api_keys.cache_failed", extra={"error": str(exc), "user_id": user_id, "key_id": key_id})
@@ -92,14 +98,14 @@ async def resolve_user_api_key(
     if cached and cached.get("key_plain"):
         logger.info(
             "api_keys.resolve.cached",
-            extra={"user_id": user_id, "name": desired_name, "key_id": cached.get("key_id")},
+            extra={"user_id": user_id, "key_name": desired_name, "key_id": cached.get("key_id")},
         )
         return cached["key_plain"], cached["key_id"]
 
     if cached and not cached.get("key_plain"):
         logger.warning(
             "api_keys.resolve.missing_secret",
-            extra={"user_id": user_id, "name": desired_name, "key_id": cached.get("key_id")},
+            extra={"user_id": user_id, "key_name": desired_name, "key_id": cached.get("key_id")},
         )
 
     try:
@@ -112,11 +118,11 @@ async def resolve_user_api_key(
         cache_api_key(user_id, key_id=created.id or key_secret, name=desired_name, key_plain=key_secret)
         logger.info(
             "api_keys.resolve.created",
-            extra={"user_id": user_id, "name": desired_name, "key_id": created.id},
+            extra={"user_id": user_id, "key_name": desired_name, "key_id": created.id},
         )
         return key_secret, created.id or key_secret
     except ExternalAPIError:
         raise
     except Exception as exc:  # noqa: BLE001
-        logger.exception("api_keys.resolve.failed", extra={"user_id": user_id, "name": desired_name})
+        logger.exception("api_keys.resolve.failed", extra={"user_id": user_id, "key_name": desired_name})
         raise ExternalAPIError(status_code=500, message="Failed to resolve API key", details=str(exc)) from exc
