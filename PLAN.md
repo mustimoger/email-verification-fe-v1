@@ -195,6 +195,8 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
   Explanation: Tasks/verify/api-keys now forward the caller’s Supabase JWT (no dev master key usage); dashboard key bootstrap is disabled (returns skipped); 401/403 from external return safe responses. Added `DEV_API_KEYS` env for admin override headers and a helper script `backend/scripts/set_user_role.py` to set `app_metadata.role` (admin: mkural2016@gmail.com). `.env.example` documents the new envs.
 - [x] External API access plan updated after api-docs.json review.
   Explanation: Documented ApiKeyAuth header usage, raw vs Bearer uncertainty, admin `user_id` requirement, and the removal plan for legacy master-key tooling before implementation.
+- [x] External usage endpoints alignment confirmed (no code changes).
+  Explanation: `/api-keys` and `/metrics/api-usage` already accept `from`/`to` and are wired through backend + frontend; omitting the range returns lifetime totals, passing a range returns range totals per external dev.
 - [x] External API access plan extended for full endpoint validation.
   Explanation: Added steps to validate every external endpoint for both user/admin roles, require explicit input config, and flagged the missing Playwright-based test script reference.
 - [ ] External key creation blocked (legacy) — previous dev key flow for `/api-keys` is no longer used; per-user dashboard key creation was disabled and replaced by forwarding Supabase JWTs. Keep monitoring admin-only external endpoints once role-bearing tokens are available.

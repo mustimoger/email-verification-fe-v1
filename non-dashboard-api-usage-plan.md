@@ -25,7 +25,7 @@ Goal: track and display usage/credits for API keys used outside our app (Zapier,
    - Use `/metrics/api-usage` for purpose‑level summaries and last_used timestamps (good for high‑level stats).
    - Use GET `/api-keys` with `from`/`to` to fetch per‑key totals via `total_requests` in each key summary.
    - Keep the per‑key ingestion fallback (poll `/tasks` per key) only if `/api-keys` totals prove insufficient.
-   - Status: backend wiring for `/api-keys` date range + `/metrics/api-usage` proxy is complete; UI wiring is next.
+   - Status: backend + frontend already pass `from`/`to` to `/api-keys` and `/metrics/api-usage` (range totals) and omit them for lifetime totals. No code changes needed for alignment; keep polling fallback only if external totals prove insufficient later.
 
 3) **Credits deduction**
    - On ingest, decrement `user_credits` by the processed email_count (or 1 for verify) for tasks belonging to that user/key. Guard against negative credits; log deductions.
