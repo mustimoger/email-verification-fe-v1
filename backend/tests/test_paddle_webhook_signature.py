@@ -67,3 +67,15 @@ def test_verify_signature_rejects_expired_timestamp(monkeypatch):
     with pytest.raises(HTTPException) as exc:
         verify_signature(config, raw_body.encode("utf-8"), header)
     assert exc.value.status_code == 400
+
+
+def test_verify_signature_rejects_future_timestamp(monkeypatch):
+    config = _load_config(monkeypatch, max_variance_seconds=1)
+    raw_body = '{"event":"test"}'
+    timestamp = int(time.time()) + 10
+    signature = _sign_payload("test_webhook_secret", timestamp, raw_body)
+    header = f"ts={timestamp};h1={signature}"
+
+    with pytest.raises(HTTPException) as exc:
+        verify_signature(config, raw_body.encode("utf-8"), header)
+    assert exc.value.status_code == 400

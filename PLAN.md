@@ -262,6 +262,8 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
   Explanation: Replaced the read‑then‑upsert in `record_billing_event` with a single insert guarded by unique‑violation handling so duplicate webhooks cannot double‑grant credits; added a unit test to confirm duplicates are ignored.
 - [x] CIDR-aware Paddle webhook IP allowlist.
   Explanation: `verify_ip_allowlist` now accepts CIDR ranges and single IPs, logs invalid entries, and fails safely if the configured allowlist contains no valid entries; tests cover CIDR and mixed/invalid cases.
+- [x] Bidirectional webhook timestamp drift checks.
+  Explanation: `verify_signature` now rejects timestamps outside the configured drift window in both past and future directions, with tests covering future timestamps.
 - [ ] Credit deduction on usage with atomic update and idempotency guard.
   Explanation: Credits should decrement when tasks/verification are accepted; handle retries without double-deduction and reject when insufficient. Deferred per request; not implementing now.
 - [x] Priority High: Confirm Paddle webhook signature spec and align verification (or use official SDK verifier) with tests.

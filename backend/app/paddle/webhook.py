@@ -198,12 +198,24 @@ def verify_signature(config: PaddleConfig, raw_body: bytes, signature_header: Op
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Webhook max variance not configured",
         )
-    if max_variance > 0 and time() > int(timestamp + max_variance):
-        logger.warning(
-            "paddle.webhook.signature_timestamp_expired",
-            extra={"ts": timestamp, "max_variance_seconds": max_variance},
-        )
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Signature timestamp expired")
+    if max_variance > 0:
+        now = int(time())
+        delta_seconds = now - int(timestamp)
+        if abs(delta_seconds) > max_variance:
+            if delta_seconds < 0:
+                logger.warning(
+                    "paddle.webhook.signature_timestamp_future",
+                    extra={"ts": timestamp, "max_variance_seconds": max_variance, "delta_seconds": delta_seconds},
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Signature timestamp in future",
+                )
+            logger.warning(
+                "paddle.webhook.signature_timestamp_expired",
+                extra={"ts": timestamp, "max_variance_seconds": max_variance, "delta_seconds": delta_seconds},
+            )
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Signature timestamp expired")
     try:
         raw_body_str = raw_body.decode("utf-8")
     except UnicodeDecodeError as exc:

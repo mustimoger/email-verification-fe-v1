@@ -94,10 +94,11 @@ Low priority
    - What: treat timestamps too far in the future as invalid, not just stale past timestamps.
    - Why: prevents replay abuse and aligns with symmetric clock‑skew handling.
    - How:
-     - Use `PADDLE_WEBHOOK_MAX_VARIANCE_SECONDS` as a bidirectional drift window.
-     - Reject when `abs(now - ts) > max_variance`; log with the delta for diagnostics.
-     - Add tests for both "too old" and "too far in the future".
-   - Status: not implemented.
+      - Use `PADDLE_WEBHOOK_MAX_VARIANCE_SECONDS` as a bidirectional drift window.
+      - Reject when `abs(now - ts) > max_variance`; log with the delta for diagnostics.
+      - Add tests for both "too old" and "too far in the future".
+   - Status: implemented.
+   - Implementation: signature verification now rejects timestamps outside the configured drift window in both directions, with logs that include the delta and tests covering future timestamps.
 
 4) **Confirm transaction address requirements in checkout mode**
    - What: validate whether Paddle accepts transactions without `address_id` when `PADDLE_ADDRESS_MODE=checkout`.
