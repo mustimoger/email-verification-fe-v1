@@ -1,30 +1,21 @@
-- When i ask for a new feature, plan and implement it in its MOST basic form using FIRST PRINCIPLES. We will first make its MOST BASIC mvp version work then iterate based on that strong foundation.
-- Do not hardcode specific terms, values, HARDCODED FALLBACKS or concepts in the code. it is better for code to fail gracely informing user with proper logs than silently failing.
-- The code should be general, production-ready, and capable of handling broad, real-world cases rather than tailored to narrow or fixed examples or handling specific failures.
-- Do not use regex as much as possible in cases where you can use maintained,popular repos,open source software,proven software packages.
-- do NOT use placeholder unless there is no other way. 
-- any stub code used should be replaced with real implementation after its use for valid reasons.
-- If you need any functionality check if codebase already has it and use it instead of re-writing it by calling relevant file/module.
-- Always add proper logs both for info and debug purposes.
-- You, codex, is running in ubuntu server
-- Activate python virtual environment.
-- When a shell command fails with “failed in sandbox”, use the permission request tool (with `with_escalated_permissions`) to ask the user for approval before retrying.
--  Implement new features,updates as follows:
-   --Implement SIMPLEST version that solves the core problem
-   --Test it thoroughly (unit + integration)
-   --Deploy to main
-   --Verify it works perfectly
-   --ONLY THEN add enhancements
-- When i ask you to do any code changes, proceed with implementation as follows:
-   --UPDATE plan,progress files under root AFTER EACH COMPLETION
-   --add explanations of what has been done and why when a task complete for newcomers under each task
-   --in cases if anything has not been implemented for any reason, add this information to the relevant tasks explanations too and warn me
-   --if codebase has a working functionality you should use it (call existing files/modules),do not re-write it
-   --AFTER COMPLETING A STEP ASK FOR MY CONFIRMATION TO START IMPLEMENTING NEXT TASK
-   --remember: main purpose of plan,progress files is when your context consumed next codex session should be able to continue from where you left off without confusion
-   --i do not want any low priority,cosmetic,good to have features in the first place. i need MINIMUM VIABLE FEATURES FIRST WORKING PERFECTLY then we can add enhancements using first principles.
-
-ps1:INFORM USER WHEN YOU HAVE TO VIOLATE ANY OF ABOVE RULES.
-ps2:tell me what you plan to do first before starting code updates.
-ps3:never forget rules from AGENTS.md file.
-ps4:push to github BEFORE EVERY MAJOR CHANGE AND AT THE BEGINNING OF OUR CONVERSATION
+- For any new feature or update: use FIRST PRINCIPLES and build the MOST BASIC MVP that solves the core problem first; then test thoroughly (unit + integration), verify it works perfectly, deploy to main,and ONLY THEN add enhancements.
+- The purpose of markdown files under root is to track project plans/progress, also when your context consumed next codex session should be able to continue from where you left off without confusion by reading them.
+- Do not hardcode specific terms, values, hardcoded fallbacks, or concepts. Prefer graceful failure with clear info/debug logs rather than silent failure.
+- The code must be general, production-ready, and capable of handling broad real‑world cases, not narrow or fixed examples.
+- Avoid regex when a maintained, popular, proven open‑source package can be used instead.
+- Do NOT use placeholders unless there is no other way.
+- Any stub code must be replaced with a real implementation as soon as there is a valid reason to do so.
+- Reuse existing functionality in the codebase; call existing files/modules instead of rewriting.
+- You, Codex, are running on an Ubuntu server.
+- Activate the Python virtual environment before running tests or scripts.
+- If a shell command fails with “failed in sandbox”, use the permission request tool (with `with_escalated_permissions`) before retrying.
+- When I ask for any code changes, proceed as follows:
+ -- UPDATE the root-level plan/progress markdown files AFTER EACH COMPLETION
+ -- Under each task in those files, explain what was done and why for newcomers
+ -- If anything is not implemented, document it under the relevant task and warn me
+ -- All to-do items,even if they are new and planned during runtime codex session,should be FIRST add them to planning/progress markdown files step by step
+ -- AFTER completing a step, ask for my confirmation before starting the next task
+ 
+ps1: Tell me what you plan to do first before starting code updates.
+ps2: Never forget rules from AGENTS.md.
+ps3: Push to GitHub BEFORE EVERY MAJOR CHANGE and AT THE BEGINNING OF OUR CONVERSATION.

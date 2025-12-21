@@ -139,7 +139,7 @@ export default function OverviewPage() {
               <PieChart className="h-5 w-5 text-slate-400" />
             </div>
             <div className="mt-4 h-[260px] w-full">
-              <ResponsiveContainer>
+              <ResponsiveContainer height={260}>
                 <RePieChart>
                   <Pie
                     data={validationData}
@@ -173,7 +173,7 @@ export default function OverviewPage() {
               <LineIcon className="h-5 w-5 text-slate-400" />
             </div>
             <div className="mt-4 h-[260px] w-full">
-              <ResponsiveContainer>
+              <ResponsiveContainer height={260}>
                 <ReLineChart data={usageData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                   <XAxis dataKey="date" tickLine={false} axisLine={false} />
                   <YAxis tickLine={false} axisLine={false} tickFormatter={(v) => `${v}`} width={30} />
