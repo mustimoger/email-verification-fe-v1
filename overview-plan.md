@@ -89,6 +89,16 @@ Goal: replace mock data on `/overview` with real per-user data sourced from our 
     - Show a loading state and log failures instead of silently failing.
     - Update: Added refresh button and tasks-only fetch via `/tasks` in the Overview page. The refresh updates only the tasks list, shows a loading state, and logs failures without reloading the rest of the overview payload.
 
+13) Overview: job_status pill + breakdown popover (NEW)
+    - Persist external `metrics.job_status` in Supabase tasks (`job_status` JSONB).
+    - Update `/api/overview` + `/tasks` responses to include job_status in task rows.
+    - Status pill shows a single label + count using priority rule: Processing (pending+processing) > Failed > Completed > Unknown.
+    - Clicking the pill opens a minimal popover (50% opacity card) with the full job_status breakdown.
+    - Manual refresh should force an external `/tasks` sync so job_status reflects current state.
+    - Update: Added `job_status` column to Supabase tasks, persisted job_status from external metrics, included it in task summary responses, and added a refresh flag on `/tasks` that triggers an external sync before returning cached tasks.
+    - Update: Frontend now shows a status pill using priority rule (Processing > Failed > Completed > Unknown) with counts, and clicking opens a 50%-opacity popover showing the full job_status breakdown. Refresh button now calls `/tasks?refresh=true` to sync job_status before rendering.
+    - Update: API client types updated to include `job_status` and the `refresh` query flag for task fetches.
+
 Notes:
 - External task source remains the email verification API; Supabase caches per-user task metadata for aggregation/safety.
 - External API metrics endpoints (`/metrics/verifications`, `/metrics/api-usage`) return lifetime totals by default and range totals when `from`/`to` are provided; they do not return time series.

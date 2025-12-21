@@ -58,7 +58,46 @@ Medium priority
    - Status: implemented.
    - Implementation: added `backend/scripts/paddle_simulation_e2e.py` to resolve user + plan, create a Paddle transaction via backend logic, create a Paddle simulation targeting the `ngrok2` notification setting, and poll Supabase for purchase + credit updates with explicit logging and failure messages.
    - Blocking note: Paddle rejected simulation creation because the `ngrok2` notification setting is configured for platform traffic only. Update it (or create a new destination) with `traffic_source=simulation` or `all` before running the E2E script successfully.
-   - Update: created `ngrok2-simulation` (traffic_source=all) and `ngrok2-all` (traffic_source=all) destinations targeting the same ngrok URL. To run the script, the backend webhook secret must match the chosen destination.
+   - Update: created `ngrok2-simulation` (traffic_source=all) and `ngrok2-all` (traffic_source=all) destinations targeting the same ngrok URL. The backend webhook secret must match the chosen destination.
+   - Validation: updated the simulation payload to send the transaction object (not a demo envelope) and normalized totals to strings; ran `backend/scripts/paddle_simulation_e2e.py` against `ngrok2-all` and confirmed the webhook created a purchase row and incremented credits for the test user.
+   - Update: default notification description set to `ngrok2-all` and documentation added for newcomers.
+   - Update: added `backend/scripts/README-e2e-paddle-test.md` with a detailed guide for running and troubleshooting the script.
+
+### Paddle Simulation E2E Script (for newcomers)
+What it does
+- Runs a sandbox-only, non‑manual billing check that covers the full backend flow: create a Paddle transaction → fire a Paddle webhook simulation → verify credits + purchase history are updated in Supabase.
+- Uses your actual backend logic (no mock code paths), so it catches real integration regressions without requiring a card checkout.
+
+Why it exists
+- Manual purchases are slow and error‑prone. This script gives a repeatable, audit‑friendly way to validate billing changes.
+- It also validates webhook ingestion, signature verification, and credit granting against real Paddle sandbox traffic.
+
+How to use it
+1) Make sure your backend is running and ngrok is forwarding `/api/billing/webhook`.
+2) Ensure the Paddle notification destination you want to target is set to `traffic_source=all` (or `simulation`) and the backend webhook secret matches it.
+3) Activate the venv and run:
+
+```bash
+source .venv/bin/activate
+PYTHONPATH=backend python backend/scripts/paddle_simulation_e2e.py \
+  --user-email dmktadimiz@gmail.com \
+  --plan-key enterprise
+```
+
+Supported selectors
+- `--price-id` (direct Paddle price ID)
+- `--plan-key` (from `billing_plans.plan_key`)
+- `--plan-name` (from `billing_plans.plan_name`)
+
+What success looks like
+- Script logs `paddle_simulation_e2e.success`.
+- A new row is present in `billing_purchases` for the generated `transaction_id`.
+- `user_credits` increases by the plan’s credit amount × quantity.
+
+Common failures
+- “notification setting cannot be used for simulation traffic” → update the destination to `traffic_source=all` or point the script to a simulation-capable destination.
+- “signature_mismatch” in backend logs → webhook secret does not match the destination used for the simulation.
+- “timed out waiting for billing_purchases” → webhook not reaching backend (ngrok or secret mismatch) or credits mapping missing for the price.
 
 5) **Subscription lifecycle coverage**
    - Handle renewals, payment failures, and other subscription events consistently.

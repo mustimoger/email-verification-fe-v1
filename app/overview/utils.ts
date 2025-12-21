@@ -12,6 +12,7 @@ export type OverviewTask = {
   invalid: number;
   catchAll: number;
   status: TaskStatus;
+  jobStatus?: Record<string, number>;
 };
 
 const RUNNING_STATUSES = new Set(["processing", "pending", "started", "queued", "running"]);
@@ -96,6 +97,7 @@ export function mapOverviewTask(
     invalid: task.invalid_count ?? 0,
     catchAll: task.catchall_count ?? 0,
     status,
+    jobStatus: task.job_status ?? undefined,
   };
 }
 
@@ -121,5 +123,42 @@ export function mapTaskToOverviewTask(
     invalid,
     catchAll,
     status,
+    jobStatus: task.job_status ?? undefined,
   };
+}
+
+export type StatusBreakdown = {
+  label: string;
+  total: number;
+  counts: Record<string, number>;
+};
+
+const STATUS_KEYS = ["pending", "processing", "completed", "failed"] as const;
+
+function normalizeJobStatus(jobStatus?: Record<string, number>): Record<string, number> {
+  const normalized: Record<string, number> = {};
+  if (!jobStatus) return normalized;
+  Object.entries(jobStatus).forEach(([key, value]) => {
+    if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) return;
+    normalized[key.toLowerCase()] = value;
+  });
+  return normalized;
+}
+
+export function summarizeJobStatus(jobStatus?: Record<string, number>): StatusBreakdown {
+  const counts = normalizeJobStatus(jobStatus);
+  const pending = counts.pending ?? 0;
+  const processing = counts.processing ?? 0;
+  const completed = counts.completed ?? 0;
+  const failed = counts.failed ?? 0;
+  const runningTotal = pending + processing;
+  const label = runningTotal > 0 ? "Processing" : failed > 0 ? "Failed" : completed > 0 ? "Completed" : "Unknown";
+  const total = label === "Processing" ? runningTotal : label === "Failed" ? failed : label === "Completed" ? completed : 0;
+  const full: Record<string, number> = {};
+  STATUS_KEYS.forEach((key) => {
+    if (counts[key]) {
+      full[key] = counts[key];
+    }
+  });
+  return { label, total, counts: full };
 }

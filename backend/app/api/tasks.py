@@ -205,6 +205,7 @@ async def create_task(
 async def list_tasks(
     limit: int = 10,
     offset: int = 0,
+    refresh: bool = False,
     api_key_id: Optional[str] = None,
     user_id: Optional[str] = None,
     user: AuthContext = Depends(get_current_user),
@@ -226,6 +227,38 @@ async def list_tasks(
             "route.tasks.list.admin_scope",
             extra={"admin_user_id": user.user_id, "target_user_id": target_user_id},
         )
+    external_refresh: Optional[TaskListResponse] = None
+    if refresh:
+        if api_key_id:
+            logger.info(
+                "route.tasks.list.refresh_unscoped",
+                extra={"user_id": target_user_id, "api_key_id": api_key_id},
+            )
+        try:
+            external_refresh = await client.list_tasks(limit=limit, offset=offset, user_id=list_user_id)
+            if external_refresh.tasks:
+                upsert_tasks_from_list(target_user_id, external_refresh.tasks, integration=None)
+            logger.info(
+                "route.tasks.list.refresh_external",
+                extra={
+                    "user_id": target_user_id,
+                    "limit": limit,
+                    "offset": offset,
+                    "count": external_refresh.count,
+                    "returned": len(external_refresh.tasks or []),
+                },
+            )
+        except ExternalAPIError as exc:
+            logger.warning(
+                "route.tasks.list.refresh_failed",
+                extra={"user_id": target_user_id, "status_code": exc.status_code, "details": exc.details},
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.error(
+                "route.tasks.list.refresh_exception",
+                extra={"user_id": target_user_id, "error": str(exc)},
+            )
+
     # Supabase is primary source for history; return cached tasks first
     fallback = fetch_tasks_with_counts(target_user_id, limit=limit, offset=offset, api_key_id=api_key_id)
     tasks_data = fallback.get("tasks") or []
@@ -240,6 +273,7 @@ async def list_tasks(
                 valid_count=row.get("valid_count"),
                 invalid_count=row.get("invalid_count"),
                 catchall_count=row.get("catchall_count"),
+                job_status=row.get("job_status"),
                 integration=row.get("integration"),
                 created_at=row.get("created_at"),
                 updated_at=row.get("updated_at"),
@@ -281,7 +315,7 @@ async def list_tasks(
         )
         return TaskListResponse(count=0, limit=limit, offset=offset, tasks=[])
     try:
-        external_result = await client.list_tasks(limit=limit, offset=offset, user_id=list_user_id)
+        external_result = external_refresh or await client.list_tasks(limit=limit, offset=offset, user_id=list_user_id)
         if external_result.tasks:
             upsert_tasks_from_list(target_user_id, external_result.tasks, integration=None)
         record_usage(target_user_id, path="/tasks", count=len(external_result.tasks or []), api_key_id=api_key_id)

@@ -224,15 +224,11 @@ def _build_transaction_payload(
     if amount is not None or currency:
         totals: Dict[str, Any] = {}
         if amount is not None:
-            totals["total"] = amount
+            totals["total"] = str(amount)
         if currency:
             totals["currency_code"] = currency
         transaction["details"] = {"totals": totals}
-    return {
-        "event_id": f"evt_{uuid.uuid4().hex}",
-        "event_type": "transaction.completed",
-        "data": {"transaction": transaction},
-    }
+    return transaction
 
 
 def _fetch_purchase(transaction_id: str) -> Optional[Dict[str, Any]]:
@@ -317,7 +313,11 @@ async def run_flow(args: argparse.Namespace) -> int:
     }
     logger.info(
         "paddle_simulation_e2e.simulation.create",
-        extra={"notification_setting_id": notification_setting_id, "run_id": run_id},
+        extra={
+            "notification_setting_id": notification_setting_id,
+            "run_id": run_id,
+            "transaction_id": transaction_id,
+        },
     )
     simulation_response = await client.create_simulation(simulation_payload)
     simulation = _extract_data(simulation_response)
@@ -383,7 +383,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--quantity", type=int, default=1, help="Quantity to purchase.")
     parser.add_argument(
         "--notification-description",
-        default="ngrok2",
+        default="ngrok2-all",
         help="Notification setting description to match when id not provided.",
     )
     parser.add_argument(

@@ -7,6 +7,7 @@ import {
   mapOverviewTask,
   normalizeOverviewStatus,
   resolveTaskLabel,
+  summarizeJobStatus,
 } from "../app/overview/utils";
 import { OverviewResponse } from "../app/lib/api-client";
 
@@ -77,6 +78,21 @@ run("resolveTaskLabel prioritizes dashboard and integration labels", () => {
   assert.strictEqual(resolveTaskLabel(undefined, labels), "Dashboard");
   assert.strictEqual(resolveTaskLabel("dashboard_api", labels), "Dashboard");
   assert.strictEqual(resolveTaskLabel("n8n", labels), "n8n");
+});
+
+run("summarizeJobStatus follows priority rule", () => {
+  const running = summarizeJobStatus({ pending: 2, processing: 1, completed: 10, failed: 0 });
+  assert.strictEqual(running.label, "Processing");
+  assert.strictEqual(running.total, 3);
+  const failed = summarizeJobStatus({ failed: 4, completed: 20 });
+  assert.strictEqual(failed.label, "Failed");
+  assert.strictEqual(failed.total, 4);
+  const completed = summarizeJobStatus({ completed: 8 });
+  assert.strictEqual(completed.label, "Completed");
+  assert.strictEqual(completed.total, 8);
+  const unknown = summarizeJobStatus(undefined);
+  assert.strictEqual(unknown.label, "Unknown");
+  assert.strictEqual(unknown.total, 0);
 });
 
 // eslint-disable-next-line no-console

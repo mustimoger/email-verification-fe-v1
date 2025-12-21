@@ -25,6 +25,8 @@ import {
   mapTaskToOverviewTask,
   TaskStatus,
   OverviewTask,
+  summarizeJobStatus,
+  StatusBreakdown,
 } from "./utils";
 
 type Stat = {
@@ -44,10 +46,33 @@ type UsagePoint = {
   count: number;
 };
 
+type StatusPopover = {
+  id: string;
+  summary: StatusBreakdown;
+};
+
 const statusColor: Record<TaskStatus, string> = {
   Completed: "bg-emerald-500",
   Running: "bg-amber-400",
   Cancelled: "bg-rose-500",
+};
+const STATUS_PILL: Record<string, string> = {
+  Processing: "bg-amber-400",
+  Failed: "bg-rose-500",
+  Completed: "bg-emerald-500",
+  Unknown: "bg-slate-400",
+};
+const STATUS_DOT: Record<string, string> = {
+  pending: "bg-amber-300",
+  processing: "bg-amber-500",
+  completed: "bg-emerald-500",
+  failed: "bg-rose-500",
+};
+const STATUS_LABEL: Record<string, string> = {
+  pending: "Pending",
+  processing: "Processing",
+  completed: "Completed",
+  failed: "Failed",
 };
 
 export default function OverviewPage() {
@@ -58,6 +83,7 @@ export default function OverviewPage() {
   const [tasksRefreshing, setTasksRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tasksError, setTasksError] = useState<string | null>(null);
+  const [statusPopover, setStatusPopover] = useState<StatusPopover | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -162,7 +188,7 @@ export default function OverviewPage() {
     setTasksRefreshing(true);
     setTasksError(null);
     try {
-      const response = await apiClient.listTasks(5, 0);
+      const response = await apiClient.listTasks(5, 0, undefined, true);
       setTasksOverride(response.tasks ?? []);
     } catch (err: unknown) {
       const message = err instanceof ApiError ? err.message : "Failed to refresh tasks";
@@ -171,6 +197,10 @@ export default function OverviewPage() {
     } finally {
       setTasksRefreshing(false);
     }
+  };
+
+  const handleToggleStatus = (taskId: string, summary: StatusBreakdown) => {
+    setStatusPopover((prev) => (prev?.id === taskId ? null : { id: taskId, summary }));
   };
 
   return (
@@ -352,7 +382,7 @@ export default function OverviewPage() {
                 tasks.map((task) => (
                   <div
                     key={task.id}
-                    className="grid grid-cols-7 items-center px-4 py-4 text-sm text-slate-800"
+                    className="relative grid grid-cols-7 items-center px-4 py-4 text-sm text-slate-800"
                   >
                     <span className="font-semibold text-slate-700">{task.name}</span>
                     <span className="font-semibold text-slate-700">
@@ -369,16 +399,42 @@ export default function OverviewPage() {
                       {task.catchAll.toLocaleString()}
                     </span>
                     <span className="flex justify-end">
-                      <span
+                      {(() => {
+                        const summary = summarizeJobStatus(task.jobStatus);
+                        return (
+                      <button
+                        type="button"
+                        onClick={() => handleToggleStatus(task.id, summary)}
                         className={[
-                          "inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold text-white shadow-sm",
-                          statusColor[task.status],
+                          "relative inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold text-white shadow-sm transition",
+                          STATUS_PILL[summary.label],
                         ].join(" ")}
                       >
                         <span className="inline-block h-2 w-2 rounded-full bg-white/80" />
-                        {task.status}
+                        {summary.label} {summary.total.toLocaleString()}
                         <ChevronRight className="h-4 w-4 text-white/80" />
-                      </span>
+                      </button>
+                        );
+                      })()}
+                      {statusPopover?.id === task.id ? (
+                        <div className="absolute right-8 mt-10 w-56 rounded-xl border border-slate-200 bg-white/50 p-3 text-xs font-semibold text-slate-700 shadow-lg backdrop-blur">
+                          {Object.keys(statusPopover.summary.counts).length === 0 ? (
+                            <div className="text-slate-600">No job status yet.</div>
+                          ) : (
+                            <div className="space-y-2">
+                              {Object.entries(statusPopover.summary.counts).map(([key, value]) => (
+                                <div key={key} className="flex items-center justify-between">
+                                  <span className="flex items-center gap-2">
+                                    <span className={["h-2 w-2 rounded-full", STATUS_DOT[key] || "bg-slate-300"].join(" ")} />
+                                    {STATUS_LABEL[key] || key}
+                                  </span>
+                                  <span>{value.toLocaleString()}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ) : null}
                     </span>
                   </div>
                 ))

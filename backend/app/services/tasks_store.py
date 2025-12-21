@@ -17,6 +17,7 @@ def _task_payload(
     status: Optional[str],
     email_count: Optional[int],
     counts: Optional[Dict[str, Optional[int]]] = None,
+    job_status: Optional[Dict[str, int]] = None,
     integration: Optional[str] = None,
     api_key_id: Optional[str] = None,
 ) -> Dict[str, object]:
@@ -36,6 +37,8 @@ def _task_payload(
             payload["invalid_count"] = counts["invalid"]
         if counts.get("catchall") is not None:
             payload["catchall_count"] = counts["catchall"]
+    if job_status:
+        payload["job_status"] = job_status
     return payload
 
 
@@ -79,6 +82,21 @@ def counts_from_metrics(metrics: Optional[TaskMetrics | Dict[str, object]]) -> O
     return {"valid": valid, "catchall": catchall, "invalid": invalid}
 
 
+def job_status_from_metrics(metrics: Optional[TaskMetrics | Dict[str, object]]) -> Optional[Dict[str, int]]:
+    if not metrics:
+        return None
+    status_counts = metrics.get("job_status") if isinstance(metrics, dict) else metrics.job_status
+    if not isinstance(status_counts, dict) or not status_counts:
+        return None
+    normalized: Dict[str, int] = {}
+    for key, raw in status_counts.items():
+        count = _coerce_int(raw)
+        if count is None:
+            continue
+        normalized[str(key)] = count
+    return normalized or None
+
+
 def email_count_from_metrics(metrics: Optional[TaskMetrics | Dict[str, object]]) -> Optional[int]:
     if not metrics:
         return None
@@ -117,6 +135,7 @@ def upsert_tasks_from_list(
         if email_count is None:
             metrics = getattr(task, "metrics", None)
             email_count = email_count_from_metrics(metrics)
+        job_status = job_status_from_metrics(getattr(task, "metrics", None))
         rows.append(
             _task_payload(
                 user_id=user_id,
@@ -124,6 +143,7 @@ def upsert_tasks_from_list(
                 status=getattr(task, "status", None),
                 email_count=email_count,
                 counts=counts,
+                job_status=job_status,
                 integration=integration,
                 api_key_id=api_key_id,
             )
@@ -152,6 +172,7 @@ def upsert_task_from_detail(
         status=detail.finished_at and "completed" or detail.started_at and "processing" or detail.id and detail.id,
         email_count=len(detail.jobs or []) if detail.jobs is not None else None,
         counts=counts,
+        job_status=job_status_from_metrics(getattr(detail, "metrics", None)),
         integration=integration,
         api_key_id=api_key_id,
     )
@@ -174,7 +195,7 @@ def fetch_task_summary(user_id: str, limit: int = 5) -> Dict[str, object]:
     try:
         recent_res = (
             sb.table("tasks")
-            .select("task_id,status,email_count,valid_count,invalid_count,catchall_count,integration,created_at,api_key_id")
+            .select("task_id,status,email_count,valid_count,invalid_count,catchall_count,job_status,integration,created_at,api_key_id")
             .eq("user_id", user_id)
             .order("created_at", desc=True)
             .limit(limit)

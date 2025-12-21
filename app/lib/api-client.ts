@@ -53,6 +53,7 @@ export type Task = {
   valid_count?: number;
   invalid_count?: number;
   catchall_count?: number;
+  job_status?: Record<string, number>;
   integration?: string;
   file_name?: string;
   created_at?: string;
@@ -242,6 +243,7 @@ export type OverviewResponse = {
     valid_count?: number | null;
     invalid_count?: number | null;
     catchall_count?: number | null;
+    job_status?: Record<string, number> | null;
     integration?: string | null;
     created_at?: string | null;
   }[];
@@ -431,9 +433,10 @@ export const apiClient = {
   verifyEmail: (email: string) => request<VerifyEmailResponse>("/verify", { method: "POST", body: { email } }),
   createTask: (emails: string[], webhook_url?: string) =>
     request<TaskResponse>("/tasks", { method: "POST", body: { emails, webhook_url } }),
-  listTasks: (limit = 10, offset = 0, apiKeyId?: string) => {
+  listTasks: (limit = 10, offset = 0, apiKeyId?: string, refresh?: boolean) => {
     const params = new URLSearchParams({ limit: `${limit}`, offset: `${offset}` });
     if (apiKeyId) params.append("api_key_id", apiKeyId);
+    if (refresh) params.append("refresh", "true");
     return request<TaskListResponse>(`/tasks?${params.toString()}`, { method: "GET" });
   },
   getTask: (taskId: string, apiKeyId?: string) =>

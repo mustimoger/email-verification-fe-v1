@@ -90,6 +90,7 @@ class Task(BaseModel):
     valid_count: Optional[int] = None
     invalid_count: Optional[int] = None
     catchall_count: Optional[int] = None
+    job_status: Optional[Dict[str, int]] = None
     metrics: Optional[TaskMetrics] = None
     integration: Optional[str] = None
     file_name: Optional[str] = None

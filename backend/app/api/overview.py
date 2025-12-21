@@ -31,6 +31,7 @@ class TaskItem(BaseModel):
     valid_count: Optional[int] = None
     invalid_count: Optional[int] = None
     catchall_count: Optional[int] = None
+    job_status: Optional[Dict[str, int]] = None
     integration: Optional[str] = None
     created_at: Optional[str] = None
 
