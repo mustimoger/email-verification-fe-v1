@@ -261,12 +261,12 @@ export function DashboardShell({ children }: { children: ReactNode }) {
       >
         <div className="flex h-full flex-col px-5 py-6">
         <div className="flex items-center justify-between pl-4">
-          <Image
-            src="/logo.png"
-            alt="BoltRoute"
-            width={140}
-            height={32}
-              className="h-auto w-[140px]"
+            <Image
+              src="/logo.png"
+              alt="BoltRoute"
+              width={140}
+              height={32}
+              style={{ width: "140px", height: "auto" }}
               priority
             />
             <button
