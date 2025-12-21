@@ -12,6 +12,9 @@ Goal: keep the Verify page flow functional for both manual input and file upload
 - [ ] Lock "Remove duplicate emails" to checked and disabled in the file upload flow (default on, user cannot toggle).
   Explanation: user requested deduplication to be always enabled; UI should reflect the immutable default.
   Update: Disabled the checkbox and kept the value locked to true in the Assign Email Column step.
+- [ ] Fix per-email task upsert spam during task detail fetch (upsert once per task).
+  Explanation: current loop upserts on every job; should compute counts then persist once to reduce load/log noise.
+  Update: `/tasks/{id}` now computes counts across jobs and performs a single upsert after the loop, preventing per-email write spam.
 - [ ] Summarize Verify changes for newcomers and confirm before adding any enhancements.
   Explanation: keep onboarding clear and avoid scope creep.
 

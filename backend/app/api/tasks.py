@@ -397,13 +397,13 @@ async def get_task_detail(
                     counts["catchall"] += 1
                 else:
                     counts["invalid"] += 1
-                upsert_task_from_detail(
-                    user.user_id,
-                    result,
-                    counts=counts,
-                    integration=None,
-                    api_key_id=api_key_id,
-                )
+            upsert_task_from_detail(
+                user.user_id,
+                result,
+                counts=counts,
+                integration=None,
+                api_key_id=api_key_id,
+            )
         record_usage(user.user_id, path="/tasks/{id}", count=1, api_key_id=api_key_id)
         logger.info(
             "route.tasks.detail",
