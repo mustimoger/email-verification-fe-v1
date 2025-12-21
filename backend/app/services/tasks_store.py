@@ -100,22 +100,27 @@ def upsert_tasks_from_list(
         if not task.id:
             continue
         counts = None
-        if task.valid_count is not None or task.invalid_count is not None or task.catchall_count is not None:
+        valid_count = getattr(task, "valid_count", None)
+        invalid_count = getattr(task, "invalid_count", None)
+        catchall_count = getattr(task, "catchall_count", None)
+        if valid_count is not None or invalid_count is not None or catchall_count is not None:
             counts = {
-                "valid": task.valid_count,
-                "invalid": task.invalid_count,
-                "catchall": task.catchall_count,
+                "valid": valid_count,
+                "invalid": invalid_count,
+                "catchall": catchall_count,
             }
         else:
-            counts = counts_from_metrics(task.metrics)
-        email_count = task.email_count
+            metrics = getattr(task, "metrics", None)
+            counts = counts_from_metrics(metrics)
+        email_count = getattr(task, "email_count", None)
         if email_count is None:
-            email_count = email_count_from_metrics(task.metrics)
+            metrics = getattr(task, "metrics", None)
+            email_count = email_count_from_metrics(metrics)
         rows.append(
             _task_payload(
                 user_id=user_id,
                 task_id=task.id,
-                status=task.status if hasattr(task, "status") else None,
+                status=getattr(task, "status", None),
                 email_count=email_count,
                 counts=counts,
                 integration=integration,
