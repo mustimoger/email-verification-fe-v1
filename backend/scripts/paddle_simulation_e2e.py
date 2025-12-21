@@ -311,7 +311,7 @@ async def run_flow(args: argparse.Namespace) -> int:
     client = get_paddle_client()
     simulation_payload = {
         "name": f"e2e-{run_id}",
-        "notificationSettingId": notification_setting_id,
+        "notification_setting_id": notification_setting_id,
         "type": "transaction.completed",
         "payload": webhook_payload,
     }
@@ -420,7 +420,11 @@ def main() -> int:
     try:
         return asyncio.run(run_flow(args))
     except PaddleAPIError as exc:
-        logger.error("paddle_simulation_e2e.paddle_error", extra={"status_code": exc.status_code, "details": exc.details})
+        logger.error(
+            "paddle_simulation_e2e.paddle_error status=%s details=%s",
+            exc.status_code,
+            exc.details,
+        )
         return 1
     except Exception as exc:  # noqa: BLE001
         logger.error("paddle_simulation_e2e.failed", extra={"error": str(exc)})

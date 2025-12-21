@@ -57,6 +57,8 @@ Medium priority
    - Use a real Supabase user (email lookup) and plan selection by price_id/plan_key for repeatable runs.
    - Status: implemented.
    - Implementation: added `backend/scripts/paddle_simulation_e2e.py` to resolve user + plan, create a Paddle transaction via backend logic, create a Paddle simulation targeting the `ngrok2` notification setting, and poll Supabase for purchase + credit updates with explicit logging and failure messages.
+   - Blocking note: Paddle rejected simulation creation because the `ngrok2` notification setting is configured for platform traffic only. Update it (or create a new destination) with `traffic_source=simulation` or `all` before running the E2E script successfully.
+   - Update: created `ngrok2-simulation` (traffic_source=all) and `ngrok2-all` (traffic_source=all) destinations targeting the same ngrok URL. To run the script, the backend webhook secret must match the chosen destination.
 
 5) **Subscription lifecycle coverage**
    - Handle renewals, payment failures, and other subscription events consistently.

@@ -83,6 +83,12 @@ Goal: replace mock data on `/overview` with real per-user data sourced from our 
     - Do not expose `api_key_id` to the frontend; use it only for enrichment and log when missing/unmapped.
     - Update: Added cached key integration map helper and used it in task summary to backfill integration from `api_key_id`. We now strip `api_key_id` from the response and log unmapped/missing cases for debugging.
 
+12) Overview: manual refresh for Verification Tasks (NEW)
+    - Add a "Refresh" button at the top-right of the Verification Tasks card (left of the Month label).
+    - Refresh should re-fetch only the tasks list (not the entire overview payload).
+    - Show a loading state and log failures instead of silently failing.
+    - Update: Added refresh button and tasks-only fetch via `/tasks` in the Overview page. The refresh updates only the tasks list, shows a loading state, and logs failures without reloading the rest of the overview payload.
+
 Notes:
 - External task source remains the email verification API; Supabase caches per-user task metadata for aggregation/safety.
 - External API metrics endpoints (`/metrics/verifications`, `/metrics/api-usage`) return lifetime totals by default and range totals when `from`/`to` are provided; they do not return time series.

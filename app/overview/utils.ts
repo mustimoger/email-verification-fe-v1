@@ -1,4 +1,4 @@
-import { IntegrationOption, OverviewResponse } from "../lib/api-client";
+import { IntegrationOption, OverviewResponse, Task } from "../lib/api-client";
 import { formatPurposeLabel } from "../api/utils";
 
 export type TaskStatus = "Completed" | "Running" | "Cancelled";
@@ -95,6 +95,31 @@ export function mapOverviewTask(
     valid: task.valid_count ?? 0,
     invalid: task.invalid_count ?? 0,
     catchAll: task.catchall_count ?? 0,
+    status,
+  };
+}
+
+export function mapTaskToOverviewTask(
+  task: Task,
+  integrationLabels: Map<string, string>,
+): OverviewTask | null {
+  if (!task.id) {
+    console.warn("overview.task.missing_id", { task });
+    return null;
+  }
+  const valid = task.valid_count ?? 0;
+  const invalid = task.invalid_count ?? 0;
+  const catchAll = task.catchall_count ?? 0;
+  const emails = task.email_count ?? valid + invalid + catchAll;
+  const status = normalizeOverviewStatus(task.status);
+  return {
+    id: task.id,
+    name: resolveTaskLabel(task.integration, integrationLabels),
+    emails,
+    date: formatOverviewDate(task.created_at),
+    valid,
+    invalid,
+    catchAll,
     status,
   };
 }

@@ -17,8 +17,15 @@ import {
 
 import { DashboardShell } from "../components/dashboard-shell";
 import { RequireAuth } from "../components/protected";
-import { apiClient, ApiError, IntegrationOption, OverviewResponse } from "../lib/api-client";
-import { aggregateValidationCounts, buildIntegrationLabelMap, mapOverviewTask, TaskStatus, OverviewTask } from "./utils";
+import { apiClient, ApiError, IntegrationOption, OverviewResponse, Task } from "../lib/api-client";
+import {
+  aggregateValidationCounts,
+  buildIntegrationLabelMap,
+  mapOverviewTask,
+  mapTaskToOverviewTask,
+  TaskStatus,
+  OverviewTask,
+} from "./utils";
 
 type Stat = {
   title: string;
@@ -46,8 +53,11 @@ const statusColor: Record<TaskStatus, string> = {
 export default function OverviewPage() {
   const [overview, setOverview] = useState<OverviewResponse | null>(null);
   const [integrationOptions, setIntegrationOptions] = useState<IntegrationOption[]>([]);
+  const [tasksOverride, setTasksOverride] = useState<Task[] | null>(null);
   const [loading, setLoading] = useState(false);
+  const [tasksRefreshing, setTasksRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [tasksError, setTasksError] = useState<string | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -131,15 +141,37 @@ export default function OverviewPage() {
   );
 
   const tasks: OverviewTask[] = useMemo(() => {
+    if (tasksOverride) {
+      return tasksOverride
+        .map((task) => mapTaskToOverviewTask(task, integrationLabels))
+        .filter((task): task is OverviewTask => task !== null);
+    }
     if (!overview?.recent_tasks) return [];
     return overview.recent_tasks.map((task) => mapOverviewTask(task, integrationLabels));
-  }, [overview, integrationLabels]);
+  }, [overview, integrationLabels, tasksOverride]);
 
   const anyData = overview !== null;
+  const tasksLoading = loading || tasksRefreshing;
+  const taskError = tasksError ?? error;
   const currentPlan = overview?.current_plan;
   const planName = currentPlan?.label ?? (currentPlan?.plan_names?.[0] || "—");
   const purchaseDate =
     currentPlan?.purchased_at ? new Date(currentPlan.purchased_at).toLocaleDateString() : "—";
+
+  const handleRefreshTasks = async () => {
+    setTasksRefreshing(true);
+    setTasksError(null);
+    try {
+      const response = await apiClient.listTasks(5, 0);
+      setTasksOverride(response.tasks ?? []);
+    } catch (err: unknown) {
+      const message = err instanceof ApiError ? err.message : "Failed to refresh tasks";
+      console.warn("overview.tasks.refresh_failed", { error: message });
+      setTasksError(message);
+    } finally {
+      setTasksRefreshing(false);
+    }
+  };
 
   return (
     <DashboardShell>
@@ -284,6 +316,14 @@ export default function OverviewPage() {
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <h2 className="text-xl font-bold text-slate-900">Verification Tasks</h2>
             <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={handleRefreshTasks}
+                disabled={tasksRefreshing}
+                className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-[#4c61cc] hover:text-[#4c61cc] disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4c61cc]"
+              >
+                {tasksRefreshing ? "Refreshing..." : "Refresh"}
+              </button>
               <label className="text-sm font-semibold text-slate-600">Month</label>
               <select className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-[#4c61cc] focus:outline-none">
                 <option>All</option>
@@ -302,10 +342,10 @@ export default function OverviewPage() {
               <span className="text-right">Status</span>
             </div>
             <div className="divide-y divide-slate-100">
-              {loading ? (
+              {tasksLoading ? (
                 <div className="px-4 py-4 text-sm font-semibold text-slate-600">Loading tasks...</div>
-              ) : error ? (
-                <div className="px-4 py-4 text-sm font-semibold text-rose-600">{error}</div>
+              ) : taskError ? (
+                <div className="px-4 py-4 text-sm font-semibold text-rose-600">{taskError}</div>
               ) : tasks.length === 0 ? (
                 <div className="px-4 py-4 text-sm font-semibold text-slate-600">No tasks yet.</div>
               ) : (
@@ -345,8 +385,8 @@ export default function OverviewPage() {
               )}
             </div>
           </div>
-          {error && !loading ? (
-            <div className="mt-3 text-sm font-semibold text-rose-600">{error}</div>
+          {taskError && !tasksLoading ? (
+            <div className="mt-3 text-sm font-semibold text-rose-600">{taskError}</div>
           ) : null}
         </section>
       </RequireAuth>
