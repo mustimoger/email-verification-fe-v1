@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { DragEvent } from "react";
-import { AlertCircle, UploadCloud, X } from "lucide-react";
+import { AlertCircle, Info, UploadCloud, X } from "lucide-react";
 import { Cell, Pie, PieChart as RePieChart, ResponsiveContainer } from "recharts";
 
 import { DashboardShell } from "../components/dashboard-shell";
@@ -28,6 +28,7 @@ export default function VerifyPage() {
   const [results, setResults] = useState<VerificationResult[]>([]);
   const [errors, setErrors] = useState<string | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
+  const [fileNotice, setFileNotice] = useState<string | null>(null);
   const [limits, setLimits] = useState<LimitsResponse | null>(null);
   const [limitsError, setLimitsError] = useState<string | null>(null);
   const [files, setFiles] = useState<File[]>([]);
@@ -155,6 +156,7 @@ export default function VerifyPage() {
   };
 
   const handleFilesSelected = async (fileList: FileList | null) => {
+    setFileNotice(null);
     if (!fileList || fileList.length === 0) {
       setFileError("No files selected.");
       return;
@@ -218,6 +220,7 @@ export default function VerifyPage() {
         details: err instanceof FileColumnError ? err.details : undefined,
       });
       setFileError(message);
+      setFileNotice(null);
       setFiles([]);
       setFileColumns({});
       setUploadSummary(null);
@@ -242,6 +245,7 @@ export default function VerifyPage() {
     setFirstRowHasLabels(true);
     setRemoveDuplicates(true);
     setFileError(null);
+    setFileNotice(null);
   };
 
   const validationSlices = useMemo(() => {
@@ -287,6 +291,7 @@ export default function VerifyPage() {
   const proceedToSummary = async () => {
     if (!uploadSummary) return;
     setIsSubmitting(true);
+    setFileNotice(null);
     try {
       if (files.length === 0) {
         setFileError("No file to upload.");
@@ -330,11 +335,12 @@ export default function VerifyPage() {
       setUploadSummary(summary);
       setFlowStage("summary");
       setToast("Upload submitted");
+      setFileNotice(null);
       const pendingFiles = summary.files.filter((file) => file.taskId && file.status === "pending");
       if (unmatched > 0) {
         setFileError("Some uploads did not return a task id. Check History for updates.");
       } else if (pendingFiles.length > 0) {
-        setFileError("Processing is still running. Check History for the latest status.");
+        setFileNotice("Upload submitted. Processing is underway; check Overview or History for updates.");
       }
       if (unmatched > 0 || orphaned.length > 0) {
         console.warn("verify.upload_mapping_incomplete", {
@@ -497,6 +503,16 @@ export default function VerifyPage() {
               >
                 <AlertCircle className="h-4 w-4" />
                 {fileError}
+              </div>
+            ) : null}
+            {fileNotice && !fileError ? (
+              <div
+                className="mt-2 flex items-center gap-2 rounded-md bg-sky-50 px-3 py-2 text-sm font-semibold text-sky-700"
+                role="status"
+                aria-live="polite"
+              >
+                <Info className="h-4 w-4" />
+                {fileNotice}
               </div>
             ) : null}
           </div>

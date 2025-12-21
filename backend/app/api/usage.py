@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 
 from ..core.auth import AuthContext, get_current_user
-from ..clients.external import ExternalAPIClient, ExternalAPIError, APIUsageMetricsResponse
+from ..clients.external import ExternalAPIClient, ExternalAPIError, APIUsageMetricsResponse, APIUsageMetricsSeriesPoint
 from .api_keys import get_user_external_client
 from ..services import supabase_client
 from ..services.usage import record_usage
@@ -48,6 +48,7 @@ class UsagePurposeResponse(BaseModel):
     api_keys_by_purpose: Optional[Dict[str, int]] = None
     last_used_at: Optional[str] = None
     requests_by_purpose: Optional[Dict[str, int]] = None
+    series: Optional[List[APIUsageMetricsSeriesPoint]] = None
     total_api_keys: Optional[int] = None
     total_requests: Optional[int] = None
     user_id: Optional[str] = None

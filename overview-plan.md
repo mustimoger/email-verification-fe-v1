@@ -99,6 +99,12 @@ Goal: replace mock data on `/overview` with real per-user data sourced from our 
     - Update: Frontend now shows a status pill using priority rule (Processing > Failed > Completed > Unknown) with counts, and clicking opens a 50%-opacity popover showing the full job_status breakdown. Refresh button now calls `/tasks?refresh=true` to sync job_status before rendering.
     - Update: API client types updated to include `job_status` and the `refresh` query flag for task fetches.
 
+14) Overview: status pill layout + popover layering (NEW)
+    - Ensure the status column has enough width so pills do not overflow; adjust grid column sizing to allocate more space to the Status column without disrupting overall layout.
+    - Ensure the status breakdown popover layers above pills/rows (z-index/stacking context fix).
+    - Document any residual layout issues and avoid changing the visual design.
+    Explanation: Implemented custom grid column widths to give the Status column more room and raised the status popover z-index so it renders above the pills without changing the overall design language.
+
 Notes:
 - External task source remains the email verification API; Supabase caches per-user task metadata for aggregation/safety.
 - External API metrics endpoints (`/metrics/verifications`, `/metrics/api-usage`) return lifetime totals by default and range totals when `from`/`to` are provided; they do not return time series.

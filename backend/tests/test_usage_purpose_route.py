@@ -4,7 +4,7 @@ from fastapi.testclient import TestClient
 
 from app.api import usage as usage_module
 from app.api.usage import router as usage_router
-from app.clients.external import APIUsageMetricsResponse
+from app.clients.external import APIUsageMetricsResponse, APIUsageMetricsSeriesPoint
 from app.core.auth import AuthContext
 
 
@@ -37,6 +37,15 @@ def _build_app(monkeypatch, role="user"):
                 total_api_keys=2,
                 requests_by_purpose={"zapier": 7, "n8n": 5},
                 api_keys_by_purpose={"zapier": 1, "n8n": 1},
+                series=[
+                    APIUsageMetricsSeriesPoint(
+                        date="2024-02-01",
+                        total_requests=5,
+                        total_api_keys=2,
+                        requests_by_purpose={"zapier": 3, "n8n": 2},
+                        api_keys_by_purpose={"zapier": 1, "n8n": 1},
+                    )
+                ],
                 last_used_at="2024-02-02T00:00:00Z",
             )
 
@@ -54,6 +63,15 @@ def test_usage_purpose_returns_data(monkeypatch):
     data = resp.json()
     assert data["total_requests"] == 12
     assert data["requests_by_purpose"] == {"zapier": 7, "n8n": 5}
+    assert data["series"] == [
+        {
+            "api_keys_by_purpose": {"zapier": 1, "n8n": 1},
+            "date": "2024-02-01",
+            "requests_by_purpose": {"zapier": 3, "n8n": 2},
+            "total_api_keys": 2,
+            "total_requests": 5,
+        }
+    ]
     assert captured["user_id"] is None
     assert captured["start"] == "2024-02-01T00:00:00+00:00"
     assert captured["end"] == "2024-02-02T00:00:00+00:00"

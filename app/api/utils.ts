@@ -1,4 +1,4 @@
-import { ApiKeySummary, UsagePurposeResponse } from "../lib/api-client";
+import { ApiKeySummary, UsagePurposeResponse, UsagePurposeSeriesPoint, UsageSummaryPoint } from "../lib/api-client";
 
 export type UsageTotal = {
   total: number | null;
@@ -75,6 +75,29 @@ export function formatPurposeLabel(purpose: string): string {
   return words
     .map((word) => `${word.slice(0, 1).toUpperCase()}${word.slice(1)}`)
     .join(" ");
+}
+
+export function mapPurposeSeries(
+  series: UsagePurposeSeriesPoint[] | null | undefined,
+  selectedPurpose?: string,
+): UsageSummaryPoint[] {
+  if (!series || series.length === 0) {
+    return [];
+  }
+  return series
+    .map((point) => {
+      const date = point.date;
+      if (!date) return null;
+      let count = 0;
+      if (selectedPurpose) {
+        const value = point.requests_by_purpose?.[selectedPurpose];
+        count = isNumber(value) ? value : 0;
+      } else {
+        count = isNumber(point.total_requests) ? point.total_requests : 0;
+      }
+      return { date, count };
+    })
+    .filter((point): point is UsageSummaryPoint => point !== null);
 }
 
 type DateParts = {

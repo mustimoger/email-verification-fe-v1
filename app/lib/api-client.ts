@@ -206,6 +206,12 @@ export type UsageSummaryPoint = {
   count: number;
 };
 
+export type UsagePurposeSeriesPoint = {
+  date?: string;
+  total_requests?: number;
+  requests_by_purpose?: Record<string, number>;
+};
+
 export type UsageSummaryResponse = {
   source: string;
   total: number;
@@ -217,6 +223,7 @@ export type UsagePurposeResponse = {
   api_keys_by_purpose?: Record<string, number>;
   last_used_at?: string;
   requests_by_purpose?: Record<string, number>;
+  series?: UsagePurposeSeriesPoint[];
   total_api_keys?: number;
   total_requests?: number;
   user_id?: string;

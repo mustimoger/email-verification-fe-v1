@@ -17,6 +17,8 @@ Goal: keep the Verify page flow functional for both manual input and file upload
   Update: `/tasks/{id}` now computes counts across jobs and performs a single upsert after the loop, preventing per-email write spam.
 - [ ] Summarize Verify changes for newcomers and confirm before adding any enhancements.
   Explanation: keep onboarding clear and avoid scope creep.
+- [x] Verify upload pending message should be neutral/informational (not red) after a successful file upload.
+  Explanation: Added a dedicated info banner for the “processing” state so successful uploads show a neutral message (with guidance to check Overview/History) while true errors remain red.
 
 Notes:
 - Detailed task history remains in `PLAN.md`.

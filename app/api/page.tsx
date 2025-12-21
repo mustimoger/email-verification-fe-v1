@@ -19,6 +19,7 @@ import {
 import {
   formatPurposeLabel,
   listPurposeOptions,
+  mapPurposeSeries,
   resolveDateRange,
   summarizeKeyUsage,
   summarizePurposeUsage,
@@ -78,7 +79,12 @@ export default function ApiPage() {
   );
   const usageTotal = usageView === "per_key" ? keyUsage.total : purposeUsageSummary.total;
   const hasUsageData = usageView === "per_key" ? keyUsage.hasData : purposeUsageSummary.hasData;
-  const chartData = useMemo(() => usageSummary?.series ?? [], [usageSummary]);
+  const chartData = useMemo(() => {
+    if (usageView === "per_purpose") {
+      return mapPurposeSeries(purposeUsage?.series, selectedPurpose || undefined);
+    }
+    return usageSummary?.series ?? [];
+  }, [usageView, usageSummary, purposeUsage, selectedPurpose]);
   const totalUsageLabel = useMemo(() => {
     if (!hasUsageData || usageTotal === null) return "—";
     return usageTotal.toLocaleString();
@@ -189,23 +195,23 @@ export default function ApiPage() {
           purposes: Object.keys(response.requests_by_purpose ?? {}).length,
         });
       }
-      try {
-        const summary = await apiClient.getUsageSummary(
-          rangeStart,
-          rangeEnd,
-          usageView === "per_key" ? selectedKey || undefined : undefined,
-        );
-        setUsageSummary(summary);
-        console.debug("api.usage.summary.loaded", {
-          source: summary.source,
-          points: summary.series.length,
-          api_key_id: summary.api_key_id ?? null,
-        });
-      } catch (err: unknown) {
-        const message = err instanceof ApiError ? err.message : "Failed to load usage chart";
-        console.error("api.usage.summary.failed", { error: message });
+      if (usageView === "per_key") {
+        try {
+          const summary = await apiClient.getUsageSummary(rangeStart, rangeEnd, selectedKey || undefined);
+          setUsageSummary(summary);
+          console.debug("api.usage.summary.loaded", {
+            source: summary.source,
+            points: summary.series.length,
+            api_key_id: summary.api_key_id ?? null,
+          });
+        } catch (err: unknown) {
+          const message = err instanceof ApiError ? err.message : "Failed to load usage chart";
+          console.error("api.usage.summary.failed", { error: message });
+          setUsageSummary(null);
+          setError(message);
+        }
+      } else {
         setUsageSummary(null);
-        setError(message);
       }
     } catch (err: unknown) {
       const message = err instanceof ApiError ? err.message : "Failed to load usage";

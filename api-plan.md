@@ -16,13 +16,18 @@ Goal: deliver reliable API key management and usage visibility on `/api` for ext
   Explanation: chart area shows the total number if series data is not available.
 
 ## Remaining tasks (MVP)
+- [x] Frontend usage chart mapping (purpose series): chart `/usage/purpose` series when viewing per‑purpose usage with a date range; keep per‑key chart on `/usage/summary`.
+  Explanation: Added series mapping for per‑purpose usage and wired the API Usage chart to use it when the view is set to per‑purpose; per‑key still reads `/usage/summary`. Added unit tests for the mapping helper.
+- [x] API usage series (purpose): pass through `/metrics/api-usage` `series` on the backend so the frontend can chart it when a date range is provided.
+  Explanation: Added `series` to the external usage response and `/api/usage/purpose` response shape, plus a backend test asserting series is returned. This unlocks charting for per‑purpose usage once the frontend maps the series.
 - [x] Date range input: switch to native date inputs and convert selected dates to RFC3339 (`from`/`to`), logging invalid or partial ranges instead of silently failing.
   Explanation: inputs now use `type="date"` and convert to RFC3339 start/end‑of‑day ranges; invalid or partial ranges surface a UI error and log `api.usage.range.invalid`.
 - [x] Usage chart: load `/api/usage/summary` with selected date range + api_key_id and render a real chart from its series.
   Explanation: `/api` now fetches `/api/usage/summary` alongside usage totals and renders a real line chart when `series` data exists; logs `api.usage.summary.loaded` or `api.usage.summary.failed` for diagnostics.
-- [ ] Verification: add/update minimal tests for date range conversion and ensure `/api` renders the chart when series data is present.
-  Explanation: Added unit tests for date range conversion (see `tests/api-usage-utils.test.ts`). UI verification via Playwright is blocked because the provided session triggers `Invalid Refresh Token: Already Used` and redirects to `/signin`. Provide a fresh session to complete the chart verification.
+- [x] Verification: add/update minimal tests for date range conversion and ensure `/api` renders the chart when series data is present.
+  Explanation: Added unit tests for date range conversion (see `tests/api-usage-utils.test.ts`) and ran Playwright with a fresh session to confirm the API Usage chart renders per‑purpose series when a date range is provided (Total: 120 shown; chart axis labels rendered). Console warnings observed for Recharts container sizing and initial fetch failures, but usage data loaded after retry; investigate if they persist in normal dev flow.
 
 ## Notes
 - Keep UI layout and styling unchanged; only replace inputs and data plumbing.
 - Avoid hardcoded fallbacks; when data is missing, show explicit empty states and log the reason.
+- External API: `/metrics/api-usage` series is only returned when `from`/`to` is provided and is limited to 90 days.

@@ -166,10 +166,19 @@ class ListAPIKeysResponse(BaseModel):
     keys: Optional[List[APIKeySummary]] = None
 
 
+class APIUsageMetricsSeriesPoint(BaseModel):
+    api_keys_by_purpose: Optional[Dict[str, int]] = None
+    date: Optional[str] = None
+    requests_by_purpose: Optional[Dict[str, int]] = None
+    total_api_keys: Optional[int] = None
+    total_requests: Optional[int] = None
+
+
 class APIUsageMetricsResponse(BaseModel):
     api_keys_by_purpose: Optional[Dict[str, int]] = None
     last_used_at: Optional[str] = None
     requests_by_purpose: Optional[Dict[str, int]] = None
+    series: Optional[List[APIUsageMetricsSeriesPoint]] = None
     total_api_keys: Optional[int] = None
     total_requests: Optional[int] = None
     user_id: Optional[str] = None

@@ -4,6 +4,7 @@ import { ApiKeySummary, UsagePurposeResponse } from "../app/lib/api-client";
 import {
   formatPurposeLabel,
   listPurposeOptions,
+  mapPurposeSeries,
   resolveDateRange,
   summarizeKeyUsage,
   summarizePurposeUsage,
@@ -83,6 +84,39 @@ run("formatPurposeLabel normalizes labels", () => {
   assert.strictEqual(formatPurposeLabel("google sheets"), "Google Sheets");
   assert.strictEqual(formatPurposeLabel("custom_api"), "Custom Api");
   assert.strictEqual(formatPurposeLabel("n8n"), "N8n");
+});
+
+run("mapPurposeSeries maps total_requests when no purpose selected", () => {
+  const result = mapPurposeSeries(
+    [
+      { date: "2024-02-01", total_requests: 5, requests_by_purpose: { zapier: 3 } },
+      { date: "2024-02-02", total_requests: 2, requests_by_purpose: { zapier: 2 } },
+    ],
+    "",
+  );
+  assert.deepStrictEqual(result, [
+    { date: "2024-02-01", count: 5 },
+    { date: "2024-02-02", count: 2 },
+  ]);
+});
+
+run("mapPurposeSeries maps selected purpose counts", () => {
+  const result = mapPurposeSeries(
+    [
+      { date: "2024-02-01", total_requests: 5, requests_by_purpose: { zapier: 3 } },
+      { date: "2024-02-02", total_requests: 2, requests_by_purpose: { zapier: 2 } },
+    ],
+    "zapier",
+  );
+  assert.deepStrictEqual(result, [
+    { date: "2024-02-01", count: 3 },
+    { date: "2024-02-02", count: 2 },
+  ]);
+});
+
+run("mapPurposeSeries skips points without dates", () => {
+  const result = mapPurposeSeries([{ total_requests: 5 }, { date: "2024-02-01", total_requests: 2 }], "");
+  assert.deepStrictEqual(result, [{ date: "2024-02-01", count: 2 }]);
 });
 
 run("resolveDateRange returns empty when no dates provided", () => {

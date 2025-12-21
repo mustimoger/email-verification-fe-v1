@@ -362,7 +362,7 @@ export default function OverviewPage() {
           </div>
 
           <div className="mt-4 overflow-hidden rounded-xl border border-slate-100">
-            <div className="grid grid-cols-7 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-700">
+            <div className="grid grid-cols-[1.2fr_0.9fr_0.9fr_0.8fr_0.8fr_0.9fr_1.4fr] bg-slate-50 px-4 py-3 text-sm font-bold text-slate-700">
               <span>Task Name</span>
               <span>Total Emails</span>
               <span>Date</span>
@@ -382,7 +382,7 @@ export default function OverviewPage() {
                 tasks.map((task) => (
                   <div
                     key={task.id}
-                    className="relative grid grid-cols-7 items-center px-4 py-4 text-sm text-slate-800"
+                    className="relative grid grid-cols-[1.2fr_0.9fr_0.9fr_0.8fr_0.8fr_0.9fr_1.4fr] items-center px-4 py-4 text-sm text-slate-800"
                   >
                     <span className="font-semibold text-slate-700">{task.name}</span>
                     <span className="font-semibold text-slate-700">
@@ -417,7 +417,7 @@ export default function OverviewPage() {
                         );
                       })()}
                       {statusPopover?.id === task.id ? (
-                        <div className="absolute right-8 mt-10 w-56 rounded-xl border border-slate-200 bg-white/50 p-3 text-xs font-semibold text-slate-700 shadow-lg backdrop-blur">
+                        <div className="absolute right-8 z-20 mt-10 w-56 rounded-xl border border-slate-200 bg-white/50 p-3 text-xs font-semibold text-slate-700 shadow-lg backdrop-blur">
                           {Object.keys(statusPopover.summary.counts).length === 0 ? (
                             <div className="text-slate-600">No job status yet.</div>
                           ) : (
