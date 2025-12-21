@@ -79,6 +79,18 @@ Fix:
 - check backend logs for `signature_mismatch` or `missing_user`,
 - ensure the webhook payload contains `custom_data.supabase_user_id`.
 
+## Why Paddle Events show only created/ready
+The script creates a real transaction via the Paddle API but does not perform a real checkout.  
+As a result, Paddle’s platform event log only shows:
+- `transaction.created`
+- `transaction.ready`
+
+The simulated `transaction.completed` event is delivered through the Paddle **Simulation** system and appears under:
+- Paddle → Simulations → Runs/Events, or
+- Paddle → Notifications for the simulation destination.
+
+This is expected behavior; a true platform `transaction.completed` requires a real payment.
+
 ## Notes
 - The script is sandbox-only and should not be used with production keys.
 - For production-like test runs, set `PADDLE_STATUS=production` and provide production keys, but only after approvals.

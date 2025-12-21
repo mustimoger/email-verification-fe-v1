@@ -30,6 +30,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 from urllib.parse import parse_qs, urlparse
 
+import httpx
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 REPO_ROOT = BACKEND_ROOT.parent
 if str(BACKEND_ROOT) not in sys.path:
@@ -136,9 +137,7 @@ def _normalize_next_cursor(value: Any) -> Optional[str]:
     return cursor
 
 
-async def _find_notification_setting_id(description: str, override_id: Optional[str]) -> str:
-    if override_id:
-        return override_id
+async def _find_notification_setting(description: str, override_id: Optional[str]) -> Dict[str, Any]:
     client = get_paddle_client()
     after: Optional[str] = None
     matches: list[Dict[str, Any]] = []
@@ -151,8 +150,12 @@ async def _find_notification_setting_id(description: str, override_id: Optional[
         for setting in settings:
             if not isinstance(setting, dict):
                 continue
-            if setting.get("description") == description:
-                matches.append(setting)
+            if override_id:
+                if setting.get("id") == override_id:
+                    matches.append(setting)
+            else:
+                if setting.get("description") == description:
+                    matches.append(setting)
         meta = payload.get("meta") if isinstance(payload, dict) else None
         next_cursor = None
         if isinstance(meta, dict):
@@ -166,16 +169,55 @@ async def _find_notification_setting_id(description: str, override_id: Optional[
         seen.add(next_cursor)
         after = next_cursor
     if not matches:
+        if override_id:
+            raise RuntimeError(f"Notification setting with id '{override_id}' not found")
         raise RuntimeError(f"Notification setting with description '{description}' not found")
     if len(matches) > 1:
+        if override_id:
+            raise RuntimeError(f"Multiple notification settings matched id '{override_id}'")
         raise RuntimeError(f"Multiple notification settings matched description '{description}'")
     setting = matches[0]
     setting_id = setting.get("id")
     if not setting_id:
         raise RuntimeError("Notification setting missing id")
     if setting.get("active") is False:
-        raise RuntimeError(f"Notification setting '{description}' is inactive")
-    return str(setting_id)
+        label = setting.get("description") or setting_id
+        raise RuntimeError(f"Notification setting '{label}' is inactive")
+    return setting
+
+
+def _preflight_notification_setting(setting: Dict[str, Any]) -> None:
+    description = setting.get("description") or setting.get("id")
+    traffic_source = setting.get("traffic_source") or setting.get("trafficSource")
+    if traffic_source and traffic_source not in {"simulation", "all"}:
+        raise RuntimeError(
+            f"Notification setting '{description}' is not configured for simulation traffic"
+        )
+    destination = setting.get("destination")
+    if not destination:
+        logger.warning("paddle_simulation_e2e.destination_missing", extra={"notification_description": description})
+        return
+    if not str(destination).endswith("/api/billing/webhook"):
+        logger.warning(
+            "paddle_simulation_e2e.destination_unexpected",
+            extra={"destination": destination, "notification_description": description},
+        )
+    try:
+        response = httpx.get(str(destination), timeout=5.0)
+    except httpx.RequestError as exc:
+        raise RuntimeError(f"Webhook destination unreachable: {destination}") from exc
+    if response.status_code >= 500:
+        raise RuntimeError(f"Webhook destination returned {response.status_code}")
+    if response.status_code >= 400:
+        logger.warning(
+            "paddle_simulation_e2e.destination_non_success",
+            extra={"status_code": response.status_code, "destination": destination},
+        )
+    else:
+        logger.info(
+            "paddle_simulation_e2e.destination_reachable",
+            extra={"status_code": response.status_code, "destination": destination},
+        )
 
 
 def _resolve_plan(
@@ -241,7 +283,12 @@ def _fetch_purchase(transaction_id: str) -> Optional[Dict[str, Any]]:
 async def run_flow(args: argparse.Namespace) -> int:
     setup_logging()
     load_dotenv()
-    get_paddle_config()
+    config = get_paddle_config()
+    if config.status != "sandbox":
+        logger.warning(
+            "paddle_simulation_e2e.non_sandbox_mode",
+            extra={"paddle_status": config.status},
+        )
 
     description = _normalize_description(args.notification_description)
     if not description and not args.notification_setting_id:
@@ -265,6 +312,10 @@ async def run_flow(args: argparse.Namespace) -> int:
     amount = plan.get("amount")
     currency = plan.get("currency")
 
+    notification_setting = await _find_notification_setting(description or "", args.notification_setting_id)
+    _preflight_notification_setting(notification_setting)
+    notification_setting_id = str(notification_setting.get("id"))
+
     run_id = uuid.uuid4().hex
     auth_ctx = AuthContext(
         user_id=user_id,
@@ -287,8 +338,6 @@ async def run_flow(args: argparse.Namespace) -> int:
         ids = get_paddle_ids(user_id)
         if ids:
             customer_id = ids[0]
-
-    notification_setting_id = await _find_notification_setting_id(description or "", args.notification_setting_id)
     billed_at = datetime.now(timezone.utc).isoformat()
     webhook_payload = _build_transaction_payload(
         transaction_id=transaction_id,

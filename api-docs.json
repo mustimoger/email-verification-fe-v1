@@ -3619,6 +3619,124 @@
                 }
             }
         },
+        "/tasks/{id}/series": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Returns daily task metrics series between from/to for a task",
+                "tags": [
+                    "tasks"
+                ],
+                "summary": "Task metrics series",
+                "parameters": [
+                    {
+                        "description": "Task ID (UUID format)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "description": "Filter series from this timestamp (RFC3339 format). Defaults to last 7 days when omitted with to. Max range: 90 days.",
+                        "name": "from",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date-time"
+                        }
+                    },
+                    {
+                        "description": "Filter series up to this timestamp (RFC3339 format). Defaults to last 7 days when omitted with from. Max range: 90 days.",
+                        "name": "to",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date-time"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Task metrics series",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/cmd_controllers.TaskMetricsSeriesResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid query parameters",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/validation.ValidationErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Task not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/verify": {
             "post": {
                 "security": [
@@ -3781,6 +3899,12 @@
                             "format": "int64"
                         }
                     },
+                    "series": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/cmd_controllers.APIUsageMetricsSeriesPoint"
+                        }
+                    },
                     "total_api_keys": {
                         "type": "integer",
                         "example": 3
@@ -3792,6 +3916,37 @@
                     "user_id": {
                         "type": "string",
                         "example": "550e8400-e29b-41d4-a716-446655440000"
+                    }
+                }
+            },
+            "cmd_controllers.APIUsageMetricsSeriesPoint": {
+                "type": "object",
+                "properties": {
+                    "api_keys_by_purpose": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    },
+                    "date": {
+                        "type": "string",
+                        "example": "2025-01-02"
+                    },
+                    "requests_by_purpose": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    },
+                    "total_api_keys": {
+                        "type": "integer",
+                        "example": 3
+                    },
+                    "total_requests": {
+                        "type": "integer",
+                        "example": 1234
                     }
                 }
             },
@@ -4593,6 +4748,62 @@
                     }
                 }
             },
+            "cmd_controllers.TaskMetricsSeriesPoint": {
+                "type": "object",
+                "properties": {
+                    "date": {
+                        "type": "string",
+                        "example": "2025-01-02"
+                    },
+                    "job_status": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    },
+                    "last_verification_completed_at": {
+                        "type": "string"
+                    },
+                    "last_verification_requested_at": {
+                        "type": "string"
+                    },
+                    "progress": {
+                        "type": "number",
+                        "example": 0.85
+                    },
+                    "progress_percent": {
+                        "type": "integer",
+                        "example": 85
+                    },
+                    "total_email_addresses": {
+                        "type": "integer",
+                        "example": 1234
+                    },
+                    "verification_status": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    }
+                }
+            },
+            "cmd_controllers.TaskMetricsSeriesResponse": {
+                "type": "object",
+                "properties": {
+                    "series": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/cmd_controllers.TaskMetricsSeriesPoint"
+                        }
+                    },
+                    "task_id": {
+                        "type": "string",
+                        "example": "550e8400-e29b-41d4-a716-446655440000"
+                    }
+                }
+            },
             "cmd_controllers.TaskRequest": {
                 "type": "object",
                 "required": [
@@ -4767,6 +4978,12 @@
                     "last_verification_requested_at": {
                         "type": "string"
                     },
+                    "series": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/cmd_controllers.VerificationMetricsSeriesPoint"
+                        }
+                    },
                     "total_catchall": {
                         "type": "integer",
                         "example": 10
@@ -4794,6 +5011,53 @@
                     "user_id": {
                         "type": "string",
                         "example": "550e8400-e29b-41d4-a716-446655440000"
+                    },
+                    "verification_status": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    }
+                }
+            },
+            "cmd_controllers.VerificationMetricsSeriesPoint": {
+                "type": "object",
+                "properties": {
+                    "date": {
+                        "type": "string",
+                        "example": "2025-01-02"
+                    },
+                    "job_status": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    },
+                    "total_catchall": {
+                        "type": "integer",
+                        "example": 10
+                    },
+                    "total_disposable_domain_emails": {
+                        "type": "integer",
+                        "example": 5
+                    },
+                    "total_role_based": {
+                        "type": "integer",
+                        "example": 42
+                    },
+                    "total_tasks": {
+                        "type": "integer",
+                        "example": 12
+                    },
+                    "total_verifications": {
+                        "type": "integer",
+                        "example": 1234
+                    },
+                    "unique_email_addresses": {
+                        "type": "integer",
+                        "example": 1200
                     },
                     "verification_status": {
                         "type": "object",

@@ -62,6 +62,8 @@ Medium priority
    - Validation: updated the simulation payload to send the transaction object (not a demo envelope) and normalized totals to strings; ran `backend/scripts/paddle_simulation_e2e.py` against `ngrok2-all` and confirmed the webhook created a purchase row and incremented credits for the test user.
    - Update: default notification description set to `ngrok2-all` and documentation added for newcomers.
    - Update: added `backend/scripts/README-e2e-paddle-test.md` with a detailed guide for running and troubleshooting the script.
+   - Update: added preflight checks for notification traffic source, webhook reachability, and non-sandbox warnings to fail fast when the destination is misconfigured or unreachable.
+   - Update: documented why only transaction.created/ready appear in Paddle platform events during simulation runs.
 
 ### Paddle Simulation E2E Script (for newcomers)
 What it does
