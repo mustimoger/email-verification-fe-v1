@@ -46,19 +46,20 @@ Goal: replace mock data on `/overview` with real per-user data sourced from our 
    - Confirm Current Plan display source (Paddle billing data vs profile display_name).
    - Warning: current UI uses only recent tasks to compute validation totals, which can under-report lifetime totals.
 
-6) Backend: record credit usage with time series (TODO)
-   - Treat each task’s email_count (or sum of valid/invalid/catchall) as credits spent.
-   - Ensure `tasks` rows store a stable timestamp for when credits were spent (prefer external `created_at`; if unavailable, record a fallback and log).
-   - If tasks lack counts, fetch `/tasks/{id}` for recent tasks to populate counts (do not silently default).
+6) Backend: record credit usage with time series (DONE)
+   - Usage totals/series now derive from Supabase `tasks` via `summarize_tasks_usage`, so “Credit Usage” reflects credits spent (verification counts) over time.
+   - Logs when totals are missing or invalid instead of silently defaulting.
+   - Counts still depend on tasks being upserted with email_count or status totals.
 
-6.1) Supabase schema: add `billing_purchases` table (TODO)
-   - Create `billing_purchases` to persist Paddle purchases (transaction_id PK, user_id FK, price_ids[], credits_granted, amount, currency, purchased_at, raw jsonb).
-   - This table is required for “Current Plan” and purchase history; remove conditional “table missing” behavior.
+6.1) Supabase schema: add `billing_purchases` table (DONE)
+   - Table already exists via migration `20251221122950_create_billing_purchases_table` and is present in Supabase.
+   - This is now the source for “Current Plan” in `/api/overview`.
 
-7) Backend: align `/api/overview` with authoritative sources (TODO)
-   - Use `summarize_tasks_usage` (Supabase `tasks`) for `usage_total` + `usage_series` so charts reflect credits spent.
-   - Pull lifetime `verification_status` + `total_verifications` from external `GET /metrics/verifications` and expose in `OverviewResponse`.
-   - Add “current plan” payload from Paddle: read latest `billing_purchases` row for the user, map `price_ids` to `billing_plans`, and return plan names + purchase date; show “Multiple items” when more than one price_id is present.
+7) Backend: align `/api/overview` with authoritative sources (DONE)
+   - `/api/overview` now uses `summarize_tasks_usage` for credits‑spent totals + series.
+   - Lifetime validation totals come from external `GET /metrics/verifications` and are exposed as `verification_totals`.
+   - “Current Plan” now uses the latest `billing_purchases` row and maps `price_ids` to `billing_plans`; if multiple items, returns label “Multiple items” and all plan names.
+   - External metrics failures are logged and return `verification_totals: null` to avoid silent fallbacks.
    - Warning: external `/tasks` list does not include task status; if status is required, fetch `/tasks/{id}` for recent tasks or infer cautiously.
 
 8) Frontend: use server-calculated totals (TODO)

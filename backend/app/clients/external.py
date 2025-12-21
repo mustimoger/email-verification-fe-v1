@@ -174,6 +174,20 @@ class APIUsageMetricsResponse(BaseModel):
     user_id: Optional[str] = None
 
 
+class VerificationMetricsResponse(BaseModel):
+    job_status: Optional[Dict[str, int]] = None
+    last_verification_completed_at: Optional[str] = None
+    last_verification_requested_at: Optional[str] = None
+    total_catchall: Optional[int] = None
+    total_disposable_domain_emails: Optional[int] = None
+    total_role_based: Optional[int] = None
+    total_tasks: Optional[int] = None
+    total_verifications: Optional[int] = None
+    unique_email_addresses: Optional[int] = None
+    user_id: Optional[str] = None
+    verification_status: Optional[Dict[str, int]] = None
+
+
 class CreateAPIKeyResponse(BaseModel):
     id: Optional[str] = None
     name: Optional[str] = None
@@ -317,6 +331,23 @@ class ExternalAPIClient:
         if not params:
             params = None
         return await self._get("/metrics/api-usage", APIUsageMetricsResponse, params=params)
+
+    async def get_verification_metrics(
+        self,
+        user_id: Optional[str] = None,
+        start: Optional[str] = None,
+        end: Optional[str] = None,
+    ) -> VerificationMetricsResponse:
+        params: Dict[str, Any] = {}
+        if user_id:
+            params["user_id"] = user_id
+        if start:
+            params["from"] = start
+        if end:
+            params["to"] = end
+        if not params:
+            params = None
+        return await self._get("/metrics/verifications", VerificationMetricsResponse, params=params)
 
     async def get_email_by_address(self, address: str) -> Dict[str, Any]:
         response = await self._request("GET", f"/emails/{address}")
