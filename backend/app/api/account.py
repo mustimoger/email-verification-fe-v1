@@ -2,10 +2,11 @@ import logging
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status, UploadFile, File
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 
 from ..core.auth import AuthContext, get_current_user
 from ..services import supabase_client
+from ..services.billing_purchases import list_purchases as list_billing_purchases
 from ..core.settings import get_settings
 from ..services.supabase_client import get_storage
 from ..services.usage import record_usage
@@ -31,6 +32,25 @@ class ProfileUpdateRequest(BaseModel):
 
 class CreditsResponse(BaseModel):
     credits_remaining: int
+
+
+class PurchaseResponse(BaseModel):
+    transaction_id: str
+    event_id: Optional[str] = None
+    event_type: str
+    price_ids: list[str] = Field(default_factory=list)
+    credits_granted: int
+    amount: Optional[int] = None
+    currency: Optional[str] = None
+    checkout_email: Optional[str] = None
+    invoice_id: Optional[str] = None
+    invoice_number: Optional[str] = None
+    purchased_at: Optional[str] = None
+    created_at: Optional[str] = None
+
+
+class PurchaseListResponse(BaseModel):
+    items: list[PurchaseResponse] = Field(default_factory=list)
 
 
 @router.get("/profile", response_model=ProfileResponse)
@@ -120,3 +140,28 @@ def get_credits(user: AuthContext = Depends(get_current_user)):
     logger.info("account.credits.fetched", extra={"user_id": user.user_id, "credits_remaining": credits})
     record_usage(user.user_id, path="/account/credits", count=1)
     return CreditsResponse(credits_remaining=credits)
+
+
+@router.get("/purchases", response_model=PurchaseListResponse)
+def get_purchases(
+    limit: Optional[int] = Query(default=None, gt=0),
+    offset: Optional[int] = Query(default=None, ge=0),
+    user: AuthContext = Depends(get_current_user),
+):
+    if offset is not None and limit is None:
+        logger.warning("account.purchases.missing_limit", extra={"user_id": user.user_id, "offset": offset})
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="limit is required when offset is provided")
+    try:
+        purchases = list_billing_purchases(user.user_id, limit=limit, offset=offset)
+    except Exception as exc:  # noqa: BLE001
+        logger.error(
+            "account.purchases.fetch_failed",
+            extra={"user_id": user.user_id, "error": str(exc), "error_type": type(exc).__name__},
+        )
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Purchase history unavailable") from exc
+    logger.info(
+        "account.purchases.fetched",
+        extra={"user_id": user.user_id, "count": len(purchases), "limit": limit, "offset": offset},
+    )
+    record_usage(user.user_id, path="/account/purchases", count=1)
+    return PurchaseListResponse(items=purchases)

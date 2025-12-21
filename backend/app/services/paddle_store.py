@@ -44,3 +44,16 @@ def upsert_paddle_ids(user_id: str, customer_id: str, address_id: Optional[str])
             "paddle_store.save_failed",
             extra={"user_id": user_id, "customer_id": customer_id, "address_id": address_id, "error": str(exc)},
         )
+
+
+def get_user_id_by_customer_id(customer_id: str) -> Optional[str]:
+    sb = get_supabase()
+    try:
+        res = sb.table("paddle_customers").select("user_id").eq("paddle_customer_id", customer_id).limit(1).execute()
+        data = res.data or []
+        if not data:
+            return None
+        return data[0].get("user_id")
+    except Exception as exc:  # noqa: BLE001
+        logger.error("paddle_store.lookup_failed", extra={"customer_id": customer_id, "error": str(exc)})
+        return None

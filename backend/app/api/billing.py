@@ -18,6 +18,7 @@ from ..paddle.client import (
 from ..paddle.config import get_paddle_config
 from ..paddle.webhook import verify_webhook
 from ..services.billing_events import delete_billing_event, record_billing_event
+from ..services.billing_purchases import upsert_purchase
 from ..services.billing_plans import (
     get_billing_plan_by_price_id,
     get_billing_plans_by_price_ids,
@@ -25,7 +26,7 @@ from ..services.billing_plans import (
 )
 from ..services.credits import grant_credits
 from ..services import supabase_client
-from ..services.paddle_store import get_paddle_ids, upsert_paddle_ids
+from ..services.paddle_store import get_paddle_ids, get_user_id_by_customer_id, upsert_paddle_ids
 
 router = APIRouter(prefix="/api/billing", tags=["billing"])
 logger = logging.getLogger(__name__)
@@ -67,6 +68,24 @@ class CheckoutRequest(BaseModel):
         if value <= 0:
             raise ValueError("quantity must be greater than zero")
         return value
+
+
+def _first_value(mapping: Any, *keys: str) -> Optional[Any]:
+    if not isinstance(mapping, dict):
+        return None
+    for key in keys:
+        if key in mapping and mapping[key] is not None:
+            return mapping[key]
+    return None
+
+
+def _parse_int(value: Any) -> Optional[int]:
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except Exception:  # noqa: BLE001
+        return None
 
 
 @router.get("/plans", response_model=PlansPayload)
@@ -363,18 +382,32 @@ async def paddle_webhook(request: Request):
     user_id = None
     if isinstance(custom_data, dict):
         user_id = custom_data.get("supabase_user_id") or custom_data.get("user_id")
+    transaction_id = _first_value(transaction, "id")
+    customer_id = _first_value(transaction, "customer_id", "customerId")
 
     # Only handle credit grants on transaction completion events
     if event_type not in {"transaction.completed", "transaction.billed"}:
         logger.info("billing.webhook.ignored_event", extra={"event_type": event_type, "event_id": event_id})
         return {"received": True}
 
+    if not user_id and customer_id:
+        user_id = get_user_id_by_customer_id(customer_id)
+        if user_id:
+            logger.info(
+                "billing.webhook.user_resolved",
+                extra={"event_id": event_id, "event_type": event_type, "customer_id": customer_id, "user_id": user_id},
+            )
+
     if not user_id:
-        logger.warning("billing.webhook.missing_user", extra={"event_id": event_id, "event_type": event_type})
+        logger.warning(
+            "billing.webhook.missing_user",
+            extra={"event_id": event_id, "event_type": event_type, "customer_id": customer_id},
+        )
         return {"received": True}
 
     total_credits = 0
     price_ids: list[str] = []
+    line_items: list[tuple[str, int]] = []
     for item in items:
         price_id = None
         quantity = 1
@@ -384,6 +417,7 @@ async def paddle_webhook(request: Request):
         if not price_id:
             continue
         price_ids.append(price_id)
+        line_items.append((price_id, quantity))
     plan_rows = get_billing_plans_by_price_ids(price_ids)
     price_to_credits: Dict[str, int] = {}
     for row in plan_rows:
@@ -393,20 +427,59 @@ async def paddle_webhook(request: Request):
             credits_val = 0
         price_to_credits[str(row.get("paddle_price_id"))] = credits_val
 
-    for item in items:
-        price_id = None
-        quantity = 1
-        if isinstance(item, dict):
-            price_id = item.get("price_id") or (item.get("price") or {}).get("id")
-            quantity = item.get("quantity") or 1
-        if not price_id:
-            continue
+    for price_id, quantity in line_items:
         credits_per_unit = price_to_credits.get(price_id, 0)
-        try:
-            qty_int = int(quantity)
-        except Exception:
+        qty_int = _parse_int(quantity)
+        if qty_int is None:
             qty_int = 1
         total_credits += credits_per_unit * max(qty_int, 1)
+
+    details = _first_value(transaction, "details")
+    totals = _first_value(details, "totals")
+    amount_raw = _first_value(totals, "total", "grand_total", "grandTotal")
+    amount = _parse_int(amount_raw)
+    if amount_raw is not None and amount is None:
+        logger.warning(
+            "billing.webhook.amount_parse_failed",
+            extra={"event_id": event_id, "event_type": event_type, "amount_raw": amount_raw},
+        )
+    currency = _first_value(transaction, "currency_code", "currencyCode") or _first_value(
+        totals, "currency_code", "currencyCode"
+    )
+    customer = _first_value(transaction, "customer") or _first_value(data, "customer")
+    checkout_email = _first_value(customer, "email") or _first_value(transaction, "customer_email", "customerEmail")
+    invoice_id = _first_value(transaction, "invoice_id", "invoiceId")
+    invoice_number = _first_value(transaction, "invoice_number", "invoiceNumber")
+    purchased_at = _first_value(transaction, "billed_at", "billedAt", "completed_at", "completedAt")
+    if not purchased_at:
+        purchased_at = _first_value(transaction, "created_at", "createdAt")
+    if not purchased_at:
+        logger.warning(
+            "billing.webhook.purchased_at_missing",
+            extra={"event_id": event_id, "event_type": event_type, "transaction_id": transaction_id},
+        )
+
+    if transaction_id:
+        upsert_purchase(
+            transaction_id=transaction_id,
+            user_id=user_id,
+            event_id=event_id,
+            event_type=event_type,
+            price_ids=price_ids,
+            credits_granted=total_credits,
+            amount=amount,
+            currency=currency,
+            checkout_email=checkout_email,
+            invoice_id=invoice_id,
+            invoice_number=invoice_number,
+            purchased_at=purchased_at,
+            raw=payload,
+        )
+    else:
+        logger.warning(
+            "billing.webhook.transaction_id_missing",
+            extra={"event_id": event_id, "event_type": event_type, "user_id": user_id},
+        )
 
     if total_credits <= 0:
         logger.info(
@@ -419,7 +492,7 @@ async def paddle_webhook(request: Request):
         event_id=event_id,
         user_id=user_id,
         event_type=event_type,
-        transaction_id=(transaction or {}).get("id"),
+        transaction_id=transaction_id,
         price_ids=price_ids,
         credits_granted=total_credits,
         raw=payload,
