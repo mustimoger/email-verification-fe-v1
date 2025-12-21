@@ -136,6 +136,7 @@ def test_create_transaction_rejects_metadata(monkeypatch):
 
 def test_webhook_grants_credits(monkeypatch):
     granted = {}
+    saved = {}
 
     def fake_verify_webhook(raw_body, signature_header, remote_ip, headers=None):
         return True
@@ -149,9 +150,14 @@ def test_webhook_grants_credits(monkeypatch):
         granted["user_id"] = user_id
         return {"user_id": user_id, "credits_remaining": credits}
 
+    def fake_upsert_purchase(**kwargs):
+        saved.update(kwargs)
+        return True
+
     monkeypatch.setattr(billing_module, "verify_webhook", fake_verify_webhook)
     monkeypatch.setattr(billing_module, "record_billing_event", lambda **kwargs: fake_record_event(**kwargs))
     monkeypatch.setattr(billing_module, "grant_credits", fake_grant_credits)
+    monkeypatch.setattr(billing_module, "upsert_purchase", fake_upsert_purchase)
     monkeypatch.setattr(
         billing_module,
         "get_billing_plans_by_price_ids",
@@ -169,6 +175,12 @@ def test_webhook_grants_credits(monkeypatch):
                 "id": "txn_1",
                 "items": [{"price_id": "pri_monthly", "quantity": 1}],
                 "custom_data": {"supabase_user_id": "user-abc"},
+                "currency_code": "USD",
+                "invoice_id": "inv_1",
+                "invoice_number": "1234",
+                "billed_at": "2025-12-21T11:55:34.191306Z",
+                "customer": {"email": "buyer@example.com"},
+                "details": {"totals": {"total": "2900", "currency_code": "USD"}},
             }
         },
     }
@@ -176,10 +188,17 @@ def test_webhook_grants_credits(monkeypatch):
     assert resp.status_code == 200
     assert granted["credits"] == 500
     assert granted["user_id"] == "user-abc"
+    assert saved["transaction_id"] == "txn_1"
+    assert saved["user_id"] == "user-abc"
+    assert saved["credits_granted"] == 500
+    assert saved["amount"] == 2900
+    assert saved["currency"] == "USD"
+    assert saved["checkout_email"] == "buyer@example.com"
 
 
 def test_webhook_credit_grant_failure_deletes_event(monkeypatch):
     deleted = {}
+    saved = {}
 
     def fake_verify_webhook(raw_body, signature_header, remote_ip, headers=None):
         return True
@@ -194,10 +213,15 @@ def test_webhook_credit_grant_failure_deletes_event(monkeypatch):
         deleted["event_id"] = event_id
         return True
 
+    def fake_upsert_purchase(**kwargs):
+        saved.update(kwargs)
+        return True
+
     monkeypatch.setattr(billing_module, "verify_webhook", fake_verify_webhook)
     monkeypatch.setattr(billing_module, "record_billing_event", fake_record_event)
     monkeypatch.setattr(billing_module, "grant_credits", fake_grant_credits)
     monkeypatch.setattr(billing_module, "delete_billing_event", fake_delete_event)
+    monkeypatch.setattr(billing_module, "upsert_purchase", fake_upsert_purchase)
     monkeypatch.setattr(
         billing_module,
         "get_billing_plans_by_price_ids",
@@ -221,3 +245,4 @@ def test_webhook_credit_grant_failure_deletes_event(monkeypatch):
     resp = client.post("/api/billing/webhook", json=payload, headers={"Paddle-Signature": "ts=1;v1=valid"})
     assert resp.status_code == 500
     assert deleted["event_id"] == "evt_1"
+    assert saved["transaction_id"] == "txn_1"

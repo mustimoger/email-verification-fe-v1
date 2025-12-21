@@ -142,6 +142,10 @@ class PaddleAPIClient:
         response = await self._request("POST", path, json=body)
         return await self._parse(response, AddressResponse)
 
+    async def get_customer(self, customer_id: str) -> CustomerResponse:
+        response = await self._request("GET", f"/customers/{customer_id}")
+        return await self._parse(response, CustomerResponse)
+
     async def get_price(self, price_id: str) -> PriceResponse:
         response = await self._request("GET", f"/prices/{price_id}")
         return await self._parse(response, PriceResponse)

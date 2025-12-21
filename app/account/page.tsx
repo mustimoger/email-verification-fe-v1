@@ -6,15 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { DashboardShell } from "../components/dashboard-shell";
 import { RequireAuth } from "../components/protected";
 import { useAuth } from "../components/auth-provider";
-import { apiClient, ApiError, Credits, Profile } from "../lib/api-client";
-
-type Purchase = {
-  id: string;
-  email: string;
-  amount: string;
-  creditsBought: string;
-  expireDate: string;
-};
+import { apiClient, ApiError, Credits, Profile, Purchase } from "../lib/api-client";
 
 export default function AccountPage() {
   const backendBase =
@@ -26,12 +18,35 @@ export default function AccountPage() {
     if (url.startsWith("http://") || url.startsWith("https://")) return url;
     return `${backendBase}${url}`;
   };
+  const formatDate = (value?: string | null) => {
+    if (!value) return "";
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return value;
+    return parsed.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+  };
+  const formatAmount = (amount?: number | null, currency?: string | null) => {
+    if (amount === undefined || amount === null) return "";
+    if (currency) {
+      try {
+        return new Intl.NumberFormat(undefined, { style: "currency", currency }).format(amount / 100);
+      } catch (err) {
+        console.info("account.purchase.amount_format_failed", { amount, currency, error: err });
+      }
+    } else {
+      console.info("account.purchase.currency_missing", { amount });
+    }
+    return amount.toLocaleString();
+  };
+  const formatCount = (value?: number | null) => {
+    if (value === undefined || value === null) return "";
+    return value.toLocaleString();
+  };
 
   const [profile, setProfile] = useState<Profile | null>(null);
   const [profileDraft, setProfileDraft] = useState<{ email?: string; display_name?: string; avatar_url?: string }>({});
   const [avatarUrl, setAvatarUrl] = useState<string>("/profile-image.png");
   const [credits, setCredits] = useState<Credits | null>(null);
-  const [purchases] = useState<Purchase[]>([]);
+  const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -58,11 +73,16 @@ export default function AccountPage() {
       setLoading(true);
       setError(null);
       try {
-        const [p, c] = await Promise.all([apiClient.getProfile(), apiClient.getCredits()]);
+        const [p, c, purchaseData] = await Promise.all([
+          apiClient.getProfile(),
+          apiClient.getCredits(),
+          apiClient.getPurchases(),
+        ]);
         setProfile(p);
         setAvatarUrl(resolveAvatar(p.avatar_url));
         setProfileDraft({ email: p.email ?? "", display_name: p.display_name ?? "", avatar_url: p.avatar_url });
         setCredits(c);
+        setPurchases(purchaseData.items ?? []);
       } catch (err: unknown) {
         const message = err instanceof ApiError ? err.message : "Failed to load account";
         setError(message);
@@ -285,12 +305,11 @@ export default function AccountPage() {
         <div className="rounded-2xl bg-white p-4 shadow-md ring-1 ring-slate-200">
           <h3 className="text-sm font-extrabold text-slate-800">Purchase History</h3>
           <div className="mt-3 overflow-hidden rounded-xl border border-slate-200">
-            <div className="grid grid-cols-6 bg-slate-50 px-4 py-3 text-xs font-extrabold uppercase tracking-wide text-slate-700 md:text-sm">
+            <div className="grid grid-cols-5 bg-slate-50 px-4 py-3 text-xs font-extrabold uppercase tracking-wide text-slate-700 md:text-sm">
               <span>Date</span>
               <span>Checkout Email</span>
               <span>Purchase Amount</span>
               <span>Credits Bought</span>
-              <span>Expire Date</span>
               <span className="text-right">Invoice</span>
             </div>
             <div className="divide-y divide-slate-100">
@@ -299,19 +318,14 @@ export default function AccountPage() {
               ) : (
                 purchases.map((row) => (
                   <div
-                    key={row.id}
-                    className="grid grid-cols-6 items-center px-4 py-4 text-sm font-semibold text-slate-800"
+                    key={row.transaction_id}
+                    className="grid grid-cols-5 items-center px-4 py-4 text-sm font-semibold text-slate-800"
                   >
-                    <span className="text-slate-700">{row.id}</span>
-                    <span className="text-slate-700">{row.email}</span>
-                    <span className="text-slate-700">{row.amount}</span>
-                    <span className="text-slate-700">{row.creditsBought}</span>
-                    <span className="text-slate-700">{row.expireDate}</span>
-                    <span className="flex justify-end">
-                      <span className="inline-flex items-center rounded-full bg-emerald-500 px-3 py-1 text-xs font-bold text-white shadow-sm">
-                        Download
-                      </span>
-                    </span>
+                    <span className="text-slate-700">{formatDate(row.purchased_at || row.created_at)}</span>
+                    <span className="text-slate-700">{row.checkout_email || ""}</span>
+                    <span className="text-slate-700">{formatAmount(row.amount, row.currency)}</span>
+                    <span className="text-slate-700">{formatCount(row.credits_granted)}</span>
+                    <span className="text-right text-slate-700">{row.invoice_number || row.invoice_id || ""}</span>
                   </div>
                 ))
               )}

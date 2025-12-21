@@ -60,14 +60,22 @@ Medium priority
    - Add short-lived caching for `/api/billing/plans` price fetches to reduce API load.
    - Status: not implemented.
 
+6) **Invoice PDF download links**
+   - Add backend endpoint to fetch Paddle invoice PDFs and expose them in account history.
+   - Status: not implemented.
+
 Low priority
-6) **Customer portal session**
+7) **Customer portal session**
    - Add backend endpoint to create portal sessions and UI link.
    - Status: not implemented.
 
-7) **Frontend price preview**
+8) **Frontend price preview**
    - Use Paddle price preview to show localized totals before checkout.
    - Status: not implemented.
+
+9) **Backfill checkout email for existing purchases**
+   - Backfill `billing_purchases.checkout_email` for historical rows by fetching Paddle customer emails.
+   - Status: not implemented (optional).
 
 ## Hardening tasks from review (step-by-step)
 1) **Make webhook idempotency atomic**
@@ -127,8 +135,8 @@ Low priority
       - Ensure the webhook endpoint is reachable from Paddle (ngrok or public staging).
       - Align the notification destination’s secret with backend config and allowlist.
       - Run a real sandbox purchase and verify Supabase rows + credit balance updates.
-   - Status: in progress (webhook delivered; Supabase verification pending).
-   - Progress: real sandbox Enterprise purchase completed; Paddle delivered `transaction.completed` to `ngrok2` destination. Supabase `billing_events`/`user_credits` verification is blocked until Supabase MCP auth is provided.
+   - Status: implemented.
+   - Progress: verified with real sandbox purchases (Basic + Enterprise) — Paddle `transaction.completed` webhooks recorded in Supabase `billing_events`, credits updated in `user_credits`, and purchase history stored in `billing_purchases`.
 
 ## MVP plan catalog + credits wiring (new)
 Scope: one-time credit packs (non-recurring), credits never expire.
@@ -203,4 +211,4 @@ Admin sync script (MVP)
 
 6) **Webhook simulation verification**
    - Run a sandbox webhook simulation (`transaction.completed`) and confirm credits increment for a real user.
-   - Status: attempted; simulation used static sample payload without `custom_data` and failed signature verification because the simulation notification setting uses a different endpoint secret. Needs server secret update or a real sandbox checkout to validate credit grants.
+   - Status: validated via real sandbox checkout; simulator still optional if we want automated replay tests.

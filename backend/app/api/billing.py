@@ -448,6 +448,54 @@ async def paddle_webhook(request: Request):
     )
     customer = _first_value(transaction, "customer") or _first_value(data, "customer")
     checkout_email = _first_value(customer, "email") or _first_value(transaction, "customer_email", "customerEmail")
+    if not checkout_email and customer_id:
+        try:
+            paddle_client = get_paddle_client()
+            resolved_customer = await paddle_client.get_customer(customer_id)
+            checkout_email = resolved_customer.email
+            if checkout_email:
+                logger.info(
+                    "billing.webhook.checkout_email_resolved",
+                    extra={
+                        "event_id": event_id,
+                        "event_type": event_type,
+                        "customer_id": customer_id,
+                        "transaction_id": transaction_id,
+                    },
+                )
+            else:
+                logger.warning(
+                    "billing.webhook.checkout_email_missing",
+                    extra={
+                        "event_id": event_id,
+                        "event_type": event_type,
+                        "customer_id": customer_id,
+                        "transaction_id": transaction_id,
+                    },
+                )
+        except PaddleAPIError as exc:
+            logger.error(
+                "billing.webhook.checkout_email_fetch_failed",
+                extra={
+                    "event_id": event_id,
+                    "event_type": event_type,
+                    "customer_id": customer_id,
+                    "transaction_id": transaction_id,
+                    "status_code": exc.status_code,
+                    "details": exc.details,
+                },
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.error(
+                "billing.webhook.checkout_email_fetch_failed",
+                extra={
+                    "event_id": event_id,
+                    "event_type": event_type,
+                    "customer_id": customer_id,
+                    "transaction_id": transaction_id,
+                    "error": str(exc),
+                },
+            )
     invoice_id = _first_value(transaction, "invoice_id", "invoiceId")
     invoice_number = _first_value(transaction, "invoice_number", "invoiceNumber")
     purchased_at = _first_value(transaction, "billed_at", "billedAt", "completed_at", "completedAt")
