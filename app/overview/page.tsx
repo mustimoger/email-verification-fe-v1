@@ -65,18 +65,35 @@ export default function OverviewPage() {
     void load();
   }, []);
 
-  const validationTotals = useMemo(() => aggregateValidationCounts(overview?.recent_tasks), [overview]);
+  const validationTotals = useMemo(() => {
+    const totals = overview?.verification_totals;
+    if (totals) {
+      return {
+        valid: totals.valid ?? 0,
+        invalid: totals.invalid ?? 0,
+        catchAll: totals.catchall ?? 0,
+        total: totals.total ?? 0,
+      };
+    }
+    return aggregateValidationCounts(overview?.recent_tasks);
+  }, [overview]);
 
   const stats: Stat[] = useMemo(() => {
-    const credits = overview?.credits_remaining ?? 0;
-    const totalVerifications = overview?.usage_total ?? 0;
+    const credits = overview?.credits_remaining ?? null;
+    const totalVerifications = overview?.usage_total ?? null;
+    const invalid = overview?.verification_totals?.invalid ?? null;
+    const catchAll = overview?.verification_totals?.catchall ?? null;
     return [
-      { title: "Credits Remaining", value: credits.toLocaleString(), icon: CheckCircle2 },
-      { title: "Total Verifications", value: totalVerifications.toLocaleString(), icon: CheckCircle2 },
-      { title: "Total Invalid", value: validationTotals.invalid.toLocaleString(), icon: CircleDollarSign },
-      { title: "Total Catch-all", value: validationTotals.catchAll.toLocaleString(), icon: Leaf },
+      { title: "Credits Remaining", value: credits !== null ? credits.toLocaleString() : "—", icon: CheckCircle2 },
+      {
+        title: "Total Verifications",
+        value: totalVerifications !== null ? totalVerifications.toLocaleString() : "—",
+        icon: CheckCircle2,
+      },
+      { title: "Total Invalid", value: invalid !== null ? invalid.toLocaleString() : "—", icon: CircleDollarSign },
+      { title: "Total Catch-all", value: catchAll !== null ? catchAll.toLocaleString() : "—", icon: Leaf },
     ];
-  }, [overview, validationTotals]);
+  }, [overview]);
 
   const validationData: ValidationSlice[] = useMemo(() => {
     const slices = [
@@ -87,6 +104,7 @@ export default function OverviewPage() {
     if (!overview) return slices;
     return slices.filter((slice) => slice.value > 0);
   }, [overview, validationTotals]);
+  const validationHasData = validationTotals.total > 0;
 
   const usageData: UsagePoint[] = useMemo(
     () => (overview?.usage_series ?? []).map((p) => ({ date: p.date, count: p.count })),
@@ -99,6 +117,10 @@ export default function OverviewPage() {
   }, [overview]);
 
   const anyData = overview !== null;
+  const currentPlan = overview?.current_plan;
+  const planName = currentPlan?.label ?? (currentPlan?.plan_names?.[0] || "—");
+  const purchaseDate =
+    currentPlan?.purchased_at ? new Date(currentPlan.purchased_at).toLocaleDateString() : "—";
 
   return (
     <DashboardShell>
@@ -138,63 +160,75 @@ export default function OverviewPage() {
               <p className="text-lg font-bold text-slate-900">Validation</p>
               <PieChart className="h-5 w-5 text-slate-400" />
             </div>
-            <div className="mt-4 h-[260px] w-full">
-              <ResponsiveContainer height={260}>
-                <RePieChart>
-                  <Pie
-                    data={validationData}
-                    dataKey="value"
-                    innerRadius={60}
-                    outerRadius={90}
-                    paddingAngle={3}
-                    startAngle={90}
-                    endAngle={450}
-                  >
-                    {validationData.map((entry) => (
-                      <Cell key={entry.name} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    cursor={{ fill: "transparent" }}
-                    contentStyle={{
-                      borderRadius: 12,
-                      border: "1px solid #e2e8f0",
-                      boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
-                    }}
-                  />
-                </RePieChart>
-              </ResponsiveContainer>
-            </div>
+          <div className="mt-4 h-[260px] w-full">
+            {validationHasData ? (
+                <ResponsiveContainer height={260}>
+                  <RePieChart>
+                    <Pie
+                      data={validationData}
+                      dataKey="value"
+                      innerRadius={60}
+                      outerRadius={90}
+                      paddingAngle={3}
+                      startAngle={90}
+                      endAngle={450}
+                    >
+                      {validationData.map((entry) => (
+                        <Cell key={entry.name} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      cursor={{ fill: "transparent" }}
+                      contentStyle={{
+                        borderRadius: 12,
+                        border: "1px solid #e2e8f0",
+                        boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
+                      }}
+                    />
+                  </RePieChart>
+                </ResponsiveContainer>
+            ) : (
+              <div className="flex h-full items-center justify-center text-sm font-semibold text-slate-500">
+                No validation data yet.
+              </div>
+            )}
           </div>
+        </div>
 
           <div className="rounded-2xl bg-white p-5 shadow-md ring-1 ring-slate-100">
             <div className="flex items-center justify-between">
               <p className="text-lg font-bold text-slate-900">Credit Usage</p>
               <LineIcon className="h-5 w-5 text-slate-400" />
             </div>
-            <div className="mt-4 h-[260px] w-full">
-              <ResponsiveContainer height={260}>
-                <ReLineChart data={usageData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                  <XAxis dataKey="date" tickLine={false} axisLine={false} />
-                  <YAxis tickLine={false} axisLine={false} tickFormatter={(v) => `${v}`} width={30} />
-                  <Tooltip
-                    contentStyle={{
-                      borderRadius: 12,
-                      border: "1px solid #e2e8f0",
-                      boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
-                    }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="count"
-                    stroke="#3b82f6"
-                    strokeWidth={3}
-                    dot={{ r: 5, fill: "#3b82f6", strokeWidth: 2, stroke: "white" }}
-                  />
-                </ReLineChart>
-              </ResponsiveContainer>
-            </div>
+          <div className="mt-4 h-[260px] w-full">
+            {usageData.length ? (
+                <ResponsiveContainer height={260}>
+                  <ReLineChart data={usageData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                    <XAxis dataKey="date" tickLine={false} axisLine={false} />
+                    <YAxis tickLine={false} axisLine={false} tickFormatter={(v) => `${v}`} width={30} />
+                    <Tooltip
+                      contentStyle={{
+                        borderRadius: 12,
+                        border: "1px solid #e2e8f0",
+                        boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
+                      }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="count"
+                      stroke="#3b82f6"
+                      strokeWidth={3}
+                      dot={{ r: 5, fill: "#3b82f6", strokeWidth: 2, stroke: "white" }}
+                    />
+                  </ReLineChart>
+                </ResponsiveContainer>
+            ) : (
+              <div className="flex h-full items-center justify-center text-sm font-semibold text-slate-500">
+                No credit usage yet.
+              </div>
+            )}
           </div>
+        </div>
 
           <div className="rounded-2xl bg-white p-5 shadow-md ring-1 ring-slate-100">
             <div className="flex items-center justify-between">
@@ -203,14 +237,27 @@ export default function OverviewPage() {
               <LineIcon className="h-6 w-6" />
               </div>
             </div>
-            <div className="mt-6 text-2xl font-extrabold text-amber-500">
-              {overview?.profile?.display_name || "Enterprise"}
-            </div>
+            <div className="mt-6 text-2xl font-extrabold text-amber-500">{planName}</div>
             <div className="mt-6 inline-flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2 text-emerald-700">
               <span className="text-sm font-semibold">Purchase Date</span>
             </div>
-            <p className="mt-3 text-xl font-bold text-slate-900">—</p>
+            <p className="mt-3 text-xl font-bold text-slate-900">{purchaseDate}</p>
             <p className="text-sm text-slate-600">Purchase Date</p>
+            {currentPlan?.label === "Multiple items" && currentPlan.plan_names?.length ? (
+              <div className="mt-4 space-y-2 text-sm text-slate-600">
+                <p className="font-semibold text-slate-700">Items</p>
+                <div className="flex flex-wrap gap-2">
+                  {currentPlan.plan_names.map((name) => (
+                    <span
+                      key={name}
+                      className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700"
+                    >
+                      {name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </div>
         </section>
 

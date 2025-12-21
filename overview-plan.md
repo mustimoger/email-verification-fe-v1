@@ -35,9 +35,9 @@ Goal: replace mock data on `/overview` with real per-user data sourced from our 
    - When listing/fetching tasks, refresh Supabase records from the external API for the current user to keep statuses current. ✔ (list/detail now upsert)
    - Remaining: external `/tasks/batch/upload` does not return a task_id; need a post-upload polling strategy (fetch `/tasks` for the user key and upsert new ones) to capture file uploads into Supabase. Keep counts mapping aligned with external statuses.
 
-4) Frontend `/overview` wiring (TODO)
-   - Replace mock data with fetches to `/api/overview`.
-   - Map response fields to the cards, charts, and table; handle loading/error states and empty data gracefully.
+4) Frontend `/overview` wiring (DONE)
+   - UI now consumes `/api/overview` fields for lifetime totals and current plan data.
+   - Added explicit empty-state messaging for validation and usage charts.
 
 5) Decide authoritative metrics for Overview (TODO)
    - Confirm whether “Total Verifications” should reflect credits used (verification counts) or API requests.

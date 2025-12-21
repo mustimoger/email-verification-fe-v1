@@ -166,6 +166,25 @@ export type Credits = {
   credits_remaining: number;
 };
 
+export type Purchase = {
+  transaction_id: string;
+  event_id?: string;
+  event_type: string;
+  price_ids?: string[];
+  credits_granted: number;
+  amount?: number;
+  currency?: string;
+  checkout_email?: string;
+  invoice_id?: string;
+  invoice_number?: string;
+  purchased_at?: string;
+  created_at?: string;
+};
+
+export type PurchaseListResponse = {
+  items: Purchase[];
+};
+
 export type UsageEntry = {
   id: string;
   user_id: string;
@@ -226,6 +245,18 @@ export type OverviewResponse = {
     integration?: string | null;
     created_at?: string | null;
   }[];
+  verification_totals?: {
+    total?: number | null;
+    valid?: number | null;
+    invalid?: number | null;
+    catchall?: number | null;
+  } | null;
+  current_plan?: {
+    label?: string | null;
+    plan_names: string[];
+    price_ids: string[];
+    purchased_at?: string | null;
+  } | null;
 };
 
 export type PlanPrice = {
@@ -443,6 +474,13 @@ export const apiClient = {
     return request<Profile>("/account/avatar", { method: "POST", body: form, isForm: true });
   },
   getCredits: () => request<Credits>("/account/credits", { method: "GET" }),
+  getPurchases: (limit?: number, offset?: number) => {
+    const params = new URLSearchParams();
+    if (limit !== undefined) params.append("limit", `${limit}`);
+    if (offset !== undefined) params.append("offset", `${offset}`);
+    const qs = params.toString();
+    return request<PurchaseListResponse>(`/account/purchases${qs ? `?${qs}` : ""}`, { method: "GET" });
+  },
   getUsage: (start?: string, end?: string, apiKeyId?: string) => {
     const params = new URLSearchParams();
     if (start) params.append("start", start);
