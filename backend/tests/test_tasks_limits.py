@@ -33,7 +33,7 @@ def test_manual_limit_blocks_large_payload(monkeypatch):
     called = {"create": False}
 
     class FakeClient:
-        async def create_task(self, emails, user_id=None, webhook_url=None):
+        async def create_task(self, emails, webhook_url=None):
             called["create"] = True
             return TaskResponse(id="task-1", email_count=len(emails))
 

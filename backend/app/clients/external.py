@@ -210,10 +210,8 @@ class ExternalAPIClient:
         payload = {"email": email}
         return await self._post("/verify", payload, VerifyEmailResponse)
 
-    async def create_task(self, emails: List[str], user_id: Optional[str] = None, webhook_url: Optional[str] = None) -> TaskResponse:
+    async def create_task(self, emails: List[str], webhook_url: Optional[str] = None) -> TaskResponse:
         payload: Dict[str, Any] = {"emails": emails}
-        if user_id:
-            payload["user_id"] = user_id
         if webhook_url:
             payload["webhook_url"] = webhook_url
         return await self._post("/tasks", payload, TaskResponse)
@@ -236,7 +234,6 @@ class ExternalAPIClient:
         self,
         filename: str,
         content: bytes,
-        user_id: Optional[str] = None,
         webhook_url: Optional[str] = None,
         email_column: Optional[str] = None,
     ) -> BatchFileUploadResponse:
@@ -257,9 +254,6 @@ class ExternalAPIClient:
             data["webhook_url"] = webhook_url
         if email_column:
             data["email_column"] = email_column
-        if user_id:
-            data["user_id"] = user_id
-
         return await self._post_multipart("/tasks/batch/upload", data=data, files=files, model=BatchFileUploadResponse)
 
     async def download_task_results(self, task_id: str, file_format: Optional[str] = None) -> DownloadedFile:

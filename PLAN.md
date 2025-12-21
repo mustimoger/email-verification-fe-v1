@@ -6,6 +6,8 @@
   Explanation: Replaced the Tailwind size class on the dashboard logo with inline style (`width: 140px`, `height: auto`) so Next can detect both dimensions and stop warning; the rendered size remains 140px wide.
 - [x] Fix Recharts ResponsiveContainer warnings on Overview — Provide explicit positive chart height to avoid initial -1 sizing warnings.
   Explanation: Added a fixed `height={260}` prop to the Overview charts so Recharts sees a positive height before ResizeObserver reports actual width, eliminating the console warnings without changing layout.
+- [x] Reject unsupported `user_id` on task creation/upload — Align backend payloads with external API by removing `user_id` from `/tasks` and `/tasks/batch/upload`.
+  Explanation: External `/tasks` rejects `user_id` (400). Backend now blocks `user_id` query params with a clear 400 and no longer sends `user_id` in the external payload for manual tasks or uploads, while still recording tasks against the authenticated user locally.
 - [x] Overview content — Implemented Overview screen per Figma with typed mock data: stat summary cards, validation donut (Recharts Pie), credit usage line chart, current plan card, verification tasks table with status pills and month selector, profile dropdown. Responsive grid, lucide icons. This is the only built page; other nav items are marked unavailable.
 - [x] Shadcn variant removal — Removed previous shadcn/ui variant to keep a single Tailwind implementation at `/overview` (root `/` redirects). Ensures one canonical path.
 - [ ] Remaining pages — Verify, History, Integrations, API, Pricing, Account need to be built using the shared shell once Figma node details are provided. Use first-principles MVPs, no placeholders.

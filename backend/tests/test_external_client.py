@@ -43,4 +43,4 @@ def test_verify_email_parses_response(monkeypatch):
 def test_upload_rejects_too_large(monkeypatch):
     client = ExternalAPIClient(base_url="https://api.test", bearer_token="key", max_upload_bytes=4)
     with pytest.raises(ExternalAPIError):
-        asyncio.run(client.upload_batch_file(filename="file.txt", content=b"012345", user_id="u1"))
+        asyncio.run(client.upload_batch_file(filename="file.txt", content=b"012345"))

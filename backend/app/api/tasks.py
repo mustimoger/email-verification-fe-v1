@@ -169,21 +169,18 @@ async def create_task(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Manual verification limit exceeded. Maximum is {settings.manual_max_emails} emails.",
         )
+    if user_id:
+        logger.warning(
+            "route.tasks.create.user_id_not_supported",
+            extra={"user_id": user.user_id, "requested_user_id": user_id, "role": user.role},
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="user_id is not supported for manual task creation.",
+        )
     try:
         target_user_id = user.user_id
-        if user_id:
-            if user.role != "admin":
-                logger.warning(
-                    "route.tasks.create.forbidden_user_id",
-                    extra={"user_id": user.user_id, "requested_user_id": user_id},
-                )
-                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin role required")
-            target_user_id = user_id
-            logger.info(
-                "route.tasks.create.admin_scope",
-                extra={"admin_user_id": user.user_id, "target_user_id": target_user_id},
-            )
-        result = await client.create_task(emails=emails, user_id=target_user_id, webhook_url=webhook_url)
+        result = await client.create_task(emails=emails, webhook_url=webhook_url)
         resolved_api_key_id = resolve_task_api_key_id(target_user_id, api_key_id)
         upsert_tasks_from_list(
             target_user_id,
@@ -422,16 +419,13 @@ async def upload_task_file(
     responses: list[BatchFileUploadResponse] = []
     target_user_id = user.user_id
     if user_id:
-        if user.role != "admin":
-            logger.warning(
-                "route.tasks.upload.forbidden_user_id",
-                extra={"user_id": user.user_id, "requested_user_id": user_id},
-            )
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin role required")
-        target_user_id = user_id
-        logger.info(
-            "route.tasks.upload.admin_scope",
-            extra={"admin_user_id": user.user_id, "target_user_id": target_user_id},
+        logger.warning(
+            "route.tasks.upload.user_id_not_supported",
+            extra={"user_id": user.user_id, "requested_user_id": user_id, "role": user.role},
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="user_id is not supported for batch uploads.",
         )
 
     try:
@@ -476,7 +470,6 @@ async def upload_task_file(
             result = await client.upload_batch_file(
                 filename=file.filename or "upload",
                 content=data,
-                user_id=target_user_id,
                 webhook_url=webhook_url,
                 email_column=email_column_value,
             )

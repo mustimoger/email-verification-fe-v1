@@ -98,32 +98,27 @@ def test_tasks_create_forbids_user_id_for_non_admin(monkeypatch):
         return AuthContext(user_id="user-basic", claims={}, token="t", role="user")
 
     class FakeClient:
-        async def create_task(self, emails, user_id=None, webhook_url=None):
+        async def create_task(self, emails, webhook_url=None):
             return TaskResponse(id="task-1", email_count=len(emails))
 
     app = _build_app(monkeypatch, fake_user, FakeClient())
     client = TestClient(app)
     resp = client.post("/api/tasks?user_id=target-user", json={"emails": ["a@test.com"]})
-    assert resp.status_code == 403
+    assert resp.status_code == 400
 
 
-def test_tasks_create_allows_user_id_for_admin(monkeypatch):
+def test_tasks_create_rejects_user_id_for_admin(monkeypatch):
     def fake_user():
         return AuthContext(user_id="admin-1", claims={}, token="t", role="admin")
 
-    captured = []
-
     class FakeClient:
-        async def create_task(self, emails, user_id=None, webhook_url=None):
-            captured.append(user_id)
+        async def create_task(self, emails, webhook_url=None):
             return TaskResponse(id="task-2", email_count=len(emails))
 
     app = _build_app(monkeypatch, fake_user, FakeClient())
     client = TestClient(app)
     resp = client.post("/api/tasks?user_id=target-user", json={"emails": ["a@test.com"]})
-    assert resp.status_code == 200
-    assert resp.json()["id"] == "task-2"
-    assert captured == ["target-user"]
+    assert resp.status_code == 400
 
 
 def test_tasks_upload_forbids_user_id_for_non_admin(monkeypatch):
@@ -134,7 +129,7 @@ def test_tasks_upload_forbids_user_id_for_non_admin(monkeypatch):
         async def list_tasks(self, limit: int, offset: int, user_id: str | None = None):
             return TaskListResponse(count=0, tasks=[])
 
-        async def upload_batch_file(self, filename, content, user_id=None, webhook_url=None, email_column=None):
+        async def upload_batch_file(self, filename, content, webhook_url=None, email_column=None):
             return BatchFileUploadResponse(status="ok", upload_id="u1", task_id="task-1")
 
     app = _build_app(monkeypatch, fake_user, FakeClient())
@@ -146,22 +141,21 @@ def test_tasks_upload_forbids_user_id_for_non_admin(monkeypatch):
             "file_metadata": '[{"file_name":"emails.csv","email_column":"A","first_row_has_labels":true,"remove_duplicates":true}]'
         },
     )
-    assert resp.status_code == 403
+    assert resp.status_code == 400
 
 
-def test_tasks_upload_allows_user_id_for_admin(monkeypatch):
+def test_tasks_upload_rejects_user_id_for_admin(monkeypatch):
     def fake_user():
         return AuthContext(user_id="admin-1", claims={}, token="t", role="admin")
 
-    captured = {"list_user_id": None, "upload_user_id": None, "email_column": None}
+    captured = {"list_user_id": None, "email_column": None}
 
     class FakeClient:
         async def list_tasks(self, limit: int, offset: int, user_id: str | None = None):
             captured["list_user_id"] = user_id
             return TaskListResponse(count=0, tasks=[])
 
-        async def upload_batch_file(self, filename, content, user_id=None, webhook_url=None, email_column=None):
-            captured["upload_user_id"] = user_id
+        async def upload_batch_file(self, filename, content, webhook_url=None, email_column=None):
             captured["email_column"] = email_column
             return BatchFileUploadResponse(status="ok", upload_id="u1", task_id="task-1")
 
@@ -174,6 +168,5 @@ def test_tasks_upload_allows_user_id_for_admin(monkeypatch):
             "file_metadata": '[{"file_name":"emails.csv","email_column":"A","first_row_has_labels":true,"remove_duplicates":true}]'
         },
     )
-    assert resp.status_code == 200
-    assert captured["upload_user_id"] == "target-user"
-    assert captured["email_column"] == "1"
+    assert resp.status_code == 400
+    assert captured["email_column"] is None
