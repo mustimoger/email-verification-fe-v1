@@ -68,6 +68,13 @@ Goal: replace mock data on `/overview` with real per-user data sourced from our 
    - Added backend test for `/api/overview` aggregation logic. ✔
    - Remaining: add frontend checks/tests to ensure Overview renders `verification_totals` + `current_plan`, plus empty/partial states.
 
+10) Overview "Verification Tasks" card data + columns (NEW)
+    - Update UI column headers: "Task Name" (Dashboard vs integration purpose), "Total Emails", "Date", "Valid", "Invalid", "Catch-All", "Status".
+    - Task Name rules: show "Dashboard" for dashboard-origin tasks; otherwise show the integration purpose (Zapier, n8n, Google Sheets, etc.).
+    - External `/tasks` list does NOT include integration/purpose, so we must rely on Supabase `tasks.integration` (or add mapping via `api_key_id` if missing).
+    - Add/extend mapping + unit tests to cover missing integration, dashboard tasks, and catch-all counts.
+    - Document any remaining gaps (e.g., tasks without integration data) and log clearly rather than silently defaulting.
+
 Notes:
 - External task source remains the email verification API; Supabase caches per-user task metadata for aggregation/safety.
 - External API metrics endpoints (`/metrics/verifications`, `/metrics/api-usage`) return lifetime totals by default and range totals when `from`/`to` are provided; they do not return time series.
