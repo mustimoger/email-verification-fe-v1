@@ -36,7 +36,7 @@ export default function VerifyPage() {
   const [flowStage, setFlowStage] = useState<"idle" | "popup1" | "popup2" | "summary">("idle");
   const [columnMapping, setColumnMapping] = useState<Record<string, string>>({});
   const [firstRowHasLabels, setFirstRowHasLabels] = useState<boolean>(true);
-  const [removeDuplicates, setRemoveDuplicates] = useState<boolean>(true);
+  const [removeDuplicates] = useState<boolean>(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [activeDownload, setActiveDownload] = useState<string | null>(null);
@@ -613,7 +613,9 @@ export default function VerifyPage() {
                     <input
                       type="checkbox"
                       checked={removeDuplicates}
-                      onChange={(event) => setRemoveDuplicates(event.target.checked)}
+                      disabled
+                      aria-disabled="true"
+                      className="cursor-not-allowed opacity-70"
                     />
                     Remove duplicate emails
                   </label>
