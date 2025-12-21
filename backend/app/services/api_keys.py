@@ -93,6 +93,32 @@ def get_cached_key_by_id(user_id: str, key_id: str) -> Optional[Dict[str, str]]:
         return None
 
 
+def list_cached_key_integrations(user_id: str) -> Dict[str, str]:
+    """
+    Return a mapping of key_id -> integration for cached API keys.
+    """
+    sb = get_supabase()
+    try:
+        res = (
+            sb.table("cached_api_keys")
+            .select("key_id,integration")
+            .eq("user_id", user_id)
+            .execute()
+        )
+        items: List[Dict[str, str]] = res.data or []
+        mapping: Dict[str, str] = {}
+        for item in items:
+            key_id = item.get("key_id")
+            integration = item.get("integration")
+            if key_id and integration:
+                mapping[key_id] = integration
+        logger.info("api_keys.cache_integration_map", extra={"user_id": user_id, "count": len(mapping)})
+        return mapping
+    except Exception as exc:
+        logger.error("api_keys.cache_integration_map_failed", extra={"error": str(exc), "user_id": user_id})
+        return {}
+
+
 async def resolve_user_api_key(
     user_id: str, desired_name: str, master_client: ExternalAPIClient, purpose: str
 ) -> Tuple[str, str]:

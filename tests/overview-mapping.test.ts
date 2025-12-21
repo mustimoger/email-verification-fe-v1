@@ -1,6 +1,13 @@
 import assert from "node:assert";
 
-import { aggregateValidationCounts, formatOverviewDate, mapOverviewTask, normalizeOverviewStatus } from "../app/overview/utils";
+import {
+  aggregateValidationCounts,
+  buildIntegrationLabelMap,
+  formatOverviewDate,
+  mapOverviewTask,
+  normalizeOverviewStatus,
+  resolveTaskLabel,
+} from "../app/overview/utils";
 import { OverviewResponse } from "../app/lib/api-client";
 
 function run(name: string, fn: () => void) {
@@ -41,6 +48,9 @@ run("aggregateValidationCounts sums task counts", () => {
 });
 
 run("mapOverviewTask maps task fields safely", () => {
+  const labels = buildIntegrationLabelMap([
+    { id: "zapier", label: "Zapier", description: "", icon: null, default_name: null },
+  ]);
   const task = {
     task_id: "t3",
     status: "processing",
@@ -48,17 +58,25 @@ run("mapOverviewTask maps task fields safely", () => {
     valid_count: 4,
     invalid_count: 3,
     catchall_count: 1,
-    integration: "Zapier",
+    integration: "zapier",
     created_at: "2024-03-03T00:00:00Z",
   };
-  const mapped = mapOverviewTask(task);
+  const mapped = mapOverviewTask(task, labels);
   assert.strictEqual(mapped.id, "t3");
   assert.strictEqual(mapped.name, "Zapier");
   assert.strictEqual(mapped.emails, 10);
   assert.strictEqual(mapped.valid, 4);
   assert.strictEqual(mapped.invalid, 3);
+  assert.strictEqual(mapped.catchAll, 1);
   assert.strictEqual(mapped.status, "Running");
   assert.strictEqual(mapped.date, "Mar 03, 2024");
+});
+
+run("resolveTaskLabel prioritizes dashboard and integration labels", () => {
+  const labels = buildIntegrationLabelMap([{ id: "n8n", label: "n8n", description: "", icon: null, default_name: null }]);
+  assert.strictEqual(resolveTaskLabel(undefined, labels), "Dashboard");
+  assert.strictEqual(resolveTaskLabel("dashboard_api", labels), "Dashboard");
+  assert.strictEqual(resolveTaskLabel("n8n", labels), "n8n");
 });
 
 // eslint-disable-next-line no-console

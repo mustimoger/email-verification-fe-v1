@@ -181,6 +181,33 @@ class PaddleAPIClient:
         response = await self._request("GET", "/prices", params=params or None)
         return self._parse_response_generic(response)  # returns dict with data/meta
 
+    async def list_notification_settings(
+        self,
+        after: Optional[str] = None,
+        per_page: Optional[int] = None,
+        active: Optional[bool] = None,
+        traffic_source: Optional[str] = None,
+    ) -> dict:
+        params: Dict[str, Any] = {}
+        if after:
+            params["after"] = after
+        if per_page is not None:
+            params["per_page"] = per_page
+        if active is not None:
+            params["active"] = str(active).lower()
+        if traffic_source:
+            params["traffic_source"] = traffic_source
+        response = await self._request("GET", "/notification-settings", params=params or None)
+        return self._parse_response_generic(response)  # returns dict with data/meta
+
+    async def create_simulation(self, payload: Dict[str, Any]) -> dict:
+        response = await self._request("POST", "/simulations", json=payload)
+        return self._parse_response_generic(response)
+
+    async def create_simulation_run(self, simulation_id: str) -> dict:
+        response = await self._request("POST", f"/simulations/{simulation_id}/runs")
+        return self._parse_response_generic(response)
+
     def _parse_response_generic(self, response: httpx.Response):
         if response.status_code >= 400:
             detail = None

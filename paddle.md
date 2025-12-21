@@ -51,29 +51,36 @@ High priority
    - Status: implemented via checkout-collected addresses (`PADDLE_ADDRESS_MODE=checkout`) so Paddle enforces country-specific fields at checkout; server-default mode remains optional with strict defaults required.
 
 Medium priority
-4) **Subscription lifecycle coverage**
+4) **Simulation-based E2E checkout flow**
+   - Automate sandbox verification of: create transaction → webhook simulation → credits + purchases updated.
+   - Default notification destination description to `ngrok2`, with CLI override for other destinations.
+   - Use a real Supabase user (email lookup) and plan selection by price_id/plan_key for repeatable runs.
+   - Status: implemented.
+   - Implementation: added `backend/scripts/paddle_simulation_e2e.py` to resolve user + plan, create a Paddle transaction via backend logic, create a Paddle simulation targeting the `ngrok2` notification setting, and poll Supabase for purchase + credit updates with explicit logging and failure messages.
+
+5) **Subscription lifecycle coverage**
    - Handle renewals, payment failures, and other subscription events consistently.
    - Ensure idempotent persistence and credit grants remain correct.
    - Status: deferred; not required for one-time credit packs.
 
-5) **Plan price lookup caching**
+6) **Plan price lookup caching**
    - Add short-lived caching for `/api/billing/plans` price fetches to reduce API load.
    - Status: not implemented.
 
-6) **Invoice PDF download links**
+7) **Invoice PDF download links**
    - Add backend endpoint to fetch Paddle invoice PDFs and expose them in account history.
    - Status: not implemented.
 
 Low priority
-7) **Customer portal session**
+8) **Customer portal session**
    - Add backend endpoint to create portal sessions and UI link.
    - Status: not implemented.
 
-8) **Frontend price preview**
+9) **Frontend price preview**
    - Use Paddle price preview to show localized totals before checkout.
    - Status: not implemented.
 
-9) **Backfill checkout email for existing purchases**
+10) **Backfill checkout email for existing purchases**
    - Backfill `billing_purchases.checkout_email` for historical rows by fetching Paddle customer emails.
    - Status: not implemented (optional).
 

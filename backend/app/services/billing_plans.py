@@ -40,6 +40,47 @@ def get_billing_plan_by_price_id(price_id: str, status: Optional[str] = "active"
         return None
 
 
+def get_billing_plan_by_key(plan_key: str, status: Optional[str] = "active") -> Optional[Dict[str, Any]]:
+    sb = get_supabase()
+    try:
+        query = sb.table("billing_plans").select("*").eq("plan_key", plan_key).limit(2)
+        if status:
+            query = query.eq("status", status)
+        res = query.execute()
+        data = res.data or []
+        if not data:
+            return None
+        if len(data) > 1:
+            logger.error("billing_plans.key_not_unique", extra={"plan_key": plan_key, "status": status})
+            return None
+        return data[0]
+    except Exception as exc:  # noqa: BLE001
+        logger.error("billing_plans.get_by_key_failed", extra={"plan_key": plan_key, "status": status, "error": str(exc)})
+        return None
+
+
+def get_billing_plan_by_name(plan_name: str, status: Optional[str] = "active") -> Optional[Dict[str, Any]]:
+    sb = get_supabase()
+    try:
+        query = sb.table("billing_plans").select("*").eq("plan_name", plan_name).limit(2)
+        if status:
+            query = query.eq("status", status)
+        res = query.execute()
+        data = res.data or []
+        if not data:
+            return None
+        if len(data) > 1:
+            logger.error("billing_plans.name_not_unique", extra={"plan_name": plan_name, "status": status})
+            return None
+        return data[0]
+    except Exception as exc:  # noqa: BLE001
+        logger.error(
+            "billing_plans.get_by_name_failed",
+            extra={"plan_name": plan_name, "status": status, "error": str(exc)},
+        )
+        return None
+
+
 def get_billing_plans_by_price_ids(price_ids: List[str]) -> List[Dict[str, Any]]:
     if not price_ids:
         return []

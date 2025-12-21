@@ -74,6 +74,14 @@ Goal: replace mock data on `/overview` with real per-user data sourced from our 
     - External `/tasks` list does NOT include integration/purpose, so we must rely on Supabase `tasks.integration` (or add mapping via `api_key_id` if missing).
     - Add/extend mapping + unit tests to cover missing integration, dashboard tasks, and catch-all counts.
     - Document any remaining gaps (e.g., tasks without integration data) and log clearly rather than silently defaulting.
+    - Update: Implemented frontend mapping + UI columns. The table now shows Total Emails/Date/Catch-All columns, and Task Name resolves via integration list labels with a Dashboard fallback. Added mapping tests to validate dashboard and integration labeling and catch-all counts. Added warnings when integration labels are missing so we don't silently mislabel.
+    - Gap: If a task has no integration data, the UI falls back to "Dashboard" and logs a warning.
+
+11) Backend: enrich Overview tasks with API key integration (NEW)
+    - Fetch cached API keys (id -> integration label) for the user.
+    - When `tasks.integration` is missing, fill it from the matching `api_key_id` so Overview can label non-dashboard tasks.
+    - Do not expose `api_key_id` to the frontend; use it only for enrichment and log when missing/unmapped.
+    - Update: Added cached key integration map helper and used it in task summary to backfill integration from `api_key_id`. We now strip `api_key_id` from the response and log unmapped/missing cases for debugging.
 
 Notes:
 - External task source remains the email verification API; Supabase caches per-user task metadata for aggregation/safety.

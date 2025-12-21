@@ -30,6 +30,18 @@ def fetch_profile(user_id: str) -> Optional[Dict[str, Any]]:
     return data[0] if data else None
 
 
+def fetch_profile_by_email(email: str) -> Optional[Dict[str, Any]]:
+    sb = get_supabase()
+    res = sb.table("profiles").select("*").eq("email", email).limit(2).execute()
+    data: List[Dict[str, Any]] = res.data or []
+    if not data:
+        return None
+    if len(data) > 1:
+        logger.error("supabase.profile.email_not_unique", extra={"email": email, "count": len(data)})
+        return None
+    return data[0]
+
+
 def upsert_profile(
     user_id: str,
     email: Optional[str],

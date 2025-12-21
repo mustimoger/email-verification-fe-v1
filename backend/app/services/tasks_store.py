@@ -5,6 +5,7 @@ from supabase import Client
 
 from ..clients.external import Task, TaskDetailResponse, TaskMetrics
 from .supabase_client import get_supabase
+from .api_keys import list_cached_key_integrations
 from .task_files_store import fetch_task_files
 
 logger = logging.getLogger(__name__)
@@ -173,7 +174,7 @@ def fetch_task_summary(user_id: str, limit: int = 5) -> Dict[str, object]:
     try:
         recent_res = (
             sb.table("tasks")
-            .select("task_id,status,email_count,valid_count,invalid_count,catchall_count,integration,created_at")
+            .select("task_id,status,email_count,valid_count,invalid_count,catchall_count,integration,created_at,api_key_id")
             .eq("user_id", user_id)
             .order("created_at", desc=True)
             .limit(limit)
@@ -183,6 +184,29 @@ def fetch_task_summary(user_id: str, limit: int = 5) -> Dict[str, object]:
     except Exception as exc:  # noqa: BLE001
         logger.error("tasks.summary_recent_failed", extra={"user_id": user_id, "error": str(exc)})
         recent = []
+    if recent:
+        key_integrations = list_cached_key_integrations(user_id)
+        for row in recent:
+            if row.get("integration"):
+                row.pop("api_key_id", None)
+                continue
+            api_key_id = row.get("api_key_id")
+            if not api_key_id:
+                logger.warning(
+                    "tasks.summary_missing_integration",
+                    extra={"user_id": user_id, "task_id": row.get("task_id")},
+                )
+                row.pop("api_key_id", None)
+                continue
+            integration = key_integrations.get(api_key_id)
+            if integration:
+                row["integration"] = integration
+            else:
+                logger.warning(
+                    "tasks.summary_integration_unmapped",
+                    extra={"user_id": user_id, "task_id": row.get("task_id"), "api_key_id": api_key_id},
+                )
+            row.pop("api_key_id", None)
     return {"counts": counts, "recent": recent}
 
 

@@ -17,8 +17,8 @@ import {
 
 import { DashboardShell } from "../components/dashboard-shell";
 import { RequireAuth } from "../components/protected";
-import { apiClient, ApiError, OverviewResponse } from "../lib/api-client";
-import { aggregateValidationCounts, mapOverviewTask, TaskStatus, OverviewTask } from "./utils";
+import { apiClient, ApiError, IntegrationOption, OverviewResponse } from "../lib/api-client";
+import { aggregateValidationCounts, buildIntegrationLabelMap, mapOverviewTask, TaskStatus, OverviewTask } from "./utils";
 
 type Stat = {
   title: string;
@@ -45,6 +45,7 @@ const statusColor: Record<TaskStatus, string> = {
 
 export default function OverviewPage() {
   const [overview, setOverview] = useState<OverviewResponse | null>(null);
+  const [integrationOptions, setIntegrationOptions] = useState<IntegrationOption[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -63,6 +64,19 @@ export default function OverviewPage() {
       }
     };
     void load();
+  }, []);
+
+  useEffect(() => {
+    const loadIntegrations = async () => {
+      try {
+        const options = await apiClient.listIntegrations();
+        setIntegrationOptions(options);
+      } catch (err: unknown) {
+        const message = err instanceof ApiError ? err.message : "Failed to load integrations";
+        console.warn("overview.integrations.failed", { error: message });
+      }
+    };
+    void loadIntegrations();
   }, []);
 
   const validationTotals = useMemo(() => {
@@ -111,10 +125,15 @@ export default function OverviewPage() {
     [overview],
   );
 
+  const integrationLabels = useMemo(
+    () => buildIntegrationLabelMap(integrationOptions),
+    [integrationOptions],
+  );
+
   const tasks: OverviewTask[] = useMemo(() => {
     if (!overview?.recent_tasks) return [];
-    return overview.recent_tasks.map(mapOverviewTask);
-  }, [overview]);
+    return overview.recent_tasks.map((task) => mapOverviewTask(task, integrationLabels));
+  }, [overview, integrationLabels]);
 
   const anyData = overview !== null;
   const currentPlan = overview?.current_plan;
@@ -273,12 +292,13 @@ export default function OverviewPage() {
           </div>
 
           <div className="mt-4 overflow-hidden rounded-xl border border-slate-100">
-            <div className="grid grid-cols-6 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-700">
+            <div className="grid grid-cols-7 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-700">
               <span>Task Name</span>
-              <span>Number Of Emails</span>
-              <span>Date - Time</span>
+              <span>Total Emails</span>
+              <span>Date</span>
               <span className="text-right">Valid</span>
               <span className="text-right">Invalid</span>
+              <span className="text-right">Catch-All</span>
               <span className="text-right">Status</span>
             </div>
             <div className="divide-y divide-slate-100">
@@ -292,7 +312,7 @@ export default function OverviewPage() {
                 tasks.map((task) => (
                   <div
                     key={task.id}
-                    className="grid grid-cols-6 items-center px-4 py-4 text-sm text-slate-800"
+                    className="grid grid-cols-7 items-center px-4 py-4 text-sm text-slate-800"
                   >
                     <span className="font-semibold text-slate-700">{task.name}</span>
                     <span className="font-semibold text-slate-700">
@@ -304,6 +324,9 @@ export default function OverviewPage() {
                     </span>
                     <span className="text-right font-semibold text-slate-700">
                       {task.invalid.toLocaleString()}
+                    </span>
+                    <span className="text-right font-semibold text-slate-700">
+                      {task.catchAll.toLocaleString()}
                     </span>
                     <span className="flex justify-end">
                       <span
