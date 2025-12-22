@@ -111,6 +111,14 @@ Goal: replace mock data on `/overview` with real per-user data sourced from our 
     - Keep UI/UX unchanged; this is backend wiring only.
     Explanation: Overview now checks `useAuth` session + loading before firing the fetch effects, so API calls only occur after session hydration and 401s no longer occur during the initial redirect.
 
+16) Overview: metrics timeout + fallback (NEW)
+    - Add a short, configurable timeout for external `/metrics/verifications` calls so `/api/overview` does not hang on upstream slowdowns.
+    - When metrics are unavailable, fall back to Supabase task counts for `verification_totals` (log clearly that the fallback was used).
+    - Add timing logs for `/api/overview` to pinpoint slow dependencies (Supabase vs external).
+    - Add unit tests for timeout/fallback behavior and one integration test hitting `/api/overview` with a forced external timeout.
+    - Update: Added a configurable `overview_metrics_timeout_seconds` setting and enforced it in `/api/overview` so slow external metrics no longer block the whole payload. Added a Supabase fallback that aggregates valid/invalid/catchall counts when external metrics are unavailable, with explicit logs for timeout/fallback/unavailable cases. Added timing metrics to `overview.fetched` log so we can pinpoint slow dependencies quickly.
+    - Pending: tests for timeout/fallback behavior and `/api/overview` forced-timeout integration test are not implemented yet.
+
 Notes:
 - External task source remains the email verification API; Supabase caches per-user task metadata for aggregation/safety.
 - External API metrics endpoints (`/metrics/verifications`, `/metrics/api-usage`) return lifetime totals by default and range totals when `from`/`to` are provided; they do not return time series.
