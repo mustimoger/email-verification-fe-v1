@@ -135,6 +135,7 @@ export default function OverviewPage() {
   const stats: Stat[] = useMemo(() => {
     const credits = overview?.credits_remaining ?? null;
     const totalVerifications = overview?.usage_total ?? null;
+    const valid = overview?.verification_totals?.valid ?? null;
     const invalid = overview?.verification_totals?.invalid ?? null;
     const catchAll = overview?.verification_totals?.catchall ?? null;
     return [
@@ -144,6 +145,7 @@ export default function OverviewPage() {
         value: totalVerifications !== null ? totalVerifications.toLocaleString() : "—",
         icon: CheckCircle2,
       },
+      { title: "Total Valid", value: valid !== null ? valid.toLocaleString() : "—", icon: CheckCircle2 },
       { title: "Total Invalid", value: invalid !== null ? invalid.toLocaleString() : "—", icon: CircleDollarSign },
       { title: "Total Catch-all", value: catchAll !== null ? catchAll.toLocaleString() : "—", icon: Leaf },
     ];
@@ -210,7 +212,7 @@ export default function OverviewPage() {
   return (
     <DashboardShell>
       <RequireAuth>
-        <section className="mt-4 grid gap-4 lg:grid-cols-4">
+        <section className="mt-4 grid gap-4 lg:grid-cols-5">
           {stats.map((stat) => {
             const Icon = stat.icon;
             return (

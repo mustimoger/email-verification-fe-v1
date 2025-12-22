@@ -97,6 +97,9 @@ Plan (step‑by‑step)
    - For `/tasks/upload`: parse uploads to count rows and reserve before calling external upload.
    - On completion: debit actual processed count and release any remainder.
    - On failure to reserve: return 402 and do not call external API.
+   - Step 10a (PENDING): Add `credit_reserved_count` + `credit_reservation_id` columns to `tasks`.
+   - Step 10b (PENDING): Add `apply_credit_release` RPC to Supabase to support reservation releases.
+   - Step 10c (PENDING): Verify reservation/finalize flows end-to-end and run targeted tests.
 
 Current implementation snapshot
 - Supabase schema:
@@ -120,7 +123,9 @@ Known gaps / risks (must address next)
 - Supabase migrations were applied via MCP (no local migration files), so repo does not capture the SQL.
 
 Next steps (do in order, confirm each step)
-1) Step 10 — Reserve credits upfront for tasks (hard pre‑check).
+1) Step 10a — Add `credit_reserved_count` + `credit_reservation_id` columns to `tasks`.
+2) Step 10b — Add `apply_credit_release` RPC to Supabase.
+3) Step 10c — Verify reservation/finalize flows and run targeted tests.
 2) Optional follow‑ups:
    - Add local migration artifacts for the Supabase RPCs + ledger table if you want repo‑tracked schema.
 

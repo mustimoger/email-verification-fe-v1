@@ -14,6 +14,8 @@
   Explanation: `TaskResponse` lacks `valid/invalid/catchall` counts, so `upsert_tasks_from_list` now uses safe attribute access and only reads metrics if present; added a unit test to ensure TaskResponse inputs upsert cleanly.
 - [x] Overview content — Implemented Overview screen per Figma with typed mock data: stat summary cards, validation donut (Recharts Pie), credit usage line chart, current plan card, verification tasks table with status pills and month selector, profile dropdown. Responsive grid, lucide icons. This is the only built page; other nav items are marked unavailable.
 - [x] Shadcn variant removal — Removed previous shadcn/ui variant to keep a single Tailwind implementation at `/overview` (root `/` redirects). Ensures one canonical path.
+- [x] Overview stats: add Total Valid card — show all-time valid count from external verification metrics in the top stat cards.
+  Explanation: Added a “Total Valid” stat card on `/overview` using `verification_totals.valid` from `/api/overview`, and adjusted the stats grid to five columns on large screens so the new card sits alongside the existing metrics.
 - [ ] Remaining pages — Verify, History, Integrations, API, Pricing, Account need to be built using the shared shell once Figma node details are provided. Use first-principles MVPs, no placeholders.
 - [ ] API integration — Wire UI to FastAPI email verification backend once endpoint schemas/contracts are known. Replace mock data with typed fetch layer + error handling/logging; avoid hardcoded fallbacks.
 - [ ] Testing and staging — Add unit/integration coverage and deploy to staging after MVP pages and API wiring are in place; verify flows end-to-end.
@@ -330,8 +332,12 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
   Explanation: Added client-side request_id caching with force‑new and clear helpers, wired `/verify` calls to include request_id and clear on success, and added unit coverage in `tests/verify-idempotency.test.ts`.
 - [x] Credit enforcement Step 9 — decide whether to mark tasks blocked on insufficient credits.
   Explanation: Decision is to avoid persisted blocked status; rely on 402 until credits are sufficient, so results unlock immediately after purchase without new schema/state.
-- [ ] Credit enforcement Step 10 — reserve credits upfront for tasks (hard pre‑check).
-  Explanation: Pending; pre‑check credits before task creation, reserve by raw row count, and release remainder on completion when actual processed count is known.
+- [ ] Credit enforcement Step 10a — add `credit_reserved_count` + `credit_reservation_id` to `tasks`.
+  Explanation: Pending; add reservation metadata columns so uploads/manual tasks can persist reserved counts and idempotency keys.
+- [ ] Credit enforcement Step 10b — add `apply_credit_release` RPC to Supabase.
+  Explanation: Pending; release reserved credits atomically and idempotently using a ledger-backed RPC.
+- [ ] Credit enforcement Step 10c — verify reservation/finalize flows and run targeted tests.
+  Explanation: Pending; confirm reserve->finalize/release behavior for `/tasks` and `/tasks/upload`, then re-run targeted backend tests.
 - [x] Priority High: Confirm Paddle webhook signature spec and align verification (or use official SDK verifier) with tests.
   Explanation: Aligned verification logic with Paddle’s official SDK implementation (ts + h1 header, HMAC of `ts:raw_body`, optional multi-signature support, time drift checks) and added focused tests. Added `PADDLE_WEBHOOK_MAX_VARIANCE_SECONDS` configuration to avoid hardcoded drift defaults.
 - [x] Priority High: Verify webhook ingress IP handling in current infra and adjust allowlist logic.
