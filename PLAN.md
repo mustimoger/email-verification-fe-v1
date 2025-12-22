@@ -307,6 +307,8 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
   Explanation: Credits should decrement when tasks/verification are accepted; handle retries without double-deduction and reject when insufficient. Deferred per request; not implementing now.
 - [ ] Credit enforcement plan added (design + steps).  
   Explanation: Added `credit-plan.md` to document the agreed credit‑consumption model (debit on completion, hard‑fail on insufficient credits, `/verify` shares pool) and the step‑by‑step implementation plan.
+- [ ] Credit enforcement implementation — add ledger storage, atomic debit, idempotency, and wire to `/verify` + task completion with tests.  
+  Explanation: Step 2 complete — added `credit_ledger` table (idempotent ledger + indexes) so future debits are auditable and cannot double‑apply; remaining steps tracked in `credit-plan.md`.
 - [x] Priority High: Confirm Paddle webhook signature spec and align verification (or use official SDK verifier) with tests.
   Explanation: Aligned verification logic with Paddle’s official SDK implementation (ts + h1 header, HMAC of `ts:raw_body`, optional multi-signature support, time drift checks) and added focused tests. Added `PADDLE_WEBHOOK_MAX_VARIANCE_SECONDS` configuration to avoid hardcoded drift defaults.
 - [x] Priority High: Verify webhook ingress IP handling in current infra and adjust allowlist logic.

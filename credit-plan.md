@@ -10,7 +10,7 @@ Agreed requirements
 
 Plan (step‑by‑step)
 
-1) Define credit debit rules and idempotency keys (MVP)
+1) Define credit debit rules and idempotency keys (MVP) (DONE)
    - Clarify what “completion” means per flow:
      - Manual `/tasks` → when task detail shows finished status and has counts.
      - File `/tasks/upload` → when task detail is available and counts exist.
@@ -24,13 +24,13 @@ Plan (step‑by‑step)
      - For verify: a request UUID or a composite key (user_id + email + timestamp) stored in a dedicated table.
    - Why: prevents double deductions and creates a clean audit trail.
 
-2) Add credit ledger storage (Supabase)
+2) Add credit ledger storage (Supabase) (DONE)
    - Create a `credit_ledger` table (append‑only):
      - `id` (uuid), `user_id`, `source` (purchase|verify|task), `source_id`, `delta`, `created_at`, `meta` jsonb.
      - Unique constraint on `(user_id, source, source_id)` for idempotency.
    - If a ledger table already exists or is preferred elsewhere, use it instead of new schema.
 
-3) Implement atomic debit in Supabase client
+3) Implement atomic debit in Supabase client (PENDING)
    - Add a dedicated function that atomically checks and decrements credits with a single statement.
    - Requirements:
      - Hard‑fail if `credits_remaining < debit_amount`.
@@ -38,7 +38,7 @@ Plan (step‑by‑step)
      - Return updated balance on success.
    - Log failures with explicit reason (insufficient vs other).
 
-4) Enforce credit availability in verification endpoints
+4) Enforce credit availability in verification endpoints (PENDING)
    - `/verify`:
      - On successful external verification result, debit 1 credit (atomic) using the ledger.
      - If debit fails (insufficient), respond with 402/409 and do not return success to the client.
@@ -47,25 +47,26 @@ Plan (step‑by‑step)
      - Introduce a completion handler that pulls actual counts and attempts debit once per task.
      - If debit fails, mark task as blocked/failed and return an error on detail fetch.
 
-5) Task completion detection + debit trigger
+5) Task completion detection + debit trigger (PENDING)
    - When `/tasks/{id}` is fetched and the task is finished with counts available:
      - Attempt credit debit if not already recorded in ledger.
      - If debit succeeds, store ledger entry and continue.
      - If debit fails, return a hard‑fail response (insufficient credits) and log.
    - Ensure this does not re‑debit on subsequent fetches (idempotency key).
 
-6) UI handling for credit‑insufficient responses
+6) UI handling for credit‑insufficient responses (PENDING)
    - Show a clear error message for insufficient credits across manual/file/verify flows.
    - Keep UI layout intact; only update error copy.
 
-7) Tests + verification
+7) Tests + verification (PENDING)
    - Unit tests for atomic debit and ledger idempotency.
    - Integration tests for `/verify` and `/tasks/{id}` debit behavior (success + insufficient).
    - Manual verification: run a verify flow with 0 credits → hard‑fail.
 
 Status
-- Step 1: DONE (documented requirements + plan).
-- Steps 2–7: PENDING.
+- Step 1: DONE (documented requirements + plan; clarified completion-time debit and hard‑fail behavior).
+- Step 2: DONE (added `credit_ledger` table with idempotency index and audit fields for credit events).
+- Steps 3–7: PENDING.
 
 Notes
 - Any stubbed behavior must be replaced by real implementation once schema and APIs are available.
