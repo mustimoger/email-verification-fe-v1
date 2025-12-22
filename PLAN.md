@@ -175,7 +175,8 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
 - [ ] API usage chart — Load `/api/usage/summary` with the selected range/key and render a real chart; keep the total/empty states for cases with no series data.
 
 ## Pricing page
-- [x] Implemented Pricing page per Figma: four tier cards in a grid, each with title, “Credits Never Expire” note, price (last card “Contact Us”), feature list, and “Start Verification” CTA. Shared shell/footer reused; typed feature data for now.
+- [x] Implemented initial Pricing page using `/api/billing/plans` data with shared shell/footer and Paddle checkout CTA.  
+  Explanation: Current UI maps Supabase `billing_plans` into cards with name, credits note, price, and a single “Credits Never Expire” feature. It does **not** yet include the landing-page feature lists or the Custom Pricing card/Contact Us CTA. Alignment work is tracked in `pricing-plan.md`.
 
 ## Account page
 - [x] Implemented Account page per Figma: profile card with avatar, edit link, username/email/password fields, and Update button; purchase history table with invoice download pills; total credits summary card. Uses typed data and shared shell/footer; backend wiring TBD.
