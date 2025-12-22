@@ -90,7 +90,7 @@ Plan (step‑by‑step)
    - Decision: no persisted blocked status; rely on 402 until credits are sufficient.
    - Rationale: avoids new schema/state and allows results to unlock immediately after purchase on retry.
 
-10) Reserve credits upfront for tasks (PENDING)
+10) Reserve credits upfront for tasks (IN PROGRESS)
    - Hard pre‑check before external task creation; reject if credits are insufficient.
    - Reserve credits based on raw row count (not deduped count).
    - For manual `/tasks`: reserve using submitted email count.
@@ -135,7 +135,7 @@ Status
 - Step 7: DONE (added backend unit/integration tests for credit debit status + insufficient credits responses; ran targeted pytest).
 - Step 8: DONE (client now generates/stores request_id per email attempt, passes it to `/verify`, clears on success, and has unit coverage).
 - Step 9: DONE (no persisted blocked status; rely on 402 until credits are sufficient).
-- Step 10: PENDING.
+- Step 10: IN PROGRESS (backend code + tests updated; Supabase migration pending for `credit_reserved_count`, `credit_reservation_id`, and `apply_credit_release` RPC due to MCP auth).
 
 Notes
 - Any stubbed behavior must be replaced by real implementation once schema and APIs are available.

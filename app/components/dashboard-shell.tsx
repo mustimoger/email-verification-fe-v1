@@ -4,7 +4,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  Bell,
   CheckCircle2,
   Clock3,
   Code2,
@@ -160,7 +159,6 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   const [profileName, setProfileName] = useState("Moni Roy");
   const [profileRole, setProfileRole] = useState("");
   const [profileAvatar, setProfileAvatar] = useState<string | undefined>(undefined);
-  const [notifications] = useState(6);
   const authState = resolveAuthState({ loading, hasSession: Boolean(session) });
 
   useEffect(() => {
@@ -325,18 +323,6 @@ export function DashboardShell({ children }: { children: ReactNode }) {
           </button>
 
           <div className="ml-auto flex items-center gap-4">
-            <button
-              type="button"
-              className="relative rounded-full p-2 text-slate-600 transition hover:bg-slate-100"
-              aria-label="Notifications"
-            >
-              <Bell className="h-5 w-5" />
-              {notifications > 0 ? (
-                <span className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-semibold text-white">
-                  {notifications}
-                </span>
-              ) : null}
-            </button>
             <div className="relative" ref={profileRef}>
               <button
                 type="button"

@@ -231,6 +231,51 @@ def fetch_task_summary(user_id: str, limit: int = 5) -> Dict[str, object]:
     return {"counts": counts, "recent": recent}
 
 
+def update_task_reservation(
+    user_id: str,
+    task_id: str,
+    reserved_count: int,
+    reservation_id: str,
+) -> None:
+    sb: Client = get_supabase()
+    payload = {
+        "credit_reserved_count": reserved_count,
+        "credit_reservation_id": reservation_id,
+    }
+    try:
+        sb.table("tasks").update(payload).eq("user_id", user_id).eq("task_id", task_id).execute()
+        logger.info(
+            "tasks.reservation_updated",
+            extra={"user_id": user_id, "task_id": task_id, "reserved_count": reserved_count},
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.error(
+            "tasks.reservation_update_failed",
+            extra={"user_id": user_id, "task_id": task_id, "error": str(exc)},
+        )
+
+
+def fetch_task_credit_reservation(user_id: str, task_id: str) -> Optional[Dict[str, object]]:
+    sb: Client = get_supabase()
+    try:
+        res = (
+            sb.table("tasks")
+            .select("credit_reserved_count,credit_reservation_id")
+            .eq("user_id", user_id)
+            .eq("task_id", task_id)
+            .limit(1)
+            .execute()
+        )
+        data = res.data or []
+        return data[0] if data else None
+    except Exception as exc:  # noqa: BLE001
+        logger.error(
+            "tasks.reservation_fetch_failed",
+            extra={"user_id": user_id, "task_id": task_id, "error": str(exc)},
+        )
+        return None
+
+
 def fetch_tasks_with_counts(
     user_id: str,
     limit: int = 10,

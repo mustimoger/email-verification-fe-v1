@@ -22,17 +22,27 @@ from ..clients.external import (
 )
 from ..core.auth import AuthContext, get_current_user
 from ..core.settings import get_settings
-from ..services.file_processing import _column_letters_to_index
+from ..services.file_processing import FileProcessingError, _column_letters_to_index, parse_emails_from_upload
 from ..services.task_files_store import fetch_task_file, upsert_task_file
 from ..services.tasks_store import (
     counts_from_metrics,
     email_count_from_metrics,
+    fetch_task_credit_reservation,
     fetch_tasks_with_counts,
     upsert_task_from_detail,
     upsert_tasks_from_list,
+    update_task_reservation,
 )
 from ..services.api_keys import INTERNAL_DASHBOARD_KEY_NAME, get_cached_key_by_name
-from ..services.credits import apply_credit_debit, CREDIT_SOURCE_TASK, CREDIT_SOURCE_VERIFY
+from ..services.credits import (
+    apply_credit_debit,
+    apply_credit_release,
+    CREDIT_SOURCE_TASK,
+    CREDIT_SOURCE_TASK_FINALIZE,
+    CREDIT_SOURCE_TASK_RELEASE,
+    CREDIT_SOURCE_TASK_RESERVE,
+    CREDIT_SOURCE_VERIFY,
+)
 from ..services.usage import record_usage
 
 router = APIRouter(prefix="/api", tags=["tasks"])
@@ -249,6 +259,37 @@ async def create_task(
         )
     try:
         target_user_id = user.user_id
+        reserved_count = len(emails)
+        reservation_id = str(uuid.uuid4())
+        reservation = apply_credit_debit(
+            user_id=target_user_id,
+            credits=reserved_count,
+            source=CREDIT_SOURCE_TASK_RESERVE,
+            source_id=reservation_id,
+            meta={"requested_count": reserved_count, "context": "manual"},
+        )
+        reservation_status = reservation.get("status")
+        reservation_applied = reservation_status in ("applied", "duplicate")
+        if reservation_status == "insufficient":
+            logger.warning(
+                "credits.task.reserve_insufficient",
+                extra={"user_id": target_user_id, "requested_count": reserved_count, "reservation_id": reservation_id},
+            )
+            raise HTTPException(status_code=status.HTTP_402_PAYMENT_REQUIRED, detail="Insufficient credits")
+        if reservation_status not in ("applied", "duplicate"):
+            logger.error(
+                "credits.task.reserve_failed",
+                extra={
+                    "user_id": target_user_id,
+                    "requested_count": reserved_count,
+                    "reservation_id": reservation_id,
+                    "status": reservation_status,
+                },
+            )
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Unable to reserve credits for this task",
+            )
         result = await client.create_task(emails=emails, webhook_url=webhook_url)
         resolved_api_key_id = resolve_task_api_key_id(target_user_id, api_key_id)
         upsert_tasks_from_list(
@@ -257,10 +298,28 @@ async def create_task(
             integration=None,
             api_key_id=resolved_api_key_id,
         )
+        if result.id:
+            update_task_reservation(target_user_id, result.id, reserved_count, reservation_id)
         record_usage(target_user_id, path="/tasks", count=len(emails), api_key_id=None)
         logger.info("route.tasks.create", extra={"user_id": target_user_id, "count": len(emails)})
         return result
+    except HTTPException:
+        raise
     except ExternalAPIError as exc:
+        if "reservation_applied" in locals() and reservation_applied:
+            try:
+                apply_credit_release(
+                    user_id=user.user_id,
+                    credits=reserved_count,
+                    source=CREDIT_SOURCE_TASK_RELEASE,
+                    source_id=reservation_id,
+                    meta={"reason": "task_create_failed", "context": "manual"},
+                )
+            except Exception:  # noqa: BLE001
+                logger.exception(
+                    "credits.task.reserve_release_failed",
+                    extra={"user_id": user.user_id, "reservation_id": reservation_id},
+                )
         if exc.status_code in (401, 403):
             logger.warning(
                 "route.tasks.create.unauthorized",
@@ -268,6 +327,23 @@ async def create_task(
             )
             raise HTTPException(status_code=exc.status_code, detail="Not authorized to create tasks")
         raise HTTPException(status_code=exc.status_code, detail=exc.details or exc.args[0])
+    except Exception as exc:  # noqa: BLE001
+        if "reservation_applied" in locals() and reservation_applied:
+            try:
+                apply_credit_release(
+                    user_id=user.user_id,
+                    credits=reserved_count,
+                    source=CREDIT_SOURCE_TASK_RELEASE,
+                    source_id=reservation_id,
+                    meta={"reason": "task_create_exception", "context": "manual"},
+                )
+            except Exception:  # noqa: BLE001
+                logger.exception(
+                    "credits.task.reserve_release_failed",
+                    extra={"user_id": user.user_id, "reservation_id": reservation_id},
+                )
+        logger.exception("route.tasks.create.exception", extra={"user_id": user.user_id, "error": str(exc)})
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Unable to create task") from exc
 
 
 @router.get("/tasks", response_model=TaskListResponse)
@@ -468,6 +544,10 @@ async def get_task_detail(
                 else:
                     counts["invalid"] += 1
         credit_status = None
+        reservation = fetch_task_credit_reservation(user.user_id, task_id)
+        reserved_count = None
+        if reservation and reservation.get("credit_reserved_count") is not None:
+            reserved_count = int(reservation.get("credit_reserved_count"))
         if task_is_complete(result):
             processed_count = resolve_processed_count(result, counts)
             if processed_count is None:
@@ -479,26 +559,63 @@ async def get_task_detail(
                     status_code=status.HTTP_502_BAD_GATEWAY,
                     detail="Unable to determine credit usage for this task",
                 )
-            debit = apply_credit_debit(
-                user_id=user.user_id,
-                credits=processed_count,
-                source=CREDIT_SOURCE_TASK,
-                source_id=task_id,
-                meta={
-                    "processed_count": processed_count,
-                    "valid": counts.get("valid") if counts else None,
-                    "invalid": counts.get("invalid") if counts else None,
-                    "catchall": counts.get("catchall") if counts else None,
-                    "finished_at": result.finished_at,
-                },
-            )
-            credit_status = debit.get("status")
-            if debit.get("status") == "insufficient":
-                logger.warning(
-                    "credits.task.insufficient",
-                    extra={"user_id": user.user_id, "task_id": task_id, "required": processed_count},
+            if reserved_count is not None:
+                delta = processed_count - reserved_count
+                if delta > 0:
+                    debit = apply_credit_debit(
+                        user_id=user.user_id,
+                        credits=delta,
+                        source=CREDIT_SOURCE_TASK_FINALIZE,
+                        source_id=task_id,
+                        meta={
+                            "processed_count": processed_count,
+                            "reserved_count": reserved_count,
+                            "finished_at": result.finished_at,
+                        },
+                    )
+                    credit_status = debit.get("status")
+                    if debit.get("status") == "insufficient":
+                        logger.warning(
+                            "credits.task.insufficient",
+                            extra={"user_id": user.user_id, "task_id": task_id, "required": delta},
+                        )
+                        raise HTTPException(status_code=status.HTTP_402_PAYMENT_REQUIRED, detail="Insufficient credits")
+                elif delta < 0:
+                    release = apply_credit_release(
+                        user_id=user.user_id,
+                        credits=abs(delta),
+                        source=CREDIT_SOURCE_TASK_RELEASE,
+                        source_id=task_id,
+                        meta={
+                            "processed_count": processed_count,
+                            "reserved_count": reserved_count,
+                            "finished_at": result.finished_at,
+                        },
+                    )
+                    credit_status = release.get("status")
+                else:
+                    credit_status = "settled"
+            else:
+                debit = apply_credit_debit(
+                    user_id=user.user_id,
+                    credits=processed_count,
+                    source=CREDIT_SOURCE_TASK,
+                    source_id=task_id,
+                    meta={
+                        "processed_count": processed_count,
+                        "valid": counts.get("valid") if counts else None,
+                        "invalid": counts.get("invalid") if counts else None,
+                        "catchall": counts.get("catchall") if counts else None,
+                        "finished_at": result.finished_at,
+                    },
                 )
-                raise HTTPException(status_code=status.HTTP_402_PAYMENT_REQUIRED, detail="Insufficient credits")
+                credit_status = debit.get("status")
+                if debit.get("status") == "insufficient":
+                    logger.warning(
+                        "credits.task.insufficient",
+                        extra={"user_id": user.user_id, "task_id": task_id, "required": processed_count},
+                    )
+                    raise HTTPException(status_code=status.HTTP_402_PAYMENT_REQUIRED, detail="Insufficient credits")
         if result.jobs is not None:
             upsert_task_from_detail(
                 user.user_id,
@@ -590,36 +707,127 @@ async def upload_task_file(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Duplicate file names detected")
 
     resolved_api_key_id = resolve_task_api_key_id(target_user_id, api_key_id)
+    prepared_uploads = []
     for file in files:
+        metadata = metadata_by_name.get(file.filename or "")
+        if not metadata:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing file metadata")
+        if metadata.remove_duplicates or not metadata.first_row_has_labels:
+            logger.info(
+                "route.tasks.upload.flags_ignored",
+                extra={
+                    "user_id": target_user_id,
+                    "file_name": file.filename,
+                    "remove_duplicates": metadata.remove_duplicates,
+                    "first_row_has_labels": metadata.first_row_has_labels,
+                },
+            )
+        email_column_value, email_column_index = normalize_email_column_mapping(metadata.email_column)
+        data = await file.read()
         try:
-            metadata = metadata_by_name.get(file.filename or "")
-            if not metadata:
-                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing file metadata")
-            if metadata.remove_duplicates or not metadata.first_row_has_labels:
-                logger.info(
-                    "route.tasks.upload.flags_ignored",
-                    extra={
-                        "user_id": target_user_id,
-                        "file_name": file.filename,
-                        "remove_duplicates": metadata.remove_duplicates,
-                        "first_row_has_labels": metadata.first_row_has_labels,
-                    },
-                )
-            email_column_value, email_column_index = normalize_email_column_mapping(metadata.email_column)
-            data = await file.read()
-            result = await client.upload_batch_file(
+            parsed = parse_emails_from_upload(
                 filename=file.filename or "upload",
-                content=data,
+                data=data,
+                email_column=metadata.email_column,
+                first_row_has_labels=metadata.first_row_has_labels,
+                remove_duplicates=False,
+                max_emails=None,
+            )
+        except FileProcessingError as exc:
+            logger.warning(
+                "route.tasks.upload.parse_failed",
+                extra={"user_id": target_user_id, "file_name": file.filename, "details": exc.details},
+            )
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+        reserved_count = len(parsed.emails)
+        reservation_id = str(uuid.uuid4())
+        prepared_uploads.append(
+            {
+                "file": file,
+                "metadata": metadata,
+                "data": data,
+                "email_column_value": email_column_value,
+                "email_column_index": email_column_index,
+                "reserved_count": reserved_count,
+                "reservation_id": reservation_id,
+            }
+        )
+
+    reservations = []
+    for item in prepared_uploads:
+        reservation = apply_credit_debit(
+            user_id=target_user_id,
+            credits=item["reserved_count"],
+            source=CREDIT_SOURCE_TASK_RESERVE,
+            source_id=item["reservation_id"],
+            meta={
+                "requested_count": item["reserved_count"],
+                "context": "upload",
+                "file_name": item["file"].filename,
+            },
+        )
+        status_value = reservation.get("status")
+        if status_value == "insufficient":
+            logger.warning(
+                "credits.task.reserve_insufficient",
+                extra={
+                    "user_id": target_user_id,
+                    "requested_count": item["reserved_count"],
+                    "reservation_id": item["reservation_id"],
+                },
+            )
+            for reserved in reservations:
+                try:
+                    apply_credit_release(
+                        user_id=target_user_id,
+                        credits=reserved["reserved_count"],
+                        source=CREDIT_SOURCE_TASK_RELEASE,
+                        source_id=reserved["reservation_id"],
+                        meta={"reason": "upload_reservation_failed", "context": "upload"},
+                    )
+                except Exception:  # noqa: BLE001
+                    logger.exception(
+                        "credits.task.reserve_release_failed",
+                        extra={"user_id": target_user_id, "reservation_id": reserved["reservation_id"]},
+                    )
+            raise HTTPException(status_code=status.HTTP_402_PAYMENT_REQUIRED, detail="Insufficient credits")
+        if status_value not in ("applied", "duplicate"):
+            logger.error(
+                "credits.task.reserve_failed",
+                extra={
+                    "user_id": target_user_id,
+                    "requested_count": item["reserved_count"],
+                    "reservation_id": item["reservation_id"],
+                    "status": status_value,
+                },
+            )
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Unable to reserve credits for this upload",
+            )
+        reservations.append(item)
+
+    for item in prepared_uploads:
+        try:
+            result = await client.upload_batch_file(
+                filename=item["file"].filename or "upload",
+                content=item["data"],
                 webhook_url=webhook_url,
-                email_column=email_column_value,
+                email_column=item["email_column_value"],
             )
             task_id = result.task_id
             if not task_id:
                 logger.error(
                     "route.tasks.upload.missing_task_id",
-                    extra={"user_id": target_user_id, "file_name": file.filename, "upload_id": result.upload_id},
+                    extra={
+                        "user_id": target_user_id,
+                        "file_name": item["file"].filename,
+                        "upload_id": result.upload_id,
+                    },
                 )
-                raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Task id missing from upload response")
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY, detail="Task id missing from upload response"
+                )
             upsert_tasks_from_list(
                 target_user_id,
                 [
@@ -632,6 +840,12 @@ async def upload_task_file(
                 integration=None,
                 api_key_id=resolved_api_key_id,
             )
+            update_task_reservation(
+                target_user_id,
+                task_id,
+                item["reserved_count"],
+                item["reservation_id"],
+            )
             logger.info(
                 "route.tasks.upload.usage_skipped",
                 extra={"user_id": target_user_id, "task_id": task_id, "reason": "email_count_unknown"},
@@ -639,26 +853,26 @@ async def upload_task_file(
             task_file_id = upsert_task_file(
                 user_id=target_user_id,
                 task_id=task_id,
-                file_name=file.filename or "upload",
-                file_extension=Path(file.filename or "upload").suffix.lower(),
+                file_name=item["file"].filename or "upload",
+                file_extension=Path(item["file"].filename or "upload").suffix.lower(),
                 source_path=None,
-                email_column=metadata.email_column,
-                email_column_index=email_column_index,
-                first_row_has_labels=metadata.first_row_has_labels,
-                remove_duplicates=metadata.remove_duplicates,
+                email_column=item["metadata"].email_column,
+                email_column_index=item["email_column_index"],
+                first_row_has_labels=item["metadata"].first_row_has_labels,
+                remove_duplicates=item["metadata"].remove_duplicates,
             )
             logger.info(
                 "route.tasks.upload",
                 extra={
                     "user_id": target_user_id,
-                    "file_name": file.filename,
+                    "file_name": item["file"].filename,
                     "task_id": task_id,
                     "upload_id": result.upload_id,
                 },
             )
             responses.append(
                 BatchFileUploadResponse(
-                    filename=result.filename or file.filename,
+                    filename=result.filename or item["file"].filename,
                     task_id=task_id,
                     upload_id=result.upload_id,
                     uploaded_at=result.uploaded_at,
@@ -666,13 +880,60 @@ async def upload_task_file(
                     message=result.message,
                 )
             )
+        except HTTPException as exc:
+            try:
+                apply_credit_release(
+                    user_id=target_user_id,
+                    credits=item["reserved_count"],
+                    source=CREDIT_SOURCE_TASK_RELEASE,
+                    source_id=item["reservation_id"],
+                    meta={"reason": "upload_http_exception", "context": "upload"},
+                )
+            except Exception:  # noqa: BLE001
+                logger.exception(
+                    "credits.task.reserve_release_failed",
+                    extra={"user_id": target_user_id, "reservation_id": item["reservation_id"]},
+                )
+            raise exc
         except ExternalAPIError as exc:
+            try:
+                apply_credit_release(
+                    user_id=target_user_id,
+                    credits=item["reserved_count"],
+                    source=CREDIT_SOURCE_TASK_RELEASE,
+                    source_id=item["reservation_id"],
+                    meta={"reason": "upload_failed", "context": "upload"},
+                )
+            except Exception:  # noqa: BLE001
+                logger.exception(
+                    "credits.task.reserve_release_failed",
+                    extra={"user_id": target_user_id, "reservation_id": item["reservation_id"]},
+                )
             if exc.status_code in (401, 403):
                 logger.warning(
                     "route.tasks.upload.unauthorized",
                     extra={"user_id": target_user_id, "status_code": exc.status_code, "details": exc.details},
                 )
             raise HTTPException(status_code=exc.status_code, detail=exc.details or exc.args[0])
+        except Exception as exc:  # noqa: BLE001
+            try:
+                apply_credit_release(
+                    user_id=target_user_id,
+                    credits=item["reserved_count"],
+                    source=CREDIT_SOURCE_TASK_RELEASE,
+                    source_id=item["reservation_id"],
+                    meta={"reason": "upload_exception", "context": "upload"},
+                )
+            except Exception:  # noqa: BLE001
+                logger.exception(
+                    "credits.task.reserve_release_failed",
+                    extra={"user_id": target_user_id, "reservation_id": item["reservation_id"]},
+                )
+            logger.exception(
+                "route.tasks.upload.exception",
+                extra={"user_id": target_user_id, "file_name": item["file"].filename, "error": str(exc)},
+            )
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Unable to upload file") from exc
 
     return responses
 
@@ -716,6 +977,10 @@ async def download_task_results(
                     counts["catchall"] += 1
                 else:
                     counts["invalid"] += 1
+        reservation = fetch_task_credit_reservation(target_user_id, task_id)
+        reserved_count = None
+        if reservation and reservation.get("credit_reserved_count") is not None:
+            reserved_count = int(reservation.get("credit_reserved_count"))
         if task_is_complete(detail):
             processed_count = resolve_processed_count(detail, counts)
             if processed_count is None:
@@ -727,25 +992,58 @@ async def download_task_results(
                     status_code=status.HTTP_502_BAD_GATEWAY,
                     detail="Unable to determine credit usage for this task",
                 )
-            debit = apply_credit_debit(
-                user_id=target_user_id,
-                credits=processed_count,
-                source=CREDIT_SOURCE_TASK,
-                source_id=task_id,
-                meta={
-                    "processed_count": processed_count,
-                    "valid": counts.get("valid") if counts else None,
-                    "invalid": counts.get("invalid") if counts else None,
-                    "catchall": counts.get("catchall") if counts else None,
-                    "finished_at": detail.finished_at,
-                },
-            )
-            if debit.get("status") == "insufficient":
-                logger.warning(
-                    "credits.task.insufficient",
-                    extra={"user_id": target_user_id, "task_id": task_id, "required": processed_count},
+            if reserved_count is not None:
+                delta = processed_count - reserved_count
+                if delta > 0:
+                    debit = apply_credit_debit(
+                        user_id=target_user_id,
+                        credits=delta,
+                        source=CREDIT_SOURCE_TASK_FINALIZE,
+                        source_id=task_id,
+                        meta={
+                            "processed_count": processed_count,
+                            "reserved_count": reserved_count,
+                            "finished_at": detail.finished_at,
+                        },
+                    )
+                    if debit.get("status") == "insufficient":
+                        logger.warning(
+                            "credits.task.insufficient",
+                            extra={"user_id": target_user_id, "task_id": task_id, "required": delta},
+                        )
+                        raise HTTPException(status_code=status.HTTP_402_PAYMENT_REQUIRED, detail="Insufficient credits")
+                elif delta < 0:
+                    apply_credit_release(
+                        user_id=target_user_id,
+                        credits=abs(delta),
+                        source=CREDIT_SOURCE_TASK_RELEASE,
+                        source_id=task_id,
+                        meta={
+                            "processed_count": processed_count,
+                            "reserved_count": reserved_count,
+                            "finished_at": detail.finished_at,
+                        },
+                    )
+            else:
+                debit = apply_credit_debit(
+                    user_id=target_user_id,
+                    credits=processed_count,
+                    source=CREDIT_SOURCE_TASK,
+                    source_id=task_id,
+                    meta={
+                        "processed_count": processed_count,
+                        "valid": counts.get("valid") if counts else None,
+                        "invalid": counts.get("invalid") if counts else None,
+                        "catchall": counts.get("catchall") if counts else None,
+                        "finished_at": detail.finished_at,
+                    },
                 )
-                raise HTTPException(status_code=status.HTTP_402_PAYMENT_REQUIRED, detail="Insufficient credits")
+                if debit.get("status") == "insufficient":
+                    logger.warning(
+                        "credits.task.insufficient",
+                        extra={"user_id": target_user_id, "task_id": task_id, "required": processed_count},
+                    )
+                    raise HTTPException(status_code=status.HTTP_402_PAYMENT_REQUIRED, detail="Insufficient credits")
         if detail.jobs is not None:
             upsert_task_from_detail(
                 target_user_id,

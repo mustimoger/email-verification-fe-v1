@@ -2,6 +2,8 @@
 
 - [x] Baseline setup — Next.js 14 (app router) with TypeScript, Tailwind, ESLint, npm, and alias `@/*`; React Compiler disabled. Clean base to layer dashboard features.
 - [x] Layout shell + theming — Built shared sidebar/topbar shell per Figma: responsive drawer, notifications/profile, Nunito Sans, gradient surface. Sidebar uses `public/logo.png` (BoltRoute) image logo (matches `Screenshot_1.png`), not text. Avatar uses `public/profile-image.png` with fallback initials. Purpose: consistent chrome to reuse across pages.
+- [x] Remove notifications icon from dashboard header — Bell icon is not needed; header should only show the profile menu.
+  Explanation: Removed the notifications bell button and its badge state from `app/components/dashboard-shell.tsx`, leaving the top-right header focused on the profile menu only.
 - [x] Fix Next/Image logo aspect warning — Set explicit width + auto height on the dashboard logo image so CSS sizing preserves the aspect ratio.
   Explanation: Replaced the Tailwind size class on the dashboard logo with inline style (`width: 140px`, `height: auto`) so Next can detect both dimensions and stop warning; the rendered size remains 140px wide.
 - [x] Fix Recharts ResponsiveContainer warnings on Overview — Provide explicit positive chart height to avoid initial -1 sizing warnings.
