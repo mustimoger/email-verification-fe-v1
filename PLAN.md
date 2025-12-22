@@ -181,6 +181,10 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
   Explanation: Confirms features/CTA labels will be data-driven (not hardcoded) and sets the baseline for adding a Custom Pricing card. A pending decision remains on how to store Custom Pricing within `billing_plans` given non-null Paddle columns; see `pricing-plan.md` Step 3.
 - [x] Custom Pricing storage strategy defined + catalog seeded in Supabase.  
   Explanation: Added a display-only `billing_plans` row (`plan_key=custom_pricing`, synthetic IDs) with `custom_data.cta_action="contact"` plus feature list and display price. Existing plans now include `cta_action="checkout"` and `cta_label` in `custom_data`. Backend now blocks `/api/billing/transactions` when the plan’s `cta_action` is not `checkout`, preventing Paddle checkout for non-purchasable plans.
+- [x] Pricing features now data-driven from Supabase `custom_data`.  
+  Explanation: Updated Basic/Professional/Enterprise `custom_data.subtitle` + `custom_data.features` and wired `/pricing` to render subtitle + feature list from metadata without hardcoded fallback text. Custom Pricing remains hidden until Step 5.
+- [x] Custom Pricing card enabled in dashboard `/pricing`.  
+  Explanation: Pricing UI now renders all plans sorted by `custom_data.sort_order`, including the display-only Custom Pricing card with “Contact Us” label and feature list. CTA clicks log intent without triggering checkout, keeping behavior neutral until you decide next steps.
 
 ## Account page
 - [x] Implemented Account page per Figma: profile card with avatar, edit link, username/email/password fields, and Update button; purchase history table with invoice download pills; total credits summary card. Uses typed data and shared shell/footer; backend wiring TBD.
@@ -318,6 +322,10 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
   Explanation: Verify now surfaces server‑provided 402 detail in manual polling, file detail fetches, and download errors without changing layout, and logs missing detail. Added unit coverage for error detail extraction in `tests/verify-mapping.test.ts`.
 - [x] Credit enforcement Step 7 — backend unit + integration tests for debit/idempotency and insufficient credits.
   Explanation: Added backend unit tests for `apply_credit_debit` status handling and FastAPI integration tests for `/api/verify` + `/api/tasks/{id}` returning 402 on insufficient credits. Ran targeted pytest with venv activated.
+- [x] Credit enforcement Step 8 — frontend request_id for `/verify` idempotency.
+  Explanation: Added client-side request_id caching with force‑new and clear helpers, wired `/verify` calls to include request_id and clear on success, and added unit coverage in `tests/verify-idempotency.test.ts`.
+- [ ] Credit enforcement Step 9 — decide whether to mark tasks blocked on insufficient credits.
+  Explanation: Pending; decide on storing a blocked status/flag in Supabase tasks when debits fail and, if approved, persist it during task detail/download handling.
 - [x] Priority High: Confirm Paddle webhook signature spec and align verification (or use official SDK verifier) with tests.
   Explanation: Aligned verification logic with Paddle’s official SDK implementation (ts + h1 header, HMAC of `ts:raw_body`, optional multi-signature support, time drift checks) and added focused tests. Added `PADDLE_WEBHOOK_MAX_VARIANCE_SECONDS` configuration to avoid hardcoded drift defaults.
 - [x] Priority High: Verify webhook ingress IP handling in current infra and adjust allowlist logic.

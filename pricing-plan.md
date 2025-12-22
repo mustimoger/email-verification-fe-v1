@@ -25,15 +25,14 @@ Plan (step-by-step)
    - Storage approach: add a display-only row in `billing_plans` with synthetic IDs and `cta_action="contact"`, and update backend to block checkout when `cta_action` is not `checkout`.
    - Why: ensures the Custom Pricing card is data-driven without breaking Paddle checkout or schema constraints.
 
-4) Add feature details to each plan (MVP)
-   - Populate `custom_data.features` for Basic/Professional/Enterprise with the landing-page feature lists.
-   - Render the feature list in each card while preserving existing layout and typography.
+4) Add feature details to each plan (MVP) (DONE)
+   - Populated `custom_data.subtitle` + `custom_data.features` for Basic/Professional/Enterprise in `billing_plans`.
+   - Pricing UI now renders subtitle + feature list from `custom_data` (no hardcoded fallback text).
    - Why: matches dashboard pricing with landing page without altering general UI structure.
 
-5) Add Custom Pricing plan (MVP)
-   - Add a fourth card for “Custom Pricing” with “Contact Us” pricing text.
-   - Include its feature list (1M+ Credits, 24/7 Chat Support, Real-time API, All Integrations, CSV/Excel Upload, Advanced Analytics).
-   - Add a “Contact Us” button (no Paddle wiring yet) and keep CTA behavior neutral.
+5) Add Custom Pricing plan (MVP) (DONE)
+   - The pricing grid now renders all plans (sorted by `custom_data.sort_order`), including the display-only `custom_pricing` row.
+   - Custom Pricing card shows “Contact Us” price text, feature list, and a Contact Us CTA that logs intent without checkout wiring.
    - Why: completes parity with landing page while avoiding premature backend wiring.
 
 6) Verify layout + responsiveness (MVP)
@@ -45,8 +44,8 @@ Status
 - Step 1: DONE
 - Step 2: DONE
 - Step 3: DONE
-- Step 4: PENDING
-- Step 5: PENDING
+- Step 4: DONE
+- Step 5: DONE
 - Step 6: PENDING
 
 Notes

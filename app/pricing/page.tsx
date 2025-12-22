@@ -2,26 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Script from "next/script";
+import { Check } from "lucide-react";
 
 import { getBillingClient } from "../lib/paddle";
 import { ApiError, billingApi } from "../lib/api-client";
 
 import { DashboardShell } from "../components/dashboard-shell";
-
-type Feature = { label: string };
-
-type Plan = {
-  id: string;
-  name: string;
-  price: string;
-  creditsNote: string;
-  features: Feature[];
-  cta: string;
-  priceId: string;
-  credits?: number;
-  amount?: number;
-  currency?: string;
-};
+import { mapPricingPlans, sortPricingPlans, type PricingPlan } from "./utils";
 
 export default function PricingPage() {
   const [loading, setLoading] = useState(true);
@@ -29,7 +16,7 @@ export default function PricingPage() {
   const [checkoutScript, setCheckoutScript] = useState<string | null>(null);
   const [clientSideToken, setClientSideToken] = useState<string | null>(null);
   const [environment, setEnvironment] = useState<"sandbox" | "production" | undefined>(undefined);
-  const [plans, setPlans] = useState<Plan[]>([]);
+  const [plans, setPlans] = useState<PricingPlan[]>([]);
 
   useEffect(() => {
     let isMounted = true;
@@ -45,24 +32,7 @@ export default function PricingPage() {
           setEnvironment(resp.status);
         }
 
-        const mapped: Plan[] = resp.plans.map((plan) => {
-          // pick the first price entry for display
-          const priceEntry = Object.values(plan.prices)[0];
-          const credits = typeof priceEntry.metadata?.credits === "number" ? priceEntry.metadata.credits : undefined;
-          return {
-            id: plan.name,
-            name: plan.name,
-            price: formatPrice(priceEntry.amount, priceEntry.currency_code),
-            priceId: priceEntry.price_id,
-            creditsNote: plan.metadata?.credits ? `${plan.metadata.credits} Credits` : "Credits Never Expire",
-            features: [{ label: "Credits Never Expire" }],
-            cta: "Start Verification",
-            credits,
-            amount: priceEntry.amount,
-            currency: priceEntry.currency_code,
-          };
-        });
-        setPlans(mapped);
+        setPlans(mapPricingPlans(resp.plans));
       } catch (err) {
         const message = err instanceof ApiError ? `${err.status}: ${err.message}` : "Failed to load plans";
         console.error("[pricing] load plans failed", err);
@@ -77,9 +47,9 @@ export default function PricingPage() {
     };
   }, []);
 
-  const tierCards = useMemo(() => plans, [plans]);
+  const tierCards = useMemo(() => sortPricingPlans(plans), [plans]);
 
-  const handleCheckout = async (plan: Plan) => {
+  const handleCheckout = async (plan: PricingPlan) => {
     if (!clientSideToken || !checkoutScript) {
       console.warn("[pricing] checkout not enabled");
       return;
@@ -95,6 +65,22 @@ export default function PricingPage() {
     }
   };
 
+  const handleContact = (plan: PricingPlan) => {
+    console.info("[pricing] contact_requested", { plan_name: plan.name, price_id: plan.priceId });
+  };
+
+  const handleCta = (plan: PricingPlan) => {
+    if (plan.ctaAction === "checkout") {
+      void handleCheckout(plan);
+      return;
+    }
+    if (plan.ctaAction === "contact") {
+      handleContact(plan);
+      return;
+    }
+    console.warn("[pricing] cta_action_unknown", { plan_name: plan.name, cta_action: plan.ctaAction });
+  };
+
   return (
     <DashboardShell>
       <section className="grid gap-6 lg:grid-cols-4">
@@ -105,30 +91,39 @@ export default function PricingPage() {
           >
             <div className="text-center">
               <p className="text-sm font-extrabold text-slate-800">{plan.name}</p>
-              <p className="mt-1 text-xs font-semibold text-slate-500">
-                {plan.creditsNote}
-              </p>
-              <p className="mt-3 text-3xl font-extrabold text-sky-600">{plan.price}</p>
+              {plan.subtitle ? (
+                <p className="mt-1 text-xs font-semibold text-slate-500">
+                  {plan.subtitle}
+                </p>
+              ) : null}
+              {plan.price ? (
+                <p className="mt-3 text-3xl font-extrabold text-sky-600">{plan.price}</p>
+              ) : null}
             </div>
 
             <div className="my-4 h-px w-full bg-slate-100" />
 
-            <ul className="flex flex-1 flex-col gap-3 text-center text-sm font-semibold text-slate-700">
+            <ul className="flex flex-1 flex-col gap-3 text-sm font-semibold text-slate-700">
               {plan.features.map((feature) => (
-                <li key={feature.label}>{feature.label}</li>
+                <li key={feature} className="flex items-start gap-2 text-left">
+                  <Check className="mt-0.5 h-4 w-4 text-slate-700" aria-hidden="true" />
+                  <span>{feature}</span>
+                </li>
               ))}
             </ul>
 
-            <div className="mt-6 flex justify-center">
-              <button
-                type="button"
-                className="rounded-full border border-sky-500 px-6 py-2 text-sm font-semibold text-sky-600 transition hover:bg-sky-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 disabled:cursor-not-allowed disabled:opacity-60"
-                onClick={() => handleCheckout(plan)}
-                disabled={loading || !!error}
-              >
-                {plan.cta}
-              </button>
-            </div>
+            {plan.ctaLabel ? (
+              <div className="mt-6 flex justify-center">
+                <button
+                  type="button"
+                  className="rounded-full border border-sky-500 px-6 py-2 text-sm font-semibold text-sky-600 transition hover:bg-sky-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 disabled:cursor-not-allowed disabled:opacity-60"
+                  onClick={() => handleCta(plan)}
+                  disabled={loading || !!error || !plan.ctaAction}
+                >
+                  {plan.ctaLabel}
+                </button>
+              </div>
+            ) : null}
           </div>
         ))}
       </section>
@@ -139,15 +134,3 @@ export default function PricingPage() {
     </DashboardShell>
   );
 }
-  const formatPrice = (amount?: number, currency?: string) => {
-    if (amount == null || !currency) return "Price unavailable";
-    try {
-      return new Intl.NumberFormat(undefined, {
-        style: "currency",
-        currency,
-        minimumFractionDigits: 2,
-      }).format(amount / 100);
-    } catch {
-      return `${currency} ${amount / 100}`;
-    }
-  };

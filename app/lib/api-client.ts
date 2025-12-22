@@ -1,6 +1,7 @@
 type HttpMethod = "GET" | "POST" | "DELETE" | "PATCH";
 
 import { getSupabaseBrowserClient } from "./supabase-browser";
+import { clearVerifyRequestId, getVerifyRequestId } from "./verify-idempotency";
 
 export class ApiError extends Error {
   status: number;
@@ -437,7 +438,17 @@ const downloadFile = async (path: string, fallbackFileName: string) => {
 };
 
 export const apiClient = {
-  verifyEmail: (email: string) => request<VerifyEmailResponse>("/verify", { method: "POST", body: { email } }),
+  verifyEmail: async (email: string, requestId?: string) => {
+    const resolvedRequestId = requestId ?? getVerifyRequestId(email);
+    const result = await request<VerifyEmailResponse>("/verify", {
+      method: "POST",
+      body: { email, request_id: resolvedRequestId },
+    });
+    if (!requestId) {
+      clearVerifyRequestId(email);
+    }
+    return result;
+  },
   createTask: (emails: string[], webhook_url?: string) =>
     request<TaskResponse>("/tasks", { method: "POST", body: { emails, webhook_url } }),
   listTasks: (limit = 10, offset = 0, apiKeyId?: string, refresh?: boolean) => {

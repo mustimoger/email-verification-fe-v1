@@ -80,6 +80,16 @@ Plan (step‑by‑step)
    - Prefer FastAPI TestClient + dependency overrides; avoid external API calls.
    Explanation: Added backend unit coverage for `apply_credit_debit` status handling, plus FastAPI integration tests confirming `/api/verify` and `/api/tasks/{id}` return 402 on insufficient credits. Ran targeted pytest with venv activated.
 
+8) Frontend request_id for `/verify` idempotency (DONE)
+   - Generate a stable request_id per verification attempt on the client.
+   - Include request_id in `/verify` payloads to prevent double‑debits on retries.
+   - Ensure a new request_id is used for a new attempt.
+   Explanation: Added a client-side request_id cache with explicit force‑new and clear helpers, wired `/verify` calls to include request_id and clear on success, and added unit coverage in `tests/verify-idempotency.test.ts`.
+
+9) Decide whether to mark tasks as blocked on insufficient credits (PENDING)
+   - Decide if task rows in Supabase should store a blocked status or flag when debits fail.
+   - If yes, define the status/field and update task detail/download handling to persist it.
+
 Current implementation snapshot
 - Supabase schema:
   - `credit_ledger` table created with idempotent `(user_id, source, source_id)` constraint.
@@ -97,16 +107,13 @@ Current implementation snapshot
   - `TaskDetailResponse` now includes `metrics` so completion detection can use progress/job_status.
 
 Known gaps / risks (must address next)
-- Tests for debit/idempotency and insufficient cases are missing (Step 7).
-- `/verify` idempotency: if the client does not send `request_id`, server generates one; retries may still double‑debit for the same email unless the client sends a stable `request_id`.
 - Task status updates on insufficient credits are not implemented; task detail currently hard‑fails without persisting a blocked status.
 - `backend/app/api/tasks.py` is 790 lines (>600). Consider refactor if required.
 - Supabase migrations were applied via MCP (no local migration files), so repo does not capture the SQL.
 
 Next steps (do in order, confirm each step)
-1) Optional follow‑ups:
-   - Add a stable `request_id` from the frontend for `/verify` to ensure idempotency.
-   - Decide whether to mark tasks as blocked in Supabase on insufficient credits.
+1) Step 9 — Decide whether to mark tasks as blocked in Supabase on insufficient credits.
+2) Optional follow‑ups:
    - Add local migration artifacts for the Supabase RPCs + ledger table if you want repo‑tracked schema.
 
 Status
@@ -118,6 +125,8 @@ Status
 - Step 5: DONE (task detail/download now debit on completion using processed counts and block when credits are insufficient or counts are unavailable).
 - Step 6: DONE (Verify UI now surfaces 402 detail for manual/file/download flows using a shared error resolver; added unit coverage for error detail extraction).
 - Step 7: DONE (added backend unit/integration tests for credit debit status + insufficient credits responses; ran targeted pytest).
+- Step 8: DONE (client now generates/stores request_id per email attempt, passes it to `/verify`, clears on success, and has unit coverage).
+- Step 9: PENDING.
 
 Notes
 - Any stubbed behavior must be replaced by real implementation once schema and APIs are available.
