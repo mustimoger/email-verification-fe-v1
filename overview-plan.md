@@ -119,6 +119,12 @@ Goal: replace mock data on `/overview` with real per-user data sourced from our 
     - Update: Added a configurable `overview_metrics_timeout_seconds` setting and enforced it in `/api/overview` so slow external metrics no longer block the whole payload. Added a Supabase fallback that aggregates valid/invalid/catchall counts when external metrics are unavailable, with explicit logs for timeout/fallback/unavailable cases. Added timing metrics to `overview.fetched` log so we can pinpoint slow dependencies quickly.
     - Pending: tests for timeout/fallback behavior and `/api/overview` forced-timeout integration test are not implemented yet.
 
+17) Overview: validation chart hover note (NEW)
+    - Add a subtle helper note in the Validation card to tell users to hover the chart to see counts since labels are hidden.
+    - Keep typography/spacing consistent with the existing card style and ensure it works on mobile.
+    - Update: Added a centered, subtle helper line under the Validation chart that instructs users to hover for exact numbers. Kept the sizing and color consistent with other helper text so the card design remains unchanged across breakpoints.
+    - Tests: `npm run test:overview`, `npm run test:history`, `npm run test:auth-guard`, `npm run test:account-purchases`.
+
 Notes:
 - External task source remains the email verification API; Supabase caches per-user task metadata for aggregation/safety.
 - External API metrics endpoints (`/metrics/verifications`, `/metrics/api-usage`) return lifetime totals by default and range totals when `from`/`to` are provided; they do not return time series.

@@ -280,6 +280,11 @@ export default function OverviewPage() {
               </div>
             )}
           </div>
+          {validationHasData ? (
+            <p className="mt-3 text-center text-xs font-semibold text-slate-500">
+              Hover the chart to see exact numbers.
+            </p>
+          ) : null}
         </div>
 
           <div className="rounded-2xl bg-white p-5 shadow-md ring-1 ring-slate-100">
