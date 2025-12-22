@@ -185,6 +185,8 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
   Explanation: Updated Basic/Professional/Enterprise `custom_data.subtitle` + `custom_data.features` and wired `/pricing` to render subtitle + feature list from metadata without hardcoded fallback text. Custom Pricing remains hidden until Step 5.
 - [x] Custom Pricing card enabled in dashboard `/pricing`.  
   Explanation: Pricing UI now renders all plans sorted by `custom_data.sort_order`, including the display-only Custom Pricing card with “Contact Us” label and feature list. CTA clicks log intent without triggering checkout, keeping behavior neutral until you decide next steps.
+- [ ] Pricing layout verification (responsive) pending.  
+  Explanation: Attempted Playwright verification but auth redirected to `/signin` due to `Invalid Refresh Token` (401 on `/api/billing/plans`). Need a fresh localStorage session token to verify desktop/mobile layout.
 
 ## Account page
 - [x] Implemented Account page per Figma: profile card with avatar, edit link, username/email/password fields, and Update button; purchase history table with invoice download pills; total credits summary card. Uses typed data and shared shell/footer; backend wiring TBD.

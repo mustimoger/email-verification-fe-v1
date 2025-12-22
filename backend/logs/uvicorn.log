@@ -403,3 +403,403 @@
 2025-12-22 18:36:41,446 INFO app.services.usage usage.recorded
 2025-12-22 18:36:41,446 INFO uvicorn.access 127.0.0.1:53930 - "GET /api/account/purchases HTTP/1.1" 200
 2025-12-22 18:36:41,446 INFO uvicorn.access 127.0.0.1:53922 - "GET /api/account/credits HTTP/1.1" 200
+2025-12-22 18:45:00,549 INFO app.core.auth auth.missing_token
+2025-12-22 18:45:00,549 INFO uvicorn.access 127.0.0.1:48908 - "GET /api/billing/plans HTTP/1.1" 401
+2025-12-22 18:45:27,733 INFO uvicorn.access 127.0.0.1:43124 - "OPTIONS /api/account/profile HTTP/1.1" 200
+2025-12-22 18:45:27,868 INFO uvicorn.access 127.0.0.1:43130 - "OPTIONS /api/account/profile HTTP/1.1" 200
+2025-12-22 18:45:27,873 INFO uvicorn.access 127.0.0.1:43156 - "OPTIONS /api/account/purchases HTTP/1.1" 200
+2025-12-22 18:45:27,876 INFO uvicorn.access 127.0.0.1:43164 - "OPTIONS /api/account/credits HTTP/1.1" 200
+2025-12-22 18:45:27,982 INFO httpx HTTP Request: GET https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/profiles?select=%2A&user_id=eq.804f8cca-a1c0-4f92-90b7-b7f27eab91a1&limit=1 "HTTP/2 200 OK"
+2025-12-22 18:45:28,039 INFO httpx HTTP Request: GET https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/profiles?select=%2A&user_id=eq.804f8cca-a1c0-4f92-90b7-b7f27eab91a1&limit=1 "HTTP/2 200 OK"
+2025-12-22 18:45:28,039 INFO app.api.account account.profile.fetched
+2025-12-22 18:45:28,040 INFO app.api.account account.profile.fetched
+2025-12-22 18:45:28,178 INFO httpx HTTP Request: POST https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/api_usage "HTTP/2 201 Created"
+2025-12-22 18:45:28,178 INFO httpx HTTP Request: POST https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/api_usage "HTTP/2 201 Created"
+2025-12-22 18:45:28,178 INFO app.services.usage usage.recorded
+2025-12-22 18:45:28,179 INFO app.services.usage usage.recorded
+2025-12-22 18:45:28,179 INFO uvicorn.access 127.0.0.1:43146 - "GET /api/account/profile HTTP/1.1" 200
+2025-12-22 18:45:28,179 INFO uvicorn.access 127.0.0.1:43118 - "GET /api/account/profile HTTP/1.1" 200
+2025-12-22 18:45:28,402 INFO httpx HTTP Request: GET https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/profiles?select=%2A&user_id=eq.804f8cca-a1c0-4f92-90b7-b7f27eab91a1&limit=1 "HTTP/2 200 OK"
+2025-12-22 18:45:28,403 INFO app.api.account account.profile.fetched
+2025-12-22 18:45:28,485 INFO httpx HTTP Request: POST https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/api_usage "HTTP/2 201 Created"
+2025-12-22 18:45:28,486 INFO app.services.usage usage.recorded
+2025-12-22 18:45:28,486 INFO uvicorn.access 127.0.0.1:43146 - "GET /api/account/profile HTTP/1.1" 200
+2025-12-22 18:45:28,534 INFO httpx HTTP Request: GET https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/billing_purchases?select=%2A&user_id=eq.804f8cca-a1c0-4f92-90b7-b7f27eab91a1&order=purchased_at.desc%2Ccreated_at.desc "HTTP/2 200 OK"
+2025-12-22 18:45:28,534 INFO app.api.account account.purchases.fetched
+2025-12-22 18:45:28,612 INFO httpx HTTP Request: POST https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/api_usage "HTTP/2 201 Created"
+2025-12-22 18:45:28,612 INFO app.services.usage usage.recorded
+2025-12-22 18:45:28,612 INFO uvicorn.access 127.0.0.1:43118 - "GET /api/account/purchases HTTP/1.1" 200
+2025-12-22 18:45:29,156 INFO httpx HTTP Request: GET https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/user_credits?select=%2A&user_id=eq.804f8cca-a1c0-4f92-90b7-b7f27eab91a1&limit=1 "HTTP/2 200 OK"
+2025-12-22 18:45:29,156 INFO app.api.account account.credits.fetched
+2025-12-22 18:45:29,246 INFO httpx HTTP Request: POST https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/api_usage "HTTP/2 201 Created"
+2025-12-22 18:45:29,246 INFO app.services.usage usage.recorded
+2025-12-22 18:45:29,246 INFO uvicorn.access 127.0.0.1:43182 - "GET /api/account/credits HTTP/1.1" 200
+2025-12-22 18:46:57,131 INFO uvicorn.access 127.0.0.1:50960 - "OPTIONS /api/account/credits HTTP/1.1" 200
+2025-12-22 18:46:57,174 INFO uvicorn.access 127.0.0.1:50976 - "OPTIONS /api/account/purchases HTTP/1.1" 200
+2025-12-22 18:46:57,239 INFO uvicorn.access 127.0.0.1:50978 - "OPTIONS /api/account/profile HTTP/1.1" 200
+2025-12-22 18:46:57,240 INFO uvicorn.access 127.0.0.1:50988 - "OPTIONS /api/account/profile HTTP/1.1" 200
+2025-12-22 18:46:57,293 INFO httpx HTTP Request: GET https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/profiles?select=%2A&user_id=eq.804f8cca-a1c0-4f92-90b7-b7f27eab91a1&limit=1 "HTTP/2 200 OK"
+2025-12-22 18:46:57,293 INFO app.api.account account.profile.fetched
+2025-12-22 18:46:57,390 INFO httpx HTTP Request: POST https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/api_usage "HTTP/2 201 Created"
+2025-12-22 18:46:57,434 INFO httpx HTTP Request: GET https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/user_credits?select=%2A&user_id=eq.804f8cca-a1c0-4f92-90b7-b7f27eab91a1&limit=1 "HTTP/2 200 OK"
+2025-12-22 18:46:57,434 INFO app.services.usage usage.recorded
+2025-12-22 18:46:57,435 INFO app.api.account account.credits.fetched
+2025-12-22 18:46:57,436 INFO uvicorn.access 127.0.0.1:50958 - "GET /api/account/profile HTTP/1.1" 200
+2025-12-22 18:46:57,542 INFO httpx HTTP Request: POST https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/api_usage "HTTP/2 201 Created"
+2025-12-22 18:46:57,543 INFO app.services.usage usage.recorded
+2025-12-22 18:46:57,543 INFO uvicorn.access 127.0.0.1:50992 - "GET /api/account/credits HTTP/1.1" 200
+2025-12-22 18:46:57,670 INFO httpx HTTP Request: GET https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/billing_purchases?select=%2A&user_id=eq.804f8cca-a1c0-4f92-90b7-b7f27eab91a1&order=purchased_at.desc%2Ccreated_at.desc "HTTP/2 200 OK"
+2025-12-22 18:46:57,670 INFO app.api.account account.purchases.fetched
+2025-12-22 18:46:57,762 INFO httpx HTTP Request: POST https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/api_usage "HTTP/2 201 Created"
+2025-12-22 18:46:57,768 INFO httpx HTTP Request: GET https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/profiles?select=%2A&user_id=eq.804f8cca-a1c0-4f92-90b7-b7f27eab91a1&limit=1 "HTTP/2 200 OK"
+2025-12-22 18:46:57,770 INFO app.services.usage usage.recorded
+2025-12-22 18:46:57,770 INFO uvicorn.access 127.0.0.1:50958 - "GET /api/account/purchases HTTP/1.1" 200
+2025-12-22 18:46:57,770 INFO app.api.account account.profile.fetched
+2025-12-22 18:46:57,852 INFO httpx HTTP Request: POST https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/api_usage "HTTP/2 201 Created"
+2025-12-22 18:46:57,853 INFO app.services.usage usage.recorded
+2025-12-22 18:46:57,853 INFO uvicorn.access 127.0.0.1:50992 - "GET /api/account/profile HTTP/1.1" 200
+2025-12-22 18:46:58,366 INFO httpx HTTP Request: GET https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/profiles?select=%2A&user_id=eq.804f8cca-a1c0-4f92-90b7-b7f27eab91a1&limit=1 "HTTP/2 200 OK"
+2025-12-22 18:46:58,366 INFO app.api.account account.profile.fetched
+2025-12-22 18:46:58,445 INFO httpx HTTP Request: POST https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/api_usage "HTTP/2 201 Created"
+2025-12-22 18:46:58,446 INFO app.services.usage usage.recorded
+2025-12-22 18:46:58,446 INFO uvicorn.access 127.0.0.1:51010 - "GET /api/account/profile HTTP/1.1" 200
+2025-12-22 18:47:07,557 INFO uvicorn.error Shutting down
+2025-12-22 18:47:07,557 INFO uvicorn.error Shutting down
+2025-12-22 18:47:07,658 INFO uvicorn.error Waiting for application shutdown.
+2025-12-22 18:47:07,658 INFO uvicorn.error Waiting for application shutdown.
+2025-12-22 18:47:07,659 INFO uvicorn.error Application shutdown complete.
+2025-12-22 18:47:07,659 INFO uvicorn.error Application shutdown complete.
+2025-12-22 18:47:07,659 INFO uvicorn.error Finished server process [1164630]
+2025-12-22 18:47:07,659 INFO uvicorn.error Finished server process [1164630]
+2025-12-22 18:47:10,343 INFO app.core.logging logging.file_enabled
+2025-12-22 18:47:10,356 INFO uvicorn.error Started server process [1167166]
+2025-12-22 18:47:10,356 INFO uvicorn.error Started server process [1167166]
+2025-12-22 18:47:10,356 INFO uvicorn.error Waiting for application startup.
+2025-12-22 18:47:10,356 INFO uvicorn.error Waiting for application startup.
+2025-12-22 18:47:10,357 INFO uvicorn.error Application startup complete.
+2025-12-22 18:47:10,357 INFO uvicorn.error Application startup complete.
+2025-12-22 18:47:10,357 INFO uvicorn.error Uvicorn running on http://0.0.0.0:8001 (Press CTRL+C to quit)
+2025-12-22 18:47:10,357 INFO uvicorn.error Uvicorn running on http://0.0.0.0:8001 (Press CTRL+C to quit)
+2025-12-22 18:48:17,162 INFO uvicorn.error Shutting down
+2025-12-22 18:48:17,162 INFO uvicorn.error Shutting down
+2025-12-22 18:48:17,263 INFO uvicorn.error Waiting for application shutdown.
+2025-12-22 18:48:17,263 INFO uvicorn.error Waiting for application shutdown.
+2025-12-22 18:48:17,263 INFO uvicorn.error Application shutdown complete.
+2025-12-22 18:48:17,263 INFO uvicorn.error Application shutdown complete.
+2025-12-22 18:48:17,263 INFO uvicorn.error Finished server process [1167166]
+2025-12-22 18:48:17,263 INFO uvicorn.error Finished server process [1167166]
+2025-12-22 18:48:21,215 INFO app.core.logging logging.file_enabled
+2025-12-22 18:48:21,227 INFO uvicorn.error Started server process [1167405]
+2025-12-22 18:48:21,227 INFO uvicorn.error Started server process [1167405]
+2025-12-22 18:48:21,227 INFO uvicorn.error Waiting for application startup.
+2025-12-22 18:48:21,227 INFO uvicorn.error Waiting for application startup.
+2025-12-22 18:48:21,227 INFO uvicorn.error Application startup complete.
+2025-12-22 18:48:21,227 INFO uvicorn.error Application startup complete.
+2025-12-22 18:48:21,228 INFO uvicorn.error Uvicorn running on http://0.0.0.0:8001 (Press CTRL+C to quit)
+2025-12-22 18:48:21,228 INFO uvicorn.error Uvicorn running on http://0.0.0.0:8001 (Press CTRL+C to quit)
+2025-12-22 18:51:45,578 INFO uvicorn.access 127.0.0.1:41486 - "OPTIONS /api/account/profile HTTP/1.1" 200
+2025-12-22 18:51:45,578 INFO uvicorn.access 127.0.0.1:41490 - "OPTIONS /api/account/profile HTTP/1.1" 200
+2025-12-22 18:51:45,579 INFO uvicorn.access 127.0.0.1:41506 - "OPTIONS /api/account/credits HTTP/1.1" 200
+2025-12-22 18:51:45,581 INFO uvicorn.access 127.0.0.1:41522 - "OPTIONS /api/account/purchases HTTP/1.1" 200
+2025-12-22 18:51:45,582 INFO uvicorn.access 127.0.0.1:41538 - "OPTIONS /api/account/profile HTTP/1.1" 200
+2025-12-22 18:51:45,583 INFO uvicorn.access 127.0.0.1:41548 - "OPTIONS /api/api-keys/bootstrap HTTP/1.1" 200
+2025-12-22 18:51:45,719 INFO uvicorn.access 127.0.0.1:41486 - "OPTIONS /api/account/profile HTTP/1.1" 200
+2025-12-22 18:51:45,720 INFO uvicorn.access 127.0.0.1:41490 - "OPTIONS /api/account/profile HTTP/1.1" 200
+2025-12-22 18:51:45,727 INFO uvicorn.access 127.0.0.1:41506 - "OPTIONS /api/account/credits HTTP/1.1" 200
+2025-12-22 18:51:45,728 INFO uvicorn.access 127.0.0.1:41538 - "OPTIONS /api/account/profile HTTP/1.1" 200
+2025-12-22 18:51:45,728 INFO uvicorn.access 127.0.0.1:41522 - "OPTIONS /api/account/purchases HTTP/1.1" 200
+2025-12-22 18:51:46,567 INFO app.services.supabase_client supabase.client_initialized
+2025-12-22 18:51:46,571 INFO app.services.supabase_client supabase.client_initialized
+2025-12-22 18:51:46,574 INFO app.services.supabase_client supabase.client_initialized
+2025-12-22 18:51:46,596 INFO app.services.supabase_client supabase.client_initialized
+2025-12-22 18:51:46,904 INFO httpx HTTP Request: GET https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/billing_purchases?select=%2A&user_id=eq.804f8cca-a1c0-4f92-90b7-b7f27eab91a1&order=purchased_at.desc%2Ccreated_at.desc "HTTP/2 200 OK"
+2025-12-22 18:51:46,905 INFO app.api.account account.purchases.fetched
+2025-12-22 18:51:46,919 INFO httpx HTTP Request: GET https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/cached_api_keys?select=key_id%2Cname%2Ckey_plain%2Cintegration&user_id=eq.804f8cca-a1c0-4f92-90b7-b7f27eab91a1&name=eq.dashboard_api&limit=1 "HTTP/2 200 OK"
+2025-12-22 18:51:46,919 INFO app.api.api_keys route.api_keys.bootstrap.disabled
+2025-12-22 18:51:46,924 INFO httpx HTTP Request: GET https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/profiles?select=%2A&user_id=eq.804f8cca-a1c0-4f92-90b7-b7f27eab91a1&limit=1 "HTTP/2 200 OK"
+2025-12-22 18:51:46,925 INFO httpx HTTP Request: GET https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/user_credits?select=%2A&user_id=eq.804f8cca-a1c0-4f92-90b7-b7f27eab91a1&limit=1 "HTTP/2 200 OK"
+2025-12-22 18:51:46,925 INFO app.api.account account.credits.fetched
+2025-12-22 18:51:46,992 INFO httpx HTTP Request: POST https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/api_usage "HTTP/2 201 Created"
+2025-12-22 18:51:47,049 INFO httpx HTTP Request: POST https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/api_usage "HTTP/2 201 Created"
+2025-12-22 18:51:47,050 INFO app.services.usage usage.recorded
+2025-12-22 18:51:47,050 INFO app.api.account account.profile.fetched
+2025-12-22 18:51:47,051 INFO httpx HTTP Request: POST https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/api_usage "HTTP/2 201 Created"
+2025-12-22 18:51:47,051 INFO app.services.usage usage.recorded
+2025-12-22 18:51:47,051 INFO uvicorn.access 127.0.0.1:41570 - "POST /api/api-keys/bootstrap HTTP/1.1" 200
+2025-12-22 18:51:47,052 INFO uvicorn.access 127.0.0.1:41568 - "GET /api/account/purchases HTTP/1.1" 200
+2025-12-22 18:51:47,127 INFO httpx HTTP Request: POST https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/api_usage "HTTP/2 201 Created"
+2025-12-22 18:51:47,128 INFO app.services.usage usage.recorded
+2025-12-22 18:51:47,129 INFO uvicorn.access 127.0.0.1:41556 - "GET /api/account/credits HTTP/1.1" 200
+2025-12-22 18:51:47,137 INFO httpx HTTP Request: POST https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/profiles?on_conflict=user_id "HTTP/2 200 OK"
+2025-12-22 18:51:47,137 INFO httpx HTTP Request: GET https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/profiles?select=%2A&user_id=eq.804f8cca-a1c0-4f92-90b7-b7f27eab91a1&limit=1 "HTTP/2 200 OK"
+2025-12-22 18:51:47,137 INFO app.services.usage usage.recorded
+2025-12-22 18:51:47,137 INFO app.api.account account.profile.updated
+2025-12-22 18:51:47,138 INFO uvicorn.access 127.0.0.1:41550 - "GET /api/account/profile HTTP/1.1" 200
+2025-12-22 18:51:47,137 INFO app.api.account account.profile.fetched
+2025-12-22 18:51:47,218 INFO httpx HTTP Request: POST https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/api_usage "HTTP/2 201 Created"
+2025-12-22 18:51:47,227 INFO httpx HTTP Request: POST https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/api_usage "HTTP/2 201 Created"
+2025-12-22 18:51:47,228 INFO app.services.usage usage.recorded
+2025-12-22 18:51:47,228 INFO uvicorn.access 127.0.0.1:41598 - "PATCH /api/account/profile HTTP/1.1" 200
+2025-12-22 18:51:47,283 INFO httpx HTTP Request: GET https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/profiles?select=%2A&user_id=eq.804f8cca-a1c0-4f92-90b7-b7f27eab91a1&limit=1 "HTTP/2 200 OK"
+2025-12-22 18:51:47,284 INFO app.api.account account.profile.fetched
+2025-12-22 18:51:47,284 INFO app.services.usage usage.recorded
+2025-12-22 18:51:47,284 INFO uvicorn.access 127.0.0.1:41586 - "GET /api/account/profile HTTP/1.1" 200
+2025-12-22 18:51:47,285 INFO httpx HTTP Request: GET https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/profiles?select=%2A&user_id=eq.804f8cca-a1c0-4f92-90b7-b7f27eab91a1&limit=1 "HTTP/2 200 OK"
+2025-12-22 18:51:47,285 INFO app.api.account account.profile.fetched
+2025-12-22 18:51:47,353 INFO httpx HTTP Request: GET https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/user_credits?select=%2A&user_id=eq.804f8cca-a1c0-4f92-90b7-b7f27eab91a1&limit=1 "HTTP/2 200 OK"
+2025-12-22 18:51:47,367 INFO httpx HTTP Request: POST https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/api_usage "HTTP/2 201 Created"
+2025-12-22 18:51:47,367 INFO app.api.account account.credits.fetched
+2025-12-22 18:51:47,367 INFO httpx HTTP Request: POST https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/api_usage "HTTP/2 201 Created"
+2025-12-22 18:51:47,368 INFO app.services.usage usage.recorded
+2025-12-22 18:51:47,368 INFO uvicorn.access 127.0.0.1:41568 - "GET /api/account/profile HTTP/1.1" 200
+2025-12-22 18:51:47,415 INFO httpx HTTP Request: GET https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/billing_purchases?select=%2A&user_id=eq.804f8cca-a1c0-4f92-90b7-b7f27eab91a1&order=purchased_at.desc%2Ccreated_at.desc "HTTP/2 200 OK"
+2025-12-22 18:51:47,416 INFO app.services.usage usage.recorded
+2025-12-22 18:51:47,416 INFO app.api.account account.purchases.fetched
+2025-12-22 18:51:47,417 INFO uvicorn.access 127.0.0.1:41570 - "GET /api/account/profile HTTP/1.1" 200
+2025-12-22 18:51:47,442 INFO httpx HTTP Request: POST https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/api_usage "HTTP/2 201 Created"
+2025-12-22 18:51:47,443 INFO app.services.usage usage.recorded
+2025-12-22 18:51:47,443 INFO uvicorn.access 127.0.0.1:41556 - "GET /api/account/credits HTTP/1.1" 200
+2025-12-22 18:51:47,451 INFO httpx HTTP Request: POST https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/profiles?on_conflict=user_id "HTTP/2 200 OK"
+2025-12-22 18:51:47,451 INFO app.api.account account.profile.updated
+2025-12-22 18:51:47,496 INFO httpx HTTP Request: POST https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/api_usage "HTTP/2 201 Created"
+2025-12-22 18:51:47,528 INFO httpx HTTP Request: POST https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/api_usage "HTTP/2 201 Created"
+2025-12-22 18:51:47,528 INFO app.services.usage usage.recorded
+2025-12-22 18:51:47,529 INFO uvicorn.access 127.0.0.1:41550 - "GET /api/account/purchases HTTP/1.1" 200
+2025-12-22 18:51:47,529 INFO app.services.usage usage.recorded
+2025-12-22 18:51:47,529 INFO uvicorn.access 127.0.0.1:41598 - "PATCH /api/account/profile HTTP/1.1" 200
+2025-12-22 18:52:30,173 INFO uvicorn.access 127.0.0.1:33350 - "OPTIONS /api/overview HTTP/1.1" 200
+2025-12-22 18:52:30,371 INFO httpx HTTP Request: GET https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/cached_api_keys?select=key_id%2Cname%2Ckey_plain%2Cintegration&user_id=eq.804f8cca-a1c0-4f92-90b7-b7f27eab91a1&name=eq.dashboard_api&limit=1 "HTTP/2 200 OK"
+2025-12-22 18:52:30,372 INFO app.api.api_keys route.api_keys.bootstrap.disabled
+2025-12-22 18:52:30,465 INFO httpx HTTP Request: POST https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/api_usage "HTTP/2 201 Created"
+2025-12-22 18:52:30,466 INFO app.services.usage usage.recorded
+2025-12-22 18:52:30,466 INFO uvicorn.access 127.0.0.1:33356 - "POST /api/api-keys/bootstrap HTTP/1.1" 200
+2025-12-22 18:52:30,466 INFO uvicorn.access 127.0.0.1:33358 - "OPTIONS /api/overview HTTP/1.1" 200
+2025-12-22 18:52:30,466 INFO uvicorn.access 127.0.0.1:33374 - "OPTIONS /api/integrations HTTP/1.1" 200
+2025-12-22 18:52:30,467 INFO uvicorn.access 127.0.0.1:33388 - "OPTIONS /api/integrations HTTP/1.1" 200
+2025-12-22 18:52:30,500 INFO uvicorn.access 127.0.0.1:33350 - "OPTIONS /api/account/credits HTTP/1.1" 200
+2025-12-22 18:52:30,509 INFO uvicorn.access 127.0.0.1:33406 - "OPTIONS /api/account/profile HTTP/1.1" 200
+2025-12-22 18:52:30,520 INFO uvicorn.access 127.0.0.1:33412 - "OPTIONS /api/account/profile HTTP/1.1" 200
+2025-12-22 18:52:30,595 INFO httpx HTTP Request: GET https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/profiles?select=%2A&user_id=eq.804f8cca-a1c0-4f92-90b7-b7f27eab91a1&limit=1 "HTTP/2 200 OK"
+2025-12-22 18:52:30,595 INFO app.api.account account.profile.fetched
+2025-12-22 18:52:30,609 INFO uvicorn.access 127.0.0.1:33358 - "OPTIONS /api/account/purchases HTTP/1.1" 200
+2025-12-22 18:52:30,612 INFO app.api.integrations route.integrations.list
+2025-12-22 18:52:30,612 INFO uvicorn.access 127.0.0.1:33356 - "GET /api/integrations HTTP/1.1" 200
+2025-12-22 18:52:30,687 INFO httpx HTTP Request: POST https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/api_usage "HTTP/2 201 Created"
+2025-12-22 18:52:30,688 INFO app.services.usage usage.recorded
+2025-12-22 18:52:30,688 INFO uvicorn.access 127.0.0.1:33392 - "GET /api/account/profile HTTP/1.1" 200
+2025-12-22 18:52:30,804 INFO httpx HTTP Request: GET https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/profiles?select=%2A&user_id=eq.804f8cca-a1c0-4f92-90b7-b7f27eab91a1&limit=1 "HTTP/2 200 OK"
+2025-12-22 18:52:30,884 INFO httpx HTTP Request: GET https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/user_credits?select=%2A&user_id=eq.804f8cca-a1c0-4f92-90b7-b7f27eab91a1&limit=1 "HTTP/2 200 OK"
+2025-12-22 18:52:30,963 INFO httpx HTTP Request: GET https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/tasks?select=task_id%2Ccreated_at%2Cemail_count%2Cvalid_count%2Cinvalid_count%2Ccatchall_count&user_id=eq.804f8cca-a1c0-4f92-90b7-b7f27eab91a1&order=created_at&offset=0&limit=1000 "HTTP/2 200 OK"
+2025-12-22 18:52:30,964 ERROR app.services.tasks_store tasks.summary_counts_failed
+2025-12-22 18:52:31,039 INFO httpx HTTP Request: GET https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/tasks?select=task_id%2Cstatus%2Cemail_count%2Cvalid_count%2Cinvalid_count%2Ccatchall_count%2Cjob_status%2Cintegration%2Ccreated_at%2Capi_key_id&user_id=eq.804f8cca-a1c0-4f92-90b7-b7f27eab91a1&order=created_at.desc&limit=5 "HTTP/2 200 OK"
+2025-12-22 18:52:31,118 INFO httpx HTTP Request: GET https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/cached_api_keys?select=key_id%2Cintegration&user_id=eq.804f8cca-a1c0-4f92-90b7-b7f27eab91a1 "HTTP/2 200 OK"
+2025-12-22 18:52:31,119 INFO app.services.api_keys api_keys.cache_integration_map
+2025-12-22 18:52:31,119 WARNING app.services.tasks_store tasks.summary_missing_integration
+2025-12-22 18:52:31,211 INFO httpx HTTP Request: GET https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/user_credits?select=%2A&user_id=eq.804f8cca-a1c0-4f92-90b7-b7f27eab91a1&limit=1 "HTTP/2 200 OK"
+2025-12-22 18:52:31,212 INFO httpx HTTP Request: GET https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/profiles?select=%2A&user_id=eq.804f8cca-a1c0-4f92-90b7-b7f27eab91a1&limit=1 "HTTP/2 200 OK"
+2025-12-22 18:52:31,212 INFO app.api.account account.credits.fetched
+2025-12-22 18:52:31,212 INFO app.api.account account.profile.fetched
+2025-12-22 18:52:31,288 INFO httpx HTTP Request: POST https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/api_usage "HTTP/2 201 Created"
+2025-12-22 18:52:31,288 INFO httpx HTTP Request: POST https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/api_usage "HTTP/2 201 Created"
+2025-12-22 18:52:31,289 INFO app.services.usage usage.recorded
+2025-12-22 18:52:31,289 INFO app.services.usage usage.recorded
+2025-12-22 18:52:31,289 INFO uvicorn.access 127.0.0.1:33392 - "GET /api/account/profile HTTP/1.1" 200
+2025-12-22 18:52:31,290 INFO uvicorn.access 127.0.0.1:33356 - "GET /api/account/credits HTTP/1.1" 200
+2025-12-22 18:52:31,484 INFO app.api.integrations route.integrations.list
+2025-12-22 18:52:31,484 INFO uvicorn.access 127.0.0.1:33452 - "GET /api/integrations HTTP/1.1" 200
+2025-12-22 18:52:31,485 INFO httpx HTTP Request: GET https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/profiles?select=%2A&user_id=eq.804f8cca-a1c0-4f92-90b7-b7f27eab91a1&limit=1 "HTTP/2 200 OK"
+2025-12-22 18:52:31,485 INFO app.api.account account.profile.fetched
+2025-12-22 18:52:31,536 INFO httpx HTTP Request: POST https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/profiles?on_conflict=user_id "HTTP/2 200 OK"
+2025-12-22 18:52:31,537 INFO httpx HTTP Request: GET https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/billing_purchases?select=%2A&user_id=eq.804f8cca-a1c0-4f92-90b7-b7f27eab91a1&order=purchased_at.desc%2Ccreated_at.desc "HTTP/2 200 OK"
+2025-12-22 18:52:31,558 INFO httpx HTTP Request: POST https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/api_usage "HTTP/2 201 Created"
+2025-12-22 18:52:31,559 INFO app.api.account account.purchases.fetched
+2025-12-22 18:52:31,559 INFO app.api.account account.profile.updated
+2025-12-22 18:52:31,561 INFO app.services.usage usage.recorded
+2025-12-22 18:52:31,562 INFO uvicorn.access 127.0.0.1:33442 - "GET /api/account/profile HTTP/1.1" 200
+2025-12-22 18:52:31,634 INFO httpx HTTP Request: POST https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/api_usage "HTTP/2 201 Created"
+2025-12-22 18:52:31,634 INFO httpx HTTP Request: POST https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/api_usage "HTTP/2 201 Created"
+2025-12-22 18:52:31,635 INFO app.services.usage usage.recorded
+2025-12-22 18:52:31,635 INFO app.services.usage usage.recorded
+2025-12-22 18:52:31,636 INFO uvicorn.access 127.0.0.1:33446 - "GET /api/account/purchases HTTP/1.1" 200
+2025-12-22 18:52:31,636 INFO uvicorn.access 127.0.0.1:33392 - "PATCH /api/account/profile HTTP/1.1" 200
+2025-12-22 18:52:31,873 INFO httpx HTTP Request: GET https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/profiles?select=%2A&user_id=eq.804f8cca-a1c0-4f92-90b7-b7f27eab91a1&limit=1 "HTTP/2 200 OK"
+2025-12-22 18:52:31,873 INFO app.api.account account.profile.fetched
+2025-12-22 18:52:31,966 INFO httpx HTTP Request: POST https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/api_usage "HTTP/2 201 Created"
+2025-12-22 18:52:31,967 INFO app.services.usage usage.recorded
+2025-12-22 18:52:31,967 INFO uvicorn.access 127.0.0.1:33442 - "GET /api/account/profile HTTP/1.1" 200
+2025-12-22 18:52:32,199 INFO httpx HTTP Request: POST https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/profiles?on_conflict=user_id "HTTP/2 200 OK"
+2025-12-22 18:52:32,200 INFO app.api.account account.profile.updated
+2025-12-22 18:52:32,278 INFO httpx HTTP Request: POST https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/api_usage "HTTP/2 201 Created"
+2025-12-22 18:52:32,278 INFO app.services.usage usage.recorded
+2025-12-22 18:52:32,279 INFO uvicorn.access 127.0.0.1:33446 - "PATCH /api/account/profile HTTP/1.1" 200
+2025-12-22 18:52:32,658 INFO httpx HTTP Request: GET https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/profiles?select=%2A&user_id=eq.804f8cca-a1c0-4f92-90b7-b7f27eab91a1&limit=1 "HTTP/2 200 OK"
+2025-12-22 18:52:32,658 INFO app.api.account account.profile.fetched
+2025-12-22 18:52:32,733 INFO httpx HTTP Request: POST https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/api_usage "HTTP/2 201 Created"
+2025-12-22 18:52:32,733 INFO app.services.usage usage.recorded
+2025-12-22 18:52:32,733 INFO uvicorn.access 127.0.0.1:33442 - "GET /api/account/profile HTTP/1.1" 200
+2025-12-22 18:52:32,948 INFO httpx HTTP Request: POST https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/profiles?on_conflict=user_id "HTTP/2 200 OK"
+2025-12-22 18:52:32,948 INFO app.api.account account.profile.updated
+2025-12-22 18:52:33,030 INFO httpx HTTP Request: POST https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/api_usage "HTTP/2 201 Created"
+2025-12-22 18:52:33,031 INFO app.services.usage usage.recorded
+2025-12-22 18:52:33,031 INFO uvicorn.access 127.0.0.1:33446 - "PATCH /api/account/profile HTTP/1.1" 200
+2025-12-22 18:52:56,463 INFO httpx HTTP Request: GET https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/profiles?select=%2A&user_id=eq.804f8cca-a1c0-4f92-90b7-b7f27eab91a1&limit=1 "HTTP/2 200 OK"
+2025-12-22 18:52:56,572 INFO httpx HTTP Request: GET https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/user_credits?select=%2A&user_id=eq.804f8cca-a1c0-4f92-90b7-b7f27eab91a1&limit=1 "HTTP/2 200 OK"
+2025-12-22 18:52:56,687 INFO httpx HTTP Request: GET https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/tasks?select=task_id%2Ccreated_at%2Cemail_count%2Cvalid_count%2Cinvalid_count%2Ccatchall_count&user_id=eq.804f8cca-a1c0-4f92-90b7-b7f27eab91a1&order=created_at&offset=0&limit=1000 "HTTP/2 200 OK"
+2025-12-22 18:52:56,687 ERROR app.services.tasks_store tasks.summary_counts_failed
+2025-12-22 18:52:56,778 INFO httpx HTTP Request: GET https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/tasks?select=task_id%2Cstatus%2Cemail_count%2Cvalid_count%2Cinvalid_count%2Ccatchall_count%2Cjob_status%2Cintegration%2Ccreated_at%2Capi_key_id&user_id=eq.804f8cca-a1c0-4f92-90b7-b7f27eab91a1&order=created_at.desc&limit=5 "HTTP/2 200 OK"
+2025-12-22 18:52:56,872 INFO httpx HTTP Request: GET https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/cached_api_keys?select=key_id%2Cintegration&user_id=eq.804f8cca-a1c0-4f92-90b7-b7f27eab91a1 "HTTP/2 200 OK"
+2025-12-22 18:52:56,873 INFO app.services.api_keys api_keys.cache_integration_map
+2025-12-22 18:52:56,873 WARNING app.services.tasks_store tasks.summary_missing_integration
+2025-12-22 18:52:56,884 INFO uvicorn.access 127.0.0.1:39204 - "OPTIONS /api/account/profile HTTP/1.1" 200
+2025-12-22 18:52:56,884 INFO uvicorn.access 127.0.0.1:39218 - "OPTIONS /api/overview HTTP/1.1" 200
+2025-12-22 18:52:56,884 INFO uvicorn.access 127.0.0.1:39230 - "OPTIONS /api/account/profile HTTP/1.1" 200
+2025-12-22 18:52:56,884 INFO uvicorn.access 127.0.0.1:39232 - "OPTIONS /api/account/profile HTTP/1.1" 200
+2025-12-22 18:52:56,884 INFO uvicorn.access 127.0.0.1:39238 - "OPTIONS /api/account/credits HTTP/1.1" 200
+2025-12-22 18:52:56,885 INFO uvicorn.access 127.0.0.1:39252 - "OPTIONS /api/account/purchases HTTP/1.1" 200
+2025-12-22 18:53:00,186 INFO uvicorn.access 127.0.0.1:39204 - "OPTIONS /api/integrations HTTP/1.1" 200
+2025-12-22 18:53:01,019 INFO httpx HTTP Request: GET https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/profiles?select=%2A&user_id=eq.804f8cca-a1c0-4f92-90b7-b7f27eab91a1&limit=1 "HTTP/2 200 OK"
+2025-12-22 18:53:01,020 INFO app.api.account account.profile.fetched
+2025-12-22 18:53:01,024 INFO httpx HTTP Request: GET https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/profiles?select=%2A&user_id=eq.804f8cca-a1c0-4f92-90b7-b7f27eab91a1&limit=1 "HTTP/2 200 OK"
+2025-12-22 18:53:01,117 INFO httpx HTTP Request: POST https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/api_usage "HTTP/2 201 Created"
+2025-12-22 18:53:01,219 INFO httpx HTTP Request: GET https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/user_credits?select=%2A&user_id=eq.804f8cca-a1c0-4f92-90b7-b7f27eab91a1&limit=1 "HTTP/2 200 OK"
+2025-12-22 18:53:01,219 INFO app.services.usage usage.recorded
+2025-12-22 18:53:01,340 INFO httpx HTTP Request: GET https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/tasks?select=task_id%2Ccreated_at%2Cemail_count%2Cvalid_count%2Cinvalid_count%2Ccatchall_count&user_id=eq.804f8cca-a1c0-4f92-90b7-b7f27eab91a1&order=created_at&offset=0&limit=1000 "HTTP/2 200 OK"
+2025-12-22 18:53:01,341 ERROR app.services.tasks_store tasks.summary_counts_failed
+2025-12-22 18:53:01,443 INFO httpx HTTP Request: GET https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/tasks?select=task_id%2Cstatus%2Cemail_count%2Cvalid_count%2Cinvalid_count%2Ccatchall_count%2Cjob_status%2Cintegration%2Ccreated_at%2Capi_key_id&user_id=eq.804f8cca-a1c0-4f92-90b7-b7f27eab91a1&order=created_at.desc&limit=5 "HTTP/2 200 OK"
+2025-12-22 18:53:01,981 INFO httpx HTTP Request: GET https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/cached_api_keys?select=key_id%2Cintegration&user_id=eq.804f8cca-a1c0-4f92-90b7-b7f27eab91a1 "HTTP/2 200 OK"
+2025-12-22 18:53:01,981 INFO app.services.api_keys api_keys.cache_integration_map
+2025-12-22 18:53:01,981 WARNING app.services.tasks_store tasks.summary_missing_integration
+2025-12-22 18:53:01,992 ERROR app.api.overview overview.verification_metrics_error
+2025-12-22 18:53:02,096 INFO httpx HTTP Request: GET https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/billing_purchases?select=%2A&user_id=eq.804f8cca-a1c0-4f92-90b7-b7f27eab91a1&order=purchased_at.desc%2Ccreated_at.desc&offset=0&limit=1 "HTTP/2 200 OK"
+2025-12-22 18:53:02,197 INFO httpx HTTP Request: POST https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/api_usage "HTTP/2 201 Created"
+2025-12-22 18:53:02,197 INFO app.services.usage usage.recorded
+2025-12-22 18:53:02,197 INFO app.api.overview overview.fetched
+2025-12-22 18:53:02,197 INFO uvicorn.access 127.0.0.1:33428 - "GET /api/overview HTTP/1.1" 200
+2025-12-22 18:53:02,198 INFO uvicorn.access 127.0.0.1:39264 - "GET /api/account/profile HTTP/1.1" 200
+2025-12-22 18:53:02,299 INFO httpx HTTP Request: GET https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/profiles?select=%2A&user_id=eq.804f8cca-a1c0-4f92-90b7-b7f27eab91a1&limit=1 "HTTP/2 200 OK"
+2025-12-22 18:53:02,305 INFO httpx HTTP Request: GET https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/profiles?select=%2A&user_id=eq.804f8cca-a1c0-4f92-90b7-b7f27eab91a1&limit=1 "HTTP/2 200 OK"
+2025-12-22 18:53:02,306 INFO app.api.account account.profile.fetched
+2025-12-22 18:53:02,307 INFO app.api.account account.profile.fetched
+2025-12-22 18:53:02,425 INFO httpx HTTP Request: POST https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/api_usage "HTTP/2 201 Created"
+2025-12-22 18:53:02,456 INFO httpx HTTP Request: GET https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/user_credits?select=%2A&user_id=eq.804f8cca-a1c0-4f92-90b7-b7f27eab91a1&limit=1 "HTTP/2 200 OK"
+2025-12-22 18:53:02,456 INFO app.services.usage usage.recorded
+2025-12-22 18:53:02,456 INFO uvicorn.access 127.0.0.1:39292 - "GET /api/account/profile HTTP/1.1" 200
+2025-12-22 18:53:02,459 INFO httpx HTTP Request: GET https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/billing_purchases?select=%2A&user_id=eq.804f8cca-a1c0-4f92-90b7-b7f27eab91a1&order=purchased_at.desc%2Ccreated_at.desc "HTTP/2 200 OK"
+2025-12-22 18:53:02,459 INFO httpx HTTP Request: POST https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/api_usage "HTTP/2 201 Created"
+2025-12-22 18:53:02,459 INFO app.api.account account.credits.fetched
+2025-12-22 18:53:02,460 INFO app.services.usage usage.recorded
+2025-12-22 18:53:02,460 INFO uvicorn.access 127.0.0.1:39304 - "GET /api/account/profile HTTP/1.1" 200
+2025-12-22 18:53:02,461 INFO app.api.account account.purchases.fetched
+2025-12-22 18:53:02,563 INFO httpx HTTP Request: POST https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/api_usage "HTTP/2 201 Created"
+2025-12-22 18:53:02,563 INFO httpx HTTP Request: POST https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/api_usage "HTTP/2 201 Created"
+2025-12-22 18:53:02,564 INFO app.services.usage usage.recorded
+2025-12-22 18:53:02,564 INFO app.services.usage usage.recorded
+2025-12-22 18:53:02,564 INFO uvicorn.access 127.0.0.1:39264 - "GET /api/account/purchases HTTP/1.1" 200
+2025-12-22 18:53:02,564 INFO uvicorn.access 127.0.0.1:33428 - "GET /api/account/credits HTTP/1.1" 200
+2025-12-22 18:53:02,607 INFO app.api.integrations route.integrations.list
+2025-12-22 18:53:02,607 INFO uvicorn.access 127.0.0.1:39292 - "GET /api/integrations HTTP/1.1" 200
+2025-12-22 18:53:26,904 ERROR app.api.overview overview.verification_metrics_error
+2025-12-22 18:53:27,447 INFO httpx HTTP Request: GET https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/billing_purchases?select=%2A&user_id=eq.804f8cca-a1c0-4f92-90b7-b7f27eab91a1&order=purchased_at.desc%2Ccreated_at.desc&offset=0&limit=1 "HTTP/2 200 OK"
+2025-12-22 18:53:27,679 INFO httpx HTTP Request: POST https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/api_usage "HTTP/2 201 Created"
+2025-12-22 18:53:27,679 INFO app.services.usage usage.recorded
+2025-12-22 18:53:27,679 INFO app.api.overview overview.fetched
+2025-12-22 18:53:27,680 INFO uvicorn.access 127.0.0.1:39198 - "GET /api/overview HTTP/1.1" 200
+2025-12-22 18:53:32,205 ERROR app.api.overview overview.verification_metrics_error
+2025-12-22 18:53:32,454 INFO httpx HTTP Request: GET https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/billing_purchases?select=%2A&user_id=eq.804f8cca-a1c0-4f92-90b7-b7f27eab91a1&order=purchased_at.desc%2Ccreated_at.desc&offset=0&limit=1 "HTTP/2 200 OK"
+2025-12-22 18:53:32,644 INFO httpx HTTP Request: POST https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/api_usage "HTTP/2 201 Created"
+2025-12-22 18:53:32,644 INFO app.services.usage usage.recorded
+2025-12-22 18:53:32,644 INFO app.api.overview overview.fetched
+2025-12-22 18:53:32,644 INFO uvicorn.access 127.0.0.1:39278 - "GET /api/overview HTTP/1.1" 200
+2025-12-22 18:54:27,694 INFO uvicorn.access 127.0.0.1:51296 - "OPTIONS /api/account/profile HTTP/1.1" 200
+2025-12-22 18:54:27,733 INFO uvicorn.access 127.0.0.1:51298 - "OPTIONS /api/account/profile HTTP/1.1" 200
+2025-12-22 18:54:27,828 INFO uvicorn.access 127.0.0.1:51306 - "OPTIONS /api/account/purchases HTTP/1.1" 200
+2025-12-22 18:54:27,840 INFO uvicorn.access 127.0.0.1:51296 - "OPTIONS /api/integrations HTTP/1.1" 200
+2025-12-22 18:54:27,845 INFO uvicorn.access 127.0.0.1:51322 - "OPTIONS /api/account/credits HTTP/1.1" 200
+2025-12-22 18:54:27,972 INFO uvicorn.access 127.0.0.1:51326 - "OPTIONS /api/overview HTTP/1.1" 200
+2025-12-22 18:54:28,039 INFO uvicorn.access 127.0.0.1:51340 - "OPTIONS /api/account/profile HTTP/1.1" 200
+2025-12-22 18:54:28,739 INFO app.api.integrations route.integrations.list
+2025-12-22 18:54:28,740 INFO uvicorn.access 127.0.0.1:51370 - "GET /api/integrations HTTP/1.1" 200
+2025-12-22 18:54:28,947 INFO httpx HTTP Request: GET https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/profiles?select=%2A&user_id=eq.804f8cca-a1c0-4f92-90b7-b7f27eab91a1&limit=1 "HTTP/2 200 OK"
+2025-12-22 18:54:28,947 INFO httpx HTTP Request: GET https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/billing_purchases?select=%2A&user_id=eq.804f8cca-a1c0-4f92-90b7-b7f27eab91a1&order=purchased_at.desc%2Ccreated_at.desc "HTTP/2 200 OK"
+2025-12-22 18:54:28,949 INFO app.api.account account.purchases.fetched
+2025-12-22 18:54:28,956 INFO httpx HTTP Request: GET https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/profiles?select=%2A&user_id=eq.804f8cca-a1c0-4f92-90b7-b7f27eab91a1&limit=1 "HTTP/2 200 OK"
+2025-12-22 18:54:28,956 INFO app.api.account account.profile.fetched
+2025-12-22 18:54:28,979 INFO httpx HTTP Request: GET https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/user_credits?select=%2A&user_id=eq.804f8cca-a1c0-4f92-90b7-b7f27eab91a1&limit=1 "HTTP/2 200 OK"
+2025-12-22 18:54:28,980 INFO app.api.account account.profile.fetched
+2025-12-22 18:54:28,984 INFO httpx HTTP Request: GET https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/profiles?select=%2A&user_id=eq.804f8cca-a1c0-4f92-90b7-b7f27eab91a1&limit=1 "HTTP/2 200 OK"
+2025-12-22 18:54:29,045 INFO httpx HTTP Request: POST https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/api_usage "HTTP/2 201 Created"
+2025-12-22 18:54:29,045 INFO app.services.usage usage.recorded
+2025-12-22 18:54:29,089 INFO httpx HTTP Request: POST https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/api_usage "HTTP/2 201 Created"
+2025-12-22 18:54:29,090 INFO httpx HTTP Request: POST https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/api_usage "HTTP/2 201 Created"
+2025-12-22 18:54:29,090 INFO app.api.account account.credits.fetched
+2025-12-22 18:54:29,092 INFO app.services.usage usage.recorded
+2025-12-22 18:54:29,092 INFO app.services.usage usage.recorded
+2025-12-22 18:54:29,181 INFO httpx HTTP Request: POST https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/api_usage "HTTP/2 201 Created"
+2025-12-22 18:54:29,184 INFO httpx HTTP Request: GET https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/user_credits?select=%2A&user_id=eq.804f8cca-a1c0-4f92-90b7-b7f27eab91a1&limit=1 "HTTP/2 200 OK"
+2025-12-22 18:54:29,184 INFO app.services.usage usage.recorded
+2025-12-22 18:54:29,325 INFO httpx HTTP Request: GET https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/tasks?select=task_id%2Ccreated_at%2Cemail_count%2Cvalid_count%2Cinvalid_count%2Ccatchall_count&user_id=eq.804f8cca-a1c0-4f92-90b7-b7f27eab91a1&order=created_at&offset=0&limit=1000 "HTTP/2 200 OK"
+2025-12-22 18:54:29,325 ERROR app.services.tasks_store tasks.summary_counts_failed
+2025-12-22 18:54:29,441 INFO httpx HTTP Request: GET https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/tasks?select=task_id%2Cstatus%2Cemail_count%2Cvalid_count%2Cinvalid_count%2Ccatchall_count%2Cjob_status%2Cintegration%2Ccreated_at%2Capi_key_id&user_id=eq.804f8cca-a1c0-4f92-90b7-b7f27eab91a1&order=created_at.desc&limit=5 "HTTP/2 200 OK"
+2025-12-22 18:54:29,547 INFO httpx HTTP Request: GET https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/cached_api_keys?select=key_id%2Cintegration&user_id=eq.804f8cca-a1c0-4f92-90b7-b7f27eab91a1 "HTTP/2 200 OK"
+2025-12-22 18:54:29,547 INFO app.services.api_keys api_keys.cache_integration_map
+2025-12-22 18:54:29,547 WARNING app.services.tasks_store tasks.summary_missing_integration
+2025-12-22 18:54:29,558 INFO uvicorn.access 127.0.0.1:51368 - "GET /api/account/purchases HTTP/1.1" 200
+2025-12-22 18:54:29,559 INFO uvicorn.access 127.0.0.1:51356 - "GET /api/account/profile HTTP/1.1" 200
+2025-12-22 18:54:29,559 INFO uvicorn.access 127.0.0.1:51360 - "GET /api/account/profile HTTP/1.1" 200
+2025-12-22 18:54:29,559 INFO uvicorn.access 127.0.0.1:51372 - "GET /api/account/credits HTTP/1.1" 200
+2025-12-22 18:54:29,650 INFO httpx HTTP Request: GET https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/profiles?select=%2A&user_id=eq.804f8cca-a1c0-4f92-90b7-b7f27eab91a1&limit=1 "HTTP/2 200 OK"
+2025-12-22 18:54:29,650 INFO app.api.account account.profile.fetched
+2025-12-22 18:54:29,734 INFO httpx HTTP Request: POST https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/api_usage "HTTP/2 201 Created"
+2025-12-22 18:54:29,734 INFO app.services.usage usage.recorded
+2025-12-22 18:54:29,734 INFO uvicorn.access 127.0.0.1:51370 - "GET /api/account/profile HTTP/1.1" 200
+2025-12-22 18:54:59,568 ERROR app.api.overview overview.verification_metrics_error
+2025-12-22 18:54:59,943 INFO httpx HTTP Request: GET https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/billing_purchases?select=%2A&user_id=eq.804f8cca-a1c0-4f92-90b7-b7f27eab91a1&order=purchased_at.desc%2Ccreated_at.desc&offset=0&limit=1 "HTTP/2 200 OK"
+2025-12-22 18:55:00,051 INFO httpx HTTP Request: POST https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/api_usage "HTTP/2 201 Created"
+2025-12-22 18:55:00,052 INFO app.services.usage usage.recorded
+2025-12-22 18:55:00,052 INFO app.api.overview overview.fetched
+2025-12-22 18:55:00,052 INFO uvicorn.access 127.0.0.1:51378 - "GET /api/overview HTTP/1.1" 200
+2025-12-22 18:55:06,586 INFO uvicorn.access 127.0.0.1:35096 - "OPTIONS /api/billing/plans HTTP/1.1" 200
+2025-12-22 18:55:06,799 INFO httpx HTTP Request: GET https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/billing_plans?select=%2A&status=eq.active&order=amount "HTTP/2 200 OK"
+2025-12-22 18:55:06,800 INFO uvicorn.access 127.0.0.1:35106 - "GET /api/billing/plans HTTP/1.1" 200
+2025-12-22 18:55:06,800 INFO uvicorn.access 127.0.0.1:35096 - "OPTIONS /api/account/profile HTTP/1.1" 200
+2025-12-22 18:55:06,800 INFO uvicorn.access 127.0.0.1:35116 - "OPTIONS /api/api-keys/bootstrap HTTP/1.1" 200
+2025-12-22 18:55:06,800 INFO uvicorn.access 127.0.0.1:35128 - "OPTIONS /api/account/profile HTTP/1.1" 200
+2025-12-22 18:55:06,800 INFO uvicorn.access 127.0.0.1:35142 - "OPTIONS /api/account/profile HTTP/1.1" 200
+2025-12-22 18:55:06,801 INFO uvicorn.access 127.0.0.1:35148 - "OPTIONS /api/account/profile HTTP/1.1" 200
+2025-12-22 18:55:06,801 INFO uvicorn.access 127.0.0.1:35156 - "OPTIONS /api/account/profile HTTP/1.1" 200
+2025-12-22 18:55:06,805 INFO uvicorn.access 127.0.0.1:35096 - "OPTIONS /api/account/profile HTTP/1.1" 200
+2025-12-22 18:55:06,900 INFO httpx HTTP Request: GET https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/cached_api_keys?select=key_id%2Cname%2Ckey_plain%2Cintegration&user_id=eq.804f8cca-a1c0-4f92-90b7-b7f27eab91a1&name=eq.dashboard_api&limit=1 "HTTP/2 200 OK"
+2025-12-22 18:55:06,901 INFO app.api.api_keys route.api_keys.bootstrap.disabled
+2025-12-22 18:55:06,991 INFO httpx HTTP Request: POST https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/api_usage "HTTP/2 201 Created"
+2025-12-22 18:55:06,992 INFO app.services.usage usage.recorded
+2025-12-22 18:55:06,992 INFO uvicorn.access 127.0.0.1:35170 - "POST /api/api-keys/bootstrap HTTP/1.1" 200
+2025-12-22 18:55:07,065 INFO httpx HTTP Request: GET https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/profiles?select=%2A&user_id=eq.804f8cca-a1c0-4f92-90b7-b7f27eab91a1&limit=1 "HTTP/2 200 OK"
+2025-12-22 18:55:07,066 INFO app.api.account account.profile.fetched
+2025-12-22 18:55:07,149 INFO httpx HTTP Request: POST https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/api_usage "HTTP/2 201 Created"
+2025-12-22 18:55:07,150 INFO app.services.usage usage.recorded
+2025-12-22 18:55:07,150 INFO uvicorn.access 127.0.0.1:35106 - "GET /api/account/profile HTTP/1.1" 200
+2025-12-22 18:55:07,233 INFO httpx HTTP Request: POST https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/profiles?on_conflict=user_id "HTTP/2 200 OK"
+2025-12-22 18:55:07,233 INFO app.api.account account.profile.updated
+2025-12-22 18:55:07,313 INFO httpx HTTP Request: POST https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/api_usage "HTTP/2 201 Created"
+2025-12-22 18:55:07,314 INFO app.services.usage usage.recorded
+2025-12-22 18:55:07,314 INFO uvicorn.access 127.0.0.1:35170 - "PATCH /api/account/profile HTTP/1.1" 200
+2025-12-22 18:55:07,388 INFO httpx HTTP Request: GET https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/profiles?select=%2A&user_id=eq.804f8cca-a1c0-4f92-90b7-b7f27eab91a1&limit=1 "HTTP/2 200 OK"
+2025-12-22 18:55:07,389 INFO app.api.account account.profile.fetched
+2025-12-22 18:55:07,462 INFO httpx HTTP Request: POST https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/api_usage "HTTP/2 201 Created"
+2025-12-22 18:55:07,463 INFO app.services.usage usage.recorded
+2025-12-22 18:55:07,463 INFO uvicorn.access 127.0.0.1:35106 - "GET /api/account/profile HTTP/1.1" 200
+2025-12-22 18:55:07,562 INFO httpx HTTP Request: POST https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/profiles?on_conflict=user_id "HTTP/2 200 OK"
+2025-12-22 18:55:07,562 INFO app.api.account account.profile.updated
+2025-12-22 18:55:07,659 INFO httpx HTTP Request: POST https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/api_usage "HTTP/2 201 Created"
+2025-12-22 18:55:07,659 INFO app.services.usage usage.recorded
+2025-12-22 18:55:07,660 INFO uvicorn.access 127.0.0.1:35170 - "PATCH /api/account/profile HTTP/1.1" 200
+2025-12-22 18:55:07,736 INFO httpx HTTP Request: GET https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/profiles?select=%2A&user_id=eq.804f8cca-a1c0-4f92-90b7-b7f27eab91a1&limit=1 "HTTP/2 200 OK"
+2025-12-22 18:55:07,736 INFO app.api.account account.profile.fetched
+2025-12-22 18:55:07,815 INFO httpx HTTP Request: POST https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/api_usage "HTTP/2 201 Created"
+2025-12-22 18:55:07,816 INFO app.services.usage usage.recorded
+2025-12-22 18:55:07,816 INFO uvicorn.access 127.0.0.1:35106 - "GET /api/account/profile HTTP/1.1" 200
+2025-12-22 18:55:07,894 INFO httpx HTTP Request: POST https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/profiles?on_conflict=user_id "HTTP/2 200 OK"
+2025-12-22 18:55:07,894 INFO app.api.account account.profile.updated
+2025-12-22 18:55:07,968 INFO httpx HTTP Request: POST https://zobtogrjplslxicgpfxc.supabase.co/rest/v1/api_usage "HTTP/2 201 Created"
+2025-12-22 18:55:07,968 INFO app.services.usage usage.recorded
+2025-12-22 18:55:07,968 INFO uvicorn.access 127.0.0.1:35170 - "PATCH /api/account/profile HTTP/1.1" 200

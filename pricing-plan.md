@@ -39,6 +39,7 @@ Plan (step-by-step)
    - Ensure the grid and spacing match existing dashboard style and stay responsive on mobile.
    - Validate no UI regression in sidebar/footer layout.
    - Why: preserves UI integrity while adding content.
+   - Blocked: Playwright redirected to `/signin` due to `Invalid Refresh Token` (401 on `/api/billing/plans`). A fresh auth session/localStorage token is required to verify the `/pricing` UI.
 
 Status
 - Step 1: DONE
