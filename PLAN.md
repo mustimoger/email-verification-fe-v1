@@ -316,6 +316,8 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
   Explanation: Steps 2–5 complete — added `credit_ledger`, added `apply_credit_debit` RPC for idempotent debits, and wired `/verify` + `/tasks/{id}`/download to debit on completion with hard‑fail on insufficient credits. UI messaging + tests remain and are tracked in `credit-plan.md`.
 - [x] Credit enforcement Step 6 — UI 402 messaging for manual/file/download flows (no layout change).
   Explanation: Verify now surfaces server‑provided 402 detail in manual polling, file detail fetches, and download errors without changing layout, and logs missing detail. Added unit coverage for error detail extraction in `tests/verify-mapping.test.ts`.
+- [x] Credit enforcement Step 7 — backend unit + integration tests for debit/idempotency and insufficient credits.
+  Explanation: Added backend unit tests for `apply_credit_debit` status handling and FastAPI integration tests for `/api/verify` + `/api/tasks/{id}` returning 402 on insufficient credits. Ran targeted pytest with venv activated.
 - [x] Priority High: Confirm Paddle webhook signature spec and align verification (or use official SDK verifier) with tests.
   Explanation: Aligned verification logic with Paddle’s official SDK implementation (ts + h1 header, HMAC of `ts:raw_body`, optional multi-signature support, time drift checks) and added focused tests. Added `PADDLE_WEBHOOK_MAX_VARIANCE_SECONDS` configuration to avoid hardcoded drift defaults.
 - [x] Priority High: Verify webhook ingress IP handling in current infra and adjust allowlist logic.

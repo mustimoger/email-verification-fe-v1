@@ -460,10 +460,10 @@ async def get_task_detail(
         if result.jobs is not None:
             counts = {"valid": 0, "invalid": 0, "catchall": 0}
             for job in result.jobs:
-                status = (job.email and job.email.get("status")) or job.status
-                if status == "exists":
+                job_status = (job.email and job.email.get("status")) or job.status
+                if job_status == "exists":
                     counts["valid"] += 1
-                elif status == "catchall":
+                elif job_status == "catchall":
                     counts["catchall"] += 1
                 else:
                     counts["invalid"] += 1
@@ -518,6 +518,8 @@ async def get_task_detail(
             },
         )
         return result
+    except HTTPException:
+        raise
     except ExternalAPIError as exc:
         level = logger.warning if exc.status_code in (401, 403) else logger.error
         level(
@@ -707,10 +709,10 @@ async def download_task_results(
         if detail.jobs is not None:
             counts = {"valid": 0, "invalid": 0, "catchall": 0}
             for job in detail.jobs:
-                status = (job.email and job.email.get("status")) or job.status
-                if status == "exists":
+                job_status = (job.email and job.email.get("status")) or job.status
+                if job_status == "exists":
                     counts["valid"] += 1
-                elif status == "catchall":
+                elif job_status == "catchall":
                     counts["catchall"] += 1
                 else:
                     counts["invalid"] += 1

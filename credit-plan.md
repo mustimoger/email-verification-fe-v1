@@ -73,10 +73,12 @@ Plan (step‑by‑step)
    - Add a small unit test covering error‑message extraction so 402 detail is preserved.
    Explanation: Verify now resolves API error messages via a shared helper, shows 402 detail during manual polling, file detail fetches, and downloads without layout changes, and logs when detail is missing. Added unit coverage in `tests/verify-mapping.test.ts` to lock in 402 detail extraction.
 
-7) Tests + verification (PENDING)
+7) Tests + verification (DONE)
    - Unit tests for atomic debit and ledger idempotency.
    - Integration tests for `/verify` and `/tasks/{id}` debit behavior (success + insufficient).
    - Manual verification: run a verify flow with 0 credits → hard‑fail.
+   - Prefer FastAPI TestClient + dependency overrides; avoid external API calls.
+   Explanation: Added backend unit coverage for `apply_credit_debit` status handling, plus FastAPI integration tests confirming `/api/verify` and `/api/tasks/{id}` return 402 on insufficient credits. Ran targeted pytest with venv activated.
 
 Current implementation snapshot
 - Supabase schema:
@@ -102,10 +104,7 @@ Known gaps / risks (must address next)
 - Supabase migrations were applied via MCP (no local migration files), so repo does not capture the SQL.
 
 Next steps (do in order, confirm each step)
-1) Step 7 — Tests:
-   - Backend tests for `apply_credit_debit` status handling and idempotency.
-   - Integration tests for `/verify` and `/tasks/{id}` with insufficient credits.
-2) Optional follow‑ups:
+1) Optional follow‑ups:
    - Add a stable `request_id` from the frontend for `/verify` to ensure idempotency.
    - Decide whether to mark tasks as blocked in Supabase on insufficient credits.
    - Add local migration artifacts for the Supabase RPCs + ledger table if you want repo‑tracked schema.
@@ -118,7 +117,7 @@ Status
 - Step 4: DONE (backend now debits on `/verify` completion and hard‑fails on insufficient credits; best‑effort idempotency uses request_id when provided).
 - Step 5: DONE (task detail/download now debit on completion using processed counts and block when credits are insufficient or counts are unavailable).
 - Step 6: DONE (Verify UI now surfaces 402 detail for manual/file/download flows using a shared error resolver; added unit coverage for error detail extraction).
-- Step 7: PENDING.
+- Step 7: DONE (added backend unit/integration tests for credit debit status + insufficient credits responses; ran targeted pytest).
 
 Notes
 - Any stubbed behavior must be replaced by real implementation once schema and APIs are available.
