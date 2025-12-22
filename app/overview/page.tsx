@@ -17,6 +17,7 @@ import {
 
 import { DashboardShell } from "../components/dashboard-shell";
 import { RequireAuth } from "../components/protected";
+import { useAuth } from "../components/auth-provider";
 import { apiClient, ApiError, IntegrationOption, OverviewResponse, Task } from "../lib/api-client";
 import {
   aggregateValidationCounts,
@@ -76,6 +77,7 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 export default function OverviewPage() {
+  const { session, loading: authLoading } = useAuth();
   const [overview, setOverview] = useState<OverviewResponse | null>(null);
   const [integrationOptions, setIntegrationOptions] = useState<IntegrationOption[]>([]);
   const [tasksOverride, setTasksOverride] = useState<Task[] | null>(null);
@@ -86,6 +88,7 @@ export default function OverviewPage() {
   const [statusPopover, setStatusPopover] = useState<StatusPopover | null>(null);
 
   useEffect(() => {
+    if (authLoading || !session) return;
     const load = async () => {
       setLoading(true);
       setError(null);
@@ -100,9 +103,10 @@ export default function OverviewPage() {
       }
     };
     void load();
-  }, []);
+  }, [authLoading, session]);
 
   useEffect(() => {
+    if (authLoading || !session) return;
     const loadIntegrations = async () => {
       try {
         const options = await apiClient.listIntegrations();
@@ -113,7 +117,7 @@ export default function OverviewPage() {
       }
     };
     void loadIntegrations();
-  }, []);
+  }, [authLoading, session]);
 
   const validationTotals = useMemo(() => {
     const totals = overview?.verification_totals;

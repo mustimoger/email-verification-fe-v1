@@ -105,6 +105,12 @@ Goal: replace mock data on `/overview` with real per-user data sourced from our 
     - Document any residual layout issues and avoid changing the visual design.
     Explanation: Implemented custom grid column widths to give the Status column more room and raised the status popover z-index so it renders above the pills without changing the overall design language.
 
+15) Overview: auth-aware fetch gating (DONE)
+    - Delay `/overview` + `/integrations` fetches until the Supabase session is hydrated.
+    - Avoid logging `api.request_failed` for unauthenticated requests triggered immediately after redirect.
+    - Keep UI/UX unchanged; this is backend wiring only.
+    Explanation: Overview now checks `useAuth` session + loading before firing the fetch effects, so API calls only occur after session hydration and 401s no longer occur during the initial redirect.
+
 Notes:
 - External task source remains the email verification API; Supabase caches per-user task metadata for aggregation/safety.
 - External API metrics endpoints (`/metrics/verifications`, `/metrics/api-usage`) return lifetime totals by default and range totals when `from`/`to` are provided; they do not return time series.

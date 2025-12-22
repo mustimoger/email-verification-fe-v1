@@ -77,6 +77,8 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
   Explanation: Prevents unauthorized calls and fixes “Invalid or expired authentication token” caused by audience/JWKS validation gaps. Pending: adjust `test_settings_missing_env_raises` separately.
 - [x] Dashboard shell gating — Sidebar/topbar/footer now render only when authenticated; shell redirects to `/signin` and returns `null` for signed-out users. Added shared `resolveAuthState` helper and a unit test for guard logic.  
   Explanation: Ensures signed-out users only see auth pages (per screenshot_1), eliminating dashboard chrome flashes when no session is present.
+- [x] Overview auth fetch gating — Ensure `/overview` and `/integrations` calls only fire once a Supabase session is established (no unauthenticated requests after redirect).  
+  Explanation: Overview now reads `session` + `loading` from `useAuth` and skips both fetch effects until the session is hydrated, preventing 401s and `api.request_failed` logs caused by pre-auth requests.
 
 ## Data flow alignment (frontend reads Supabase, backend proxies external)
 - [x] Harden `/api/tasks` fallback so Supabase stays primary: if Supabase is empty and external `/tasks` fails, return an empty list without crashing or leaking upstream errors; keep logging. Add a regression test. No schema change expected.  
@@ -303,6 +305,8 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
   Explanation: Sandbox transactions accepted `metadata` but did not return it on GET; to avoid silent loss, the billing API now rejects `metadata` and requires `custom_data`, with a test to enforce the behavior.
 - [ ] Credit deduction on usage with atomic update and idempotency guard.
   Explanation: Credits should decrement when tasks/verification are accepted; handle retries without double-deduction and reject when insufficient. Deferred per request; not implementing now.
+- [ ] Credit enforcement plan added (design + steps).  
+  Explanation: Added `credit-plan.md` to document the agreed credit‑consumption model (debit on completion, hard‑fail on insufficient credits, `/verify` shares pool) and the step‑by‑step implementation plan.
 - [x] Priority High: Confirm Paddle webhook signature spec and align verification (or use official SDK verifier) with tests.
   Explanation: Aligned verification logic with Paddle’s official SDK implementation (ts + h1 header, HMAC of `ts:raw_body`, optional multi-signature support, time drift checks) and added focused tests. Added `PADDLE_WEBHOOK_MAX_VARIANCE_SECONDS` configuration to avoid hardcoded drift defaults.
 - [x] Priority High: Verify webhook ingress IP handling in current infra and adjust allowlist logic.
