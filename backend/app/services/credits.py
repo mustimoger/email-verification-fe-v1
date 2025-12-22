@@ -3,7 +3,7 @@ Credit management helpers for billing events.
 """
 
 import logging
-from typing import Dict
+from typing import Dict, Optional
 
 from . import supabase_client
 
@@ -27,3 +27,17 @@ def grant_credits(user_id: str, credits: int) -> Dict:
         extra={"user_id": user_id, "granted": credits, "new_balance": updated.get("credits_remaining")},
     )
     return updated
+
+
+def debit_credits(user_id: str, credits: int) -> Optional[Dict]:
+    if credits <= 0:
+        logger.warning("credits.debit.invalid_amount", extra={"user_id": user_id, "credits": credits})
+        return None
+    try:
+        return supabase_client.debit_credits(user_id, credits)
+    except Exception as exc:  # noqa: BLE001
+        logger.error(
+            "credits.debit.failed",
+            extra={"user_id": user_id, "debit": credits, "error": str(exc)},
+        )
+        raise

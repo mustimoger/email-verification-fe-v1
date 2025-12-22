@@ -105,6 +105,24 @@ def increment_credits(user_id: str, delta: int) -> Dict[str, Any]:
     return set_credits(user_id, new_value)
 
 
+def debit_credits(user_id: str, amount: int) -> Optional[Dict[str, Any]]:
+    sb = get_supabase()
+    payload = {"p_user_id": user_id, "p_amount": amount}
+    try:
+        res = sb.rpc("debit_credits", payload).execute()
+    except Exception as exc:  # noqa: BLE001
+        logger.error(
+            "supabase.credits.debit_failed",
+            extra={"user_id": user_id, "amount": amount, "error": str(exc)},
+        )
+        raise
+    data: List[Dict[str, Any]] = res.data or []
+    if not data:
+        logger.info("supabase.credits.debit_insufficient", extra={"user_id": user_id, "amount": amount})
+        return None
+    return data[0]
+
+
 def fetch_usage(
     user_id: str,
     start: Optional[str] = None,

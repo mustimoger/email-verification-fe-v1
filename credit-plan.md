@@ -30,7 +30,7 @@ Plan (step‑by‑step)
      - Unique constraint on `(user_id, source, source_id)` for idempotency.
    - If a ledger table already exists or is preferred elsewhere, use it instead of new schema.
 
-3) Implement atomic debit in Supabase client (PENDING)
+3) Implement atomic debit in Supabase client (DONE)
    - Add a dedicated function that atomically checks and decrements credits with a single statement.
    - Requirements:
      - Hard‑fail if `credits_remaining < debit_amount`.
@@ -66,7 +66,8 @@ Plan (step‑by‑step)
 Status
 - Step 1: DONE (documented requirements + plan; clarified completion-time debit and hard‑fail behavior).
 - Step 2: DONE (added `credit_ledger` table with idempotency index and audit fields for credit events).
-- Steps 3–7: PENDING.
+- Step 3: DONE (added `debit_credits` RPC + client helper for atomic debits; returns no rows on insufficient balance).
+- Steps 4–7: PENDING.
 
 Notes
 - Any stubbed behavior must be replaced by real implementation once schema and APIs are available.
