@@ -117,6 +117,7 @@ class TaskDetailResponse(BaseModel):
     started_at: Optional[str] = None
     finished_at: Optional[str] = None
     updated_at: Optional[str] = None
+    metrics: Optional[TaskMetrics] = None
     jobs: Optional[List[TaskEmailJob]] = None
     metrics: Optional[TaskMetrics] = None
 

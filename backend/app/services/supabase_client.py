@@ -123,6 +123,39 @@ def debit_credits(user_id: str, amount: int) -> Optional[Dict[str, Any]]:
     return data[0]
 
 
+def apply_credit_debit(
+    user_id: str,
+    amount: int,
+    source: str,
+    source_id: str,
+    meta: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    sb = get_supabase()
+    payload = {
+        "p_user_id": user_id,
+        "p_amount": amount,
+        "p_source": source,
+        "p_source_id": source_id,
+        "p_meta": meta or {},
+    }
+    try:
+        res = sb.rpc("apply_credit_debit", payload).execute()
+    except Exception as exc:  # noqa: BLE001
+        logger.error(
+            "supabase.credits.apply_failed",
+            extra={"user_id": user_id, "amount": amount, "source": source, "source_id": source_id, "error": str(exc)},
+        )
+        raise
+    data: List[Dict[str, Any]] = res.data or []
+    if not data:
+        logger.error(
+            "supabase.credits.apply_missing_row",
+            extra={"user_id": user_id, "amount": amount, "source": source, "source_id": source_id},
+        )
+        raise RuntimeError("Credit debit returned no row")
+    return data[0]
+
+
 def fetch_usage(
     user_id: str,
     start: Optional[str] = None,

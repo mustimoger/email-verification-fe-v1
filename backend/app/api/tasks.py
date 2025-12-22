@@ -2,8 +2,9 @@ import asyncio
 import json
 import logging
 import time
+import uuid
 from pathlib import Path
-from typing import Optional, Set
+from typing import Dict, Optional, Set
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Response, UploadFile, status
 from pydantic import BaseModel
@@ -23,8 +24,15 @@ from ..core.auth import AuthContext, get_current_user
 from ..core.settings import get_settings
 from ..services.file_processing import _column_letters_to_index
 from ..services.task_files_store import fetch_task_file, upsert_task_file
-from ..services.tasks_store import fetch_tasks_with_counts, upsert_task_from_detail, upsert_tasks_from_list
+from ..services.tasks_store import (
+    counts_from_metrics,
+    email_count_from_metrics,
+    fetch_tasks_with_counts,
+    upsert_task_from_detail,
+    upsert_tasks_from_list,
+)
 from ..services.api_keys import INTERNAL_DASHBOARD_KEY_NAME, get_cached_key_by_name
+from ..services.credits import apply_credit_debit, CREDIT_SOURCE_TASK, CREDIT_SOURCE_VERIFY
 from ..services.usage import record_usage
 
 router = APIRouter(prefix="/api", tags=["tasks"])
@@ -73,6 +81,53 @@ def normalize_email_column_mapping(email_column: str) -> tuple[str, int]:
             detail="Email column must be a column letter or 1-based index",
         )
     return str(index + 1), index
+
+
+def resolve_verify_source_id(email: str, payload: dict, result: VerifyEmailResponse) -> str:
+    request_id = payload.get("request_id")
+    if isinstance(request_id, str) and request_id.strip():
+        return request_id.strip()
+    if result.validated_at and email:
+        return f"{email}:{result.validated_at}"
+    generated = str(uuid.uuid4())
+    logger.info("credits.verify.request_id_generated", extra={"email": email})
+    return generated
+
+
+def task_is_complete(detail: TaskDetailResponse) -> bool:
+    if detail.finished_at:
+        return True
+    metrics = detail.metrics
+    if not metrics:
+        return False
+    if metrics.progress_percent is not None and metrics.progress_percent >= 100:
+        return True
+    if metrics.progress is not None and metrics.progress >= 1:
+        return True
+    job_status = metrics.job_status
+    if isinstance(job_status, dict) and job_status:
+        pending = int(job_status.get("pending") or 0)
+        processing = int(job_status.get("processing") or 0)
+        if pending + processing == 0:
+            return True
+    return False
+
+
+def resolve_processed_count(detail: TaskDetailResponse, counts: Optional[Dict[str, int]]) -> Optional[int]:
+    if counts:
+        total = sum(value for value in counts.values() if isinstance(value, int))
+        if total > 0:
+            return total
+    metrics = detail.metrics
+    total_from_metrics = email_count_from_metrics(metrics)
+    if total_from_metrics is not None and total_from_metrics > 0:
+        return total_from_metrics
+    metrics_counts = counts_from_metrics(metrics)
+    if metrics_counts:
+        total = sum(value for value in metrics_counts.values() if isinstance(value, int))
+        if total > 0:
+            return total
+    return None
 
 
 async def poll_tasks_after_upload(
@@ -134,8 +189,22 @@ async def verify_email(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="email is required")
     try:
         result = await client.verify_email(email=email)
+        source_id = resolve_verify_source_id(email, payload, result)
+        debit = apply_credit_debit(
+            user_id=user.user_id,
+            credits=1,
+            source=CREDIT_SOURCE_VERIFY,
+            source_id=source_id,
+            meta={"email": email, "status": result.status, "validated_at": result.validated_at},
+        )
+        if debit.get("status") == "insufficient":
+            logger.warning(
+                "credits.verify.insufficient",
+                extra={"user_id": user.user_id, "email": email, "source_id": source_id},
+            )
+            raise HTTPException(status_code=status.HTTP_402_PAYMENT_REQUIRED, detail="Insufficient credits")
         record_usage(user.user_id, path="/verify", count=1, api_key_id=None)
-        logger.info("route.verify", extra={"user_id": user.user_id, "email": email})
+        logger.info("route.verify", extra={"user_id": user.user_id, "email": email, "credit_status": debit.get("status")})
         return result
     except ExternalAPIError as exc:
         if exc.status_code in (401, 403):
@@ -387,6 +456,7 @@ async def get_task_detail(
     start = time.time()
     try:
         result = await client.get_task_detail(task_id)
+        counts: Optional[Dict[str, int]] = None
         if result.jobs is not None:
             counts = {"valid": 0, "invalid": 0, "catchall": 0}
             for job in result.jobs:
@@ -397,6 +467,39 @@ async def get_task_detail(
                     counts["catchall"] += 1
                 else:
                     counts["invalid"] += 1
+        credit_status = None
+        if task_is_complete(result):
+            processed_count = resolve_processed_count(result, counts)
+            if processed_count is None:
+                logger.error(
+                    "credits.task.count_missing",
+                    extra={"user_id": user.user_id, "task_id": task_id},
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail="Unable to determine credit usage for this task",
+                )
+            debit = apply_credit_debit(
+                user_id=user.user_id,
+                credits=processed_count,
+                source=CREDIT_SOURCE_TASK,
+                source_id=task_id,
+                meta={
+                    "processed_count": processed_count,
+                    "valid": counts.get("valid") if counts else None,
+                    "invalid": counts.get("invalid") if counts else None,
+                    "catchall": counts.get("catchall") if counts else None,
+                    "finished_at": result.finished_at,
+                },
+            )
+            credit_status = debit.get("status")
+            if debit.get("status") == "insufficient":
+                logger.warning(
+                    "credits.task.insufficient",
+                    extra={"user_id": user.user_id, "task_id": task_id, "required": processed_count},
+                )
+                raise HTTPException(status_code=status.HTTP_402_PAYMENT_REQUIRED, detail="Insufficient credits")
+        if result.jobs is not None:
             upsert_task_from_detail(
                 user.user_id,
                 result,
@@ -410,6 +513,7 @@ async def get_task_detail(
             extra={
                 "user_id": user.user_id,
                 "task_id": task_id,
+                "credit_status": credit_status,
                 "duration_ms": round((time.time() - start) * 1000, 2),
             },
         )
@@ -598,6 +702,56 @@ async def download_task_results(
         if not task_file:
             logger.info("route.tasks.download.missing_file", extra={"user_id": target_user_id, "task_id": task_id})
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task file not found")
+        detail = await client.get_task_detail(task_id)
+        counts: Optional[Dict[str, int]] = None
+        if detail.jobs is not None:
+            counts = {"valid": 0, "invalid": 0, "catchall": 0}
+            for job in detail.jobs:
+                status = (job.email and job.email.get("status")) or job.status
+                if status == "exists":
+                    counts["valid"] += 1
+                elif status == "catchall":
+                    counts["catchall"] += 1
+                else:
+                    counts["invalid"] += 1
+        if task_is_complete(detail):
+            processed_count = resolve_processed_count(detail, counts)
+            if processed_count is None:
+                logger.error(
+                    "credits.task.count_missing",
+                    extra={"user_id": target_user_id, "task_id": task_id},
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail="Unable to determine credit usage for this task",
+                )
+            debit = apply_credit_debit(
+                user_id=target_user_id,
+                credits=processed_count,
+                source=CREDIT_SOURCE_TASK,
+                source_id=task_id,
+                meta={
+                    "processed_count": processed_count,
+                    "valid": counts.get("valid") if counts else None,
+                    "invalid": counts.get("invalid") if counts else None,
+                    "catchall": counts.get("catchall") if counts else None,
+                    "finished_at": detail.finished_at,
+                },
+            )
+            if debit.get("status") == "insufficient":
+                logger.warning(
+                    "credits.task.insufficient",
+                    extra={"user_id": target_user_id, "task_id": task_id, "required": processed_count},
+                )
+                raise HTTPException(status_code=status.HTTP_402_PAYMENT_REQUIRED, detail="Insufficient credits")
+        if detail.jobs is not None:
+            upsert_task_from_detail(
+                target_user_id,
+                detail,
+                counts=counts,
+                integration=None,
+                api_key_id=None,
+            )
         download: DownloadedFile = await client.download_task_results(task_id=task_id, file_format=file_format)
     except ExternalAPIError as exc:
         logger.warning(
