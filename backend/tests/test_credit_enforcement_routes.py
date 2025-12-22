@@ -46,6 +46,7 @@ def _build_app(monkeypatch):
     monkeypatch.setattr("app.api.tasks.upsert_task_from_detail", lambda *args, **kwargs: None)
     monkeypatch.setattr("app.api.tasks.record_usage", lambda *args, **kwargs: None)
     monkeypatch.setattr("app.api.tasks.resolve_task_api_key_id", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr("app.api.tasks.fetch_task_credit_reservation", lambda *_args, **_kwargs: None)
     return app
 
 

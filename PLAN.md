@@ -332,12 +332,12 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
   Explanation: Added client-side request_id caching with force‑new and clear helpers, wired `/verify` calls to include request_id and clear on success, and added unit coverage in `tests/verify-idempotency.test.ts`.
 - [x] Credit enforcement Step 9 — decide whether to mark tasks blocked on insufficient credits.
   Explanation: Decision is to avoid persisted blocked status; rely on 402 until credits are sufficient, so results unlock immediately after purchase without new schema/state.
-- [ ] Credit enforcement Step 10a — add `credit_reserved_count` + `credit_reservation_id` to `tasks`.
-  Explanation: Pending; add reservation metadata columns so uploads/manual tasks can persist reserved counts and idempotency keys.
-- [ ] Credit enforcement Step 10b — add `apply_credit_release` RPC to Supabase.
-  Explanation: Pending; release reserved credits atomically and idempotently using a ledger-backed RPC.
-- [ ] Credit enforcement Step 10c — verify reservation/finalize flows and run targeted tests.
-  Explanation: Pending; confirm reserve->finalize/release behavior for `/tasks` and `/tasks/upload`, then re-run targeted backend tests.
+- [x] Credit enforcement Step 10a — add `credit_reserved_count` + `credit_reservation_id` to `tasks`.
+  Explanation: Applied a Supabase migration to add reservation metadata columns so uploads/manual tasks can persist reserved counts and idempotency keys.
+- [x] Credit enforcement Step 10b — add `apply_credit_release` RPC to Supabase.
+  Explanation: Added a Supabase RPC that inserts a positive ledger entry and credits users idempotently, enabling safe release of reserved credits.
+- [x] Credit enforcement Step 10c — verify reservation/finalize flows and run targeted tests.
+  Explanation: Stubbed reservation fetch in `test_credit_enforcement_routes.py` to avoid Supabase client init, then ran targeted pytest for reservation/finalize and insufficient-credit routes; all passed.
 - [x] Priority High: Confirm Paddle webhook signature spec and align verification (or use official SDK verifier) with tests.
   Explanation: Aligned verification logic with Paddle’s official SDK implementation (ts + h1 header, HMAC of `ts:raw_body`, optional multi-signature support, time drift checks) and added focused tests. Added `PADDLE_WEBHOOK_MAX_VARIANCE_SECONDS` configuration to avoid hardcoded drift defaults.
 - [x] Priority High: Verify webhook ingress IP handling in current infra and adjust allowlist logic.
