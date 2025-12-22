@@ -86,9 +86,17 @@ Plan (step‑by‑step)
    - Ensure a new request_id is used for a new attempt.
    Explanation: Added a client-side request_id cache with explicit force‑new and clear helpers, wired `/verify` calls to include request_id and clear on success, and added unit coverage in `tests/verify-idempotency.test.ts`.
 
-9) Decide whether to mark tasks as blocked on insufficient credits (PENDING)
-   - Decide if task rows in Supabase should store a blocked status or flag when debits fail.
-   - If yes, define the status/field and update task detail/download handling to persist it.
+9) Decide whether to mark tasks as blocked on insufficient credits (DONE)
+   - Decision: no persisted blocked status; rely on 402 until credits are sufficient.
+   - Rationale: avoids new schema/state and allows results to unlock immediately after purchase on retry.
+
+10) Reserve credits upfront for tasks (PENDING)
+   - Hard pre‑check before external task creation; reject if credits are insufficient.
+   - Reserve credits based on raw row count (not deduped count).
+   - For manual `/tasks`: reserve using submitted email count.
+   - For `/tasks/upload`: parse uploads to count rows and reserve before calling external upload.
+   - On completion: debit actual processed count and release any remainder.
+   - On failure to reserve: return 402 and do not call external API.
 
 Current implementation snapshot
 - Supabase schema:
@@ -112,7 +120,7 @@ Known gaps / risks (must address next)
 - Supabase migrations were applied via MCP (no local migration files), so repo does not capture the SQL.
 
 Next steps (do in order, confirm each step)
-1) Step 9 — Decide whether to mark tasks as blocked in Supabase on insufficient credits.
+1) Step 10 — Reserve credits upfront for tasks (hard pre‑check).
 2) Optional follow‑ups:
    - Add local migration artifacts for the Supabase RPCs + ledger table if you want repo‑tracked schema.
 
@@ -126,7 +134,8 @@ Status
 - Step 6: DONE (Verify UI now surfaces 402 detail for manual/file/download flows using a shared error resolver; added unit coverage for error detail extraction).
 - Step 7: DONE (added backend unit/integration tests for credit debit status + insufficient credits responses; ran targeted pytest).
 - Step 8: DONE (client now generates/stores request_id per email attempt, passes it to `/verify`, clears on success, and has unit coverage).
-- Step 9: PENDING.
+- Step 9: DONE (no persisted blocked status; rely on 402 until credits are sufficient).
+- Step 10: PENDING.
 
 Notes
 - Any stubbed behavior must be replaced by real implementation once schema and APIs are available.

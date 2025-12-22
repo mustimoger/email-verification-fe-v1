@@ -35,11 +35,10 @@ Plan (step-by-step)
    - Custom Pricing card shows “Contact Us” price text, feature list, and a Contact Us CTA that logs intent without checkout wiring.
    - Why: completes parity with landing page while avoiding premature backend wiring.
 
-6) Verify layout + responsiveness (MVP)
-   - Ensure the grid and spacing match existing dashboard style and stay responsive on mobile.
-   - Validate no UI regression in sidebar/footer layout.
-   - Why: preserves UI integrity while adding content.
-   - Blocked: Playwright redirected to `/signin` due to `Invalid Refresh Token` (401 on `/api/billing/plans`). A fresh auth session/localStorage token is required to verify the `/pricing` UI.
+6) Verify layout + responsiveness (MVP) (DONE)
+   - Verified desktop (1366x768): four cards in a single row, spacing and footer links match dashboard layout.
+   - Verified mobile (390x844): cards stack vertically with intact padding; header/hamburger visible; footer links remain accessible.
+   - Why: confirms the pricing grid stays usable across breakpoints.
 
 Status
 - Step 1: DONE

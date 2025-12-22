@@ -185,8 +185,8 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
   Explanation: Updated Basic/Professional/Enterprise `custom_data.subtitle` + `custom_data.features` and wired `/pricing` to render subtitle + feature list from metadata without hardcoded fallback text. Custom Pricing remains hidden until Step 5.
 - [x] Custom Pricing card enabled in dashboard `/pricing`.  
   Explanation: Pricing UI now renders all plans sorted by `custom_data.sort_order`, including the display-only Custom Pricing card with “Contact Us” label and feature list. CTA clicks log intent without triggering checkout, keeping behavior neutral until you decide next steps.
-- [ ] Pricing layout verification (responsive) pending.  
-  Explanation: Attempted Playwright verification but auth redirected to `/signin` due to `Invalid Refresh Token` (401 on `/api/billing/plans`). Need a fresh localStorage session token to verify desktop/mobile layout.
+- [x] Pricing layout verification (responsive) done.  
+  Explanation: Verified `/pricing` at 1366x768 (4-card row) and 390x844 (stacked cards, header/CTA/footer intact). Responsive behavior matches expectations; no layout regressions observed.
 
 ## Account page
 - [x] Implemented Account page per Figma: profile card with avatar, edit link, username/email/password fields, and Update button; purchase history table with invoice download pills; total credits summary card. Uses typed data and shared shell/footer; backend wiring TBD.
@@ -326,8 +326,10 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
   Explanation: Added backend unit tests for `apply_credit_debit` status handling and FastAPI integration tests for `/api/verify` + `/api/tasks/{id}` returning 402 on insufficient credits. Ran targeted pytest with venv activated.
 - [x] Credit enforcement Step 8 — frontend request_id for `/verify` idempotency.
   Explanation: Added client-side request_id caching with force‑new and clear helpers, wired `/verify` calls to include request_id and clear on success, and added unit coverage in `tests/verify-idempotency.test.ts`.
-- [ ] Credit enforcement Step 9 — decide whether to mark tasks blocked on insufficient credits.
-  Explanation: Pending; decide on storing a blocked status/flag in Supabase tasks when debits fail and, if approved, persist it during task detail/download handling.
+- [x] Credit enforcement Step 9 — decide whether to mark tasks blocked on insufficient credits.
+  Explanation: Decision is to avoid persisted blocked status; rely on 402 until credits are sufficient, so results unlock immediately after purchase without new schema/state.
+- [ ] Credit enforcement Step 10 — reserve credits upfront for tasks (hard pre‑check).
+  Explanation: Pending; pre‑check credits before task creation, reserve by raw row count, and release remainder on completion when actual processed count is known.
 - [x] Priority High: Confirm Paddle webhook signature spec and align verification (or use official SDK verifier) with tests.
   Explanation: Aligned verification logic with Paddle’s official SDK implementation (ts + h1 header, HMAC of `ts:raw_body`, optional multi-signature support, time drift checks) and added focused tests. Added `PADDLE_WEBHOOK_MAX_VARIANCE_SECONDS` configuration to avoid hardcoded drift defaults.
 - [x] Priority High: Verify webhook ingress IP handling in current infra and adjust allowlist logic.
@@ -354,6 +356,12 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
   Explanation: Optional convenience feature; can be added after core billing reliability is confirmed. Not implemented yet.
 - [ ] Priority Low: Add frontend price preview for localized totals.
   Explanation: Improves UX by showing taxes/total before checkout; defer until core flow is stable. Not implemented yet.
+
+## Repo hygiene
+- [x] Ignore log files in git.
+  Explanation: Added `*.log` and `*.log.*` patterns to `.gitignore` to prevent runtime logs from being committed; existing tracked logs remain tracked unless removed.
+- [x] Untrack existing log files.
+  Explanation: Removed tracked `backend/logs/uvicorn.log*` from git index (files kept locally). Future log changes will no longer appear in `git status`.
 
 ## Supabase schema updates
 - [x] Added `cached_api_keys` (key_id PK, user_id FK, name, created_at) with user index for API key caching.
