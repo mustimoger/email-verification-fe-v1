@@ -1,6 +1,6 @@
 "use client";
 
-import { BatchFileUploadResponse, TaskDetailResponse, TaskEmailJob } from "../lib/api-client";
+import { ApiError, BatchFileUploadResponse, TaskDetailResponse, TaskEmailJob } from "../lib/api-client";
 import { PENDING_STATES, deriveCounts, formatHistoryDate } from "../history/utils";
 
 export type VerificationResult = {
@@ -36,6 +36,49 @@ export type UploadTaskLink = {
   fileName: string;
   taskId: string | null;
   uploadId: string | null;
+};
+
+type ApiErrorDetails = { detail?: unknown };
+
+const extractDetailMessage = (details: unknown): string | null => {
+  if (typeof details === "string") {
+    const trimmed = details.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+  if (!details || typeof details !== "object") return null;
+  const detail = (details as ApiErrorDetails).detail;
+  if (typeof detail !== "string") return null;
+  const trimmed = detail.trim();
+  return trimmed.length > 0 ? trimmed : null;
+};
+
+const serializeUnknownError = (error: unknown): string => {
+  if (typeof error === "string") return error;
+  if (error instanceof Error && error.message.trim().length > 0) return error.message;
+  try {
+    const serialized = JSON.stringify(error);
+    if (serialized && serialized.length > 0) return serialized;
+  } catch {
+    // fall through to string conversion
+  }
+  return String(error);
+};
+
+export const resolveApiErrorMessage = (error: unknown, context?: string): string => {
+  if (error instanceof ApiError) {
+    const detail = extractDetailMessage(error.details);
+    if (detail) return detail;
+    if (context) {
+      console.warn("verify.api_error_detail_missing", {
+        context,
+        status: error.status,
+        message: error.message,
+        details: error.details,
+      });
+    }
+    return error.message || serializeUnknownError(error.details);
+  }
+  return serializeUnknownError(error);
 };
 
 export function normalizeEmails(raw: string): string[] {

@@ -177,6 +177,10 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
 ## Pricing page
 - [x] Implemented initial Pricing page using `/api/billing/plans` data with shared shell/footer and Paddle checkout CTA.  
   Explanation: Current UI maps Supabase `billing_plans` into cards with name, credits note, price, and a single “Credits Never Expire” feature. It does **not** yet include the landing-page feature lists or the Custom Pricing card/Contact Us CTA. Alignment work is tracked in `pricing-plan.md`.
+- [x] Pricing alignment data source chosen: use `billing_plans.custom_data` for features + CTA behavior.  
+  Explanation: Confirms features/CTA labels will be data-driven (not hardcoded) and sets the baseline for adding a Custom Pricing card. A pending decision remains on how to store Custom Pricing within `billing_plans` given non-null Paddle columns; see `pricing-plan.md` Step 3.
+- [x] Custom Pricing storage strategy defined + catalog seeded in Supabase.  
+  Explanation: Added a display-only `billing_plans` row (`plan_key=custom_pricing`, synthetic IDs) with `custom_data.cta_action="contact"` plus feature list and display price. Existing plans now include `cta_action="checkout"` and `cta_label` in `custom_data`. Backend now blocks `/api/billing/transactions` when the plan’s `cta_action` is not `checkout`, preventing Paddle checkout for non-purchasable plans.
 
 ## Account page
 - [x] Implemented Account page per Figma: profile card with avatar, edit link, username/email/password fields, and Update button; purchase history table with invoice download pills; total credits summary card. Uses typed data and shared shell/footer; backend wiring TBD.
@@ -310,6 +314,8 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
   Explanation: Added `credit-plan.md` to document the agreed credit‑consumption model (debit on completion, hard‑fail on insufficient credits, `/verify` shares pool) and the step‑by‑step implementation plan.
 - [ ] Credit enforcement implementation — add ledger storage, atomic debit, idempotency, and wire to `/verify` + task completion with tests.  
   Explanation: Steps 2–5 complete — added `credit_ledger`, added `apply_credit_debit` RPC for idempotent debits, and wired `/verify` + `/tasks/{id}`/download to debit on completion with hard‑fail on insufficient credits. UI messaging + tests remain and are tracked in `credit-plan.md`.
+- [x] Credit enforcement Step 6 — UI 402 messaging for manual/file/download flows (no layout change).
+  Explanation: Verify now surfaces server‑provided 402 detail in manual polling, file detail fetches, and download errors without changing layout, and logs missing detail. Added unit coverage for error detail extraction in `tests/verify-mapping.test.ts`.
 - [x] Priority High: Confirm Paddle webhook signature spec and align verification (or use official SDK verifier) with tests.
   Explanation: Aligned verification logic with Paddle’s official SDK implementation (ts + h1 header, HMAC of `ts:raw_body`, optional multi-signature support, time drift checks) and added focused tests. Added `PADDLE_WEBHOOK_MAX_VARIANCE_SECONDS` configuration to avoid hardcoded drift defaults.
 - [x] Priority High: Verify webhook ingress IP handling in current infra and adjust allowlist logic.

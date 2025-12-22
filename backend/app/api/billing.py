@@ -317,6 +317,18 @@ async def create_transaction(
     plan_row = get_billing_plan_by_price_id(payload.price_id)
     if not plan_row:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unknown price_id")
+    plan_custom = plan_row.get("custom_data") if isinstance(plan_row.get("custom_data"), dict) else {}
+    cta_action = plan_custom.get("cta_action")
+    if cta_action and cta_action != "checkout":
+        logger.warning(
+            "billing.transaction.blocked",
+            extra={
+                "user_id": user.user_id,
+                "price_id": payload.price_id,
+                "cta_action": cta_action,
+            },
+        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Checkout disabled for this plan")
     if payload.metadata is not None:
         logger.warning(
             "billing.transaction.metadata_unsupported",

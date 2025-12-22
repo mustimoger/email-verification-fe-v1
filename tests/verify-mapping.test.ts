@@ -1,11 +1,13 @@
 import assert from "node:assert";
 
+import { ApiError } from "../app/lib/api-client";
 import type { BatchFileUploadResponse, TaskDetailResponse } from "../app/lib/api-client";
 import {
   buildUploadSummary,
   createUploadLinks,
   mapTaskDetailToResults,
   mapUploadResultsToLinks,
+  resolveApiErrorMessage,
 } from "../app/verify/utils";
 
 function run(name: string, fn: () => void) {
@@ -82,6 +84,18 @@ run("buildUploadSummary stays pending when jobs are missing", () => {
   const summary = buildUploadSummary(files, links, new Map(), "2024-03-01T00:00:00Z");
   assert.strictEqual(summary.files[0].status, "pending");
   assert.strictEqual(summary.files[0].totalEmails, null);
+});
+
+run("resolveApiErrorMessage returns detail string when present", () => {
+  const error = new ApiError(402, "Payment Required", { detail: "Insufficient credits" });
+  const message = resolveApiErrorMessage(error);
+  assert.strictEqual(message, "Insufficient credits");
+});
+
+run("resolveApiErrorMessage falls back to ApiError message without detail", () => {
+  const error = new ApiError(500, "Internal Server Error");
+  const message = resolveApiErrorMessage(error);
+  assert.strictEqual(message, "Internal Server Error");
 });
 
 // eslint-disable-next-line no-console

@@ -16,6 +16,7 @@ import {
   mapUploadResultsToLinks,
   mapVerifyFallbackResults,
   normalizeEmails,
+  resolveApiErrorMessage,
   type UploadSummary,
   type VerificationResult,
 } from "./utils";
@@ -87,7 +88,13 @@ export default function VerifyPage() {
           }
         }
       } catch (err: unknown) {
-        const message = err instanceof ApiError ? err.details || err.message : "Task lookup failed";
+        if (err instanceof ApiError && err.status === 402) {
+          const message = resolveApiErrorMessage(err, "verify.task_poll");
+          setErrors(message);
+          pollRef.current.active = false;
+          return;
+        }
+        const message = resolveApiErrorMessage(err, "verify.task_poll");
         console.error("verify.task_poll_failed", { taskId, attempt, error: message });
       }
       if (attempt < TASK_POLL_ATTEMPTS) {
@@ -103,7 +110,12 @@ export default function VerifyPage() {
         const detail = await apiClient.getTask(taskId);
         return detail;
       } catch (err: unknown) {
-        const message = err instanceof ApiError ? err.details || err.message : "Task lookup failed";
+        if (err instanceof ApiError && err.status === 402) {
+          const message = resolveApiErrorMessage(err, "verify.task_detail_fetch");
+          console.warn("verify.task_detail_insufficient_credits", { taskId, attempt, error: message });
+          throw err;
+        }
+        const message = resolveApiErrorMessage(err, "verify.task_detail_fetch");
         console.error("verify.task_detail_fetch_failed", { taskId, attempt, error: message });
       }
       if (attempt < TASK_POLL_ATTEMPTS) {
@@ -148,8 +160,8 @@ export default function VerifyPage() {
         await pollTaskDetail(taskId, parsed);
       }
     } catch (err: unknown) {
-      const message = err instanceof ApiError ? err.details || err.message : "Verification failed";
-      setErrors(typeof message === "string" ? message : "Verification failed");
+      const message = resolveApiErrorMessage(err, "verify.manual.submit");
+      setErrors(message);
     } finally {
       setIsSubmitting(false);
     }
@@ -356,8 +368,8 @@ export default function VerifyPage() {
         unmatched,
       });
     } catch (err: unknown) {
-      const message = err instanceof ApiError ? err.details || err.message : "Upload failed";
-      setFileError(typeof message === "string" ? message : "Upload failed");
+      const message = resolveApiErrorMessage(err, "verify.upload.submit");
+      setFileError(message);
     } finally {
       setIsSubmitting(false);
     }
@@ -386,9 +398,9 @@ export default function VerifyPage() {
       URL.revokeObjectURL(url);
       console.info("verify.download.success", { task_id: file.taskId, file_name: fileName });
     } catch (err: unknown) {
-      const message = err instanceof ApiError ? err.details || err.message : "Download failed";
+      const message = resolveApiErrorMessage(err, "verify.download");
       console.error("verify.download.failed", { task_id: file.taskId, error: message });
-      setFileError(typeof message === "string" ? message : "Download failed");
+      setFileError(message);
     } finally {
       setActiveDownload(null);
     }

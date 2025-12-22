@@ -65,9 +65,13 @@ Plan (step‑by‑step)
    - Ensure this does not re‑debit on subsequent fetches (idempotency key).
    Explanation: Task detail/download now attempts debit once per task using the ledger and blocks results when credits are insufficient or counts are missing; completion detection relies on `finished_at` or metrics when present.
 
-6) UI handling for credit‑insufficient responses (PENDING)
-   - Show a clear error message for insufficient credits across manual/file/verify flows.
-   - Keep UI layout intact; only update error copy.
+6) UI handling for credit‑insufficient responses (DONE)
+   - Surface server‑provided 402 detail in manual verify flow (task polling) without altering layout.
+   - Surface server‑provided 402 detail in file upload flow (task detail fetch + summary path) without altering layout.
+   - Surface server‑provided 402 detail in download flow without altering layout.
+   - Avoid hardcoded fallback copy; log and display the most specific API error message available.
+   - Add a small unit test covering error‑message extraction so 402 detail is preserved.
+   Explanation: Verify now resolves API error messages via a shared helper, shows 402 detail during manual polling, file detail fetches, and downloads without layout changes, and logs when detail is missing. Added unit coverage in `tests/verify-mapping.test.ts` to lock in 402 detail extraction.
 
 7) Tests + verification (PENDING)
    - Unit tests for atomic debit and ledger idempotency.
@@ -91,7 +95,6 @@ Current implementation snapshot
   - `TaskDetailResponse` now includes `metrics` so completion detection can use progress/job_status.
 
 Known gaps / risks (must address next)
-- UI error messaging for insufficient credits is not implemented (Step 6).
 - Tests for debit/idempotency and insufficient cases are missing (Step 7).
 - `/verify` idempotency: if the client does not send `request_id`, server generates one; retries may still double‑debit for the same email unless the client sends a stable `request_id`.
 - Task status updates on insufficient credits are not implemented; task detail currently hard‑fails without persisting a blocked status.
@@ -99,13 +102,10 @@ Known gaps / risks (must address next)
 - Supabase migrations were applied via MCP (no local migration files), so repo does not capture the SQL.
 
 Next steps (do in order, confirm each step)
-1) Step 6 — UI messaging for 402:
-   - Update Verify page to surface “Insufficient credits” for manual + file flows.
-   - Update download flow error text on 402.
-2) Step 7 — Tests:
+1) Step 7 — Tests:
    - Backend tests for `apply_credit_debit` status handling and idempotency.
    - Integration tests for `/verify` and `/tasks/{id}` with insufficient credits.
-3) Optional follow‑ups:
+2) Optional follow‑ups:
    - Add a stable `request_id` from the frontend for `/verify` to ensure idempotency.
    - Decide whether to mark tasks as blocked in Supabase on insufficient credits.
    - Add local migration artifacts for the Supabase RPCs + ledger table if you want repo‑tracked schema.
@@ -117,7 +117,8 @@ Status
 - Step 3b: DONE (added `apply_credit_debit` RPC to combine ledger insert + debit with duplicate/insufficient status).
 - Step 4: DONE (backend now debits on `/verify` completion and hard‑fails on insufficient credits; best‑effort idempotency uses request_id when provided).
 - Step 5: DONE (task detail/download now debit on completion using processed counts and block when credits are insufficient or counts are unavailable).
-- Steps 6–7: PENDING.
+- Step 6: DONE (Verify UI now surfaces 402 detail for manual/file/download flows using a shared error resolver; added unit coverage for error detail extraction).
+- Step 7: PENDING.
 
 Notes
 - Any stubbed behavior must be replaced by real implementation once schema and APIs are available.

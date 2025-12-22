@@ -10,33 +10,44 @@ Plan (step-by-step)
    - Noted data source: `/api/billing/plans` reads Supabase `billing_plans` rows, passing `custom_data` into price metadata and `credits` into plan metadata.
    - Why: establishes current data flow and confirms missing details for parity with Screenshot_2.
 
-2) Define feature/custom plan data source (MVP)
-   - Decide whether to store plan features + CTA behavior in Supabase `billing_plans.custom_data` (preferred) or a dedicated config table to avoid hardcoding.
-   - Ensure Custom Pricing can be represented without a Paddle price and without breaking checkout flows.
+2) Define feature/custom plan data source (MVP) (DONE)
+   - Decision: use Supabase `billing_plans.custom_data` for feature lists and CTA behavior.
    - Why: keeps UI data-driven and avoids hardcoded terms while enabling a non-Paddle tier.
 
-3) Add feature details to each plan (MVP)
-   - Extend the pricing plan data model to include feature lists shown in Screenshot_2.
+3) Define `custom_data` schema + Custom Pricing storage (MVP)
+   - `custom_data` keys:
+     - `subtitle` (string): secondary line under plan title (e.g., “Credits Never Expire”).
+     - `features` (array of strings): bullet list for the card.
+     - `cta_label` (string): button label (“Start Verification”, “Contact Us”).
+     - `cta_action` (string): `checkout` or `contact` (used to block Paddle checkout).
+     - `display_price` (string): override price text (e.g., “Contact Us”).
+     - `sort_order` (number): stable card ordering.
+   - Storage approach: add a display-only row in `billing_plans` with synthetic IDs and `cta_action="contact"`, and update backend to block checkout when `cta_action` is not `checkout`.
+   - Why: ensures the Custom Pricing card is data-driven without breaking Paddle checkout or schema constraints.
+
+4) Add feature details to each plan (MVP)
+   - Populate `custom_data.features` for Basic/Professional/Enterprise with the landing-page feature lists.
    - Render the feature list in each card while preserving existing layout and typography.
    - Why: matches dashboard pricing with landing page without altering general UI structure.
 
-4) Add Custom Pricing plan (MVP)
+5) Add Custom Pricing plan (MVP)
    - Add a fourth card for “Custom Pricing” with “Contact Us” pricing text.
    - Include its feature list (1M+ Credits, 24/7 Chat Support, Real-time API, All Integrations, CSV/Excel Upload, Advanced Analytics).
    - Add a “Contact Us” button (no Paddle wiring yet) and keep CTA behavior neutral.
    - Why: completes parity with landing page while avoiding premature backend wiring.
 
-5) Verify layout + responsiveness (MVP)
+6) Verify layout + responsiveness (MVP)
    - Ensure the grid and spacing match existing dashboard style and stay responsive on mobile.
    - Validate no UI regression in sidebar/footer layout.
    - Why: preserves UI integrity while adding content.
 
 Status
 - Step 1: DONE
-- Step 2: PENDING
-- Step 3: PENDING
+- Step 2: DONE
+- Step 3: DONE
 - Step 4: PENDING
 - Step 5: PENDING
+- Step 6: PENDING
 
 Notes
 - No Paddle changes expected.
