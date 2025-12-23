@@ -340,8 +340,8 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
   Explanation: Stubbed reservation fetch in `test_credit_enforcement_routes.py` to avoid Supabase client init, then ran targeted pytest for reservation/finalize and insufficient-credit routes; all passed.
 - [x] Credit enforcement Step 10d — fix `apply_credit_debit` RPC ambiguity causing `/api/tasks/upload` 500s.
   Explanation: Updated the Supabase `apply_credit_debit` function to fully-qualify `credits_remaining` and avoid conflict with the output parameter; resolves the ambiguous column error. Re-test pending in Step 10e.
-- [ ] Credit enforcement Step 10e — re-test upload debit flow after RPC fix (targeted tests + manual upload).
-  Explanation: Targeted backend tests passed (`test_credit_debit`, `test_tasks_credit_reservation`, `test_credit_enforcement_routes`). Manual `/api/tasks/upload` attempt failed with 401 due to expired Supabase token from `key-value-pair.txt`; needs a fresh session token to complete verification.
+- [x] Credit enforcement Step 10e — re-test upload debit flow after RPC fix (targeted tests + manual upload).
+  Explanation: Targeted backend tests passed (`test_credit_debit`, `test_tasks_credit_reservation`, `test_credit_enforcement_routes`). Manual `/api/tasks/upload` now returns 402 (Insufficient credits) instead of 500, confirming the ambiguity fix works and reservation failures are reported correctly.
 - [x] Priority High: Confirm Paddle webhook signature spec and align verification (or use official SDK verifier) with tests.
   Explanation: Aligned verification logic with Paddle’s official SDK implementation (ts + h1 header, HMAC of `ts:raw_body`, optional multi-signature support, time drift checks) and added focused tests. Added `PADDLE_WEBHOOK_MAX_VARIANCE_SECONDS` configuration to avoid hardcoded drift defaults.
 - [x] Priority High: Verify webhook ingress IP handling in current infra and adjust allowlist logic.

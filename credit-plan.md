@@ -105,8 +105,8 @@ Plan (step‑by‑step)
      Explanation: Stubbed reservation fetch in `test_credit_enforcement_routes.py` to avoid Supabase client init, then ran targeted pytest for reservation and enforcement coverage (all passing).
    - Step 10d (DONE): Fix `apply_credit_debit` RPC ambiguity causing upload failures.
      Explanation: Updated the Supabase `apply_credit_debit` function to fully-qualify `credits_remaining` and avoid conflict with the output parameter; resolves the ambiguous column error. Re-test pending in Step 10e.
-   - Step 10e (PENDING): Re-test upload debit flow after RPC fix.
-     Explanation: Targeted backend tests passed (`test_credit_debit`, `test_tasks_credit_reservation`, `test_credit_enforcement_routes`). Manual `/api/tasks/upload` attempt failed with 401 due to expired Supabase token from `key-value-pair.txt`; needs a fresh session token to complete verification.
+   - Step 10e (DONE): Re-test upload debit flow after RPC fix.
+     Explanation: Targeted backend tests passed (`test_credit_debit`, `test_tasks_credit_reservation`, `test_credit_enforcement_routes`). Manual `/api/tasks/upload` now returns 402 (Insufficient credits) instead of 500, confirming the ambiguity fix works and reservation failures are reported correctly.
 
 Current implementation snapshot
 - Supabase schema:
