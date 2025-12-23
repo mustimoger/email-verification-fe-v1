@@ -103,6 +103,8 @@ Plan (step‑by‑step)
      Explanation: Added a ledger-backed release function that idempotently credits users and returns status without overspending.
    - Step 10c (DONE): Verify reservation/finalize flows end-to-end and run targeted tests.
      Explanation: Stubbed reservation fetch in `test_credit_enforcement_routes.py` to avoid Supabase client init, then ran targeted pytest for reservation and enforcement coverage (all passing).
+   - Step 10d (PENDING): Fix `apply_credit_debit` RPC ambiguity causing upload failures.
+     Explanation: File upload currently fails with Supabase RPC error `column reference "credits_remaining" is ambiguous`; update the function to disambiguate column references and re-test the upload debit flow.
 
 Current implementation snapshot
 - Supabase schema:

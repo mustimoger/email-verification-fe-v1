@@ -338,6 +338,8 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
   Explanation: Added a Supabase RPC that inserts a positive ledger entry and credits users idempotently, enabling safe release of reserved credits.
 - [x] Credit enforcement Step 10c — verify reservation/finalize flows and run targeted tests.
   Explanation: Stubbed reservation fetch in `test_credit_enforcement_routes.py` to avoid Supabase client init, then ran targeted pytest for reservation/finalize and insufficient-credit routes; all passed.
+- [ ] Credit enforcement Step 10d — fix `apply_credit_debit` RPC ambiguity causing `/api/tasks/upload` 500s.
+  Explanation: Pending. File upload currently fails with Supabase RPC error `column reference "credits_remaining" is ambiguous`; update the function to disambiguate column references and re-test upload debit flow.
 - [x] Priority High: Confirm Paddle webhook signature spec and align verification (or use official SDK verifier) with tests.
   Explanation: Aligned verification logic with Paddle’s official SDK implementation (ts + h1 header, HMAC of `ts:raw_body`, optional multi-signature support, time drift checks) and added focused tests. Added `PADDLE_WEBHOOK_MAX_VARIANCE_SECONDS` configuration to avoid hardcoded drift defaults.
 - [x] Priority High: Verify webhook ingress IP handling in current infra and adjust allowlist logic.
