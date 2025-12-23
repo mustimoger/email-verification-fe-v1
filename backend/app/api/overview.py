@@ -1,4 +1,6 @@
+import asyncio
 import logging
+import time
 from typing import Dict, List, Optional
 
 from fastapi import APIRouter, Depends
@@ -6,11 +8,13 @@ from pydantic import BaseModel
 
 from ..clients.external import ExternalAPIClient, ExternalAPIError, VerificationMetricsResponse
 from ..core.auth import AuthContext, get_current_user
+from ..core.settings import get_settings
 from ..services.billing_plans import get_billing_plans_by_price_ids
 from ..services.billing_purchases import list_purchases as list_billing_purchases
 from ..services import supabase_client
 from ..services.tasks_store import fetch_task_summary
 from ..services.tasks_store import counts_from_metrics
+from ..services.tasks_store import summarize_task_validation_totals
 from ..services.usage import record_usage
 from ..services.usage_summary import summarize_tasks_usage
 from .api_keys import get_user_external_client
@@ -123,9 +127,20 @@ async def get_overview(
     user: AuthContext = Depends(get_current_user),
     client: ExternalAPIClient = Depends(get_user_external_client),
 ):
+    timings: Dict[str, float] = {}
+    started_at = time.monotonic()
+
+    step = time.monotonic()
     profile = supabase_client.fetch_profile(user.user_id) or {"user_id": user.user_id}
+    timings["profile_ms"] = round((time.monotonic() - step) * 1000, 2)
+
+    step = time.monotonic()
     credits = supabase_client.fetch_credits(user.user_id)
+    timings["credits_ms"] = round((time.monotonic() - step) * 1000, 2)
+
+    step = time.monotonic()
     usage_summary = summarize_tasks_usage(user.user_id)
+    timings["usage_summary_ms"] = round((time.monotonic() - step) * 1000, 2)
     raw_total = usage_summary.get("total")
     if raw_total is None:
         logger.warning("overview.usage_summary_missing_total", extra={"user_id": user.user_id})
@@ -141,26 +156,78 @@ async def get_overview(
             usage_total = 0
     usage_series = _build_usage_series(usage_summary)
 
+    step = time.monotonic()
     task_summary = fetch_task_summary(user.user_id, limit=5)
+    timings["task_summary_ms"] = round((time.monotonic() - step) * 1000, 2)
     task_counts: Dict[str, int] = {row.get("status") or "unknown": int(row.get("count", 0)) for row in task_summary["counts"]}
     recent_tasks: List[TaskItem] = [TaskItem(**row) for row in task_summary["recent"]]
 
     verification_totals = None
+    metrics_source = "external"
+    step = time.monotonic()
     try:
-        metrics = await client.get_verification_metrics()
+        settings = get_settings()
+        timeout_seconds = settings.overview_metrics_timeout_seconds
+        metrics = await asyncio.wait_for(client.get_verification_metrics(), timeout=timeout_seconds)
         verification_totals = _build_verification_totals(metrics)
+        if verification_totals is None:
+            metrics_source = "supabase"
+    except asyncio.TimeoutError:
+        settings = get_settings()
+        metrics_source = "supabase"
+        logger.warning(
+            "overview.verification_metrics_timeout",
+            extra={"user_id": user.user_id, "timeout_seconds": settings.overview_metrics_timeout_seconds},
+        )
     except ExternalAPIError as exc:
+        metrics_source = "supabase"
         logger.warning(
             "overview.verification_metrics_failed",
             extra={"user_id": user.user_id, "status_code": exc.status_code, "details": exc.details},
         )
     except Exception as exc:  # noqa: BLE001
+        metrics_source = "supabase"
         logger.error("overview.verification_metrics_error", extra={"user_id": user.user_id, "error": str(exc)})
+    finally:
+        timings["verification_metrics_ms"] = round((time.monotonic() - step) * 1000, 2)
 
+    if metrics_source == "supabase" and verification_totals is None:
+        step = time.monotonic()
+        fallback = summarize_task_validation_totals(user.user_id)
+        timings["verification_fallback_ms"] = round((time.monotonic() - step) * 1000, 2)
+        if fallback:
+            verification_totals = VerificationTotals(
+                total=sum(fallback.values()),
+                valid=fallback.get("valid"),
+                invalid=fallback.get("invalid"),
+                catchall=fallback.get("catchall"),
+            )
+            logger.info(
+                "overview.verification_totals_fallback",
+                extra={"user_id": user.user_id, "source": metrics_source},
+            )
+        else:
+            logger.warning(
+                "overview.verification_totals_unavailable",
+                extra={"user_id": user.user_id, "source": metrics_source},
+            )
+
+    step = time.monotonic()
     current_plan = _build_current_plan(user.user_id)
+    timings["current_plan_ms"] = round((time.monotonic() - step) * 1000, 2)
 
     record_usage(user.user_id, path="/overview", count=1)
-    logger.info("overview.fetched", extra={"user_id": user.user_id, "usage_total": usage_total, "tasks": len(recent_tasks)})
+    timings["total_ms"] = round((time.monotonic() - started_at) * 1000, 2)
+    logger.info(
+        "overview.fetched",
+        extra={
+            "user_id": user.user_id,
+            "usage_total": usage_total,
+            "tasks": len(recent_tasks),
+            "metrics_source": metrics_source,
+            "timings_ms": timings,
+        },
+    )
 
     return OverviewResponse(
         profile=profile,

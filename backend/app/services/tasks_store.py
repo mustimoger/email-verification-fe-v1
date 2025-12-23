@@ -231,6 +231,56 @@ def fetch_task_summary(user_id: str, limit: int = 5) -> Dict[str, object]:
     return {"counts": counts, "recent": recent}
 
 
+def summarize_task_validation_totals(
+    user_id: str,
+    api_key_id: Optional[str] = None,
+    start: Optional[str] = None,
+    end: Optional[str] = None,
+    page_size: int = 1000,
+) -> Optional[Dict[str, int]]:
+    sb: Client = get_supabase()
+    offset = 0
+    totals = {"valid": 0, "invalid": 0, "catchall": 0}
+    matched_rows = 0
+    missing_rows = 0
+    while True:
+        query = sb.table("tasks").select("valid_count,invalid_count,catchall_count", count="exact").eq("user_id", user_id)
+        if api_key_id:
+            query = query.eq("api_key_id", api_key_id)
+        if start:
+            query = query.gte("created_at", start)
+        if end:
+            query = query.lte("created_at", end)
+        res = query.order("created_at", desc=False).range(offset, offset + page_size - 1).execute()
+        data = res.data or []
+        for row in data:
+            valid = _coerce_int(row.get("valid_count"))
+            invalid = _coerce_int(row.get("invalid_count"))
+            catchall = _coerce_int(row.get("catchall_count"))
+            if valid is None and invalid is None and catchall is None:
+                missing_rows += 1
+                continue
+            matched_rows += 1
+            totals["valid"] += valid or 0
+            totals["invalid"] += invalid or 0
+            totals["catchall"] += catchall or 0
+        logger.debug(
+            "tasks.validation_totals.page",
+            extra={"user_id": user_id, "offset": offset, "returned": len(data), "api_key_id": api_key_id},
+        )
+        if len(data) < page_size:
+            break
+        offset += page_size
+    if missing_rows:
+        logger.warning(
+            "tasks.validation_totals.missing_counts",
+            extra={"user_id": user_id, "missing_rows": missing_rows},
+        )
+    if matched_rows == 0:
+        return None
+    return totals
+
+
 def update_task_reservation(
     user_id: str,
     task_id: str,

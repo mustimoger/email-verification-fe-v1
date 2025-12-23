@@ -117,12 +117,28 @@ Goal: replace mock data on `/overview` with real per-user data sourced from our 
     - Add timing logs for `/api/overview` to pinpoint slow dependencies (Supabase vs external).
     - Add unit tests for timeout/fallback behavior and one integration test hitting `/api/overview` with a forced external timeout.
     - Update: Added a configurable `overview_metrics_timeout_seconds` setting and enforced it in `/api/overview` so slow external metrics no longer block the whole payload. Added a Supabase fallback that aggregates valid/invalid/catchall counts when external metrics are unavailable, with explicit logs for timeout/fallback/unavailable cases. Added timing metrics to `overview.fetched` log so we can pinpoint slow dependencies quickly.
-    - Pending: tests for timeout/fallback behavior and `/api/overview` forced-timeout integration test are not implemented yet.
+    - Update: Added backend tests covering external metrics timeout and error fallback paths; tests stub settings and external clients to avoid env dependencies.
+    - Findings: `backend/logs/uvicorn.log` shows frequent `overview.verification_metrics_error` entries followed by `/api/overview` responses ~30s later. This indicates the external `/metrics/verifications` call is timing out or failing and was previously blocking the entire Overview payload, causing slow page loads and empty stat cards.
+    - Findings: For `mkural2016@gmail.com` (user_id `804f8cca-a1c0-4f92-90b7-b7f27eab91a1`), Supabase has tasks but no `user_credits` row and no `billing_purchases` rows, so Credits Remaining and Current Plan will show empty/zero even when Overview loads. The fallback now uses task counts for validation totals when external metrics are unavailable.
+    - Findings: Logs show repeated `tasks.summary_counts_failed` during Overview fetch; this is noisy but not the primary source of the slow load (needs separate investigation if we want to clean up errors).
 
 17) Overview: validation chart hover note (NEW)
     - Add a subtle helper note in the Validation card to tell users to hover the chart to see counts since labels are hidden.
     - Keep typography/spacing consistent with the existing card style and ensure it works on mobile.
     - Update: Added a centered, subtle helper line under the Validation chart that instructs users to hover for exact numbers. Kept the sizing and color consistent with other helper text so the card design remains unchanged across breakpoints.
+    - Tests: `npm run test:overview`, `npm run test:history`, `npm run test:auth-guard`, `npm run test:account-purchases`.
+
+18) Overview: external metrics probe script (NEW)
+    - Add a minimal script that calls the external `/metrics/verifications` endpoint using the existing ExternalAPI client and settings.
+    - Accept the bearer token via CLI arg or env, with optional `user_id`, `from`, `to`, and timeout overrides to isolate slow responses.
+    - Log timing and errors clearly; avoid hardcoded base URLs or secrets.
+    - Update: Added `backend/scripts/test_verification_metrics.py` to call `/metrics/verifications` via `ExternalAPIClient`, accept token/base URL + optional filters, and emit timing + error logs so slow external responses can be diagnosed without touching the app.
+    - Update: Ran the script with env-driven base URL + token; response returned `401 Authentication failed` in ~5.47s, indicating the current token is invalid or missing required claims.
+
+19) Overview: status popover clipping fix (NEW)
+    - Allow the status breakdown popover to render outside the table container when a pill is clicked.
+    - Keep the table’s visual design intact (rounded corners, borders, spacing).
+    - Update: Switched the Verification Tasks table wrapper to `overflow-visible` so the status popover can render beyond the container without being clipped, while leaving borders and spacing unchanged.
     - Tests: `npm run test:overview`, `npm run test:history`, `npm run test:auth-guard`, `npm run test:account-purchases`.
 
 Notes:

@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     upload_poll_attempts: int = 3
     upload_poll_interval_seconds: float = 2.0
     upload_poll_page_size: int = 20
+    overview_metrics_timeout_seconds: float = 8.0
 
     usage_retention_days: int = 180
 
@@ -88,6 +89,13 @@ class Settings(BaseSettings):
     def non_negative(cls, value):
         if value < 0:
             raise ValueError("must be non-negative")
+        return value
+
+    @field_validator("overview_metrics_timeout_seconds")
+    @classmethod
+    def positive_timeout(cls, value):
+        if value <= 0:
+            raise ValueError("must be greater than zero")
         return value
 
 

@@ -372,7 +372,7 @@ export default function OverviewPage() {
             </div>
           </div>
 
-          <div className="mt-4 overflow-hidden rounded-xl border border-slate-100">
+          <div className="mt-4 overflow-visible rounded-xl border border-slate-100">
             <div className="grid grid-cols-[1.2fr_0.9fr_0.9fr_0.8fr_0.8fr_0.9fr_1.4fr] bg-slate-50 px-4 py-3 text-sm font-bold text-slate-700">
               <span>Task Name</span>
               <span>Total Emails</span>
