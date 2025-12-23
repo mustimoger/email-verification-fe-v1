@@ -106,7 +106,7 @@ Plan (step‑by‑step)
    - Step 10d (DONE): Fix `apply_credit_debit` RPC ambiguity causing upload failures.
      Explanation: Updated the Supabase `apply_credit_debit` function to fully-qualify `credits_remaining` and avoid conflict with the output parameter; resolves the ambiguous column error. Re-test pending in Step 10e.
    - Step 10e (PENDING): Re-test upload debit flow after RPC fix.
-     Explanation: Pending confirmation. Validate `/api/tasks/upload` no longer 500s and reservation/debit statuses behave correctly.
+     Explanation: Targeted backend tests passed (`test_credit_debit`, `test_tasks_credit_reservation`, `test_credit_enforcement_routes`). Manual `/api/tasks/upload` attempt failed with 401 due to expired Supabase token from `key-value-pair.txt`; needs a fresh session token to complete verification.
 
 Current implementation snapshot
 - Supabase schema:
