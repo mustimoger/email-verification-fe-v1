@@ -14,6 +14,7 @@ from ..paddle.client import (
     CreateCustomerRequest,
     CreateAddressRequest,
     PriceResponse,
+    CustomerResponse,
 )
 from ..paddle.config import get_paddle_config
 from ..paddle.webhook import verify_webhook
@@ -86,6 +87,27 @@ def _parse_int(value: Any) -> Optional[int]:
         return int(value)
     except Exception:  # noqa: BLE001
         return None
+
+
+def _extract_customer_items(payload: Any) -> list[Any]:
+    if payload is None:
+        return []
+    if isinstance(payload, list):
+        return payload
+    if not isinstance(payload, dict):
+        return []
+    for key in ("data", "customers"):
+        value = payload.get(key)
+        if isinstance(value, list):
+            return value
+        if isinstance(value, dict):
+            nested = value.get("data")
+            if isinstance(nested, list):
+                return nested
+            nested = value.get("customers")
+            if isinstance(nested, list):
+                return nested
+    return []
 
 
 @router.get("/plans", response_model=PlansPayload)
@@ -224,6 +246,7 @@ async def _resolve_customer_and_address(user: AuthContext) -> Tuple[str, Optiona
 
     last_conflict_details: Any = None
     search_res: Any = None
+    customer_id: Optional[str] = None
     try:
         customer: CustomerResponse
         try:
@@ -243,20 +266,43 @@ async def _resolve_customer_and_address(user: AuthContext) -> Tuple[str, Optiona
                     search_res = {}
                     search_res_email = await client.list_customers(email=profile["email"])
                     search_res["email_filter"] = search_res_email
-                    items = []
-                    if isinstance(search_res_email, dict):
-                        items = search_res_email.get("data") or search_res_email.get("customers") or []
+                    items = _extract_customer_items(search_res_email)
                     if not items:
                         search_res_fuzzy = await client.search_customers(profile["email"])
                         search_res["search"] = search_res_fuzzy
-                        if isinstance(search_res_fuzzy, dict):
-                            items = search_res_fuzzy.get("data") or search_res_fuzzy.get("customers") or []
+                        items = _extract_customer_items(search_res_fuzzy)
                     if items:
                         first = items[0]
-                        customer = CustomerResponse.model_validate(first)
+                        customer_id = None
+                        try:
+                            customer = CustomerResponse.model_validate(first)
+                            customer_id = customer.id
+                        except Exception as inner_exc:  # noqa: BLE001
+                            customer_id = _first_value(first, "id")
+                            if not customer_id:
+                                logger.error(
+                                    "billing.customer.conflict_parse_failed",
+                                    extra={
+                                        "user_id": user.user_id,
+                                        "email": profile["email"],
+                                        "conflict_details": exc.details,
+                                        "error": str(inner_exc),
+                                    },
+                                )
+                                raise
+                            logger.warning(
+                                "billing.customer.conflict_unvalidated",
+                                extra={
+                                    "user_id": user.user_id,
+                                    "email": profile["email"],
+                                    "customer_id": customer_id,
+                                    "conflict_details": exc.details,
+                                    "error": str(inner_exc),
+                                },
+                            )
                         logger.info(
                             "billing.customer.reused",
-                            extra={"user_id": user.user_id, "customer_id": customer.id, "conflict_details": exc.details},
+                            extra={"user_id": user.user_id, "customer_id": customer_id, "conflict_details": exc.details},
                         )
                     else:
                         logger.error(
@@ -286,7 +332,8 @@ async def _resolve_customer_and_address(user: AuthContext) -> Tuple[str, Optiona
             else:
                 raise
 
-        customer_id = customer.id
+        if not customer_id:
+            customer_id = customer.id
         if address_mode == "checkout":
             upsert_paddle_ids(user.user_id, customer_id, None)
             logger.info(

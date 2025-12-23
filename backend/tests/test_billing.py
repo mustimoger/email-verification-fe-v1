@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 from app.api import billing as billing_module
 from app.api.billing import router as billing_router
 from app.core.auth import AuthContext
+from app.paddle.client import PaddleAPIError
 from app.paddle.config import get_paddle_config
 
 
@@ -95,6 +96,60 @@ def test_create_transaction_creates_customer_checkout_address(monkeypatch):
     assert "address" not in created
     assert created["transaction"]["address_id"] is None
     assert created.get("upsert") == ("ctm_test", None)
+
+
+@pytest.mark.parametrize(
+    "customers_payload",
+    [
+        {"data": [{"id": "ctm_existing", "email": "user@example.com"}]},
+        {"customers": [{"id": "ctm_existing", "email": "user@example.com"}]},
+    ],
+)
+def test_create_transaction_reuses_customer_on_conflict(monkeypatch, customers_payload):
+    created = {}
+
+    class FakeClient:
+        async def create_customer(self, payload):
+            raise PaddleAPIError(status_code=409, message="Conflict", details={"error": "conflict"})
+
+        async def list_customers(self, email=None):
+            return customers_payload
+
+        async def search_customers(self, search):
+            raise AssertionError("search_customers should not be called when email match exists")
+
+        async def create_transaction(self, payload):
+            created["transaction"] = payload.model_dump()
+
+            class Obj:
+                id = "txn_test"
+
+            return Obj()
+
+    def fake_user():
+        return AuthContext(user_id="user-1", claims={}, token="t")
+
+    monkeypatch.setattr(billing_module, "get_paddle_client", lambda: FakeClient())
+    monkeypatch.setattr(billing_module, "get_paddle_ids", lambda user_id: None)
+    monkeypatch.setattr(billing_module, "upsert_paddle_ids", lambda user_id, c, a: created.setdefault("upsert", (c, a)))
+    monkeypatch.setattr(
+        billing_module,
+        "get_billing_plan_by_price_id",
+        lambda price_id: {"paddle_price_id": price_id, "credits": 500, "status": "active"},
+    )
+    monkeypatch.setattr(
+        billing_module.supabase_client,
+        "fetch_profile",
+        lambda user_id: {"email": "user@example.com", "display_name": "Test"},
+    )
+
+    app = _build_app(monkeypatch, fake_user)
+    client = TestClient(app)
+
+    resp = client.post("/api/billing/transactions", json={"price_id": "pri_monthly"})
+    assert resp.status_code == 200, resp.text
+    assert created["transaction"]["customer_id"] == "ctm_existing"
+    assert created.get("upsert") == ("ctm_existing", None)
 
 
 def test_create_transaction_rejects_metadata(monkeypatch):
