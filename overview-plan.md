@@ -162,6 +162,10 @@ Goal: replace mock data on `/overview` with real per-user data sourced from our 
     - Align icon backgrounds, sizes, and colors across the Overview cards and choose icons that better match each metric.
     - Update: Standardized the header icon wrappers for Validation/Credit Usage and replaced stat + Current Plan icons with more semantically aligned Lucide icons; sizes/colors now match the existing card icon styling.
 
+25) Overview: remove duplicate purchase date label (NEW)
+    - Remove the duplicated "Purchase Date" text under the purchase date value in the Current Plan card to avoid redundant labels.
+    - Update: Removed the extra purchase date label line so the card only shows the pill label above the date.
+
 Notes:
 - External task source remains the email verification API; Supabase caches per-user task metadata for aggregation/safety.
 - External API metrics endpoints (`/metrics/verifications`, `/metrics/api-usage`) return lifetime totals by default and range totals when `from`/`to` are provided; they do not return time series.

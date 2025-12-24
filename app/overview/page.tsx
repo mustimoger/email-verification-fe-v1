@@ -361,7 +361,6 @@ export default function OverviewPage() {
                 <span className="text-sm font-semibold">Purchase Date</span>
               </div>
               <p className="mt-3 text-xl font-bold text-slate-900">{purchaseDate}</p>
-              <p className="text-sm text-slate-600">Purchase Date</p>
               {currentPlan?.label === "Multiple items" && currentPlan.plan_names?.length ? (
                 <div className="mt-4 w-full space-y-2 text-sm text-slate-600">
                   <p className="font-semibold text-slate-700">Items</p>
