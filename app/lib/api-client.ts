@@ -105,6 +105,18 @@ export type BatchFileUploadResponse = {
   uploaded_at?: string;
 };
 
+export type LatestUploadResponse = {
+  task_id: string;
+  file_name: string;
+  created_at?: string;
+  status?: string;
+  email_count?: number;
+  valid_count?: number;
+  invalid_count?: number;
+  catchall_count?: number;
+  job_status?: Record<string, number>;
+};
+
 export type UploadFileMetadata = {
   file_name: string;
   email_column: string;
@@ -462,6 +474,7 @@ export const apiClient = {
       `/tasks/${taskId}${apiKeyId ? `?api_key_id=${encodeURIComponent(apiKeyId)}` : ""}`,
       { method: "GET" },
     ),
+  getLatestUpload: () => request<LatestUploadResponse | null>("/tasks/latest-upload", { method: "GET" }),
   uploadTaskFiles: (files: File[], metadata: UploadFileMetadata[], webhook_url?: string) => {
     const form = new FormData();
     files.forEach((file) => form.append("files", file));

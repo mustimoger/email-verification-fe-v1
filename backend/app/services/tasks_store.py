@@ -355,3 +355,16 @@ def fetch_tasks_with_counts(
     except Exception as exc:  # noqa: BLE001
         logger.error("tasks.fetch_with_counts_failed", extra={"user_id": user_id, "error": str(exc)})
         return {"tasks": [], "count": None}
+
+
+def fetch_latest_file_task(user_id: str, limit: int) -> Optional[Dict[str, object]]:
+    if limit <= 0:
+        logger.warning("tasks.latest_file_upload.invalid_limit", extra={"user_id": user_id, "limit": limit})
+        return None
+    result = fetch_tasks_with_counts(user_id, limit=limit, offset=0)
+    tasks = result.get("tasks") or []
+    for row in tasks:
+        if row.get("file_name"):
+            return row
+    logger.info("tasks.latest_file_upload.not_found", extra={"user_id": user_id, "searched": len(tasks)})
+    return None

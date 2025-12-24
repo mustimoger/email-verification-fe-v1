@@ -133,6 +133,9 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
   Explanation: Tasks now attach `file_name` from `task_files`, and History mapping prefers it for labels.
 - [x] Verify flow audit (manual + upload wiring) to capture remaining placeholders and mapping gaps.
   Explanation: Manual verify polls `/api/tasks/{id}` and maps job statuses; file uploads map counts by `task_id` returned from the upload response and no longer rely on time-based matching.
+- [x] Persist latest file-upload summary on `/verify` after reload (server-driven, manual refresh).
+  Explanation: External API does not expose file names in task lists or a "latest upload" endpoint, so `/verify` must hydrate from Supabase `task_files` metadata and allow manual status refresh without background polling.
+  Update: Added `/api/tasks/latest-upload` with backend tests, and `/verify` now hydrates the latest file-based task on load with a manual refresh button plus frontend mapping tests.
 
 ## Next: Second Verify state (post-upload)
 - [x] Pull Figma specs for second Verify state via Figma MCP; captured screenshot (node `64:75`) showing results table + validation donut. Footer and shell unchanged.

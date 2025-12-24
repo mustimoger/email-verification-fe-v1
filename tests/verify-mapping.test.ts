@@ -1,8 +1,9 @@
 import assert from "node:assert";
 
 import { ApiError } from "../app/lib/api-client";
-import type { BatchFileUploadResponse, TaskDetailResponse } from "../app/lib/api-client";
+import type { BatchFileUploadResponse, LatestUploadResponse, TaskDetailResponse } from "../app/lib/api-client";
 import {
+  buildLatestUploadSummary,
   buildUploadSummary,
   createUploadLinks,
   mapTaskDetailToResults,
@@ -84,6 +85,41 @@ run("buildUploadSummary stays pending when jobs are missing", () => {
   const summary = buildUploadSummary(files, links, new Map(), "2024-03-01T00:00:00Z");
   assert.strictEqual(summary.files[0].status, "pending");
   assert.strictEqual(summary.files[0].totalEmails, null);
+});
+
+run("buildLatestUploadSummary uses latest counts when no pending jobs remain", () => {
+  const latest: LatestUploadResponse = {
+    task_id: "task-1",
+    file_name: "upload.csv",
+    created_at: "2024-03-01T00:00:00Z",
+    status: "completed",
+    email_count: 3,
+    valid_count: 1,
+    invalid_count: 1,
+    catchall_count: 1,
+    job_status: { completed: 3 },
+  };
+  const summary = buildLatestUploadSummary(latest);
+  assert.strictEqual(summary.files[0].status, "download");
+  assert.strictEqual(summary.files[0].valid, 1);
+  assert.strictEqual(summary.totalEmails, 3);
+});
+
+run("buildLatestUploadSummary stays pending when job_status reports pending work", () => {
+  const latest: LatestUploadResponse = {
+    task_id: "task-2",
+    file_name: "pending.csv",
+    created_at: "2024-03-02T00:00:00Z",
+    email_count: 2,
+    valid_count: 1,
+    invalid_count: 1,
+    catchall_count: 0,
+    job_status: { pending: 1, processing: 1 },
+  };
+  const summary = buildLatestUploadSummary(latest);
+  assert.strictEqual(summary.files[0].status, "pending");
+  assert.strictEqual(summary.files[0].valid, null);
+  assert.strictEqual(summary.totalEmails, null);
 });
 
 run("resolveApiErrorMessage returns detail string when present", () => {

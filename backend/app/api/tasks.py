@@ -27,6 +27,7 @@ from ..services.task_files_store import fetch_task_file, upsert_task_file
 from ..services.tasks_store import (
     counts_from_metrics,
     email_count_from_metrics,
+    fetch_latest_file_task,
     fetch_task_credit_reservation,
     fetch_tasks_with_counts,
     upsert_task_from_detail,
@@ -54,6 +55,18 @@ class UploadFileMetadata(BaseModel):
     email_column: str
     first_row_has_labels: bool = True
     remove_duplicates: bool = True
+
+
+class LatestUploadResponse(BaseModel):
+    task_id: str
+    file_name: str
+    created_at: Optional[str] = None
+    status: Optional[str] = None
+    email_count: Optional[int] = None
+    valid_count: Optional[int] = None
+    invalid_count: Optional[int] = None
+    catchall_count: Optional[int] = None
+    job_status: Optional[Dict[str, int]] = None
 
 
 def get_user_external_client(user: AuthContext = Depends(get_current_user)) -> ExternalAPIClient:
@@ -520,6 +533,37 @@ async def list_tasks(
         },
     )
     return TaskListResponse(count=0, limit=limit, offset=offset, tasks=[])
+
+
+@router.get("/tasks/latest-upload", response_model=LatestUploadResponse)
+async def get_latest_upload(
+    user: AuthContext = Depends(get_current_user),
+):
+    settings = get_settings()
+    latest = fetch_latest_file_task(user.user_id, limit=settings.upload_poll_page_size)
+    if not latest:
+        logger.info("route.tasks.latest_upload.empty", extra={"user_id": user.user_id})
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+    task_id = latest.get("task_id")
+    file_name = latest.get("file_name")
+    if not task_id or not file_name:
+        logger.warning(
+            "route.tasks.latest_upload.invalid_row",
+            extra={"user_id": user.user_id, "task_id": task_id, "file_name": file_name},
+        )
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+    record_usage(user.user_id, path="/tasks/latest-upload", count=1, api_key_id=None)
+    return LatestUploadResponse(
+        task_id=task_id,
+        file_name=file_name,
+        created_at=latest.get("created_at"),
+        status=latest.get("status"),
+        email_count=latest.get("email_count"),
+        valid_count=latest.get("valid_count"),
+        invalid_count=latest.get("invalid_count"),
+        catchall_count=latest.get("catchall_count"),
+        job_status=latest.get("job_status"),
+    )
 
 
 @router.get("/tasks/{task_id}", response_model=TaskDetailResponse)

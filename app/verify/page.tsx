@@ -6,9 +6,10 @@ import { AlertCircle, Info, UploadCloud, X } from "lucide-react";
 import { Cell, Pie, PieChart as RePieChart, ResponsiveContainer } from "recharts";
 
 import { DashboardShell } from "../components/dashboard-shell";
-import { apiClient, ApiError, type LimitsResponse } from "../lib/api-client";
+import { apiClient, ApiError, type LimitsResponse, type TaskDetailResponse } from "../lib/api-client";
 import { buildColumnOptions, FileColumnError, readFileColumnInfo, type FileColumnInfo } from "./file-columns";
 import {
+  buildLatestUploadSummary,
   buildUploadSummary,
   createUploadLinks,
   formatNumber,
@@ -42,9 +43,12 @@ export default function VerifyPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [activeDownload, setActiveDownload] = useState<string | null>(null);
+  const [latestUploadError, setLatestUploadError] = useState<string | null>(null);
+  const [latestUploadRefreshing, setLatestUploadRefreshing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const pollRef = useRef({ active: false });
   const parseRef = useRef(0);
+  const latestUploadHydratedRef = useRef(false);
 
   const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -69,6 +73,32 @@ export default function VerifyPage() {
       active = false;
     };
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    const hydrateLatestUpload = async () => {
+      if (latestUploadHydratedRef.current) return;
+      if (files.length > 0 || uploadSummary || flowStage !== "idle") return;
+      latestUploadHydratedRef.current = true;
+      setLatestUploadError(null);
+      try {
+        const latest = await apiClient.getLatestUpload();
+        if (!active || !latest) return;
+        setUploadSummary(buildLatestUploadSummary(latest));
+        setFlowStage("summary");
+        console.info("verify.latest_upload.hydrated", { task_id: latest.task_id, file_name: latest.file_name });
+      } catch (err: unknown) {
+        if (!active) return;
+        const message = resolveApiErrorMessage(err, "verify.latest_upload.hydrate");
+        console.error("verify.latest_upload.hydrate_failed", { error: message });
+        setLatestUploadError("Unable to load the latest upload. Please check History.");
+      }
+    };
+    void hydrateLatestUpload();
+    return () => {
+      active = false;
+    };
+  }, [files.length, flowStage, uploadSummary]);
 
   const pollTaskDetail = async (taskId: string, emails: string[]) => {
     pollRef.current.active = true;
@@ -258,6 +288,8 @@ export default function VerifyPage() {
     setRemoveDuplicates(true);
     setFileError(null);
     setFileNotice(null);
+    setLatestUploadError(null);
+    setLatestUploadRefreshing(false);
   };
 
   const validationSlices = useMemo(() => {
@@ -372,6 +404,37 @@ export default function VerifyPage() {
       setFileError(message);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const refreshLatestUpload = async () => {
+    setLatestUploadError(null);
+    setLatestUploadRefreshing(true);
+    try {
+      const latest = await apiClient.getLatestUpload();
+      if (!latest) {
+        setUploadSummary(null);
+        setFlowStage("idle");
+        setLatestUploadError("No recent uploads found. Upload a file to get started.");
+        return;
+      }
+      let detail: TaskDetailResponse | null = null;
+      try {
+        detail = await apiClient.getTask(latest.task_id);
+      } catch (err: unknown) {
+        const message = resolveApiErrorMessage(err, "verify.latest_upload.detail");
+        console.error("verify.latest_upload.detail_failed", { task_id: latest.task_id, error: message });
+        setLatestUploadError(message);
+      }
+      setUploadSummary(buildLatestUploadSummary(latest, detail));
+      setFlowStage("summary");
+      console.info("verify.latest_upload.refreshed", { task_id: latest.task_id, file_name: latest.file_name });
+    } catch (err: unknown) {
+      const message = resolveApiErrorMessage(err, "verify.latest_upload.refresh");
+      console.error("verify.latest_upload.refresh_failed", { error: message });
+      setLatestUploadError(message);
+    } finally {
+      setLatestUploadRefreshing(false);
     }
   };
 
@@ -527,6 +590,12 @@ export default function VerifyPage() {
                 {fileNotice}
               </div>
             ) : null}
+            {latestUploadError && !uploadSummary && flowStage === "idle" ? (
+              <div className="mt-2 flex items-center gap-2 rounded-md bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700">
+                <AlertCircle className="h-4 w-4" />
+                {latestUploadError}
+              </div>
+            ) : null}
           </div>
 
           <div className="lg:col-span-2 space-y-4">
@@ -678,6 +747,14 @@ export default function VerifyPage() {
                   <div className="flex items-center gap-3">
                     <button
                       type="button"
+                      onClick={() => void refreshLatestUpload()}
+                      disabled={latestUploadRefreshing}
+                      className="rounded-lg border border-slate-300 bg-white px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-[#4c61cc] hover:text-[#4c61cc] disabled:cursor-not-allowed disabled:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4c61cc]"
+                    >
+                      {latestUploadRefreshing ? "Refreshing..." : "Refresh status"}
+                    </button>
+                    <button
+                      type="button"
                       onClick={resetUpload}
                       className="rounded-lg border border-slate-300 bg-white px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-[#4c61cc] hover:text-[#4c61cc] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4c61cc]"
                     >
@@ -685,6 +762,11 @@ export default function VerifyPage() {
                     </button>
                   </div>
                 </div>
+                {latestUploadError ? (
+                  <div className="rounded-md bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700" role="alert">
+                    {latestUploadError}
+                  </div>
+                ) : null}
 
                 <div className="grid gap-4 lg:grid-cols-2">
                   <div className="overflow-hidden rounded-xl border border-slate-200">

@@ -1,6 +1,12 @@
 "use client";
 
-import { ApiError, BatchFileUploadResponse, TaskDetailResponse, TaskEmailJob } from "../lib/api-client";
+import {
+  ApiError,
+  BatchFileUploadResponse,
+  LatestUploadResponse,
+  TaskDetailResponse,
+  TaskEmailJob,
+} from "../lib/api-client";
 import { PENDING_STATES, deriveCounts, formatHistoryDate } from "../history/utils";
 
 export type VerificationResult = {
@@ -242,6 +248,115 @@ export function buildUploadSummary(
       valid: hasTotals ? totalValid : null,
       catchAll: hasTotals ? totalCatchAll : null,
       invalid: hasTotals ? totalInvalid : null,
+    },
+  };
+}
+
+const normalizeCount = (value: unknown): number | null => {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (trimmed.length > 0) {
+      const parsed = Number(trimmed);
+      if (Number.isFinite(parsed)) return parsed;
+    }
+  }
+  return null;
+};
+
+const hasPendingJobs = (detail?: TaskDetailResponse | null): boolean | null => {
+  const jobs = detail?.jobs;
+  if (!jobs || jobs.length === 0) return null;
+  return jobs.some((job) => {
+    const status = (job.status || "").toLowerCase();
+    return status ? PENDING_STATES.has(status) : false;
+  });
+};
+
+const hasPendingJobStatus = (jobStatus?: Record<string, number>): boolean | null => {
+  if (!jobStatus || typeof jobStatus !== "object") return null;
+  let sawCount = false;
+  for (const [status, raw] of Object.entries(jobStatus)) {
+    const count = normalizeCount(raw);
+    if (count === null) continue;
+    sawCount = true;
+    if (count > 0 && PENDING_STATES.has(status.toLowerCase())) {
+      return true;
+    }
+  }
+  return sawCount ? false : null;
+};
+
+const resolveLatestUploadStatus = (
+  latest: LatestUploadResponse,
+  detail?: TaskDetailResponse | null,
+): FileVerificationStatus => {
+  const pendingFromDetail = hasPendingJobs(detail);
+  if (pendingFromDetail !== null) {
+    return pendingFromDetail ? "pending" : "download";
+  }
+  const pendingFromJobStatus = hasPendingJobStatus(latest.job_status);
+  if (pendingFromJobStatus !== null) {
+    return pendingFromJobStatus ? "pending" : "download";
+  }
+  const statusValue = latest.status ? latest.status.toLowerCase() : "";
+  if (statusValue) {
+    return PENDING_STATES.has(statusValue) ? "pending" : "download";
+  }
+  return "pending";
+};
+
+export function buildLatestUploadSummary(
+  latest: LatestUploadResponse,
+  detail?: TaskDetailResponse | null,
+): UploadSummary {
+  const status = resolveLatestUploadStatus(latest, detail);
+  const pendingFromDetail = hasPendingJobs(detail);
+  const countsFromDetail =
+    detail?.jobs && detail.jobs.length > 0 && pendingFromDetail === false ? deriveCounts(detail) : null;
+  const validCount = normalizeCount(latest.valid_count);
+  const invalidCount = normalizeCount(latest.invalid_count);
+  const catchAllCount = normalizeCount(latest.catchall_count);
+  const hasAllCounts = [validCount, invalidCount, catchAllCount].every((value) => value !== null);
+  const countsFromLatest =
+    status === "download" && hasAllCounts && validCount !== null && invalidCount !== null && catchAllCount !== null
+      ? {
+          total: validCount + invalidCount + catchAllCount,
+          valid: validCount,
+          invalid: invalidCount,
+          catchAll: catchAllCount,
+        }
+      : null;
+  let totalEmails: number | null = countsFromDetail?.total ?? null;
+  const metricsTotal = detail?.metrics?.total_email_addresses;
+  if (metricsTotal !== undefined && metricsTotal !== null) {
+    totalEmails = metricsTotal;
+  } else if (totalEmails === null) {
+    totalEmails = normalizeCount(latest.email_count) ?? countsFromLatest?.total ?? null;
+  }
+  const fileCounts = countsFromDetail ?? countsFromLatest;
+  const fileRow: FileVerification = {
+    fileName: latest.file_name,
+    totalEmails,
+    valid: fileCounts?.valid ?? null,
+    catchAll: fileCounts?.catchAll ?? null,
+    invalid: fileCounts?.invalid ?? null,
+    status,
+    taskId: latest.task_id,
+  };
+  const hasTotals =
+    fileRow.totalEmails !== null &&
+    fileRow.valid !== null &&
+    fileRow.invalid !== null &&
+    fileRow.catchAll !== null;
+  return {
+    totalEmails: hasTotals ? fileRow.totalEmails : null,
+    uploadDate: formatHistoryDate(latest.created_at),
+    files: [fileRow],
+    aggregates: {
+      valid: hasTotals ? fileRow.valid : null,
+      catchAll: hasTotals ? fileRow.catchAll : null,
+      invalid: hasTotals ? fileRow.invalid : null,
     },
   };
 }
