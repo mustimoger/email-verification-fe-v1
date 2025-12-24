@@ -146,6 +146,12 @@ Goal: replace mock data on `/overview` with real per-user data sourced from our 
     - Ensure the tooltip/legend reflects the additional slice without hardcoded fallback values.
     - Update: Backend now falls back to `total_catchall` from `/metrics/verifications` when `verification_status` omits catch-all, so `verification_totals.catchall` is always populated. The Overview Validation pie already renders Catch-all, so the chart now includes that slice when the API reports it.
 
+21) Overview: keep tiny Validation slices visible (NEW)
+    - Use a small `minAngle` and reduce `paddingAngle` so very small slices (e.g., Catch-all) remain visible.
+    - Keep layout, colors, and data sources unchanged; only adjust pie rendering.
+    - Update: Reduced `paddingAngle` and added `minAngle` on the Overview validation pie so tiny slices (Catch-all) render without altering layout or data.
+    - Update: Increased `minAngle` to 6 degrees and darkened the Catch-all slice color to `#d97706` for better visibility.
+
 Notes:
 - External task source remains the email verification API; Supabase caches per-user task metadata for aggregation/safety.
 - External API metrics endpoints (`/metrics/verifications`, `/metrics/api-usage`) return lifetime totals by default and range totals when `from`/`to` are provided; they do not return time series.

@@ -154,7 +154,7 @@ export default function OverviewPage() {
   const validationData: ValidationSlice[] = useMemo(() => {
     const slices = [
       { name: "Valid", value: validationTotals.valid, color: "#0eb38b" },
-      { name: "Catch-all", value: validationTotals.catchAll, color: "#f6c34d" },
+      { name: "Catch-all", value: validationTotals.catchAll, color: "#d97706" },
       { name: "Invalid", value: validationTotals.invalid, color: "#ff6b6b" },
     ];
     if (!overview) return slices;
@@ -256,7 +256,8 @@ export default function OverviewPage() {
                       dataKey="value"
                       innerRadius={60}
                       outerRadius={90}
-                      paddingAngle={3}
+                      paddingAngle={1}
+                      minAngle={6}
                       startAngle={90}
                       endAngle={450}
                     >
