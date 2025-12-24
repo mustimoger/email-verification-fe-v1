@@ -81,6 +81,8 @@ def _build_verification_totals(metrics: VerificationMetricsResponse) -> Optional
     valid = counts["valid"] if counts else None
     invalid = counts["invalid"] if counts else None
     catchall = counts["catchall"] if counts else None
+    if metrics.total_catchall is not None and (catchall is None or (catchall == 0 and metrics.total_catchall > 0)):
+        catchall = metrics.total_catchall
     if total is None and counts:
         total = (valid or 0) + (invalid or 0) + (catchall or 0)
     if total is None and not counts:

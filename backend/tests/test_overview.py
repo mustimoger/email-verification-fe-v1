@@ -85,8 +85,9 @@ def test_overview_success(monkeypatch):
     class FakeClient:
         async def get_verification_metrics(self):
             return VerificationMetricsResponse(
-                verification_status={"exists": 6, "catchall": 2, "not_exists": 4},
+                verification_status={"exists": 6, "not_exists": 4},
                 total_verifications=12,
+                total_catchall=2,
             )
 
     usage_calls = []
