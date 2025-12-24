@@ -16,7 +16,39 @@
  -- If anything is not implemented, document it under the relevant task and warn me
  -- All to-do items,even if they are new and planned during runtime codex session,should be FIRST add them to planning/progress markdown files step by step
  -- AFTER completing a step, ask for my confirmation before starting the next task
- 
+
+- Git workflow (MANDATORY)
+
+-- `main` is production-ready at all times.
+-- NEVER commit or push directly to `main`.
+
+--Branching rules
+--- For every change, create a NEW temporary branch from `main`.
+--- One branch = one feature or fix.
+--- Do NOT use long-lived branches (`feat`, `develop`, etc.).
+
+Branch naming:
+-- `feat/<short-description>`
+-- `fix/<short-description>`
+-- `chore/<short-description>`
+
+-- Working rules
+---- All development, experiments, breaking, debugging happen on the feature branch.
+---- The branch must contain a fully working app before merge.
+---- For work spanning more than one session/day, the branch MUST be pushed to remote (`git push -u origin <branch>`).
+
+
+-- Merge rules
+---- Merge into `main` only when the change works end-to-end.
+---- After merge: delete the branch.
+
+--- Order of operations
+1. Checkout `main` and pull latest.
+2. Create a new branch.
+3. Implement + test.
+4. Merge to `main`.
+5. Delete branch.
+
 PS1: Never forget rules from AGENTS.md.
 PS2: Push to GitHub BEFORE EVERY MAJOR CHANGE and AT THE BEGINNING OF OUR CONVERSATION.
 PS3: Ask clarification questions IF you are not 100% sure what to do instead of guessing, you can always use context7 mcp to read latest documentations

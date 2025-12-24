@@ -422,12 +422,35 @@ async def list_tasks(
     tasks_data = fallback.get("tasks") or []
     supa_tasks: list[Task] = []
     for row in tasks_data:
+        email_count = row.get("email_count")
+        if email_count is None:
+            reserved_raw = row.get("credit_reserved_count")
+            if reserved_raw is not None:
+                try:
+                    email_count = int(reserved_raw)
+                    logger.info(
+                        "route.tasks.list.reserved_count_fallback",
+                        extra={
+                            "user_id": target_user_id,
+                            "task_id": row.get("task_id"),
+                            "reserved_count": email_count,
+                        },
+                    )
+                except (TypeError, ValueError):
+                    logger.warning(
+                        "route.tasks.list.reserved_count_invalid",
+                        extra={
+                            "user_id": target_user_id,
+                            "task_id": row.get("task_id"),
+                            "reserved_count": reserved_raw,
+                        },
+                    )
         supa_tasks.append(
             Task(
                 id=row.get("task_id"),
                 user_id=row.get("user_id"),
                 status=row.get("status"),
-                email_count=row.get("email_count"),
+                email_count=email_count,
                 valid_count=row.get("valid_count"),
                 invalid_count=row.get("invalid_count"),
                 catchall_count=row.get("catchall_count"),

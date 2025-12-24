@@ -1,3 +1,4 @@
+import httpx
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -94,3 +95,36 @@ def test_list_api_keys_empty_cache_returns_empty(monkeypatch):
     data = resp.json()
     assert data["count"] == 0
     assert data["keys"] == []
+
+
+def test_list_api_keys_timeout_falls_back_to_cache(monkeypatch):
+    app = FastAPI()
+    app.include_router(router)
+
+    def fake_user():
+        return AuthContext(user_id="user-timeout", claims={}, token="t")
+
+    class FakeClient(ExternalAPIClient):  # type: ignore[misc]
+        def __init__(self):
+            super().__init__(base_url="https://api.test", bearer_token="key")
+
+        async def list_api_keys(self, user_id=None, start=None, end=None):
+            raise httpx.ReadTimeout("timed out")
+
+    monkeypatch.setattr(
+        api_keys_module,
+        "list_cached_keys",
+        lambda user_id: [
+            {"key_id": "k-timeout", "name": "Zapier", "integration": "Zapier"},
+        ],
+    )
+    monkeypatch.setattr(api_keys_module, "record_usage", lambda *args, **kwargs: None)
+    app.dependency_overrides[api_keys_module.get_current_user] = fake_user
+    app.dependency_overrides[api_keys_module.get_user_external_client] = lambda: FakeClient()
+
+    client = TestClient(app)
+    resp = client.get("/api/api-keys")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["count"] == 1
+    assert data["keys"][0]["id"] == "k-timeout"

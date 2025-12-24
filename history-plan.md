@@ -3,6 +3,12 @@
 Goal: replace mock data on `/history` with real per-user tasks from FastAPI/Supabase using the user’s external key (dashboard or selected integration), while preserving existing UI/filters and avoiding hardcoded fallbacks.
 
 Tasks
+- [x] History totals fallback: use stored reservation counts when `email_count` is missing so in-progress uploads show the correct total rather than 0.
+  Explanation: `/api/tasks` now falls back to `credit_reserved_count` from Supabase when `email_count` is missing, logging the fallback or invalid values so history totals reflect uploaded batch size while verification is still running.
+- [x] API key timeout fallback: treat external API timeouts the same as external failures and return cached keys instead of a 500.
+  Explanation: `/api/api-keys` now catches `httpx.RequestError` (timeouts/transport errors) and uses the cached key fallback with explicit logging so the history key selector stays up even during upstream timeouts.
+- [x] Tests: add backend tests covering reservation-count totals in `/api/tasks` and timeout fallback behavior in `/api/api-keys`.
+  Explanation: Added tests to ensure `/api/tasks` uses `credit_reserved_count` when `email_count` is missing and `/api/api-keys` falls back to cached keys on `httpx.ReadTimeout`.
 - [x] Backend readiness check (quick): verify `/api/tasks` list/detail respond with per-user key resolution and Supabase upsert; note that upload still uses polling until external API returns `task_id` directly. No code changes unless a blocking gap appears.  
   Explanation: Confirmed `GET /api/tasks` uses per-user key resolution (dashboard key by default, `api_key_id` override), upserts Supabase `tasks` on list/detail, and upload now polls to capture task_ids until upstream returns them. Supabase tables (`tasks`, `cached_api_keys`, `profiles`, `user_credits`, `api_usage`) exist with seeded tasks for musti, so backend can serve history data now.
 - [x] Empty history verification: check Supabase `tasks` for the current user to confirm whether `/history` should be empty; capture counts and latest rows before changing UI or backend.

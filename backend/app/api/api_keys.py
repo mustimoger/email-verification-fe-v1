@@ -1,6 +1,7 @@
 import logging
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+import httpx
 
 from ..clients.external import ExternalAPIClient, ExternalAPIError
 from ..core.auth import AuthContext, get_current_user
@@ -90,6 +91,35 @@ async def list_api_keys(
             extra={"admin_user_id": user.user_id, "target_user_id": target_user_id},
         )
     cached = {item["key_id"]: item for item in list_cached_keys(target_user_id)}
+    def build_fallback_response(reason: str, details: object | None = None) -> ListAPIKeysResponse:
+        if start_value or end_value:
+            logger.warning(
+                "route.api_keys.list_cache_fallback_range_ignored",
+                extra={"user_id": target_user_id, "from": start_value, "to": end_value, "reason": reason},
+            )
+        logger.warning(
+            "route.api_keys.list_cache_fallback",
+            extra={"user_id": target_user_id, "count": len(cached), "reason": reason, "details": details},
+        )
+        fallback_keys = []
+        if cached:
+            fallback_keys = [
+                APIKeySummary(
+                    id=item.get("key_id"),
+                    name=item.get("name"),
+                    integration=item.get("integration"),
+                    is_active=True,
+                    key_preview=_build_key_preview(item.get("key_plain")),
+                )
+                for item in cached.values()
+                if include_internal or not _is_dashboard_key(item.get("name"))
+            ]
+        record_usage(target_user_id, path="/api-keys", count=len(fallback_keys))
+        logger.info(
+            "route.api_keys.list_cache_fallback",
+            extra={"user_id": target_user_id, "count": len(fallback_keys), "reason": reason},
+        )
+        return ListAPIKeysResponse(count=len(fallback_keys), keys=fallback_keys)
     try:
         result = await client.list_api_keys(
             user_id=target_user_id if user_id else None,
@@ -128,35 +158,13 @@ async def list_api_keys(
                 "route.api_keys.list_external_failed",
                 extra={"user_id": target_user_id, "status_code": exc.status_code, "details": exc.details},
             )
-        if start_value or end_value:
-            logger.warning(
-                "route.api_keys.list_cache_fallback_range_ignored",
-                extra={"user_id": target_user_id, "from": start_value, "to": end_value},
-            )
-        # Safe fallback to cached keys (if any), excluding dashboard unless requested.
+        return build_fallback_response("external_error", details=exc.details)
+    except httpx.RequestError as exc:
         logger.warning(
-            "route.api_keys.list_cache_fallback",
-            extra={"user_id": target_user_id, "count": len(cached)},
+            "route.api_keys.list_transport_error",
+            extra={"user_id": target_user_id, "error": str(exc)},
         )
-        fallback_keys = []
-        if cached:
-            fallback_keys = [
-                APIKeySummary(
-                    id=item.get("key_id"),
-                    name=item.get("name"),
-                    integration=item.get("integration"),
-                    is_active=True,
-                    key_preview=_build_key_preview(item.get("key_plain")),
-                )
-                for item in cached.values()
-                if include_internal or not _is_dashboard_key(item.get("name"))
-            ]
-        record_usage(target_user_id, path="/api-keys", count=len(fallback_keys))
-        logger.info(
-            "route.api_keys.list_cache_fallback",
-            extra={"user_id": target_user_id, "count": len(fallback_keys)},
-        )
-        return ListAPIKeysResponse(count=len(fallback_keys), keys=fallback_keys)
+        return build_fallback_response("transport_error", details=str(exc))
 
 
 @router.post("/api-keys", response_model=CreateAPIKeyResponse)
