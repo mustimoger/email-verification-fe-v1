@@ -15,6 +15,7 @@ from .api.limits import router as limits_router
 from .api.account import router as account_router
 from .api.usage import router as usage_router
 from .api.debug import router as debug_router
+from .api.auth import router as auth_router
 
 
 def create_app() -> FastAPI:
@@ -50,6 +51,7 @@ def create_app() -> FastAPI:
     app.include_router(overview_router)
     app.include_router(billing_router)
     app.include_router(debug_router)
+    app.include_router(auth_router)
 
     return app
 

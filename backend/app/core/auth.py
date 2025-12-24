@@ -9,6 +9,7 @@ from jwt import InvalidTokenError
 from pydantic import BaseModel
 
 from .settings import get_settings
+from ..services import supabase_client
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +19,38 @@ class AuthContext(BaseModel):
     claims: Dict[str, Any]
     token: str
     role: str = "user"
+
+
+def _claims_email_confirmed(claims: Dict[str, Any]) -> bool:
+    for key in ("email_confirmed_at", "confirmed_at"):
+        value = claims.get(key)
+        if isinstance(value, str) and value.strip():
+            return True
+    return False
+
+
+def _is_email_confirmed(user: Any) -> bool:
+    return bool(getattr(user, "email_confirmed_at", None) or getattr(user, "confirmed_at", None))
+
+
+def enforce_email_confirmed(user_id: str, claims: Dict[str, Any]) -> None:
+    if _claims_email_confirmed(claims):
+        return
+    try:
+        auth_user = supabase_client.fetch_auth_user(user_id)
+    except Exception as exc:  # noqa: BLE001
+        logger.error("auth.email_confirm_lookup_failed", extra={"user_id": user_id, "error": str(exc)})
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Email verification unavailable")
+    if _is_email_confirmed(auth_user):
+        return
+    logger.info(
+        "auth.email_unconfirmed",
+        extra={"user_id": user_id, "email": getattr(auth_user, "email", None)},
+    )
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Please confirm your email address before signing in.",
+    )
 
 
 def _extract_token(authorization: Optional[str], cookie_token: Optional[str]) -> Optional[str]:
@@ -91,11 +124,12 @@ def _decode_supabase_jwt_with_jwks(token: str, jwks_url: str) -> Dict[str, Any]:
         ) from exc
 
 
-def get_current_user(
+def _get_current_user(
     request: Request,
     authorization: Optional[str] = Header(default=None),
     dev_api_key: Optional[str] = Header(default=None, alias="x-dev-api-key"),
     settings=Depends(get_settings),
+    require_confirmed_email: bool = True,
 ) -> AuthContext:
     cookie_token = request.cookies.get(settings.supabase_auth_cookie_name)
     token = _extract_token(authorization, cookie_token)
@@ -144,4 +178,36 @@ def get_current_user(
             "role_source": role_source,
         },
     )
+    if require_confirmed_email:
+        enforce_email_confirmed(user_id, claims)
     return AuthContext(user_id=user_id, claims=claims, token=token, role=role)
+
+
+def get_current_user(
+    request: Request,
+    authorization: Optional[str] = Header(default=None),
+    dev_api_key: Optional[str] = Header(default=None, alias="x-dev-api-key"),
+    settings=Depends(get_settings),
+) -> AuthContext:
+    return _get_current_user(
+        request,
+        authorization=authorization,
+        dev_api_key=dev_api_key,
+        settings=settings,
+        require_confirmed_email=True,
+    )
+
+
+def get_current_user_allow_unconfirmed(
+    request: Request,
+    authorization: Optional[str] = Header(default=None),
+    dev_api_key: Optional[str] = Header(default=None, alias="x-dev-api-key"),
+    settings=Depends(get_settings),
+) -> AuthContext:
+    return _get_current_user(
+        request,
+        authorization=authorization,
+        dev_api_key=dev_api_key,
+        settings=settings,
+        require_confirmed_email=False,
+    )

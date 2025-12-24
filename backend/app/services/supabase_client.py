@@ -2,6 +2,8 @@ import logging
 from functools import lru_cache
 from typing import Any, Dict, List, Optional
 
+from gotrue.types import User
+
 from supabase import Client, create_client
 
 from ..core.settings import get_settings
@@ -72,6 +74,23 @@ def fetch_credits_row(user_id: str) -> Optional[Dict[str, Any]]:
     res = sb.table("user_credits").select("*").eq("user_id", user_id).limit(1).execute()
     data: List[Dict[str, Any]] = res.data or []
     return data[0] if data else None
+
+
+def fetch_auth_user(user_id: str) -> User:
+    sb = get_supabase()
+    try:
+        res = sb.auth.admin.get_user_by_id(user_id)
+    except Exception as exc:  # noqa: BLE001
+        logger.error(
+            "supabase.auth.user_fetch_failed",
+            extra={"user_id": user_id, "error": str(exc)},
+        )
+        raise
+    user = getattr(res, "user", None)
+    if not user:
+        logger.error("supabase.auth.user_missing", extra={"user_id": user_id})
+        raise RuntimeError("Supabase auth user lookup returned no user")
+    return user
 
 
 def set_credits(user_id: str, credits_remaining: int) -> Dict[str, Any]:

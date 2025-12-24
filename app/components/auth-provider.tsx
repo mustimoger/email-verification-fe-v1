@@ -2,7 +2,8 @@
 
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 
-import { apiClient } from "../lib/api-client";
+import { ApiError, apiClient } from "../lib/api-client";
+import { setEmailConfirmationNotice } from "../lib/auth-notices";
 import type { Session, SupabaseClient, User } from "@supabase/supabase-js";
 
 import { getSupabaseBrowserClient } from "../lib/supabase-browser";
@@ -25,6 +26,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const bootstrapAttemptedRef = useRef(false);
   const profileSyncRef = useRef<{ userId: string; email: string } | null>(null);
+  const confirmationCheckRef = useRef<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -66,6 +68,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [session]);
 
   useEffect(() => {
+    const ensureConfirmed = async () => {
+      const userId = session?.user?.id;
+      if (!userId) {
+        confirmationCheckRef.current = null;
+        return;
+      }
+      if (confirmationCheckRef.current === userId) {
+        return;
+      }
+      confirmationCheckRef.current = userId;
+      try {
+        await apiClient.requireConfirmedEmail();
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 403) {
+          setEmailConfirmationNotice(err.message);
+          await supabase.auth.signOut();
+          console.info("auth.email_unconfirmed_signout", { userId });
+          return;
+        }
+        console.warn("auth.email_confirmation_check_failed", err);
+      }
+    };
+    void ensureConfirmed();
+  }, [session, supabase]);
+
+  useEffect(() => {
     if (!session?.user?.email) {
       profileSyncRef.current = null;
       return;
@@ -98,6 +126,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (error) {
           console.error("auth.sign_in_failed", { message: error.message });
           return { error: error.message };
+        }
+        try {
+          await apiClient.requireConfirmedEmail();
+        } catch (err) {
+          const message =
+            err instanceof ApiError && err.status === 403
+              ? err.message
+              : "Unable to verify your email confirmation status.";
+          await supabase.auth.signOut();
+          console.warn("auth.sign_in_unconfirmed", { message });
+          return { error: message };
         }
         return { error: null };
       },

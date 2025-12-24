@@ -313,6 +313,10 @@ export type CreateTransactionResponse = {
   created_at?: string;
 };
 
+export type ConfirmedEmailResponse = {
+  confirmed: boolean;
+};
+
 const rawBase = process.env.NEXT_PUBLIC_API_BASE_URL;
 if (!rawBase) {
   throw new Error("NEXT_PUBLIC_API_BASE_URL is required for API client");
@@ -543,6 +547,11 @@ export const apiClient = {
   getLimits: () => request<LimitsResponse>("/limits", { method: "GET" }),
   downloadTaskResults: (taskId: string, fallbackFileName: string) =>
     downloadFile(`/tasks/${encodeURIComponent(taskId)}/download`, fallbackFileName),
+  requireConfirmedEmail: () =>
+    request<ConfirmedEmailResponse>("/auth/confirmed", {
+      method: "GET",
+      suppressErrorLog: true,
+    }),
 };
 
 export type ApiClient = typeof apiClient;

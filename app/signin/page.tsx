@@ -1,10 +1,11 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 
 import { AuthLayout, FieldLabel, TextLink } from "../components/auth-layout";
 import { useAuth } from "../components/auth-provider";
+import { readEmailConfirmationNotice } from "../lib/auth-notices";
 
 export default function SigninPage() {
   const { signIn } = useAuth();
@@ -15,6 +16,13 @@ export default function SigninPage() {
   const [remember, setRemember] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const notice = readEmailConfirmationNotice();
+    if (notice) {
+      setError(notice);
+    }
+  }, []);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
