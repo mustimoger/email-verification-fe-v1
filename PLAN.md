@@ -142,6 +142,14 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
 - [x] Persist latest file-upload summary on `/verify` after reload (server-driven, manual refresh).
   Explanation: External API does not expose file names in task lists or a "latest upload" endpoint, so `/verify` must hydrate from Supabase `task_files` metadata and allow manual status refresh without background polling.
   Update: Added `/api/tasks/latest-upload` with backend tests, and `/verify` now hydrates the latest file-based task on load with a manual refresh button plus frontend mapping tests.
+- [ ] Persist latest manual batch on `/verify` and hydrate the Results card from `/tasks/{id}` jobs only (manual batches only).
+  Explanation: Manual verification results should survive reloads by fetching the latest manual task and mapping job emails to statuses; no local storage or placeholders.
+- [ ] Add `/api/tasks/latest-manual` (Supabase-backed) and tests.
+  Explanation: Manual tasks are identifiable by missing file metadata; expose a lightweight endpoint so the UI can rehydrate without external API polling.
+- [ ] Add Results refresh button for manual batches and remove background polling.
+  Explanation: Per UX requirement, status updates are user-triggered only.
+- [ ] Expire manual Results when the task completes (hide after refresh/hydration).
+  Explanation: Completed manual batches should disappear from the Results card to avoid stale UI.
 
 ## Next: Second Verify state (post-upload)
 - [x] Pull Figma specs for second Verify state via Figma MCP; captured screenshot (node `64:75`) showing results table + validation donut. Footer and shell unchanged.

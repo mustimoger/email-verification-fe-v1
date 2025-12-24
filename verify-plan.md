@@ -7,6 +7,16 @@ Goal: keep the Verify page flow functional for both manual input and file upload
 - Second Verify state UI is implemented and driven by real task counts where available.
 
 ## Remaining tasks (MVP)
+- [ ] Persist latest manual verification batch across /verify reloads and show it in the Results card (manual batches only).
+  Explanation: Fetch the most recent manual task from Supabase on page load and hydrate the Results list from `/tasks/{id}` jobs (no local storage or placeholders).
+- [ ] Add backend endpoint to return the most recent manual task (Supabase-backed, excluding file uploads).
+  Explanation: Manual tasks are stored in Supabase without file metadata; expose a `/api/tasks/latest-manual` endpoint so the frontend can rehydrate after reloads.
+- [ ] Add manual refresh control for Results to fetch `/tasks/{id}` and update statuses on demand (no background polling).
+  Explanation: User-requested status refresh avoids auto polling and aligns with the manual refresh UX.
+- [ ] Expire manual Results once the task is complete (hide the batch after refresh/hydration).
+  Explanation: Per UX requirement, completed manual batches should disappear from the Results card rather than persist.
+- [ ] Add tests for latest-manual backend response and manual Results mapping (jobs -> status list).
+  Explanation: Ensure the API returns the correct task and the UI mapping is stable without hardcoded fallbacks.
 - [ ] Persist latest file upload summary across /verify reloads using server-driven rehydration (most recent file-based task only).
   Explanation: Restore the post-upload cards after page refresh by fetching the most recent file-based task for the signed-in user; keep status updates manual via a refresh action to avoid background polling.
 - [x] Add backend endpoint to return the most recent file-based task (Supabase-backed) with file metadata for /verify hydration.
