@@ -151,6 +151,7 @@ Goal: replace mock data on `/overview` with real per-user data sourced from our 
     - Keep layout, colors, and data sources unchanged; only adjust pie rendering.
     - Update: Reduced `paddingAngle` and added `minAngle` on the Overview validation pie so tiny slices (Catch-all) render without altering layout or data.
     - Update: Increased `minAngle` to 6 degrees and darkened the Catch-all slice color to `#d97706` for better visibility.
+    - Update: Increased `minAngle` to 18 degrees per request to ensure the Catch-all slice is visible even when counts are tiny.
 
 Notes:
 - External task source remains the email verification API; Supabase caches per-user task metadata for aggregation/safety.
