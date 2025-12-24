@@ -144,8 +144,9 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
   Update: Added `/api/tasks/latest-upload` with backend tests, and `/verify` now hydrates the latest file-based task on load with a manual refresh button plus frontend mapping tests.
 - [ ] Persist latest manual batch on `/verify` and hydrate the Results card from `/tasks/{id}` jobs only (manual batches only).
   Explanation: Manual verification results should survive reloads by fetching the latest manual task and mapping job emails to statuses; no local storage or placeholders.
-- [ ] Add `/api/tasks/latest-manual` (Supabase-backed) and tests.
+- [x] Add `/api/tasks/latest-manual` (Supabase-backed) and tests.
   Explanation: Manual tasks are identifiable by missing file metadata; expose a lightweight endpoint so the UI can rehydrate without external API polling.
+  Update: Added `fetch_latest_manual_task` in the tasks store plus `/api/tasks/latest-manual`, and covered the endpoint with a new FastAPI test to validate 200/204 responses.
 - [ ] Add Results refresh button for manual batches and remove background polling.
   Explanation: Per UX requirement, status updates are user-triggered only.
 - [ ] Expire manual Results when the task completes (hide after refresh/hydration).

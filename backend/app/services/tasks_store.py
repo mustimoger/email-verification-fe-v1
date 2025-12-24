@@ -368,3 +368,16 @@ def fetch_latest_file_task(user_id: str, limit: int) -> Optional[Dict[str, objec
             return row
     logger.info("tasks.latest_file_upload.not_found", extra={"user_id": user_id, "searched": len(tasks)})
     return None
+
+
+def fetch_latest_manual_task(user_id: str, limit: int) -> Optional[Dict[str, object]]:
+    if limit <= 0:
+        logger.warning("tasks.latest_manual.invalid_limit", extra={"user_id": user_id, "limit": limit})
+        return None
+    result = fetch_tasks_with_counts(user_id, limit=limit, offset=0)
+    tasks = result.get("tasks") or []
+    for row in tasks:
+        if not row.get("file_name"):
+            return row
+    logger.info("tasks.latest_manual.not_found", extra={"user_id": user_id, "searched": len(tasks)})
+    return None
