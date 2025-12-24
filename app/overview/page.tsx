@@ -257,7 +257,7 @@ export default function OverviewPage() {
                       innerRadius={60}
                       outerRadius={90}
                       paddingAngle={1}
-                      minAngle={6}
+                      minAngle={18}
                       startAngle={90}
                       endAngle={450}
                     >
