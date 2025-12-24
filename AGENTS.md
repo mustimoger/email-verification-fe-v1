@@ -17,7 +17,7 @@
  -- All to-do items,even if they are new and planned during runtime codex session,should be FIRST add them to planning/progress markdown files step by step
  -- AFTER completing a step, ask for my confirmation before starting the next task
 
-- GitHub Flow:
+- GitHub Flow (USER MAY OVERRIDE THOS FLOW):
 	Local = your machine
 	Remote (origin) = GitHub
 
