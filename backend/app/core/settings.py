@@ -31,6 +31,7 @@ class Settings(BaseSettings):
 
     upload_max_mb: int = 10
     manual_max_emails: int
+    latest_uploads_limit: int
     upload_poll_attempts: int = 3
     upload_poll_interval_seconds: float = 2.0
     upload_poll_page_size: int = 20
@@ -77,7 +78,7 @@ class Settings(BaseSettings):
             return parts
         return value
 
-    @field_validator("manual_max_emails", "upload_poll_attempts", "upload_poll_page_size")
+    @field_validator("manual_max_emails", "latest_uploads_limit", "upload_poll_attempts", "upload_poll_page_size")
     @classmethod
     def positive_int(cls, value):
         if value <= 0:

@@ -307,10 +307,10 @@ const resolveLatestUploadStatus = (
   return "pending";
 };
 
-export function buildLatestUploadSummary(
+const buildLatestUploadRow = (
   latest: LatestUploadResponse,
   detail?: TaskDetailResponse | null,
-): UploadSummary {
+): FileVerification => {
   const status = resolveLatestUploadStatus(latest, detail);
   const pendingFromDetail = hasPendingJobs(detail);
   const countsFromDetail =
@@ -336,7 +336,7 @@ export function buildLatestUploadSummary(
     totalEmails = normalizeCount(latest.email_count) ?? countsFromLatest?.total ?? null;
   }
   const fileCounts = countsFromDetail ?? countsFromLatest;
-  const fileRow: FileVerification = {
+  return {
     fileName: latest.file_name,
     totalEmails,
     valid: fileCounts?.valid ?? null,
@@ -345,6 +345,13 @@ export function buildLatestUploadSummary(
     status,
     taskId: latest.task_id,
   };
+};
+
+export function buildLatestUploadSummary(
+  latest: LatestUploadResponse,
+  detail?: TaskDetailResponse | null,
+): UploadSummary {
+  const fileRow = buildLatestUploadRow(latest, detail);
   const hasTotals =
     fileRow.totalEmails !== null &&
     fileRow.valid !== null &&
@@ -358,6 +365,40 @@ export function buildLatestUploadSummary(
       valid: hasTotals ? fileRow.valid : null,
       catchAll: hasTotals ? fileRow.catchAll : null,
       invalid: hasTotals ? fileRow.invalid : null,
+    },
+  };
+}
+
+export function buildLatestUploadsSummary(
+  latestUploads: LatestUploadResponse[],
+  detailsByTaskId?: Map<string, TaskDetailResponse>,
+): UploadSummary {
+  if (!latestUploads.length) {
+    return {
+      totalEmails: null,
+      uploadDate: "—",
+      files: [],
+      aggregates: { valid: null, catchAll: null, invalid: null },
+    };
+  }
+  const rows = latestUploads.map((latest) => {
+    const detail = detailsByTaskId?.get(latest.task_id) ?? null;
+    return buildLatestUploadRow(latest, detail);
+  });
+  const latestRow = rows[0];
+  const hasTotals =
+    latestRow.totalEmails !== null &&
+    latestRow.valid !== null &&
+    latestRow.invalid !== null &&
+    latestRow.catchAll !== null;
+  return {
+    totalEmails: hasTotals ? latestRow.totalEmails : null,
+    uploadDate: formatHistoryDate(latestUploads[0].created_at),
+    files: rows,
+    aggregates: {
+      valid: hasTotals ? latestRow.valid : null,
+      catchAll: hasTotals ? latestRow.catchAll : null,
+      invalid: hasTotals ? latestRow.invalid : null,
     },
   };
 }

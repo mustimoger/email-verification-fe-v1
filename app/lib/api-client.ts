@@ -490,6 +490,12 @@ export const apiClient = {
       { method: "GET" },
     ),
   getLatestUpload: () => request<LatestUploadResponse | null>("/tasks/latest-upload", { method: "GET" }),
+  getLatestUploads: (limit?: number) => {
+    const params = new URLSearchParams();
+    if (limit !== undefined) params.append("limit", `${limit}`);
+    const qs = params.toString();
+    return request<LatestUploadResponse[] | null>(`/tasks/latest-uploads${qs ? `?${qs}` : ""}`, { method: "GET" });
+  },
   getLatestManual: () => request<LatestManualResponse | null>("/tasks/latest-manual", { method: "GET" }),
   uploadTaskFiles: (files: File[], metadata: UploadFileMetadata[], webhook_url?: string) => {
     const form = new FormData();

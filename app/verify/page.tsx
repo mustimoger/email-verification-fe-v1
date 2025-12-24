@@ -15,7 +15,7 @@ import {
 } from "../lib/api-client";
 import { buildColumnOptions, FileColumnError, readFileColumnInfo, type FileColumnInfo } from "./file-columns";
 import {
-  buildLatestUploadSummary,
+  buildLatestUploadsSummary,
   buildLatestManualResults,
   buildUploadSummary,
   createUploadLinks,
@@ -52,6 +52,7 @@ export default function VerifyPage() {
   const [activeDownload, setActiveDownload] = useState<string | null>(null);
   const [latestUploadError, setLatestUploadError] = useState<string | null>(null);
   const [latestUploadRefreshing, setLatestUploadRefreshing] = useState(false);
+  const [latestUploadLabel, setLatestUploadLabel] = useState<string | null>(null);
   const [manualRefreshing, setManualRefreshing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const parseRef = useRef(0);
@@ -84,25 +85,29 @@ export default function VerifyPage() {
 
   useEffect(() => {
     let active = true;
-    const hydrateLatestUpload = async () => {
+    const hydrateLatestUploads = async () => {
       if (latestUploadHydratedRef.current) return;
       if (files.length > 0 || uploadSummary || flowStage !== "idle") return;
       latestUploadHydratedRef.current = true;
       setLatestUploadError(null);
       try {
-        const latest = await apiClient.getLatestUpload();
-        if (!active || !latest) return;
-        setUploadSummary(buildLatestUploadSummary(latest));
+        const latestUploads = await apiClient.getLatestUploads();
+        if (!active || !latestUploads || latestUploads.length === 0) return;
+        setUploadSummary(buildLatestUploadsSummary(latestUploads));
+        setLatestUploadLabel(latestUploads[0]?.file_name ?? null);
         setFlowStage("summary");
-        console.info("verify.latest_upload.hydrated", { task_id: latest.task_id, file_name: latest.file_name });
+        console.info("verify.latest_uploads.hydrated", {
+          count: latestUploads.length,
+          latest_task_id: latestUploads[0]?.task_id,
+        });
       } catch (err: unknown) {
         if (!active) return;
-        const message = resolveApiErrorMessage(err, "verify.latest_upload.hydrate");
-        console.error("verify.latest_upload.hydrate_failed", { error: message });
+        const message = resolveApiErrorMessage(err, "verify.latest_uploads.hydrate");
+        console.error("verify.latest_uploads.hydrate_failed", { error: message });
         setLatestUploadError("Unable to load the latest upload. Please check History.");
       }
     };
-    void hydrateLatestUpload();
+    void hydrateLatestUploads();
     return () => {
       active = false;
     };
@@ -343,6 +348,7 @@ export default function VerifyPage() {
     setFileNotice(null);
     setLatestUploadError(null);
     setLatestUploadRefreshing(false);
+    setLatestUploadLabel(null);
   };
 
   const validationSlices = useMemo(() => {
@@ -419,16 +425,21 @@ export default function VerifyPage() {
       }));
       const uploadResults = await apiClient.uploadTaskFiles(files, metadata);
       const { links, unmatched, orphaned } = mapUploadResultsToLinks(files, uploadResults);
-      const taskIds = links.map((link) => link.taskId).filter((id): id is string => Boolean(id));
-      const details = await Promise.all(taskIds.map((taskId) => fetchTaskDetailWithRetries(taskId)));
-      const detailsByTaskId = new Map<string, NonNullable<(typeof details)[number]>>();
-      taskIds.forEach((taskId, index) => {
-        const detail = details[index];
-        if (detail) {
-          detailsByTaskId.set(taskId, detail);
+      let summary: UploadSummary | null = null;
+      try {
+        const latestUploads = await apiClient.getLatestUploads();
+        if (latestUploads && latestUploads.length > 0) {
+          summary = buildLatestUploadsSummary(latestUploads);
+          setLatestUploadLabel(latestUploads[0]?.file_name ?? null);
         }
-      });
-      const summary = buildUploadSummary(files, links, detailsByTaskId, startedAt);
+      } catch (err: unknown) {
+        const message = resolveApiErrorMessage(err, "verify.latest_uploads.after_upload");
+        console.error("verify.latest_uploads.after_upload_failed", { error: message });
+      }
+      if (!summary) {
+        summary = buildUploadSummary(files, links, new Map(), startedAt);
+        setLatestUploadLabel(summary.files[0]?.fileName ?? null);
+      }
       setUploadSummary(summary);
       setFlowStage("summary");
       setToast("Upload submitted");
@@ -460,31 +471,47 @@ export default function VerifyPage() {
     }
   };
 
-  const refreshLatestUpload = async () => {
+  const refreshLatestUploads = async () => {
     setLatestUploadError(null);
     setLatestUploadRefreshing(true);
     try {
-      const latest = await apiClient.getLatestUpload();
-      if (!latest) {
+      const latestUploads = await apiClient.getLatestUploads();
+      if (!latestUploads || latestUploads.length === 0) {
         setUploadSummary(null);
         setFlowStage("idle");
+        setLatestUploadLabel(null);
         setLatestUploadError("No recent uploads found. Upload a file to get started.");
         return;
       }
-      let detail: TaskDetailResponse | null = null;
-      try {
-        detail = await apiClient.getTask(latest.task_id);
-      } catch (err: unknown) {
-        const message = resolveApiErrorMessage(err, "verify.latest_upload.detail");
-        console.error("verify.latest_upload.detail_failed", { task_id: latest.task_id, error: message });
-        setLatestUploadError(message);
-      }
-      setUploadSummary(buildLatestUploadSummary(latest, detail));
+      const detailsByTaskId = new Map<string, TaskDetailResponse>();
+      await Promise.all(
+        latestUploads.map(async (entry) => {
+          if (!entry.task_id) return;
+          try {
+            const detail = await fetchTaskDetailWithRetries(entry.task_id);
+            if (detail) {
+              detailsByTaskId.set(entry.task_id, detail);
+            }
+          } catch (err: unknown) {
+            const message = resolveApiErrorMessage(err, "verify.latest_uploads.detail");
+            if (err instanceof ApiError && err.status === 402) {
+              setLatestUploadError(message);
+              return;
+            }
+            console.error("verify.latest_uploads.detail_failed", { task_id: entry.task_id, error: message });
+          }
+        }),
+      );
+      setUploadSummary(buildLatestUploadsSummary(latestUploads, detailsByTaskId));
+      setLatestUploadLabel(latestUploads[0]?.file_name ?? null);
       setFlowStage("summary");
-      console.info("verify.latest_upload.refreshed", { task_id: latest.task_id, file_name: latest.file_name });
+      console.info("verify.latest_uploads.refreshed", {
+        count: latestUploads.length,
+        latest_task_id: latestUploads[0]?.task_id,
+      });
     } catch (err: unknown) {
-      const message = resolveApiErrorMessage(err, "verify.latest_upload.refresh");
-      console.error("verify.latest_upload.refresh_failed", { error: message });
+      const message = resolveApiErrorMessage(err, "verify.latest_uploads.refresh");
+      console.error("verify.latest_uploads.refresh_failed", { error: message });
       setLatestUploadError(message);
     } finally {
       setLatestUploadRefreshing(false);
@@ -812,7 +839,7 @@ export default function VerifyPage() {
                   <div className="flex items-center gap-3">
                     <button
                       type="button"
-                      onClick={() => void refreshLatestUpload()}
+                      onClick={() => void refreshLatestUploads()}
                       disabled={latestUploadRefreshing}
                       className="rounded-lg border border-slate-300 bg-white px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-[#4c61cc] hover:text-[#4c61cc] disabled:cursor-not-allowed disabled:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4c61cc]"
                     >
@@ -881,6 +908,12 @@ export default function VerifyPage() {
                         <p className="text-xs font-bold uppercase tracking-wide text-slate-700">Valid Emails</p>
                         <p className="text-3xl font-extrabold text-slate-900">
                           {validPercent === null ? "—" : `${validPercent}%`}
+                        </p>
+                        <p
+                          className="mt-1 text-xs font-semibold text-slate-500"
+                          title={latestUploadLabel ?? undefined}
+                        >
+                          Latest upload: {latestUploadLabel ?? "—"}
                         </p>
                       </div>
                     </div>

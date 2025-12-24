@@ -8,9 +8,11 @@ import { RequireAuth } from "../components/protected";
 import { useAuth } from "../components/auth-provider";
 import { HistoryRow, mapDetailToHistoryRow, mapTaskToHistoryRow } from "./utils";
 
-const statusColor: Record<HistoryRow["status"], string> = {
-  download: "bg-emerald-500",
-  pending: "bg-amber-400",
+const statusColor: Record<HistoryRow["statusTone"], string> = {
+  completed: "bg-emerald-500",
+  processing: "bg-amber-400",
+  failed: "bg-rose-500",
+  unknown: "bg-slate-400",
 };
 
 const PAGE_SIZE = 10;
@@ -223,29 +225,23 @@ export default function HistoryPage() {
                   <span className="text-right text-slate-700">{formatNumber(row.invalid)}</span>
                   <span className="text-right text-slate-700">{formatNumber(row.catchAll)}</span>
                   <span className="flex justify-end">
-                    {row.status === "download" ? (
-                      row.fileName ? (
-                        <button
-                          type="button"
-                          onClick={() => void handleDownload(row)}
-                          disabled={activeDownload === row.id}
-                          className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700 transition hover:bg-emerald-200 disabled:cursor-not-allowed disabled:opacity-70"
-                        >
-                          {activeDownload === row.id ? "Downloading..." : "Download"}
-                        </button>
-                      ) : (
-                        <span className="inline-flex items-center rounded-full bg-slate-200 px-3 py-1 text-xs font-bold text-slate-600">
-                          Download
-                        </span>
-                      )
+                    {row.action === "download" ? (
+                      <button
+                        type="button"
+                        onClick={() => void handleDownload(row)}
+                        disabled={activeDownload === row.id}
+                        className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700 transition hover:bg-emerald-200 disabled:cursor-not-allowed disabled:opacity-70"
+                      >
+                        {activeDownload === row.id ? "Downloading..." : "Download"}
+                      </button>
                     ) : (
                       <span
                         className={[
                           "inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold text-white shadow-sm",
-                          statusColor[row.status],
+                          statusColor[row.statusTone],
                         ].join(" ")}
                       >
-                        Pending
+                        {row.statusLabel}
                       </span>
                     )}
                   </span>

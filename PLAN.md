@@ -154,14 +154,18 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
 - [x] Expire manual Results when the task completes (hide after refresh/hydration).
   Explanation: Completed manual batches should disappear from the Results card to avoid stale UI.
   Update: Manual results are cleared when the latest task is complete during hydration or refresh.
-- [ ] Replace single latest-upload summary with a latest-N uploads list (N=6), newest-first, persisted across reloads.
+- [x] Replace single latest-upload summary with a latest-N uploads list (N=6), newest-first, persisted across reloads.
   Explanation: The upload status card should show the most recent file upload tasks (not just one) and remain stable across page loads without layout disruption.
-- [ ] Add backend endpoint to return latest-N file uploads with counts + metadata (Supabase-backed).
+  Update: `/verify` now hydrates a list of the latest file uploads and renders up to the configured limit.
+- [x] Add backend endpoint to return latest-N file uploads with counts + metadata (Supabase-backed).
   Explanation: Supabase task_files metadata is the source of truth for file upload history; expose a list endpoint to hydrate the verify summary list.
-- [ ] Update verify summary hydration to render latest-N uploads and refresh all tasks on demand.
+  Update: Added `/api/tasks/latest-uploads` backed by `fetch_latest_file_tasks` and configurable `LATEST_UPLOADS_LIMIT`.
+- [x] Update verify summary hydration to render latest-N uploads and refresh all tasks on demand.
   Explanation: Manual refresh should update the status/counts for every listed upload and re-render the table.
-- [ ] Update the validation donut to summarize only the most recent upload, with a label indicating which task/file it represents.
+  Update: Refresh now fetches details for each listed upload before rebuilding the summary table.
+- [x] Update the validation donut to summarize only the most recent upload, with a label indicating which task/file it represents.
   Explanation: Keep the donut focused on the newest file upload while the table shows the full latest-N list.
+  Update: Donut aggregates come from the newest upload and the card labels the latest file.
 
 ## Next: Second Verify state (post-upload)
 - [x] Pull Figma specs for second Verify state via Figma MCP; captured screenshot (node `64:75`) showing results table + validation donut. Footer and shell unchanged.

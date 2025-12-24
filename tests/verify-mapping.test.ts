@@ -9,6 +9,7 @@ import type {
 } from "../app/lib/api-client";
 import {
   buildLatestManualResults,
+  buildLatestUploadsSummary,
   buildLatestUploadSummary,
   buildUploadSummary,
   createUploadLinks,
@@ -127,6 +128,36 @@ run("buildLatestUploadSummary stays pending when job_status reports pending work
   assert.strictEqual(summary.files[0].status, "pending");
   assert.strictEqual(summary.files[0].valid, null);
   assert.strictEqual(summary.totalEmails, null);
+});
+
+run("buildLatestUploadsSummary keeps latest upload totals only", () => {
+  const latestUploads: LatestUploadResponse[] = [
+    {
+      task_id: "task-1",
+      file_name: "latest.csv",
+      created_at: "2024-03-03T00:00:00Z",
+      status: "completed",
+      email_count: 4,
+      valid_count: 2,
+      invalid_count: 1,
+      catchall_count: 1,
+    },
+    {
+      task_id: "task-2",
+      file_name: "older.csv",
+      created_at: "2024-03-02T00:00:00Z",
+      status: "completed",
+      email_count: 3,
+      valid_count: 1,
+      invalid_count: 1,
+      catchall_count: 1,
+    },
+  ];
+  const summary = buildLatestUploadsSummary(latestUploads);
+  assert.strictEqual(summary.files.length, 2);
+  assert.strictEqual(summary.aggregates.valid, 2);
+  assert.strictEqual(summary.totalEmails, 4);
+  assert.strictEqual(summary.files[0].fileName, "latest.csv");
 });
 
 run("buildLatestManualResults skips jobs without email addresses", () => {

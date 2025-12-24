@@ -28,6 +28,7 @@ from ..services.tasks_store import (
     counts_from_metrics,
     email_count_from_metrics,
     fetch_latest_file_task,
+    fetch_latest_file_tasks,
     fetch_latest_manual_task,
     fetch_task_credit_reservation,
     fetch_tasks_with_counts,
@@ -576,6 +577,59 @@ async def get_latest_upload(
         catchall_count=latest.get("catchall_count"),
         job_status=latest.get("job_status"),
     )
+
+
+@router.get("/tasks/latest-uploads", response_model=list[LatestUploadResponse])
+async def get_latest_uploads(
+    limit: Optional[int] = Query(default=None),
+    user: AuthContext = Depends(get_current_user),
+):
+    settings = get_settings()
+    resolved_limit = limit if limit is not None else settings.latest_uploads_limit
+    if resolved_limit <= 0:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="limit must be greater than zero")
+    if resolved_limit > settings.latest_uploads_limit:
+        logger.warning(
+            "route.tasks.latest_uploads.limit_clamped",
+            extra={
+                "user_id": user.user_id,
+                "requested": resolved_limit,
+                "limit": settings.latest_uploads_limit,
+            },
+        )
+        resolved_limit = settings.latest_uploads_limit
+    latest = fetch_latest_file_tasks(user.user_id, limit=resolved_limit)
+    if not latest:
+        logger.info("route.tasks.latest_uploads.empty", extra={"user_id": user.user_id})
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+    payload = []
+    for row in latest:
+        task_id = row.get("task_id")
+        file_name = row.get("file_name")
+        if not task_id or not file_name:
+            logger.warning(
+                "route.tasks.latest_uploads.invalid_row",
+                extra={"user_id": user.user_id, "task_id": task_id, "file_name": file_name},
+            )
+            continue
+        payload.append(
+            LatestUploadResponse(
+                task_id=task_id,
+                file_name=file_name,
+                created_at=row.get("created_at"),
+                status=row.get("status"),
+                email_count=row.get("email_count"),
+                valid_count=row.get("valid_count"),
+                invalid_count=row.get("invalid_count"),
+                catchall_count=row.get("catchall_count"),
+                job_status=row.get("job_status"),
+            )
+        )
+    if not payload:
+        logger.info("route.tasks.latest_uploads.empty", extra={"user_id": user.user_id})
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+    record_usage(user.user_id, path="/tasks/latest-uploads", count=len(payload), api_key_id=None)
+    return payload
 
 
 @router.get("/tasks/latest-manual", response_model=LatestManualResponse)
