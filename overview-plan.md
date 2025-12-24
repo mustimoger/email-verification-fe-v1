@@ -154,6 +154,10 @@ Goal: replace mock data on `/overview` with real per-user data sourced from our 
     - Apply explicit tick typography (font size, weight, color) for the Credit Usage chart axes to match the API page chart ticks and avoid overflow.
     - Update: Added a shared tick style for both Overview and API charts so axis labels use consistent size, weight, and color and no longer overflow.
 
+23) Overview: center Current Plan card content (NEW)
+    - Center the Current Plan card body (plan name, purchase date, and item chips) horizontally without changing the header layout.
+    - Update: Wrapped the Current Plan card body in a centered flex container and aligned the item chips with `justify-center`, keeping the header row untouched so only the content block shifts to horizontal center.
+
 Notes:
 - External task source remains the email verification API; Supabase caches per-user task metadata for aggregation/safety.
 - External API metrics endpoints (`/metrics/verifications`, `/metrics/api-usage`) return lifetime totals by default and range totals when `from`/`to` are provided; they do not return time series.

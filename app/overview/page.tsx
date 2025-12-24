@@ -341,27 +341,29 @@ export default function OverviewPage() {
               <LineIcon className="h-6 w-6" />
               </div>
             </div>
-            <div className="mt-6 text-2xl font-extrabold text-amber-500">{planName}</div>
-            <div className="mt-6 inline-flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2 text-emerald-700">
-              <span className="text-sm font-semibold">Purchase Date</span>
-            </div>
-            <p className="mt-3 text-xl font-bold text-slate-900">{purchaseDate}</p>
-            <p className="text-sm text-slate-600">Purchase Date</p>
-            {currentPlan?.label === "Multiple items" && currentPlan.plan_names?.length ? (
-              <div className="mt-4 space-y-2 text-sm text-slate-600">
-                <p className="font-semibold text-slate-700">Items</p>
-                <div className="flex flex-wrap gap-2">
-                  {currentPlan.plan_names.map((name) => (
-                    <span
-                      key={name}
-                      className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700"
-                    >
-                      {name}
-                    </span>
-                  ))}
-                </div>
+            <div className="mt-6 flex flex-col items-center text-center">
+              <div className="text-2xl font-extrabold text-amber-500">{planName}</div>
+              <div className="mt-6 inline-flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2 text-emerald-700">
+                <span className="text-sm font-semibold">Purchase Date</span>
               </div>
-            ) : null}
+              <p className="mt-3 text-xl font-bold text-slate-900">{purchaseDate}</p>
+              <p className="text-sm text-slate-600">Purchase Date</p>
+              {currentPlan?.label === "Multiple items" && currentPlan.plan_names?.length ? (
+                <div className="mt-4 w-full space-y-2 text-sm text-slate-600">
+                  <p className="font-semibold text-slate-700">Items</p>
+                  <div className="flex flex-wrap justify-center gap-2">
+                    {currentPlan.plan_names.map((name) => (
+                      <span
+                        key={name}
+                        className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700"
+                      >
+                        {name}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </div>
           </div>
         </section>
 
