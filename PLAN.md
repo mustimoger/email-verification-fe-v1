@@ -345,6 +345,8 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
   Explanation: Updated the Supabase `apply_credit_debit` function to fully-qualify `credits_remaining` and avoid conflict with the output parameter; resolves the ambiguous column error. Re-test pending in Step 10e.
 - [x] Credit enforcement Step 10e — re-test upload debit flow after RPC fix (targeted tests + manual upload).
   Explanation: Targeted backend tests passed (`test_credit_debit`, `test_tasks_credit_reservation`, `test_credit_enforcement_routes`). Manual `/api/tasks/upload` now returns 402 (Insufficient credits) instead of 500, confirming the ambiguity fix works and reservation failures are reported correctly.
+- [ ] Signup bonus credits — grant a one-time signup bonus to new users only with account-age + email-confirm checks; tracked in `credit-plan.md`.
+  Explanation: Added a dedicated plan section for the signup bonus (config-driven amount, Supabase Auth checks, ledger idempotency, and tests) to keep the implementation steps and anti-abuse rules visible to newcomers.
 - [x] Priority High: Confirm Paddle webhook signature spec and align verification (or use official SDK verifier) with tests.
   Explanation: Aligned verification logic with Paddle’s official SDK implementation (ts + h1 header, HMAC of `ts:raw_body`, optional multi-signature support, time drift checks) and added focused tests. Added `PADDLE_WEBHOOK_MAX_VARIANCE_SECONDS` configuration to avoid hardcoded drift defaults.
 - [x] Priority High: Verify webhook ingress IP handling in current infra and adjust allowlist logic.

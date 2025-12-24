@@ -150,3 +150,19 @@ Status
 Notes
 - Any stubbed behavior must be replaced by real implementation once schema and APIs are available.
 - All steps should be updated in `PLAN.md` once started/completed.
+
+# Signup Bonus Credits Plan
+
+Goal: grant a one-time signup bonus (configurable credits) to brand-new signups only, with simple anti-abuse checks (account age window + email confirmation) and idempotency via the credit ledger.
+
+Tasks
+- [ ] Step 1 — Add config for signup bonus eligibility and amount.
+  Explanation: Add required settings for `SIGNUP_BONUS_CREDITS`, `SIGNUP_BONUS_MAX_ACCOUNT_AGE_SECONDS`, and `SIGNUP_BONUS_REQUIRE_EMAIL_CONFIRMED` with strict validation and clear logs (no defaults).
+- [ ] Step 2 — Add a signup bonus credit source + helper.
+  Explanation: Introduce a `signup_bonus` credit source constant and helper that calls `apply_credit_release` with `source_id=user_id` and audit meta (ip/user_agent) to enforce one-time grants.
+- [ ] Step 3 — Add backend endpoint for signup bonus grants (signup-only).
+  Explanation: Create `POST /api/credits/signup-bonus` that validates the authenticated user, fetches the Supabase Auth user record via the admin API, enforces account-age and email-confirm checks, and applies an idempotent grant; returns status + balance with explicit logs.
+- [ ] Step 4 — Trigger from signup flow only (not sign-in).
+  Explanation: Call the signup bonus endpoint once after successful `signUp` completion; do not invoke it on sign-in or session refresh.
+- [ ] Step 5 — Tests + manual verification.
+  Explanation: Add unit tests for the helper and integration tests for the endpoint (success, duplicate, too-old, unconfirmed email). Manually verify new signup gets 100 credits once.
