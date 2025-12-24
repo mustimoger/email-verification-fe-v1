@@ -166,6 +166,12 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
 - [x] Update the validation donut to summarize only the most recent upload, with a label indicating which task/file it represents.
   Explanation: Keep the donut focused on the newest file upload while the table shows the full latest-N list.
   Update: Donut aggregates come from the newest upload and the card labels the latest file.
+- [ ] Add `LATEST_UPLOADS_LIMIT` to backend `.env` and `.env.example` so the API boots after restart.
+  Explanation: latest upload list is now required by settings; missing env blocks uvicorn startup and causes 400s via route fall-through.
+- [ ] Prevent `/api/tasks/{task_id}` from capturing latest-* routes (UUID-only task IDs).
+  Explanation: `/api/tasks/latest-*` must resolve to the internal endpoints; UUID path params avoid collisions and prevent external 400s.
+- [ ] Fix `taskIds is not defined` in file upload summary logging.
+  Explanation: Upload logging should only reference defined variables to avoid UI errors after file upload.
 
 ## Next: Second Verify state (post-upload)
 - [x] Pull Figma specs for second Verify state via Figma MCP; captured screenshot (node `64:75`) showing results table + validation donut. Footer and shell unchanged.

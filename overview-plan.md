@@ -170,6 +170,16 @@ Goal: replace mock data on `/overview` with real per-user data sourced from our 
     - Allow the status breakdown popover to close when the user clicks anywhere outside the pill/popover, not only the same pill.
     - Update: Added a document-level outside-click handler tied to the open task id so the popover closes on any click/touch outside its container while preserving the pill toggle behavior.
 
+27) Overview: Verification Tasks pagination + remove Month selector (NEW)
+    - Remove the Month label/dropdown from the Verification Tasks card (no API wiring needed).
+    - Add pagination controls at the bottom of the card using Prev/Next plus “Page X of Y” and optional “Showing A–B of total”.
+    - Each page must show 10 tasks (newest to oldest) and use `/tasks?limit=10&offset=...` to rely on server pagination.
+    - Use `overview.recent_tasks` only as a temporary fallback while `/tasks` data is loading.
+    - Keep the Refresh button; refresh should re-fetch the current page with `refresh=true` to sync tasks.
+    - Update: Logged the exact UX + data-source requirements here so the implementation is aligned for newcomers.
+    - Update: Removed the Month label/dropdown, added paginated `/tasks` fetches with limit 10 + offset, and added bottom pagination controls (Prev/Next, Page X of Y, Showing A–B of total). While `/tasks` loads, the table uses `overview.recent_tasks` as a temporary fallback; once `/tasks` resolves, the table uses the paged response. Refresh now re-fetches the current page with `refresh=true`, and tasks are sorted newest-to-oldest by `created_at` for display consistency.
+    - Tests: `npm run test:overview`, `npm run test:history`, `npm run test:auth-guard`, `npm run test:account-purchases`.
+
 Notes:
 - External task source remains the email verification API; Supabase caches per-user task metadata for aggregation/safety.
 - External API metrics endpoints (`/metrics/verifications`, `/metrics/api-usage`) return lifetime totals by default and range totals when `from`/`to` are provided; they do not return time series.

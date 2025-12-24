@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ComponentType, SVGProps } from "react";
 import {
   BadgeCheck,
@@ -28,7 +28,13 @@ import {
 import { DashboardShell } from "../components/dashboard-shell";
 import { RequireAuth } from "../components/protected";
 import { useAuth } from "../components/auth-provider";
-import { apiClient, ApiError, IntegrationOption, OverviewResponse, Task } from "../lib/api-client";
+import {
+  apiClient,
+  ApiError,
+  IntegrationOption,
+  OverviewResponse,
+  TaskListResponse,
+} from "../lib/api-client";
 import {
   aggregateValidationCounts,
   buildIntegrationLabelMap,
@@ -68,6 +74,8 @@ const usageAxisTickStyle = {
   fontWeight: 600,
 };
 
+const TASKS_PAGE_SIZE = 10;
+
 const statusColor: Record<TaskStatus, string> = {
   Completed: "bg-emerald-500",
   Running: "bg-amber-400",
@@ -92,16 +100,27 @@ const STATUS_LABEL: Record<string, string> = {
   failed: "Failed",
 };
 
+const compareCreatedAtDesc = (left?: string | null, right?: string | null) => {
+  const leftTime = left ? Date.parse(left) : Number.NaN;
+  const rightTime = right ? Date.parse(right) : Number.NaN;
+  if (Number.isNaN(leftTime) && Number.isNaN(rightTime)) return 0;
+  if (Number.isNaN(leftTime)) return 1;
+  if (Number.isNaN(rightTime)) return -1;
+  return rightTime - leftTime;
+};
+
 export default function OverviewPage() {
   const { session, loading: authLoading } = useAuth();
   const [overview, setOverview] = useState<OverviewResponse | null>(null);
   const [integrationOptions, setIntegrationOptions] = useState<IntegrationOption[]>([]);
-  const [tasksOverride, setTasksOverride] = useState<Task[] | null>(null);
+  const [tasksResponse, setTasksResponse] = useState<TaskListResponse | null>(null);
   const [loading, setLoading] = useState(false);
+  const [tasksPaging, setTasksPaging] = useState(false);
   const [tasksRefreshing, setTasksRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tasksError, setTasksError] = useState<string | null>(null);
   const [statusPopover, setStatusPopover] = useState<StatusPopover | null>(null);
+  const [tasksPageIndex, setTasksPageIndex] = useState(0);
 
   useEffect(() => {
     if (authLoading || !session) return;
@@ -189,37 +208,70 @@ export default function OverviewPage() {
   );
 
   const tasks: OverviewTask[] = useMemo(() => {
-    if (tasksOverride) {
-      return tasksOverride
+    if (tasksResponse) {
+      const items = tasksResponse.tasks ?? [];
+      return [...items]
+        .sort((left, right) => compareCreatedAtDesc(left.created_at, right.created_at))
         .map((task) => mapTaskToOverviewTask(task, integrationLabels))
         .filter((task): task is OverviewTask => task !== null);
     }
     if (!overview?.recent_tasks) return [];
-    return overview.recent_tasks.map((task) => mapOverviewTask(task, integrationLabels));
-  }, [overview, integrationLabels, tasksOverride]);
+    return [...overview.recent_tasks]
+      .sort((left, right) => compareCreatedAtDesc(left.created_at, right.created_at))
+      .map((task) => mapOverviewTask(task, integrationLabels));
+  }, [overview, integrationLabels, tasksResponse]);
 
   const anyData = overview !== null;
-  const tasksLoading = loading || tasksRefreshing;
-  const taskError = tasksError ?? error;
+  const tasksLoading = tasksPaging || tasksRefreshing || (loading && !tasksResponse);
+  const taskError = tasksError ?? (tasksResponse ? null : error);
   const currentPlan = overview?.current_plan;
   const planName = currentPlan?.label ?? (currentPlan?.plan_names?.[0] || "—");
   const purchaseDate =
     currentPlan?.purchased_at ? new Date(currentPlan.purchased_at).toLocaleDateString() : "—";
 
+  const fetchTasksPage = useCallback(
+    async (pageIndex: number, options?: { refresh?: boolean; source?: "initial" | "page" | "refresh" }) => {
+      if (authLoading || !session) return;
+      const source = options?.source ?? "page";
+      if (source === "refresh") {
+        setTasksRefreshing(true);
+      } else {
+        setTasksPaging(true);
+      }
+      setTasksError(null);
+      try {
+        const offset = pageIndex * TASKS_PAGE_SIZE;
+        const response = await apiClient.listTasks(TASKS_PAGE_SIZE, offset, undefined, options?.refresh);
+        setTasksResponse(response);
+        setTasksPageIndex(pageIndex);
+      } catch (err: unknown) {
+        const message = err instanceof ApiError ? err.message : "Failed to load tasks";
+        console.warn("overview.tasks.fetch_failed", { error: message, page_index: pageIndex });
+        setTasksError(message);
+      } finally {
+        if (source === "refresh") {
+          setTasksRefreshing(false);
+        } else {
+          setTasksPaging(false);
+        }
+      }
+    },
+    [authLoading, session],
+  );
+
   const handleRefreshTasks = async () => {
-    setTasksRefreshing(true);
-    setTasksError(null);
-    try {
-      const response = await apiClient.listTasks(5, 0, undefined, true);
-      setTasksOverride(response.tasks ?? []);
-    } catch (err: unknown) {
-      const message = err instanceof ApiError ? err.message : "Failed to refresh tasks";
-      console.warn("overview.tasks.refresh_failed", { error: message });
-      setTasksError(message);
-    } finally {
-      setTasksRefreshing(false);
-    }
+    await fetchTasksPage(tasksPageIndex, { refresh: true, source: "refresh" });
   };
+
+  useEffect(() => {
+    if (authLoading || !session) {
+      setTasksResponse(null);
+      setTasksPageIndex(0);
+      setTasksError(null);
+      return;
+    }
+    void fetchTasksPage(0, { source: "initial" });
+  }, [authLoading, session, fetchTasksPage]);
 
   const handleToggleStatus = (taskId: string, summary: StatusBreakdown) => {
     setStatusPopover((prev) => (prev?.id === taskId ? null : { id: taskId, summary }));
@@ -245,6 +297,21 @@ export default function OverviewPage() {
       document.removeEventListener("touchstart", handleOutsideClick);
     };
   }, [statusPopover]);
+
+  const totalTasks =
+    typeof tasksResponse?.count === "number" ? tasksResponse.count : null;
+  const totalPages =
+    totalTasks === null ? null : Math.max(1, Math.ceil(totalTasks / TASKS_PAGE_SIZE));
+  const currentPage = tasksPageIndex + 1;
+  const showingStart =
+    totalTasks === null ? null : totalTasks === 0 ? 0 : tasksPageIndex * TASKS_PAGE_SIZE + 1;
+  const showingEnd =
+    totalTasks === null ? null : Math.min(totalTasks, tasksPageIndex * TASKS_PAGE_SIZE + tasks.length);
+  const paginationReady = totalTasks !== null && totalPages !== null;
+  const paginationBusy = tasksPaging || tasksRefreshing;
+  const canGoPrev = paginationReady && tasksPageIndex > 0 && !paginationBusy;
+  const canGoNext = paginationReady && totalPages !== null && tasksPageIndex + 1 < totalPages && !paginationBusy;
+  const showTasksLoading = tasksLoading && tasks.length === 0;
 
   return (
     <DashboardShell>
@@ -413,10 +480,6 @@ export default function OverviewPage() {
               >
                 {tasksRefreshing ? "Refreshing..." : "Refresh"}
               </button>
-              <label className="text-sm font-semibold text-slate-600">Month</label>
-              <select className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-[#4c61cc] focus:outline-none">
-                <option>All</option>
-              </select>
             </div>
           </div>
 
@@ -431,7 +494,7 @@ export default function OverviewPage() {
               <span className="text-right">Status</span>
             </div>
             <div className="divide-y divide-slate-100">
-              {tasksLoading ? (
+              {showTasksLoading ? (
                 <div className="px-4 py-4 text-sm font-semibold text-slate-600">Loading tasks...</div>
               ) : taskError ? (
                 <div className="px-4 py-4 text-sm font-semibold text-rose-600">{taskError}</div>
@@ -503,6 +566,40 @@ export default function OverviewPage() {
           {taskError && !tasksLoading ? (
             <div className="mt-3 text-sm font-semibold text-rose-600">{taskError}</div>
           ) : null}
+          <div className="mt-4 flex flex-col gap-3 text-sm font-semibold text-slate-600 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              {paginationReady ? (
+                <span>
+                  Showing {showingStart}–{showingEnd} of {totalTasks}
+                </span>
+              ) : tasksPaging ? (
+                <span>Loading pagination...</span>
+              ) : null}
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => fetchTasksPage(tasksPageIndex - 1, { source: "page" })}
+                disabled={!canGoPrev}
+                className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-[#4c61cc] hover:text-[#4c61cc] disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4c61cc]"
+              >
+                Prev
+              </button>
+              {paginationReady ? (
+                <span>
+                  Page {currentPage} of {totalPages}
+                </span>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => fetchTasksPage(tasksPageIndex + 1, { source: "page" })}
+                disabled={!canGoNext}
+                className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-[#4c61cc] hover:text-[#4c61cc] disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4c61cc]"
+              >
+                Next
+              </button>
+            </div>
+          </div>
         </section>
       </RequireAuth>
     </DashboardShell>

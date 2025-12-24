@@ -54,6 +54,12 @@ Goal: keep the Verify page flow functional for both manual input and file upload
 - [ ] Fix per-email task upsert spam during task detail fetch (upsert once per task).
   Explanation: current loop upserts on every job; should compute counts then persist once to reduce load/log noise.
   Update: `/tasks/{id}` now computes counts across jobs and performs a single upsert after the loop, preventing per-email write spam.
+- [ ] Add `LATEST_UPLOADS_LIMIT` to backend `.env` and `.env.example` so the API boots after restart.
+  Explanation: latest upload list is now required by settings; missing env blocks uvicorn startup and causes 400s via route fall-through.
+- [ ] Prevent `/api/tasks/{task_id}` from capturing latest-* routes (UUID-only task IDs).
+  Explanation: `/api/tasks/latest-*` must resolve to the internal endpoints; UUID path params avoid collisions and prevent external 400s.
+- [ ] Fix `taskIds is not defined` in file upload summary logging.
+  Explanation: Upload logging should only reference defined variables to avoid UI errors after file upload.
 - [ ] Summarize Verify changes for newcomers and confirm before adding any enhancements.
   Explanation: keep onboarding clear and avoid scope creep.
 - [x] Verify upload pending message should be neutral/informational (not red) after a successful file upload.
