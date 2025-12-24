@@ -150,6 +150,10 @@ Goal: replace mock data on `/overview` with real per-user data sourced from our 
     - Align the Credit Usage chart axis labels/ticks with the API page chart styling for consistent typography and spacing across cards.
     - Update: Matched the Overview Credit Usage chart axis spacing to the API page by widening the Y-axis width to 40 and aligning the chart right margin.
 
+22) Overview: credit usage tick font styling (NEW)
+    - Apply explicit tick typography (font size, weight, color) for the Credit Usage chart axes to match the API page chart ticks and avoid overflow.
+    - Update: Added a shared tick style for both Overview and API charts so axis labels use consistent size, weight, and color and no longer overflow.
+
 Notes:
 - External task source remains the email verification API; Supabase caches per-user task metadata for aggregation/safety.
 - External API metrics endpoints (`/metrics/verifications`, `/metrics/api-usage`) return lifetime totals by default and range totals when `from`/`to` are provided; they do not return time series.

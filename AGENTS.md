@@ -40,13 +40,26 @@
 	6.Clean up
 	git branch -d feat/x
 	git push origin --delete feat/x
-
+	
 - Multi-session timing lock (GitHub workflow):
  -- Before editing any shared file (especially root *-plan.md), announce intent to lock it and wait for confirmation.
  -- Only one session may edit a shared file at a time.
  -- After finishing, commit + push, then announce unlock.
  -- Next session must git fetch + rebase/merge before touching the shared file.
  -- If a conflict appears, stop and ask for coordination.
+ 
+ -- For the file lock mechanism:
+
+	  Use a timing lock via chat (no tooling). The exact protocol:
+
+	  1. Lock request message:
+		 LOCK REQUEST: filename (branch fix/fix-name)
+	  2. Wait for my reply:
+		 LOCK GRANTED: filename
+	  3. Make the plan edit, commit + push.
+	  4. Unlock message after push:
+		 UNLOCK: filename
+	  5. Other session must git fetch + git rebase main before editing the file.
  
 PS1: Never forget rules from AGENTS.md.
 PS2: Push to GitHub BEFORE EVERY MAJOR CHANGE and AT THE BEGINNING OF OUR CONVERSATION.

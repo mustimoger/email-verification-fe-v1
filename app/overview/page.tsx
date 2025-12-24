@@ -52,6 +52,12 @@ type StatusPopover = {
   summary: StatusBreakdown;
 };
 
+const usageAxisTickStyle = {
+  fill: "#64748b",
+  fontSize: 12,
+  fontWeight: 600,
+};
+
 const statusColor: Record<TaskStatus, string> = {
   Completed: "bg-emerald-500",
   Running: "bg-amber-400",
@@ -296,8 +302,14 @@ export default function OverviewPage() {
             {usageData.length ? (
                 <ResponsiveContainer height={260}>
                   <ReLineChart data={usageData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
-                    <XAxis dataKey="date" tickLine={false} axisLine={false} />
-                    <YAxis tickLine={false} axisLine={false} tickFormatter={(v) => `${v}`} width={40} />
+                    <XAxis dataKey="date" tickLine={false} axisLine={false} tick={usageAxisTickStyle} />
+                    <YAxis
+                      tickLine={false}
+                      axisLine={false}
+                      tickFormatter={(v) => `${v}`}
+                      width={40}
+                      tick={usageAxisTickStyle}
+                    />
                     <Tooltip
                       contentStyle={{
                         borderRadius: 12,
