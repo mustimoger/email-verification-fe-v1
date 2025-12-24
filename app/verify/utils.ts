@@ -4,6 +4,7 @@ import {
   ApiError,
   BatchFileUploadResponse,
   LatestUploadResponse,
+  LatestManualResponse,
   TaskDetailResponse,
   TaskEmailJob,
 } from "../lib/api-client";
@@ -359,4 +360,49 @@ export function buildLatestUploadSummary(
       invalid: hasTotals ? fileRow.invalid : null,
     },
   };
+}
+
+export function buildLatestManualResults(detail: TaskDetailResponse): VerificationResult[] {
+  const jobs = detail.jobs ?? [];
+  if (!jobs.length) return [];
+  return jobs
+    .map((job) => {
+      const address = (job.email_address || job.email?.email_address || "").trim();
+      if (!address) {
+        console.warn("verify.manual.job_missing_email", { job_id: job.id, email_id: job.email_id });
+        return null;
+      }
+      const status = job.email?.status || job.status;
+      if (!status) {
+        console.warn("verify.manual.job_missing_status", { job_id: job.id, email_id: job.email_id });
+        return null;
+      }
+      return {
+        email: address,
+        status,
+        message: `Status: ${status}`,
+      };
+    })
+    .filter((entry): entry is VerificationResult => Boolean(entry));
+}
+
+export function shouldExpireManualResults(
+  detail: TaskDetailResponse,
+  latest?: LatestManualResponse | null,
+): boolean {
+  if (detail.finished_at) return true;
+  if (detail.metrics?.progress_percent !== undefined && detail.metrics?.progress_percent !== null) {
+    return detail.metrics.progress_percent >= 100;
+  }
+  if (detail.metrics?.progress !== undefined && detail.metrics?.progress !== null) {
+    return detail.metrics.progress >= 1;
+  }
+  const jobStatus = detail.metrics?.job_status ?? latest?.job_status ?? null;
+  if (jobStatus && typeof jobStatus === "object") {
+    const pending = Number(jobStatus.pending ?? 0);
+    const processing = Number(jobStatus.processing ?? 0);
+    if (pending + processing === 0) return true;
+  }
+  const statusValue = (latest?.status || "").toLowerCase();
+  return statusValue.length > 0 && !PENDING_STATES.has(statusValue);
 }

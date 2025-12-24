@@ -158,6 +158,10 @@ Goal: replace mock data on `/overview` with real per-user data sourced from our 
     - Center the Current Plan card body (plan name, purchase date, and item chips) horizontally without changing the header layout.
     - Update: Wrapped the Current Plan card body in a centered flex container and aligned the item chips with `justify-center`, keeping the header row untouched so only the content block shifts to horizontal center.
 
+24) Overview: icon consistency and meaning (NEW)
+    - Align icon backgrounds, sizes, and colors across the Overview cards and choose icons that better match each metric.
+    - Update: Standardized the header icon wrappers for Validation/Credit Usage and replaced stat + Current Plan icons with more semantically aligned Lucide icons; sizes/colors now match the existing card icon styling.
+
 Notes:
 - External task source remains the email verification API; Supabase caches per-user task metadata for aggregation/safety.
 - External API metrics endpoints (`/metrics/verifications`, `/metrics/api-usage`) return lifetime totals by default and range totals when `from`/`to` are provided; they do not return time series.

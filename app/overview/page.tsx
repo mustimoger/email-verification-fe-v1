@@ -2,7 +2,17 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { ComponentType, SVGProps } from "react";
-import { CheckCircle2, ChevronRight, CircleDollarSign, Leaf, PieChart, LineChart as LineIcon } from "lucide-react";
+import {
+  BadgeCheck,
+  CheckCheck,
+  ChevronRight,
+  CircleX,
+  LineChart as LineIcon,
+  MailQuestionMark,
+  Package,
+  PieChart,
+  Wallet,
+} from "lucide-react";
 import {
   Cell,
   Line,
@@ -145,15 +155,15 @@ export default function OverviewPage() {
     const invalid = overview?.verification_totals?.invalid ?? null;
     const catchAll = overview?.verification_totals?.catchall ?? null;
     return [
-      { title: "Credits Remaining", value: credits !== null ? credits.toLocaleString() : "—", icon: CheckCircle2 },
+      { title: "Credits Remaining", value: credits !== null ? credits.toLocaleString() : "—", icon: Wallet },
       {
         title: "Total Verifications",
         value: totalVerifications !== null ? totalVerifications.toLocaleString() : "—",
-        icon: CheckCircle2,
+        icon: CheckCheck,
       },
-      { title: "Total Valid", value: valid !== null ? valid.toLocaleString() : "—", icon: CheckCircle2 },
-      { title: "Total Invalid", value: invalid !== null ? invalid.toLocaleString() : "—", icon: CircleDollarSign },
-      { title: "Total Catch-all", value: catchAll !== null ? catchAll.toLocaleString() : "—", icon: Leaf },
+      { title: "Total Valid", value: valid !== null ? valid.toLocaleString() : "—", icon: BadgeCheck },
+      { title: "Total Invalid", value: invalid !== null ? invalid.toLocaleString() : "—", icon: CircleX },
+      { title: "Total Catch-all", value: catchAll !== null ? catchAll.toLocaleString() : "—", icon: MailQuestionMark },
     ];
   }, [overview]);
 
@@ -251,7 +261,9 @@ export default function OverviewPage() {
           <div className="rounded-2xl bg-white p-5 shadow-md ring-1 ring-slate-100">
             <div className="flex items-center justify-between">
               <p className="text-lg font-bold text-slate-900">Validation</p>
-              <PieChart className="h-5 w-5 text-slate-400" />
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-50 text-[#4c61cc] shadow-inner">
+                <PieChart className="h-6 w-6" />
+              </div>
             </div>
           <div className="mt-4 h-[260px] w-full">
             {validationHasData ? (
@@ -296,7 +308,9 @@ export default function OverviewPage() {
           <div className="rounded-2xl bg-white p-5 shadow-md ring-1 ring-slate-100">
             <div className="flex items-center justify-between">
               <p className="text-lg font-bold text-slate-900">Credit Usage</p>
-              <LineIcon className="h-5 w-5 text-slate-400" />
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-50 text-[#4c61cc] shadow-inner">
+                <LineIcon className="h-6 w-6" />
+              </div>
             </div>
           <div className="mt-4 h-[260px] w-full">
             {usageData.length ? (
@@ -338,7 +352,7 @@ export default function OverviewPage() {
             <div className="flex items-center justify-between">
               <p className="text-lg font-bold text-slate-900">Current Plan</p>
               <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-50 text-[#4c61cc] shadow-inner">
-              <LineIcon className="h-6 w-6" />
+              <Package className="h-6 w-6" />
               </div>
             </div>
             <div className="mt-6 flex flex-col items-center text-center">

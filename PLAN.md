@@ -142,15 +142,20 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
 - [x] Persist latest file-upload summary on `/verify` after reload (server-driven, manual refresh).
   Explanation: External API does not expose file names in task lists or a "latest upload" endpoint, so `/verify` must hydrate from Supabase `task_files` metadata and allow manual status refresh without background polling.
   Update: Added `/api/tasks/latest-upload` with backend tests, and `/verify` now hydrates the latest file-based task on load with a manual refresh button plus frontend mapping tests.
-- [ ] Persist latest manual batch on `/verify` and hydrate the Results card from `/tasks/{id}` jobs only (manual batches only).
+- [x] Persist latest manual batch on `/verify` and hydrate the Results card from `/tasks/{id}` jobs only (manual batches only).
   Explanation: Manual verification results should survive reloads by fetching the latest manual task and mapping job emails to statuses; no local storage or placeholders.
+  Update: `/verify` now hydrates the latest manual task via `/api/tasks/latest-manual` and maps results exclusively from job emails in `/api/tasks/{id}`.
 - [x] Add `/api/tasks/latest-manual` (Supabase-backed) and tests.
   Explanation: Manual tasks are identifiable by missing file metadata; expose a lightweight endpoint so the UI can rehydrate without external API polling.
   Update: Added `fetch_latest_manual_task` in the tasks store plus `/api/tasks/latest-manual`, and covered the endpoint with a new FastAPI test to validate 200/204 responses.
-- [ ] Add Results refresh button for manual batches and remove background polling.
+- [x] Add Results refresh button for manual batches and remove background polling.
   Explanation: Per UX requirement, status updates are user-triggered only.
-- [ ] Expire manual Results when the task completes (hide after refresh/hydration).
+  Update: Results card now includes a “Refresh status” button that fetches the latest manual task and updates the results without polling.
+- [x] Expire manual Results when the task completes (hide after refresh/hydration).
   Explanation: Completed manual batches should disappear from the Results card to avoid stale UI.
+  Update: Manual results are cleared when the latest task is complete during hydration or refresh.
+- [ ] Expire latest file-upload summary after completion on refresh/hydration.
+  Explanation: File-based summaries should not persist after completion; apply the same expiry logic as manual batches.
 
 ## Next: Second Verify state (post-upload)
 - [x] Pull Figma specs for second Verify state via Figma MCP; captured screenshot (node `64:75`) showing results table + validation donut. Footer and shell unchanged.

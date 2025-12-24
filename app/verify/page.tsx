@@ -6,18 +6,24 @@ import { AlertCircle, Info, UploadCloud, X } from "lucide-react";
 import { Cell, Pie, PieChart as RePieChart, ResponsiveContainer } from "recharts";
 
 import { DashboardShell } from "../components/dashboard-shell";
-import { apiClient, ApiError, type LimitsResponse, type TaskDetailResponse } from "../lib/api-client";
+import {
+  apiClient,
+  ApiError,
+  type LatestManualResponse,
+  type LimitsResponse,
+  type TaskDetailResponse,
+} from "../lib/api-client";
 import { buildColumnOptions, FileColumnError, readFileColumnInfo, type FileColumnInfo } from "./file-columns";
 import {
   buildLatestUploadSummary,
+  buildLatestManualResults,
   buildUploadSummary,
   createUploadLinks,
   formatNumber,
-  mapTaskDetailToResults,
   mapUploadResultsToLinks,
-  mapVerifyFallbackResults,
   normalizeEmails,
   resolveApiErrorMessage,
+  shouldExpireManualResults,
   type UploadSummary,
   type VerificationResult,
 } from "./utils";
@@ -28,6 +34,7 @@ const TASK_POLL_INTERVAL_MS = 2000;
 export default function VerifyPage() {
   const [inputValue, setInputValue] = useState("");
   const [results, setResults] = useState<VerificationResult[]>([]);
+  const [manualTaskId, setManualTaskId] = useState<string | null>(null);
   const [errors, setErrors] = useState<string | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
   const [fileNotice, setFileNotice] = useState<string | null>(null);
@@ -45,10 +52,11 @@ export default function VerifyPage() {
   const [activeDownload, setActiveDownload] = useState<string | null>(null);
   const [latestUploadError, setLatestUploadError] = useState<string | null>(null);
   const [latestUploadRefreshing, setLatestUploadRefreshing] = useState(false);
+  const [manualRefreshing, setManualRefreshing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const pollRef = useRef({ active: false });
   const parseRef = useRef(0);
   const latestUploadHydratedRef = useRef(false);
+  const latestManualHydratedRef = useRef(false);
 
   const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -100,38 +108,78 @@ export default function VerifyPage() {
     };
   }, [files.length, flowStage, uploadSummary]);
 
-  const pollTaskDetail = async (taskId: string, emails: string[]) => {
-    pollRef.current.active = true;
-    for (let attempt = 1; attempt <= TASK_POLL_ATTEMPTS; attempt += 1) {
+  useEffect(() => {
+    let active = true;
+    const hydrateLatestManual = async () => {
+      if (latestManualHydratedRef.current) return;
+      if (manualTaskId || results.length > 0) return;
+      latestManualHydratedRef.current = true;
       try {
-        const detail = await apiClient.getTask(taskId);
-        if (detail?.jobs && detail.jobs.length > 0) {
-          const mapped = mapTaskDetailToResults(emails, detail);
-          setResults(mapped);
-          const hasPending = detail.jobs.some((job) => {
-            const status = (job.status || "").toLowerCase();
-            return status === "pending" || status === "processing";
-          });
-          if (!hasPending) {
-            pollRef.current.active = false;
-            return;
-          }
-        }
+        const latest = await apiClient.getLatestManual();
+        if (!active || !latest) return;
+        setManualTaskId(latest.task_id);
+        if (!active) return;
+        await resolveManualDetail(latest.task_id, latest);
       } catch (err: unknown) {
-        if (err instanceof ApiError && err.status === 402) {
-          const message = resolveApiErrorMessage(err, "verify.task_poll");
-          setErrors(message);
-          pollRef.current.active = false;
-          return;
-        }
-        const message = resolveApiErrorMessage(err, "verify.task_poll");
-        console.error("verify.task_poll_failed", { taskId, attempt, error: message });
+        if (!active) return;
+        const message = resolveApiErrorMessage(err, "verify.manual.hydrate");
+        console.error("verify.manual.hydrate_failed", { error: message });
+        setErrors(message);
       }
-      if (attempt < TASK_POLL_ATTEMPTS) {
-        await wait(TASK_POLL_INTERVAL_MS);
+    };
+    void hydrateLatestManual();
+    return () => {
+      active = false;
+    };
+  }, [manualTaskId, results.length]);
+
+  const clearManualResults = () => {
+    setResults([]);
+    setManualTaskId(null);
+    setErrors(null);
+  };
+
+  const resolveManualDetail = async (
+    taskId: string,
+    latest?: LatestManualResponse | null,
+  ): Promise<void> => {
+    try {
+      const detail = await apiClient.getTask(taskId);
+      if (shouldExpireManualResults(detail, latest)) {
+        clearManualResults();
+        return;
       }
+      setResults(buildLatestManualResults(detail));
+      setErrors(null);
+    } catch (err: unknown) {
+      if (err instanceof ApiError && err.status === 402) {
+        const message = resolveApiErrorMessage(err, "verify.manual.detail");
+        setErrors(message);
+        return;
+      }
+      const message = resolveApiErrorMessage(err, "verify.manual.detail");
+      console.error("verify.manual.detail_failed", { taskId, error: message });
+      setErrors(message);
     }
-    pollRef.current.active = false;
+  };
+
+  const refreshManualResults = async () => {
+    setManualRefreshing(true);
+    try {
+      const latest = await apiClient.getLatestManual();
+      if (!latest) {
+        clearManualResults();
+        return;
+      }
+      setManualTaskId(latest.task_id);
+      await resolveManualDetail(latest.task_id, latest);
+    } catch (err: unknown) {
+      const message = resolveApiErrorMessage(err, "verify.manual.refresh");
+      console.error("verify.manual.refresh_failed", { error: message });
+      setErrors(message);
+    } finally {
+      setManualRefreshing(false);
+    }
   };
 
   const fetchTaskDetailWithRetries = async (taskId: string) => {
@@ -180,14 +228,19 @@ export default function VerifyPage() {
       return;
     }
     setErrors(null);
+    setResults([]);
+    setManualTaskId(null);
     setIsSubmitting(true);
     try {
       const response = await apiClient.createTask(parsed);
       const taskId = response.id ?? null;
-      setResults(mapVerifyFallbackResults(parsed, taskId));
       setToast(taskId ? `Task created (${parsed.length} emails)` : `Task queued (${parsed.length} emails)`);
       if (taskId) {
-        await pollTaskDetail(taskId, parsed);
+        setManualTaskId(taskId);
+        await resolveManualDetail(taskId);
+      } else {
+        console.error("verify.manual.task_id_missing", { response });
+        setErrors("Unable to start verification. Please refresh and try again.");
       }
     } catch (err: unknown) {
       const message = resolveApiErrorMessage(err, "verify.manual.submit");
@@ -508,7 +561,19 @@ export default function VerifyPage() {
           </div>
 
           <div className="rounded-2xl bg-white p-5 shadow-md ring-1 ring-slate-100 lg:col-span-2">
-            <h2 className="text-lg font-extrabold text-slate-900">Results</h2>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-lg font-extrabold text-slate-900">Results</h2>
+              {manualTaskId ? (
+                <button
+                  type="button"
+                  onClick={() => void refreshManualResults()}
+                  disabled={manualRefreshing}
+                  className="rounded-lg border border-slate-300 bg-white px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-[#4c61cc] hover:text-[#4c61cc] disabled:cursor-not-allowed disabled:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4c61cc]"
+                >
+                  {manualRefreshing ? "Refreshing..." : "Refresh status"}
+                </button>
+              ) : null}
+            </div>
             <div className="mt-4 min-h-[220px] rounded-xl border border-slate-200 bg-slate-50 p-4">
               {results.length === 0 ? (
                 <p className="text-sm font-semibold text-slate-500">
