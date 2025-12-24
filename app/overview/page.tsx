@@ -225,6 +225,27 @@ export default function OverviewPage() {
     setStatusPopover((prev) => (prev?.id === taskId ? null : { id: taskId, summary }));
   };
 
+  useEffect(() => {
+    if (!statusPopover) return;
+    const handleOutsideClick = (event: MouseEvent | TouchEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) {
+        setStatusPopover(null);
+        return;
+      }
+      const container = document.querySelector(`[data-status-container="${statusPopover.id}"]`);
+      if (!container || !container.contains(target)) {
+        setStatusPopover(null);
+      }
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    document.addEventListener("touchstart", handleOutsideClick);
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+      document.removeEventListener("touchstart", handleOutsideClick);
+    };
+  }, [statusPopover]);
+
   return (
     <DashboardShell>
       <RequireAuth>
@@ -436,7 +457,7 @@ export default function OverviewPage() {
                     <span className="text-right font-semibold text-slate-700">
                       {task.catchAll.toLocaleString()}
                     </span>
-                    <span className="flex justify-end">
+                    <span className="flex justify-end" data-status-container={task.id}>
                       {(() => {
                         const summary = summarizeJobStatus(task.jobStatus);
                         return (

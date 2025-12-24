@@ -22,8 +22,9 @@ Goal: keep the Verify page flow functional for both manual input and file upload
 - [x] Add tests for latest-manual backend response and manual Results mapping (jobs -> status list).
   Explanation: Ensure the API returns the correct task and the UI mapping is stable without hardcoded fallbacks.
   Update: Added backend tests for `/api/tasks/latest-manual` and frontend mapping tests for manual results/expiration helpers.
-- [ ] Persist latest file upload summary across /verify reloads using server-driven rehydration (most recent file-based task only).
+- [x] Persist latest file upload summary across /verify reloads using server-driven rehydration (most recent file-based task only).
   Explanation: Restore the post-upload cards after page refresh by fetching the most recent file-based task for the signed-in user; keep status updates manual via a refresh action to avoid background polling.
+  Update: Requirement changed to show the latest N uploads; see new tasks below.
 - [x] Add backend endpoint to return the most recent file-based task (Supabase-backed) with file metadata for /verify hydration.
   Explanation: External API lacks a "latest upload" endpoint and does not expose file names in task lists, so Supabase task_files metadata must be used as the source of truth for rehydration.
   Update: Added `/api/tasks/latest-upload` which reads the most recent file-based task from Supabase (via `task_files` mapping) and returns counts/status + file name, returning 204 when no file-based task exists to avoid brittle defaults.
@@ -35,8 +36,14 @@ Goal: keep the Verify page flow functional for both manual input and file upload
   Update: Added backend tests for `/api/tasks/latest-upload` and frontend mapping tests for `buildLatestUploadSummary` in `tests/verify-mapping.test.ts`.
 - [ ] Add minimal tests for manual input validation and upload state transitions (including popup flow).
   Explanation: ensures regressions are caught without adding UI placeholders or hardcoded behavior.
-- [ ] Expire latest file upload summary after completion on refresh/hydration.
-  Explanation: File-based summaries should not persist after completion; apply the same expiry logic as manual batches.
+- [ ] Replace single latest-upload summary with a latest-N uploads list (N=6), newest-first, persisted across reloads.
+  Explanation: The upload status card should show the most recent file upload tasks (not just one), regardless of age, and without layout disruption.
+- [ ] Add backend endpoint to return latest-N file uploads with counts + metadata (Supabase-backed).
+  Explanation: Supabase task_files metadata is the source of truth for file upload history; expose a list endpoint to hydrate the verify summary list.
+- [ ] Update verify summary hydration to render latest-N uploads and refresh all tasks on demand.
+  Explanation: Manual refresh should update the status/counts for every listed upload and re-render the table.
+- [ ] Update the validation donut to summarize only the most recent upload, with a label indicating which task/file it represents.
+  Explanation: Keep the donut focused on the newest file upload while the table shows the full latest-N list.
 - [ ] Lock "Remove duplicate emails" to checked and disabled in the file upload flow (default on, user cannot toggle).
   Explanation: user requested deduplication to be always enabled; UI should reflect the immutable default.
   Update: Disabled the checkbox and kept the value locked to true in the Assign Email Column step.

@@ -166,6 +166,10 @@ Goal: replace mock data on `/overview` with real per-user data sourced from our 
     - Remove the duplicated "Purchase Date" text under the purchase date value in the Current Plan card to avoid redundant labels.
     - Update: Removed the extra purchase date label line so the card only shows the pill label above the date.
 
+26) Overview: status popover dismiss on outside click (NEW)
+    - Allow the status breakdown popover to close when the user clicks anywhere outside the pill/popover, not only the same pill.
+    - Update: Added a document-level outside-click handler tied to the open task id so the popover closes on any click/touch outside its container while preserving the pill toggle behavior.
+
 Notes:
 - External task source remains the email verification API; Supabase caches per-user task metadata for aggregation/safety.
 - External API metrics endpoints (`/metrics/verifications`, `/metrics/api-usage`) return lifetime totals by default and range totals when `from`/`to` are provided; they do not return time series.
