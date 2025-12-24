@@ -295,9 +295,9 @@ export default function OverviewPage() {
           <div className="mt-4 h-[260px] w-full">
             {usageData.length ? (
                 <ResponsiveContainer height={260}>
-                  <ReLineChart data={usageData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                  <ReLineChart data={usageData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
                     <XAxis dataKey="date" tickLine={false} axisLine={false} />
-                    <YAxis tickLine={false} axisLine={false} tickFormatter={(v) => `${v}`} width={30} />
+                    <YAxis tickLine={false} axisLine={false} tickFormatter={(v) => `${v}`} width={40} />
                     <Tooltip
                       contentStyle={{
                         borderRadius: 12,
