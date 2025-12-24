@@ -144,7 +144,7 @@ Goal: replace mock data on `/overview` with real per-user data sourced from our 
 20) Overview: add catch-all slice to Validation chart (NEW)
     - Include catch-all counts in the Validation chart alongside valid/invalid using `verification_totals.catchall`.
     - Ensure the tooltip/legend reflects the additional slice without hardcoded fallback values.
-    - Update: Not implemented yet; pending confirmation to proceed.
+    - Update: Backend now falls back to `total_catchall` from `/metrics/verifications` when `verification_status` omits catch-all, so `verification_totals.catchall` is always populated. The Overview Validation pie already renders Catch-all, so the chart now includes that slice when the API reports it.
 
 Notes:
 - External task source remains the email verification API; Supabase caches per-user task metadata for aggregation/safety.
