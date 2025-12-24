@@ -16,6 +16,37 @@
  -- If anything is not implemented, document it under the relevant task and warn me
  -- All to-do items,even if they are new and planned during runtime codex session,should be FIRST add them to planning/progress markdown files step by step
  -- AFTER completing a step, ask for my confirmation before starting the next task
+
+- GitHub Flow:
+	Local = your machine
+	Remote (origin) = GitHub
+
+	1.Start from production
+	git checkout main && git pull origin main
+
+	2.Create a temporary branch (local)
+	git checkout -b feat/x or fix/x
+
+	3.Push the branch (remote)
+	git push -u origin feat/x
+
+	4.Develop & test
+	All work runs from the checked-out branch
+	Commit and push as needed
+
+	5.Merge when ready
+	git checkout main && git pull && git merge feat/x && git push
+
+	6.Clean up
+	git branch -d feat/x
+	git push origin --delete feat/x
+
+- Multi-session timing lock (GitHub workflow):
+ -- Before editing any shared file (especially root *-plan.md), announce intent to lock it and wait for confirmation.
+ -- Only one session may edit a shared file at a time.
+ -- After finishing, commit + push, then announce unlock.
+ -- Next session must git fetch + rebase/merge before touching the shared file.
+ -- If a conflict appears, stop and ask for coordination.
  
 PS1: Never forget rules from AGENTS.md.
 PS2: Push to GitHub BEFORE EVERY MAJOR CHANGE and AT THE BEGINNING OF OUR CONVERSATION.

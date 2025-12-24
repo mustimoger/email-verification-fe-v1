@@ -16,6 +16,8 @@
 - [x] Shadcn variant removal — Removed previous shadcn/ui variant to keep a single Tailwind implementation at `/overview` (root `/` redirects). Ensures one canonical path.
 - [x] Overview stats: add Total Valid card — show all-time valid count from external verification metrics in the top stat cards.
   Explanation: Added a “Total Valid” stat card on `/overview` using `verification_totals.valid` from `/api/overview`, and adjusted the stats grid to five columns on large screens so the new card sits alongside the existing metrics.
+- [x] GitHub workflow lock: add GitHub flow + multi-session timing rules to `AGENTS.md`.
+  Explanation: Added a GitHub Flow checklist plus timing-based lock rules for shared files so multiple Codex sessions can coordinate without plan-file conflicts.
 - [ ] Remaining pages — Verify, History, Integrations, API, Pricing, Account need to be built using the shared shell once Figma node details are provided. Use first-principles MVPs, no placeholders.
 - [ ] API integration — Wire UI to FastAPI email verification backend once endpoint schemas/contracts are known. Replace mock data with typed fetch layer + error handling/logging; avoid hardcoded fallbacks.
 - [ ] Testing and staging — Add unit/integration coverage and deploy to staging after MVP pages and API wiring are in place; verify flows end-to-end.
