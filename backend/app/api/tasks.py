@@ -587,6 +587,8 @@ async def get_task_detail(
                     counts["catchall"] += 1
                 else:
                     counts["invalid"] += 1
+        if counts is None:
+            counts = counts_from_metrics(result.metrics)
         credit_status = None
         reservation = fetch_task_credit_reservation(user.user_id, task_id)
         reserved_count = None
@@ -660,14 +662,13 @@ async def get_task_detail(
                         extra={"user_id": user.user_id, "task_id": task_id, "required": processed_count},
                     )
                     raise HTTPException(status_code=status.HTTP_402_PAYMENT_REQUIRED, detail="Insufficient credits")
-        if result.jobs is not None:
-            upsert_task_from_detail(
-                user.user_id,
-                result,
-                counts=counts,
-                integration=None,
-                api_key_id=api_key_id,
-            )
+        upsert_task_from_detail(
+            user.user_id,
+            result,
+            counts=counts,
+            integration=None,
+            api_key_id=api_key_id,
+        )
         record_usage(user.user_id, path="/tasks/{id}", count=1, api_key_id=api_key_id)
         logger.info(
             "route.tasks.detail",

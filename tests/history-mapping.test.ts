@@ -55,6 +55,27 @@ run("mapDetailToHistoryRow maps completed task to download status with formatted
   assert.strictEqual(row?.invalid, 1);
 });
 
+run("mapDetailToHistoryRow uses metrics when jobs are missing", () => {
+  const detail: TaskDetailResponse = {
+    id: "t2-metrics",
+    created_at: "2024-02-10T00:00:00Z",
+    metrics: {
+      total_email_addresses: 996,
+      verification_status: {
+        exists: 700,
+        not_exists: 200,
+        catchall: 96,
+      },
+    },
+  };
+  const row = mapDetailToHistoryRow(detail);
+  assert(row, "row should not be null");
+  assert.strictEqual(row?.total, 996);
+  assert.strictEqual(row?.valid, 700);
+  assert.strictEqual(row?.catchAll, 96);
+  assert.strictEqual(row?.invalid, 200);
+});
+
 run("mapDetailToHistoryRow marks pending when any job is in pending states", () => {
   const detail: TaskDetailResponse = {
     id: "t3",
@@ -93,6 +114,16 @@ run("mapTaskToHistoryRow uses counts/status without detail fetch", () => {
   assert.strictEqual(row?.status, "pending");
   assert.strictEqual(row?.fileName, "upload.csv");
   assert.strictEqual(row?.label, "upload.csv");
+});
+
+run("mapTaskToHistoryRow returns null when counts are missing", () => {
+  const task: Task = {
+    id: "t5",
+    created_at: "2024-03-04T00:00:00Z",
+    status: "processing",
+  };
+  const row = mapTaskToHistoryRow(task);
+  assert.strictEqual(row, null);
 });
 
 // eslint-disable-next-line no-console

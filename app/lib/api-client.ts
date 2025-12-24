@@ -84,6 +84,7 @@ export type TaskDetailResponse = {
   updated_at?: string;
   jobs?: TaskEmailJob[];
   metrics?: {
+    job_status?: Record<string, number>;
     total_email_addresses?: number;
     verification_status?: Record<string, number>;
   };

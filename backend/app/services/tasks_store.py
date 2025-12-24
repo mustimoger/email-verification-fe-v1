@@ -166,13 +166,16 @@ def upsert_task_from_detail(
 ) -> None:
     if not detail.id:
         return
+    metrics = getattr(detail, "metrics", None)
+    resolved_counts = counts if counts is not None else counts_from_metrics(metrics)
+    email_count = len(detail.jobs or []) if detail.jobs is not None else email_count_from_metrics(metrics)
     payload = _task_payload(
         user_id=user_id,
         task_id=detail.id,
         status=detail.finished_at and "completed" or detail.started_at and "processing" or detail.id and detail.id,
-        email_count=len(detail.jobs or []) if detail.jobs is not None else None,
-        counts=counts,
-        job_status=job_status_from_metrics(getattr(detail, "metrics", None)),
+        email_count=email_count,
+        counts=resolved_counts,
+        job_status=job_status_from_metrics(metrics),
         integration=integration,
         api_key_id=api_key_id,
     )
