@@ -141,6 +141,11 @@ Goal: replace mock data on `/overview` with real per-user data sourced from our 
     - Update: Switched the Verification Tasks table wrapper to `overflow-visible` so the status popover can render beyond the container without being clipped, while leaving borders and spacing unchanged.
     - Tests: `npm run test:overview`, `npm run test:history`, `npm run test:auth-guard`, `npm run test:account-purchases`.
 
+20) Overview: add catch-all slice to Validation chart (NEW)
+    - Include catch-all counts in the Validation chart alongside valid/invalid using `verification_totals.catchall`.
+    - Ensure the tooltip/legend reflects the additional slice without hardcoded fallback values.
+    - Update: Not implemented yet; pending confirmation to proceed.
+
 Notes:
 - External task source remains the email verification API; Supabase caches per-user task metadata for aggregation/safety.
 - External API metrics endpoints (`/metrics/verifications`, `/metrics/api-usage`) return lifetime totals by default and range totals when `from`/`to` are provided; they do not return time series.
