@@ -460,7 +460,7 @@ export default function VerifyPage() {
       console.info("[verify/upload] uploaded", {
         upload_ids: uploadResults.map((r) => r.upload_id),
         files: files.map((f) => f.name),
-        task_ids: taskIds,
+        task_ids: links.map((link) => link.taskId).filter(Boolean),
         unmatched,
       });
     } catch (err: unknown) {

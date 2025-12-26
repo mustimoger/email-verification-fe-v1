@@ -166,10 +166,15 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
 - [x] Update the validation donut to summarize only the most recent upload, with a label indicating which task/file it represents.
   Explanation: Keep the donut focused on the newest file upload while the table shows the full latest-N list.
   Update: Donut aggregates come from the newest upload and the card labels the latest file.
-- [ ] Add `LATEST_UPLOADS_LIMIT` to backend `.env` and `.env.example` so the API boots after restart.
+- [x] Add `LATEST_UPLOADS_LIMIT` to backend `.env` and `.env.example` so the API boots after restart.
   Explanation: latest upload list is now required by settings; missing env blocks uvicorn startup and causes 400s via route fall-through.
-- [ ] Prevent `/api/tasks/{task_id}` from capturing latest-* routes (UUID-only task IDs).
+  Update: Added `LATEST_UPLOADS_LIMIT=6` to `backend/.env.example` (documented default). `backend/.env` already contained it locally, so no further change needed there.
+- [x] Fix `taskIds is not defined` in file upload summary logging.
+  Explanation: Upload logging should only reference defined variables to avoid UI errors after file upload.
+  Update: Updated Verify upload logging to derive `task_ids` from the resolved upload links so the console payload is always defined.
+- [x] Prevent `/api/tasks/{task_id}` from capturing latest-* routes (UUID-only task IDs).
   Explanation: `/api/tasks/latest-*` must resolve to the internal endpoints; UUID path params avoid collisions and prevent external 400s.
+  Update: Updated `/api/tasks/{task_id}` and `/api/tasks/{task_id}/download` to accept UUIDs only and consistently pass `str(task_id)` through credit/logging and external calls.
 - [ ] Fix `taskIds is not defined` in file upload summary logging.
   Explanation: Upload logging should only reference defined variables to avoid UI errors after file upload.
 

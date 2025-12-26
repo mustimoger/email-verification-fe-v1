@@ -56,6 +56,7 @@ def test_tasks_create_blocks_when_reservation_insufficient(monkeypatch):
 def test_tasks_detail_releases_remainder_for_reservation(monkeypatch):
     _set_env(monkeypatch)
     release_calls = []
+    task_id = "11111111-1111-1111-1111-111111111111"
 
     class FakeClient:
         async def get_task_detail(self, task_id: str):
@@ -89,7 +90,7 @@ def test_tasks_detail_releases_remainder_for_reservation(monkeypatch):
 
     monkeypatch.setattr(tasks_module, "apply_credit_debit", _debit_unexpected)
 
-    resp = client.get("/api/tasks/task-1")
+    resp = client.get(f"/api/tasks/{task_id}")
     assert resp.status_code == 200
     assert len(release_calls) == 1
     assert release_calls[0]["credits"] == 2

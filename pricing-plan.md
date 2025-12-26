@@ -40,6 +40,11 @@ Plan (step-by-step)
    - Verified mobile (390x844): cards stack vertically with intact padding; header/hamburger visible; footer links remain accessible.
    - Why: confirms the pricing grid stays usable across breakpoints.
 
+7) Center feature list text + update feature icons (MVP)
+   - Align the feature list text horizontally centered in each pricing card, matching the design intent.
+   - Replace the current check icons with a more polished icon while keeping layout intact.
+   - Why: fixes visual alignment and improves icon polish without disrupting overall card design.
+
 Status
 - Step 1: DONE
 - Step 2: DONE
@@ -47,6 +52,7 @@ Status
 - Step 4: DONE
 - Step 5: DONE
 - Step 6: PENDING
+- Step 7: PENDING
 
 Notes
 - No Paddle changes expected.
