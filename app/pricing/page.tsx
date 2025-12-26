@@ -103,10 +103,10 @@ export default function PricingPage() {
 
             <div className="my-4 h-px w-full bg-slate-100" />
 
-            <ul className="flex flex-1 flex-col items-center gap-3 text-sm font-semibold text-slate-700">
+            <ul className="mx-auto flex flex-1 flex-col items-start gap-3 text-sm font-semibold text-slate-700">
               {plan.features.map((feature) => (
-                <li key={feature} className="flex w-full items-start justify-center gap-2 text-center">
-                  <BadgeCheck className="mt-0.5 h-4 w-4 text-slate-700" aria-hidden="true" />
+                <li key={feature} className="flex items-start gap-2 text-left">
+                  <BadgeCheck className="mt-0.5 h-4 w-4 text-[#ffa742]" aria-hidden="true" />
                   <span>{feature}</span>
                 </li>
               ))}
@@ -116,7 +116,7 @@ export default function PricingPage() {
               <div className="mt-6 flex justify-center">
                 <button
                   type="button"
-                  className="rounded-full border border-sky-500 px-6 py-2 text-sm font-semibold text-sky-600 transition hover:bg-sky-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="rounded-full border border-sky-500 px-6 py-2 text-sm font-semibold text-sky-600 transition hover:cursor-pointer hover:bg-sky-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 disabled:cursor-not-allowed disabled:opacity-60"
                   onClick={() => handleCta(plan)}
                   disabled={loading || !!error || !plan.ctaAction}
                 >

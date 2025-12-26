@@ -45,6 +45,11 @@ Plan (step-by-step)
    - Replaced the checkmark icon with `BadgeCheck` for a more polished look while keeping sizing/color consistent.
    - Why: fixes visual alignment and improves icon polish without disrupting overall card design.
 
+8) Center feature list block, left-align rows, update icon color, and fix CTA cursor (MVP)
+   - Centered the feature list container within each card while left-aligning each icon+text row to a shared left edge.
+   - Set the feature icon color to `#ffa742` and added a pointer cursor on enabled CTA hover.
+   - Why: preserves centered card balance, improves scan alignment, and clarifies button affordance.
+
 Status
 - Step 1: DONE
 - Step 2: DONE
@@ -53,6 +58,7 @@ Status
 - Step 5: DONE
 - Step 6: PENDING
 - Step 7: DONE
+- Step 8: DONE
 
 Notes
 - No Paddle changes expected.
