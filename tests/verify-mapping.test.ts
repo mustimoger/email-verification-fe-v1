@@ -8,6 +8,7 @@ import type {
   TaskDetailResponse,
 } from "../app/lib/api-client";
 import {
+  buildManualResultsFromDetail,
   buildLatestManualResults,
   buildLatestUploadsSummary,
   buildLatestUploadSummary,
@@ -172,6 +173,23 @@ run("buildLatestManualResults skips jobs without email addresses", () => {
   assert.strictEqual(results.length, 2);
   assert.strictEqual(results[0].email, "alpha@example.com");
   assert.strictEqual(results[1].email, "beta@example.com");
+});
+
+run("buildManualResultsFromDetail uses email list to show pending rows", () => {
+  const detail: TaskDetailResponse = { jobs: [] };
+  const results = buildManualResultsFromDetail(["alpha@example.com"], detail);
+  assert.strictEqual(results.length, 1);
+  assert.strictEqual(results[0].email, "alpha@example.com");
+  assert.strictEqual(results[0].status, "pending");
+});
+
+run("buildManualResultsFromDetail falls back to job list when emails are missing", () => {
+  const detail: TaskDetailResponse = {
+    jobs: [{ email_address: "alpha@example.com", status: "completed" }],
+  };
+  const results = buildManualResultsFromDetail([], detail);
+  assert.strictEqual(results.length, 1);
+  assert.strictEqual(results[0].email, "alpha@example.com");
 });
 
 run("shouldExpireManualResults returns true when finished_at is set", () => {

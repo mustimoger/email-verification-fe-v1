@@ -123,6 +123,16 @@ export function mapTaskDetailToResults(emails: string[], detail: TaskDetailRespo
   });
 }
 
+export function buildManualResultsFromDetail(
+  emails: string[] | null | undefined,
+  detail: TaskDetailResponse,
+): VerificationResult[] {
+  if (emails && emails.length > 0) {
+    return mapTaskDetailToResults(emails, detail);
+  }
+  return buildLatestManualResults(detail);
+}
+
 export function mapVerifyFallbackResults(emails: string[], taskId?: string | null): VerificationResult[] {
   return emails.map((email) => ({
     email,
