@@ -21,10 +21,12 @@ Goal: keep the Verify page flow functional for both manual input and file upload
   Update: Hydration/refresh clears manual results when the latest task is complete.
 - [ ] Keep completed manual Results + pasted emails visible until a new manual batch is started.
   Explanation: Requirement updated; do not auto-expire manual batches and persist the submitted emails for rehydration after reload.
-- [ ] Persist manual emails in Supabase task records (manual tasks only).
+- [x] Persist manual emails in Supabase task records (manual tasks only).
   Explanation: Store the original pasted emails per task so the UI can rehydrate the textarea and pending rows without local storage.
-- [ ] Return manual emails from `/api/tasks/latest-manual`.
+  Update: Added `tasks.manual_emails` (jsonb) and a backend updater to persist trimmed manual emails on task creation without altering task status.
+- [x] Return manual emails from `/api/tasks/latest-manual`.
   Explanation: The frontend needs the stored email list to restore the input and show fallback rows when jobs are not available yet.
+  Update: `LatestManualResponse` now includes `manual_emails` and the route passes through the stored list from Supabase.
 - [ ] Rehydrate manual input + Results on /verify reload (use stored emails when jobs are missing).
   Explanation: Keep UX stable across reloads by restoring the manual textarea and displaying pending rows until job statuses arrive.
 - [ ] Add tests for manual email persistence + rehydration flows.

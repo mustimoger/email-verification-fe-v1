@@ -34,6 +34,7 @@ from ..services.tasks_store import (
     fetch_tasks_with_counts,
     upsert_task_from_detail,
     upsert_tasks_from_list,
+    update_task_manual_emails,
     update_task_reservation,
 )
 from ..services.api_keys import INTERNAL_DASHBOARD_KEY_NAME, get_cached_key_by_name
@@ -80,6 +81,7 @@ class LatestManualResponse(BaseModel):
     invalid_count: Optional[int] = None
     catchall_count: Optional[int] = None
     job_status: Optional[Dict[str, int]] = None
+    manual_emails: Optional[list[str]] = None
 
 
 def get_user_external_client(user: AuthContext = Depends(get_current_user)) -> ExternalAPIClient:
@@ -285,6 +287,7 @@ async def create_task(
         )
     try:
         target_user_id = user.user_id
+        manual_emails = [email.strip() for email in emails if isinstance(email, str) and email.strip()]
         reserved_count = len(emails)
         reservation_id = str(uuid.uuid4())
         reservation = apply_credit_debit(
@@ -324,6 +327,8 @@ async def create_task(
             integration=None,
             api_key_id=resolved_api_key_id,
         )
+        if result.id:
+            update_task_manual_emails(target_user_id, result.id, manual_emails)
         if result.id:
             update_task_reservation(target_user_id, result.id, reserved_count, reservation_id)
         record_usage(target_user_id, path="/tasks", count=len(emails), api_key_id=None)
@@ -658,6 +663,7 @@ async def get_latest_manual(
         invalid_count=latest.get("invalid_count"),
         catchall_count=latest.get("catchall_count"),
         job_status=latest.get("job_status"),
+        manual_emails=latest.get("manual_emails"),
     )
 
 

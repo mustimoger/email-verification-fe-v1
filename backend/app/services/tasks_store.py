@@ -16,6 +16,7 @@ def _task_payload(
     task_id: str,
     status: Optional[str],
     email_count: Optional[int],
+    manual_emails: Optional[List[str]] = None,
     counts: Optional[Dict[str, Optional[int]]] = None,
     job_status: Optional[Dict[str, int]] = None,
     integration: Optional[str] = None,
@@ -26,6 +27,8 @@ def _task_payload(
         payload["status"] = status
     if email_count is not None:
         payload["email_count"] = email_count
+    if manual_emails is not None:
+        payload["manual_emails"] = manual_emails
     if integration:
         payload["integration"] = integration
     if api_key_id:
@@ -160,6 +163,7 @@ def upsert_tasks_from_list(
 def upsert_task_from_detail(
     user_id: str,
     detail: TaskDetailResponse,
+    manual_emails: Optional[List[str]] = None,
     counts: Optional[Dict[str, int]] = None,
     integration: Optional[str] = None,
     api_key_id: Optional[str] = None,
@@ -171,6 +175,7 @@ def upsert_task_from_detail(
         task_id=detail.id,
         status=detail.finished_at and "completed" or detail.started_at and "processing" or detail.id and detail.id,
         email_count=len(detail.jobs or []) if detail.jobs is not None else None,
+        manual_emails=manual_emails,
         counts=counts,
         job_status=job_status_from_metrics(getattr(detail, "metrics", None)),
         integration=integration,
@@ -301,6 +306,28 @@ def update_task_reservation(
     except Exception as exc:  # noqa: BLE001
         logger.error(
             "tasks.reservation_update_failed",
+            extra={"user_id": user_id, "task_id": task_id, "error": str(exc)},
+        )
+
+
+def update_task_manual_emails(
+    user_id: str,
+    task_id: str,
+    manual_emails: List[str],
+) -> None:
+    if not manual_emails:
+        return
+    sb: Client = get_supabase()
+    payload = {"manual_emails": manual_emails}
+    try:
+        sb.table("tasks").update(payload).eq("user_id", user_id).eq("task_id", task_id).execute()
+        logger.info(
+            "tasks.manual_emails_updated",
+            extra={"user_id": user_id, "task_id": task_id, "email_count": len(manual_emails)},
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.error(
+            "tasks.manual_emails_update_failed",
             extra={"user_id": user_id, "task_id": task_id, "error": str(exc)},
         )
 

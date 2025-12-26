@@ -126,6 +126,7 @@ export type LatestManualResponse = {
   invalid_count?: number;
   catchall_count?: number;
   job_status?: Record<string, number>;
+  manual_emails?: string[];
 };
 
 export type UploadFileMetadata = {

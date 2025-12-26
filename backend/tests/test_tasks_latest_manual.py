@@ -39,6 +39,7 @@ def test_latest_manual_returns_payload(monkeypatch):
         "invalid_count": 1,
         "catchall_count": 1,
         "job_status": {"pending": 1},
+        "manual_emails": ["alpha@example.com", "beta@example.com"],
     }
     app = _build_app(monkeypatch, latest_task)
     client = TestClient(app)
@@ -49,6 +50,7 @@ def test_latest_manual_returns_payload(monkeypatch):
     assert data["task_id"] == "task-manual"
     assert data["status"] == "processing"
     assert data["job_status"]["pending"] == 1
+    assert data["manual_emails"] == ["alpha@example.com", "beta@example.com"]
 
 
 def test_latest_manual_returns_no_content(monkeypatch):
