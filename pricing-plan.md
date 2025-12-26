@@ -41,8 +41,8 @@ Plan (step-by-step)
    - Why: confirms the pricing grid stays usable across breakpoints.
 
 7) Center feature list text + update feature icons (MVP)
-   - Align the feature list text horizontally centered in each pricing card, matching the design intent.
-   - Replace the current check icons with a more polished icon while keeping layout intact.
+   - Aligned the feature list rows to center the icon+text group and centered text within each card, matching the design intent.
+   - Replaced the checkmark icon with `BadgeCheck` for a more polished look while keeping sizing/color consistent.
    - Why: fixes visual alignment and improves icon polish without disrupting overall card design.
 
 Status
@@ -52,7 +52,7 @@ Status
 - Step 4: DONE
 - Step 5: DONE
 - Step 6: PENDING
-- Step 7: PENDING
+- Step 7: DONE
 
 Notes
 - No Paddle changes expected.

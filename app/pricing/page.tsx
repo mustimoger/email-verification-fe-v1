@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Script from "next/script";
-import { Check } from "lucide-react";
+import { BadgeCheck } from "lucide-react";
 
 import { getBillingClient } from "../lib/paddle";
 import { ApiError, billingApi } from "../lib/api-client";
@@ -103,10 +103,10 @@ export default function PricingPage() {
 
             <div className="my-4 h-px w-full bg-slate-100" />
 
-            <ul className="flex flex-1 flex-col gap-3 text-sm font-semibold text-slate-700">
+            <ul className="flex flex-1 flex-col items-center gap-3 text-sm font-semibold text-slate-700">
               {plan.features.map((feature) => (
-                <li key={feature} className="flex items-start gap-2 text-left">
-                  <Check className="mt-0.5 h-4 w-4 text-slate-700" aria-hidden="true" />
+                <li key={feature} className="flex w-full items-start justify-center gap-2 text-center">
+                  <BadgeCheck className="mt-0.5 h-4 w-4 text-slate-700" aria-hidden="true" />
                   <span>{feature}</span>
                 </li>
               ))}
