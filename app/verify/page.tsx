@@ -5,6 +5,7 @@ import type { DragEvent } from "react";
 import { AlertCircle, Info, UploadCloud, X } from "lucide-react";
 import { Cell, Pie, PieChart as RePieChart, ResponsiveContainer } from "recharts";
 
+import { useAuth } from "../components/auth-provider";
 import { DashboardShell } from "../components/dashboard-shell";
 import {
   apiClient,
@@ -32,6 +33,7 @@ const TASK_POLL_ATTEMPTS = 3;
 const TASK_POLL_INTERVAL_MS = 2000;
 
 export default function VerifyPage() {
+  const { session, loading: authLoading } = useAuth();
   const [inputValue, setInputValue] = useState("");
   const [results, setResults] = useState<VerificationResult[]>([]);
   const [manualTaskId, setManualTaskId] = useState<string | null>(null);
@@ -87,6 +89,7 @@ export default function VerifyPage() {
     let active = true;
     const hydrateLatestUploads = async () => {
       if (latestUploadHydratedRef.current) return;
+      if (authLoading || !session) return;
       if (files.length > 0 || uploadSummary || flowStage !== "idle") return;
       latestUploadHydratedRef.current = true;
       setLatestUploadError(null);
@@ -111,12 +114,13 @@ export default function VerifyPage() {
     return () => {
       active = false;
     };
-  }, [files.length, flowStage, uploadSummary]);
+  }, [authLoading, files.length, flowStage, session, uploadSummary]);
 
   useEffect(() => {
     let active = true;
     const hydrateLatestManual = async () => {
       if (latestManualHydratedRef.current) return;
+      if (authLoading || !session) return;
       if (manualTaskId || results.length > 0) return;
       latestManualHydratedRef.current = true;
       try {
@@ -136,7 +140,7 @@ export default function VerifyPage() {
     return () => {
       active = false;
     };
-  }, [manualTaskId, results.length]);
+  }, [authLoading, manualTaskId, results.length, session]);
 
   const clearManualResults = () => {
     setResults([]);
@@ -870,9 +874,9 @@ export default function VerifyPage() {
                       <span className="text-right">Action</span>
                     </div>
                     <div className="divide-y divide-slate-100">
-                      {uploadSummary?.files.map((file) => (
+                      {uploadSummary?.files.map((file, index) => (
                         <div
-                          key={file.fileName}
+                          key={`${file.taskId ?? "pending"}-${file.fileName}-${index}`}
                           className="grid grid-cols-5 items-center px-3 py-2 text-sm font-semibold text-slate-800"
                         >
                           <span className="truncate" title={file.fileName}>
@@ -918,7 +922,7 @@ export default function VerifyPage() {
                       </div>
                     </div>
                     <div className="h-64">
-                      <ResponsiveContainer>
+                      <ResponsiveContainer width="100%" height={256}>
                         <RePieChart margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
                           <Pie
                             data={validationSlices}

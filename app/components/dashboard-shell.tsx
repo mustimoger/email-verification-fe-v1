@@ -263,8 +263,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
               src="/logo.png"
               alt="BoltRoute"
               width={140}
-              height={32}
-              style={{ width: "140px", height: "auto" }}
+              height={25}
               priority
             />
             <button

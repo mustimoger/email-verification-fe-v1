@@ -67,6 +67,9 @@ Goal: keep the Verify page flow functional for both manual input and file upload
   Explanation: keep onboarding clear and avoid scope creep.
 - [x] Verify upload pending message should be neutral/informational (not red) after a successful file upload.
   Explanation: Added a dedicated info banner for the “processing” state so successful uploads show a neutral message (with guidance to check Overview/History) while true errors remain red.
+- [x] Verify hydration gating + key stability (MVP)
+  Explanation: Ensure latest manual/upload summaries load on first visit after auth hydration, avoid duplicate React keys in the upload list, remove the initial chart sizing warning, and fix the dashboard logo sizing warning without altering layout.
+  Update: gated latest manual/upload hydration on auth readiness, made upload summary row keys unique, fixed the Verify donut chart container to use a fixed height, and aligned the logo dimensions to the image’s intrinsic ratio to eliminate the Next/Image warning without changing its displayed size.
 
 Notes:
 - Detailed task history remains in `PLAN.md`.
