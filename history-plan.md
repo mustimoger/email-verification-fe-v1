@@ -47,6 +47,8 @@ Tasks
   Explanation: Ensured `/api/tasks` includes `file_name` on Supabase-backed rows so the frontend can switch Completed → Download only for completed file tasks; manual tasks remain status-only.
 - [x] History manual refresh: add a refresh button to reload task statuses on demand.
   Explanation: Added a Refresh button in the History card header that triggers a `refresh=true` task fetch without clearing rows, so users can pull updated statuses on demand.
+- [x] History labels: show “Manual verification” for manual tasks and bold the total count in Task/Total.
+  Explanation: Manual tasks now display as “Manual verification” instead of the task UUID, and the total count is bolded in the Task/Total column; updated history mapping tests accordingly.
 
 Notes
 - Supabase tables in place: `tasks` (seeded for user musti), `cached_api_keys` (with `key_plain` + `integration`), `api_usage`, `profiles`, `user_credits`. `/api/tasks` already upserts list/detail to keep Supabase current; upload polling fills the gap until `task_id` is returned.

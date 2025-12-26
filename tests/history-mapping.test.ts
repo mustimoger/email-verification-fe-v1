@@ -46,7 +46,7 @@ run("mapDetailToHistoryRow maps completed task to status label with formatted da
   const row = mapDetailToHistoryRow(detail);
   assert(row, "row should not be null");
   assert.strictEqual(row?.id, "t2");
-  assert.strictEqual(row?.label, "t2");
+  assert.strictEqual(row?.label, "Manual verification");
   assert.strictEqual(row?.action, "status");
   assert.strictEqual(row?.statusTone, "completed");
   assert.strictEqual(row?.statusLabel, "Completed");

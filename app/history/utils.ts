@@ -101,7 +101,7 @@ export function mapDetailToHistoryRow(detail: TaskDetailResponse): HistoryRow | 
   return {
     id: detail.id ?? fallbackId(),
     date: formatHistoryDate(detail.created_at),
-    label: detail.id ?? "Task",
+    label: "Manual verification",
     fileName: undefined,
     total: counts.total,
     valid: counts.valid,
@@ -129,12 +129,13 @@ export function mapTaskToHistoryRow(task: Task): HistoryRow | null {
     });
   const statusInfo = deriveStatusInfo(statusRaw, hasPending, total > 0);
   const hasFile = Boolean(task.file_name);
+  const isManual = !hasFile && task.id;
   const action: HistoryAction =
     hasFile && statusInfo.tone === "completed" ? "download" : "status";
   return {
     id: task.id,
     date: formatHistoryDate(task.created_at),
-    label: task.file_name ?? task.id,
+    label: hasFile ? task.file_name ?? task.id : isManual ? "Manual verification" : task.id,
     fileName: task.file_name ?? undefined,
     total,
     valid,

@@ -100,6 +100,9 @@ Goal: keep the Verify page flow functional for both manual input and file upload
 - [x] Verify hydration gating + key stability (MVP)
   Explanation: Ensure latest manual/upload summaries load on first visit after auth hydration, avoid duplicate React keys in the upload list, remove the initial chart sizing warning, and fix the dashboard logo sizing warning without altering layout.
   Update: gated latest manual/upload hydration on auth readiness, made upload summary row keys unique, fixed the Verify donut chart container to use a fixed height, and aligned the logo dimensions to the image’s intrinsic ratio to eliminate the Next/Image warning without changing its displayed size.
+- [ ] Verify summary card tweaks (NEW)
+  Explanation: Keep the Verification Summary card shown only after a file upload begins, but adjust the summary donut card to show just the file name (no "Latest upload:" label), show hover tooltips with counts like Overview’s Validation chart, and remove the “Upload Another File” action.
+  Update: Removed the “Upload Another File” button from the Verification Summary header, switched the donut card label to show only the latest file name, and added a Recharts tooltip to show counts on hover (matching the Overview Validation chart styling).
 
 Notes:
 - Detailed task history remains in `PLAN.md`.

@@ -189,9 +189,9 @@ export default function HistoryPage() {
                     className="grid grid-cols-6 items-center px-4 py-4 text-sm font-semibold text-slate-800 md:text-base"
                   >
                     <span className="text-xs text-slate-700 md:text-sm">{row.date}</span>
-                    <span className="text-xs text-slate-700 md:text-sm">
-                      {row.label} / {formatNumber(row.total)}
-                    </span>
+                  <span className="text-xs text-slate-700 md:text-sm">
+                    {row.label} / <span className="font-extrabold text-slate-800">{formatNumber(row.total)}</span>
+                  </span>
                     <span className="text-right text-xs text-slate-700 md:text-sm">{formatNumber(row.valid)}</span>
                     <span className="text-right text-xs text-slate-700 md:text-sm">{formatNumber(row.invalid)}</span>
                     <span className="text-right text-xs text-slate-700 md:text-sm">{formatNumber(row.catchAll)}</span>

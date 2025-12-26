@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { DragEvent } from "react";
 import { AlertCircle, Info, UploadCloud, X } from "lucide-react";
-import { Cell, Pie, PieChart as RePieChart, ResponsiveContainer } from "recharts";
+import { Cell, Pie, PieChart as RePieChart, ResponsiveContainer, Tooltip } from "recharts";
 
 import { useAuth } from "../components/auth-provider";
 import { DashboardShell } from "../components/dashboard-shell";
@@ -867,13 +867,6 @@ export default function VerifyPage() {
                     >
                       {latestUploadRefreshing ? "Refreshing..." : "Refresh status"}
                     </button>
-                    <button
-                      type="button"
-                      onClick={resetUpload}
-                      className="rounded-lg border border-slate-300 bg-white px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-[#4c61cc] hover:text-[#4c61cc] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4c61cc]"
-                    >
-                      Upload Another File
-                    </button>
                   </div>
                 </div>
                 {latestUploadError ? (
@@ -935,7 +928,7 @@ export default function VerifyPage() {
                           className="mt-1 text-xs font-semibold text-slate-500"
                           title={latestUploadLabel ?? undefined}
                         >
-                          Latest upload: {latestUploadLabel ?? "—"}
+                          {latestUploadLabel ?? "—"}
                         </p>
                       </div>
                     </div>
@@ -955,6 +948,14 @@ export default function VerifyPage() {
                               <Cell key={`cell-${index}`} fill={entry.color} />
                             ))}
                           </Pie>
+                          <Tooltip
+                            cursor={{ fill: "transparent" }}
+                            contentStyle={{
+                              borderRadius: 12,
+                              border: "1px solid #e2e8f0",
+                              boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
+                            }}
+                          />
                         </RePieChart>
                       </ResponsiveContainer>
                     </div>
