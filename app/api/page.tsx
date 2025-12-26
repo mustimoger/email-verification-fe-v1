@@ -33,6 +33,12 @@ const statusStyle: Record<KeyStatus, string> = {
   disabled: "bg-slate-200 text-slate-600",
 };
 
+const usageAxisTickStyle = {
+  fill: "#64748b",
+  fontSize: 12,
+  fontWeight: 600,
+};
+
 function maskKeyPreview(preview?: string) {
   if (!preview) return "";
   if (preview.length <= 3) return preview;
@@ -460,8 +466,14 @@ export default function ApiPage() {
             ) : (
               <ResponsiveContainer>
                 <ReLineChart data={chartData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
-                  <XAxis dataKey="date" tickLine={false} axisLine={false} />
-                  <YAxis tickLine={false} axisLine={false} tickFormatter={(v) => `${v}`} width={40} />
+                  <XAxis dataKey="date" tickLine={false} axisLine={false} tick={usageAxisTickStyle} />
+                  <YAxis
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(v) => `${v}`}
+                    width={40}
+                    tick={usageAxisTickStyle}
+                  />
                   <Tooltip
                     contentStyle={{
                       borderRadius: 12,

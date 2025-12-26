@@ -4,6 +4,7 @@ import {
   ApiError,
   BatchFileUploadResponse,
   LatestUploadResponse,
+  LatestManualResponse,
   TaskDetailResponse,
   TaskEmailJob,
 } from "../lib/api-client";
@@ -306,10 +307,10 @@ const resolveLatestUploadStatus = (
   return "pending";
 };
 
-export function buildLatestUploadSummary(
+const buildLatestUploadRow = (
   latest: LatestUploadResponse,
   detail?: TaskDetailResponse | null,
-): UploadSummary {
+): FileVerification => {
   const status = resolveLatestUploadStatus(latest, detail);
   const pendingFromDetail = hasPendingJobs(detail);
   const countsFromDetail =
@@ -335,7 +336,7 @@ export function buildLatestUploadSummary(
     totalEmails = normalizeCount(latest.email_count) ?? countsFromLatest?.total ?? null;
   }
   const fileCounts = countsFromDetail ?? countsFromLatest;
-  const fileRow: FileVerification = {
+  return {
     fileName: latest.file_name,
     totalEmails,
     valid: fileCounts?.valid ?? null,
@@ -344,6 +345,13 @@ export function buildLatestUploadSummary(
     status,
     taskId: latest.task_id,
   };
+};
+
+export function buildLatestUploadSummary(
+  latest: LatestUploadResponse,
+  detail?: TaskDetailResponse | null,
+): UploadSummary {
+  const fileRow = buildLatestUploadRow(latest, detail);
   const hasTotals =
     fileRow.totalEmails !== null &&
     fileRow.valid !== null &&
@@ -359,4 +367,83 @@ export function buildLatestUploadSummary(
       invalid: hasTotals ? fileRow.invalid : null,
     },
   };
+}
+
+export function buildLatestUploadsSummary(
+  latestUploads: LatestUploadResponse[],
+  detailsByTaskId?: Map<string, TaskDetailResponse>,
+): UploadSummary {
+  if (!latestUploads.length) {
+    return {
+      totalEmails: null,
+      uploadDate: "—",
+      files: [],
+      aggregates: { valid: null, catchAll: null, invalid: null },
+    };
+  }
+  const rows = latestUploads.map((latest) => {
+    const detail = detailsByTaskId?.get(latest.task_id) ?? null;
+    return buildLatestUploadRow(latest, detail);
+  });
+  const latestRow = rows[0];
+  const hasTotals =
+    latestRow.totalEmails !== null &&
+    latestRow.valid !== null &&
+    latestRow.invalid !== null &&
+    latestRow.catchAll !== null;
+  return {
+    totalEmails: hasTotals ? latestRow.totalEmails : null,
+    uploadDate: formatHistoryDate(latestUploads[0].created_at),
+    files: rows,
+    aggregates: {
+      valid: hasTotals ? latestRow.valid : null,
+      catchAll: hasTotals ? latestRow.catchAll : null,
+      invalid: hasTotals ? latestRow.invalid : null,
+    },
+  };
+}
+
+export function buildLatestManualResults(detail: TaskDetailResponse): VerificationResult[] {
+  const jobs = detail.jobs ?? [];
+  if (!jobs.length) return [];
+  return jobs
+    .map((job) => {
+      const address = (job.email_address || job.email?.email_address || "").trim();
+      if (!address) {
+        console.warn("verify.manual.job_missing_email", { job_id: job.id, email_id: job.email_id });
+        return null;
+      }
+      const status = job.email?.status || job.status;
+      if (!status) {
+        console.warn("verify.manual.job_missing_status", { job_id: job.id, email_id: job.email_id });
+        return null;
+      }
+      return {
+        email: address,
+        status,
+        message: `Status: ${status}`,
+      };
+    })
+    .filter((entry): entry is VerificationResult => Boolean(entry));
+}
+
+export function shouldExpireManualResults(
+  detail: TaskDetailResponse,
+  latest?: LatestManualResponse | null,
+): boolean {
+  if (detail.finished_at) return true;
+  if (detail.metrics?.progress_percent !== undefined && detail.metrics?.progress_percent !== null) {
+    return detail.metrics.progress_percent >= 100;
+  }
+  if (detail.metrics?.progress !== undefined && detail.metrics?.progress !== null) {
+    return detail.metrics.progress >= 1;
+  }
+  const jobStatus = detail.metrics?.job_status ?? latest?.job_status ?? null;
+  if (jobStatus && typeof jobStatus === "object") {
+    const pending = Number(jobStatus.pending ?? 0);
+    const processing = Number(jobStatus.processing ?? 0);
+    if (pending + processing === 0) return true;
+  }
+  const statusValue = (latest?.status || "").toLowerCase();
+  return statusValue.length > 0 && !PENDING_STATES.has(statusValue);
 }

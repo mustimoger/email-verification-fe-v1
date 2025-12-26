@@ -28,6 +28,8 @@ from ..services.tasks_store import (
     counts_from_metrics,
     email_count_from_metrics,
     fetch_latest_file_task,
+    fetch_latest_file_tasks,
+    fetch_latest_manual_task,
     fetch_task_credit_reservation,
     fetch_tasks_with_counts,
     upsert_task_from_detail,
@@ -60,6 +62,17 @@ class UploadFileMetadata(BaseModel):
 class LatestUploadResponse(BaseModel):
     task_id: str
     file_name: str
+    created_at: Optional[str] = None
+    status: Optional[str] = None
+    email_count: Optional[int] = None
+    valid_count: Optional[int] = None
+    invalid_count: Optional[int] = None
+    catchall_count: Optional[int] = None
+    job_status: Optional[Dict[str, int]] = None
+
+
+class LatestManualResponse(BaseModel):
+    task_id: str
     created_at: Optional[str] = None
     status: Optional[str] = None
     email_count: Optional[int] = None
@@ -566,16 +579,99 @@ async def get_latest_upload(
     )
 
 
+@router.get("/tasks/latest-uploads", response_model=list[LatestUploadResponse])
+async def get_latest_uploads(
+    limit: Optional[int] = Query(default=None),
+    user: AuthContext = Depends(get_current_user),
+):
+    settings = get_settings()
+    resolved_limit = limit if limit is not None else settings.latest_uploads_limit
+    if resolved_limit <= 0:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="limit must be greater than zero")
+    if resolved_limit > settings.latest_uploads_limit:
+        logger.warning(
+            "route.tasks.latest_uploads.limit_clamped",
+            extra={
+                "user_id": user.user_id,
+                "requested": resolved_limit,
+                "limit": settings.latest_uploads_limit,
+            },
+        )
+        resolved_limit = settings.latest_uploads_limit
+    latest = fetch_latest_file_tasks(user.user_id, limit=resolved_limit)
+    if not latest:
+        logger.info("route.tasks.latest_uploads.empty", extra={"user_id": user.user_id})
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+    payload = []
+    for row in latest:
+        task_id = row.get("task_id")
+        file_name = row.get("file_name")
+        if not task_id or not file_name:
+            logger.warning(
+                "route.tasks.latest_uploads.invalid_row",
+                extra={"user_id": user.user_id, "task_id": task_id, "file_name": file_name},
+            )
+            continue
+        payload.append(
+            LatestUploadResponse(
+                task_id=task_id,
+                file_name=file_name,
+                created_at=row.get("created_at"),
+                status=row.get("status"),
+                email_count=row.get("email_count"),
+                valid_count=row.get("valid_count"),
+                invalid_count=row.get("invalid_count"),
+                catchall_count=row.get("catchall_count"),
+                job_status=row.get("job_status"),
+            )
+        )
+    if not payload:
+        logger.info("route.tasks.latest_uploads.empty", extra={"user_id": user.user_id})
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+    record_usage(user.user_id, path="/tasks/latest-uploads", count=len(payload), api_key_id=None)
+    return payload
+
+
+@router.get("/tasks/latest-manual", response_model=LatestManualResponse)
+async def get_latest_manual(
+    user: AuthContext = Depends(get_current_user),
+):
+    settings = get_settings()
+    latest = fetch_latest_manual_task(user.user_id, limit=settings.upload_poll_page_size)
+    if not latest:
+        logger.info("route.tasks.latest_manual.empty", extra={"user_id": user.user_id})
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+    task_id = latest.get("task_id")
+    if not task_id:
+        logger.warning(
+            "route.tasks.latest_manual.invalid_row",
+            extra={"user_id": user.user_id, "task_id": task_id},
+        )
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+    record_usage(user.user_id, path="/tasks/latest-manual", count=1, api_key_id=None)
+    return LatestManualResponse(
+        task_id=task_id,
+        created_at=latest.get("created_at"),
+        status=latest.get("status"),
+        email_count=latest.get("email_count"),
+        valid_count=latest.get("valid_count"),
+        invalid_count=latest.get("invalid_count"),
+        catchall_count=latest.get("catchall_count"),
+        job_status=latest.get("job_status"),
+    )
+
+
 @router.get("/tasks/{task_id}", response_model=TaskDetailResponse)
 async def get_task_detail(
-    task_id: str,
+    task_id: uuid.UUID,
     user: AuthContext = Depends(get_current_user),
     api_key_id: Optional[str] = None,
     client: ExternalAPIClient = Depends(get_user_external_client),
 ):
     start = time.time()
+    task_id_str = str(task_id)
     try:
-        result = await client.get_task_detail(task_id)
+        result = await client.get_task_detail(task_id_str)
         counts: Optional[Dict[str, int]] = None
         if result.jobs is not None:
             counts = {"valid": 0, "invalid": 0, "catchall": 0}
@@ -588,7 +684,7 @@ async def get_task_detail(
                 else:
                     counts["invalid"] += 1
         credit_status = None
-        reservation = fetch_task_credit_reservation(user.user_id, task_id)
+        reservation = fetch_task_credit_reservation(user.user_id, task_id_str)
         reserved_count = None
         if reservation and reservation.get("credit_reserved_count") is not None:
             reserved_count = int(reservation.get("credit_reserved_count"))
@@ -597,7 +693,7 @@ async def get_task_detail(
             if processed_count is None:
                 logger.error(
                     "credits.task.count_missing",
-                    extra={"user_id": user.user_id, "task_id": task_id},
+                    extra={"user_id": user.user_id, "task_id": task_id_str},
                 )
                 raise HTTPException(
                     status_code=status.HTTP_502_BAD_GATEWAY,
@@ -610,7 +706,7 @@ async def get_task_detail(
                         user_id=user.user_id,
                         credits=delta,
                         source=CREDIT_SOURCE_TASK_FINALIZE,
-                        source_id=task_id,
+                        source_id=task_id_str,
                         meta={
                             "processed_count": processed_count,
                             "reserved_count": reserved_count,
@@ -621,7 +717,7 @@ async def get_task_detail(
                     if debit.get("status") == "insufficient":
                         logger.warning(
                             "credits.task.insufficient",
-                            extra={"user_id": user.user_id, "task_id": task_id, "required": delta},
+                        extra={"user_id": user.user_id, "task_id": task_id_str, "required": delta},
                         )
                         raise HTTPException(status_code=status.HTTP_402_PAYMENT_REQUIRED, detail="Insufficient credits")
                 elif delta < 0:
@@ -629,7 +725,7 @@ async def get_task_detail(
                         user_id=user.user_id,
                         credits=abs(delta),
                         source=CREDIT_SOURCE_TASK_RELEASE,
-                        source_id=task_id,
+                        source_id=task_id_str,
                         meta={
                             "processed_count": processed_count,
                             "reserved_count": reserved_count,
@@ -644,7 +740,7 @@ async def get_task_detail(
                     user_id=user.user_id,
                     credits=processed_count,
                     source=CREDIT_SOURCE_TASK,
-                    source_id=task_id,
+                    source_id=task_id_str,
                     meta={
                         "processed_count": processed_count,
                         "valid": counts.get("valid") if counts else None,
@@ -657,7 +753,7 @@ async def get_task_detail(
                 if debit.get("status") == "insufficient":
                     logger.warning(
                         "credits.task.insufficient",
-                        extra={"user_id": user.user_id, "task_id": task_id, "required": processed_count},
+                        extra={"user_id": user.user_id, "task_id": task_id_str, "required": processed_count},
                     )
                     raise HTTPException(status_code=status.HTTP_402_PAYMENT_REQUIRED, detail="Insufficient credits")
         if result.jobs is not None:
@@ -673,7 +769,7 @@ async def get_task_detail(
             "route.tasks.detail",
             extra={
                 "user_id": user.user_id,
-                "task_id": task_id,
+                "task_id": task_id_str,
                 "credit_status": credit_status,
                 "duration_ms": round((time.time() - start) * 1000, 2),
             },
@@ -687,7 +783,7 @@ async def get_task_detail(
             "route.tasks.detail.failed",
             extra={
                 "user_id": user.user_id,
-                "task_id": task_id,
+                "task_id": task_id_str,
                 "status_code": exc.status_code,
                 "details": exc.details,
                 "duration_ms": round((time.time() - start) * 1000, 2),
@@ -699,7 +795,7 @@ async def get_task_detail(
             "route.tasks.detail.exception",
             extra={
                 "user_id": user.user_id,
-                "task_id": task_id,
+                "task_id": task_id_str,
                 "duration_ms": round((time.time() - start) * 1000, 2),
             },
         )
@@ -984,13 +1080,14 @@ async def upload_task_file(
 
 @router.get("/tasks/{task_id}/download")
 async def download_task_results(
-    task_id: str,
+    task_id: uuid.UUID,
     file_format: Optional[str] = Query(default=None, alias="format"),
     user_id: Optional[str] = None,
     user: AuthContext = Depends(get_current_user),
     client: ExternalAPIClient = Depends(get_user_external_client),
 ):
     target_user_id = user.user_id
+    task_id_str = str(task_id)
     if user_id:
         if user.role != "admin":
             logger.warning(
@@ -1005,11 +1102,14 @@ async def download_task_results(
         )
 
     try:
-        task_file = fetch_task_file(target_user_id, task_id)
+        task_file = fetch_task_file(target_user_id, task_id_str)
         if not task_file:
-            logger.info("route.tasks.download.missing_file", extra={"user_id": target_user_id, "task_id": task_id})
+            logger.info(
+                "route.tasks.download.missing_file",
+                extra={"user_id": target_user_id, "task_id": task_id_str},
+            )
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task file not found")
-        detail = await client.get_task_detail(task_id)
+        detail = await client.get_task_detail(task_id_str)
         counts: Optional[Dict[str, int]] = None
         if detail.jobs is not None:
             counts = {"valid": 0, "invalid": 0, "catchall": 0}
@@ -1021,7 +1121,7 @@ async def download_task_results(
                     counts["catchall"] += 1
                 else:
                     counts["invalid"] += 1
-        reservation = fetch_task_credit_reservation(target_user_id, task_id)
+        reservation = fetch_task_credit_reservation(target_user_id, task_id_str)
         reserved_count = None
         if reservation and reservation.get("credit_reserved_count") is not None:
             reserved_count = int(reservation.get("credit_reserved_count"))
@@ -1030,7 +1130,7 @@ async def download_task_results(
             if processed_count is None:
                 logger.error(
                     "credits.task.count_missing",
-                    extra={"user_id": target_user_id, "task_id": task_id},
+                    extra={"user_id": target_user_id, "task_id": task_id_str},
                 )
                 raise HTTPException(
                     status_code=status.HTTP_502_BAD_GATEWAY,
@@ -1043,7 +1143,7 @@ async def download_task_results(
                         user_id=target_user_id,
                         credits=delta,
                         source=CREDIT_SOURCE_TASK_FINALIZE,
-                        source_id=task_id,
+                        source_id=task_id_str,
                         meta={
                             "processed_count": processed_count,
                             "reserved_count": reserved_count,
@@ -1053,7 +1153,7 @@ async def download_task_results(
                     if debit.get("status") == "insufficient":
                         logger.warning(
                             "credits.task.insufficient",
-                            extra={"user_id": target_user_id, "task_id": task_id, "required": delta},
+                            extra={"user_id": target_user_id, "task_id": task_id_str, "required": delta},
                         )
                         raise HTTPException(status_code=status.HTTP_402_PAYMENT_REQUIRED, detail="Insufficient credits")
                 elif delta < 0:
@@ -1061,7 +1161,7 @@ async def download_task_results(
                         user_id=target_user_id,
                         credits=abs(delta),
                         source=CREDIT_SOURCE_TASK_RELEASE,
-                        source_id=task_id,
+                        source_id=task_id_str,
                         meta={
                             "processed_count": processed_count,
                             "reserved_count": reserved_count,
@@ -1073,7 +1173,7 @@ async def download_task_results(
                     user_id=target_user_id,
                     credits=processed_count,
                     source=CREDIT_SOURCE_TASK,
-                    source_id=task_id,
+                    source_id=task_id_str,
                     meta={
                         "processed_count": processed_count,
                         "valid": counts.get("valid") if counts else None,
@@ -1085,7 +1185,7 @@ async def download_task_results(
                 if debit.get("status") == "insufficient":
                     logger.warning(
                         "credits.task.insufficient",
-                        extra={"user_id": target_user_id, "task_id": task_id, "required": processed_count},
+                        extra={"user_id": target_user_id, "task_id": task_id_str, "required": processed_count},
                     )
                     raise HTTPException(status_code=status.HTTP_402_PAYMENT_REQUIRED, detail="Insufficient credits")
         if detail.jobs is not None:
@@ -1096,11 +1196,16 @@ async def download_task_results(
                 integration=None,
                 api_key_id=None,
             )
-        download: DownloadedFile = await client.download_task_results(task_id=task_id, file_format=file_format)
+        download: DownloadedFile = await client.download_task_results(task_id=task_id_str, file_format=file_format)
     except ExternalAPIError as exc:
         logger.warning(
             "route.tasks.download.external_failed",
-            extra={"user_id": target_user_id, "task_id": task_id, "status_code": exc.status_code, "details": exc.details},
+            extra={
+                "user_id": target_user_id,
+                "task_id": task_id_str,
+                "status_code": exc.status_code,
+                "details": exc.details,
+            },
         )
         raise HTTPException(
             status_code=exc.status_code, detail=exc.details or "Unable to fetch task download"
@@ -1110,7 +1215,7 @@ async def download_task_results(
     if not content_type:
         logger.warning(
             "route.tasks.download.missing_content_type",
-            extra={"user_id": target_user_id, "task_id": task_id},
+            extra={"user_id": target_user_id, "task_id": task_id_str},
         )
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Upstream download missing content type")
 
@@ -1122,13 +1227,13 @@ async def download_task_results(
         "route.tasks.download.headers",
         extra={
             "user_id": target_user_id,
-            "task_id": task_id,
+            "task_id": task_id_str,
             "content_type": content_type,
             "has_content_disposition": bool(content_disposition),
         },
     )
     logger.info(
         "route.tasks.download",
-        extra={"user_id": target_user_id, "task_id": task_id, "format": file_format},
+        extra={"user_id": target_user_id, "task_id": task_id_str, "format": file_format},
     )
     return Response(content=download.content, media_type=content_type, headers=response_headers)

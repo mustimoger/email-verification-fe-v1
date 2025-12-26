@@ -67,12 +67,13 @@ def test_verify_returns_402_on_insufficient_credits(monkeypatch):
 def test_task_detail_returns_402_on_insufficient_credits(monkeypatch):
     app = _build_app(monkeypatch)
     client = TestClient(app)
+    task_id = "11111111-1111-1111-1111-111111111111"
 
     monkeypatch.setattr(
         "app.api.tasks.apply_credit_debit",
         lambda *args, **kwargs: {"status": "insufficient", "credits_remaining": 0},
     )
 
-    resp = client.get("/api/tasks/task-1")
+    resp = client.get(f"/api/tasks/{task_id}")
     assert resp.status_code == 402
     assert resp.json()["detail"] == "Insufficient credits"

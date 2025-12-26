@@ -142,6 +142,41 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
 - [x] Persist latest file-upload summary on `/verify` after reload (server-driven, manual refresh).
   Explanation: External API does not expose file names in task lists or a "latest upload" endpoint, so `/verify` must hydrate from Supabase `task_files` metadata and allow manual status refresh without background polling.
   Update: Added `/api/tasks/latest-upload` with backend tests, and `/verify` now hydrates the latest file-based task on load with a manual refresh button plus frontend mapping tests.
+- [x] Persist latest manual batch on `/verify` and hydrate the Results card from `/tasks/{id}` jobs only (manual batches only).
+  Explanation: Manual verification results should survive reloads by fetching the latest manual task and mapping job emails to statuses; no local storage or placeholders.
+  Update: `/verify` now hydrates the latest manual task via `/api/tasks/latest-manual` and maps results exclusively from job emails in `/api/tasks/{id}`.
+- [x] Add `/api/tasks/latest-manual` (Supabase-backed) and tests.
+  Explanation: Manual tasks are identifiable by missing file metadata; expose a lightweight endpoint so the UI can rehydrate without external API polling.
+  Update: Added `fetch_latest_manual_task` in the tasks store plus `/api/tasks/latest-manual`, and covered the endpoint with a new FastAPI test to validate 200/204 responses.
+- [x] Add Results refresh button for manual batches and remove background polling.
+  Explanation: Per UX requirement, status updates are user-triggered only.
+  Update: Results card now includes a “Refresh status” button that fetches the latest manual task and updates the results without polling.
+- [x] Expire manual Results when the task completes (hide after refresh/hydration).
+  Explanation: Completed manual batches should disappear from the Results card to avoid stale UI.
+  Update: Manual results are cleared when the latest task is complete during hydration or refresh.
+- [x] Replace single latest-upload summary with a latest-N uploads list (N=6), newest-first, persisted across reloads.
+  Explanation: The upload status card should show the most recent file upload tasks (not just one) and remain stable across page loads without layout disruption.
+  Update: `/verify` now hydrates a list of the latest file uploads and renders up to the configured limit.
+- [x] Add backend endpoint to return latest-N file uploads with counts + metadata (Supabase-backed).
+  Explanation: Supabase task_files metadata is the source of truth for file upload history; expose a list endpoint to hydrate the verify summary list.
+  Update: Added `/api/tasks/latest-uploads` backed by `fetch_latest_file_tasks` and configurable `LATEST_UPLOADS_LIMIT`.
+- [x] Update verify summary hydration to render latest-N uploads and refresh all tasks on demand.
+  Explanation: Manual refresh should update the status/counts for every listed upload and re-render the table.
+  Update: Refresh now fetches details for each listed upload before rebuilding the summary table.
+- [x] Update the validation donut to summarize only the most recent upload, with a label indicating which task/file it represents.
+  Explanation: Keep the donut focused on the newest file upload while the table shows the full latest-N list.
+  Update: Donut aggregates come from the newest upload and the card labels the latest file.
+- [x] Add `LATEST_UPLOADS_LIMIT` to backend `.env` and `.env.example` so the API boots after restart.
+  Explanation: latest upload list is now required by settings; missing env blocks uvicorn startup and causes 400s via route fall-through.
+  Update: Added `LATEST_UPLOADS_LIMIT=6` to `backend/.env.example` (documented default). `backend/.env` already contained it locally, so no further change needed there.
+- [x] Fix `taskIds is not defined` in file upload summary logging.
+  Explanation: Upload logging should only reference defined variables to avoid UI errors after file upload.
+  Update: Updated Verify upload logging to derive `task_ids` from the resolved upload links so the console payload is always defined.
+- [x] Prevent `/api/tasks/{task_id}` from capturing latest-* routes (UUID-only task IDs).
+  Explanation: `/api/tasks/latest-*` must resolve to the internal endpoints; UUID path params avoid collisions and prevent external 400s.
+  Update: Updated `/api/tasks/{task_id}` and `/api/tasks/{task_id}/download` to accept UUIDs only and consistently pass `str(task_id)` through credit/logging and external calls.
+- [ ] Fix `taskIds is not defined` in file upload summary logging.
+  Explanation: Upload logging should only reference defined variables to avoid UI errors after file upload.
 
 ## Next: Second Verify state (post-upload)
 - [x] Pull Figma specs for second Verify state via Figma MCP; captured screenshot (node `64:75`) showing results table + validation donut. Footer and shell unchanged.

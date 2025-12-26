@@ -40,6 +40,16 @@ Plan (step-by-step)
    - Verified mobile (390x844): cards stack vertically with intact padding; header/hamburger visible; footer links remain accessible.
    - Why: confirms the pricing grid stays usable across breakpoints.
 
+7) Center feature list text + update feature icons (MVP)
+   - Aligned the feature list rows to center the icon+text group and centered text within each card, matching the design intent.
+   - Replaced the checkmark icon with `BadgeCheck` for a more polished look while keeping sizing/color consistent.
+   - Why: fixes visual alignment and improves icon polish without disrupting overall card design.
+
+8) Center feature list block, left-align rows, update icon color, and fix CTA cursor (MVP)
+   - Centered the feature list container within each card while left-aligning each icon+text row to a shared left edge.
+   - Set the feature icon color to `#ffa742` and added a pointer cursor on enabled CTA hover.
+   - Why: preserves centered card balance, improves scan alignment, and clarifies button affordance.
+
 Status
 - Step 1: DONE
 - Step 2: DONE
@@ -47,6 +57,8 @@ Status
 - Step 4: DONE
 - Step 5: DONE
 - Step 6: PENDING
+- Step 7: DONE
+- Step 8: DONE
 
 Notes
 - No Paddle changes expected.

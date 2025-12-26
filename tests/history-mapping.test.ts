@@ -33,7 +33,7 @@ run("deriveCounts tallies valid/invalid/catchall from jobs", () => {
   assert.strictEqual(counts.invalid, 2);
 });
 
-run("mapDetailToHistoryRow maps completed task to download status with formatted date", () => {
+run("mapDetailToHistoryRow maps completed task to status label with formatted date", () => {
   const detail: TaskDetailResponse = {
     id: "t2",
     created_at: "2024-02-01T00:00:00Z",
@@ -47,7 +47,9 @@ run("mapDetailToHistoryRow maps completed task to download status with formatted
   assert(row, "row should not be null");
   assert.strictEqual(row?.id, "t2");
   assert.strictEqual(row?.label, "t2");
-  assert.strictEqual(row?.status, "download");
+  assert.strictEqual(row?.action, "status");
+  assert.strictEqual(row?.statusTone, "completed");
+  assert.strictEqual(row?.statusLabel, "Completed");
   assert.strictEqual(row?.date, "Feb 01, 2024");
   assert.strictEqual(row?.total, 3);
   assert.strictEqual(row?.valid, 1);
@@ -67,7 +69,8 @@ run("mapDetailToHistoryRow marks pending when any job is in pending states", () 
   };
   const row = mapDetailToHistoryRow(detail);
   assert(row, "row should not be null");
-  assert.strictEqual(row?.status, "pending");
+  assert.strictEqual(row?.statusTone, "processing");
+  assert.strictEqual(row?.statusLabel, "Processing");
   assert.ok(PENDING_STATES.has("processing"));
 });
 
@@ -90,9 +93,28 @@ run("mapTaskToHistoryRow uses counts/status without detail fetch", () => {
   assert(row, "row should not be null");
   assert.strictEqual(row?.id, "t4");
   assert.strictEqual(row?.total, 8);
-  assert.strictEqual(row?.status, "pending");
+  assert.strictEqual(row?.action, "status");
+  assert.strictEqual(row?.statusTone, "processing");
+  assert.strictEqual(row?.statusLabel, "Processing");
   assert.strictEqual(row?.fileName, "upload.csv");
   assert.strictEqual(row?.label, "upload.csv");
+});
+
+run("mapTaskToHistoryRow exposes download action for completed file tasks", () => {
+  const task: Task = {
+    id: "t5",
+    created_at: "2024-03-04T00:00:00Z",
+    status: "completed",
+    valid_count: 3,
+    invalid_count: 1,
+    catchall_count: 0,
+    file_name: "results.csv",
+  };
+  const row = mapTaskToHistoryRow(task);
+  assert(row, "row should not be null");
+  assert.strictEqual(row?.action, "download");
+  assert.strictEqual(row?.statusTone, "completed");
+  assert.strictEqual(row?.statusLabel, "Completed");
 });
 
 // eslint-disable-next-line no-console

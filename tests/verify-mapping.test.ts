@@ -1,14 +1,22 @@
 import assert from "node:assert";
 
 import { ApiError } from "../app/lib/api-client";
-import type { BatchFileUploadResponse, LatestUploadResponse, TaskDetailResponse } from "../app/lib/api-client";
+import type {
+  BatchFileUploadResponse,
+  LatestManualResponse,
+  LatestUploadResponse,
+  TaskDetailResponse,
+} from "../app/lib/api-client";
 import {
+  buildLatestManualResults,
+  buildLatestUploadsSummary,
   buildLatestUploadSummary,
   buildUploadSummary,
   createUploadLinks,
   mapTaskDetailToResults,
   mapUploadResultsToLinks,
   resolveApiErrorMessage,
+  shouldExpireManualResults,
 } from "../app/verify/utils";
 
 function run(name: string, fn: () => void) {
@@ -120,6 +128,66 @@ run("buildLatestUploadSummary stays pending when job_status reports pending work
   assert.strictEqual(summary.files[0].status, "pending");
   assert.strictEqual(summary.files[0].valid, null);
   assert.strictEqual(summary.totalEmails, null);
+});
+
+run("buildLatestUploadsSummary keeps latest upload totals only", () => {
+  const latestUploads: LatestUploadResponse[] = [
+    {
+      task_id: "task-1",
+      file_name: "latest.csv",
+      created_at: "2024-03-03T00:00:00Z",
+      status: "completed",
+      email_count: 4,
+      valid_count: 2,
+      invalid_count: 1,
+      catchall_count: 1,
+    },
+    {
+      task_id: "task-2",
+      file_name: "older.csv",
+      created_at: "2024-03-02T00:00:00Z",
+      status: "completed",
+      email_count: 3,
+      valid_count: 1,
+      invalid_count: 1,
+      catchall_count: 1,
+    },
+  ];
+  const summary = buildLatestUploadsSummary(latestUploads);
+  assert.strictEqual(summary.files.length, 2);
+  assert.strictEqual(summary.aggregates.valid, 2);
+  assert.strictEqual(summary.totalEmails, 4);
+  assert.strictEqual(summary.files[0].fileName, "latest.csv");
+});
+
+run("buildLatestManualResults skips jobs without email addresses", () => {
+  const detail: TaskDetailResponse = {
+    jobs: [
+      { email_address: "alpha@example.com", status: "completed" },
+      { status: "pending" },
+      { email: { email_address: "beta@example.com", status: "exists" } },
+    ],
+  };
+  const results = buildLatestManualResults(detail);
+  assert.strictEqual(results.length, 2);
+  assert.strictEqual(results[0].email, "alpha@example.com");
+  assert.strictEqual(results[1].email, "beta@example.com");
+});
+
+run("shouldExpireManualResults returns true when finished_at is set", () => {
+  const detail: TaskDetailResponse = {
+    finished_at: "2024-03-02T00:00:00Z",
+  };
+  const latest: LatestManualResponse = { task_id: "task-1" };
+  assert.strictEqual(shouldExpireManualResults(detail, latest), true);
+});
+
+run("shouldExpireManualResults returns false when pending job_status remains", () => {
+  const detail: TaskDetailResponse = {
+    metrics: { job_status: { pending: 2, processing: 0 } },
+  };
+  const latest: LatestManualResponse = { task_id: "task-2", job_status: { pending: 2 } };
+  assert.strictEqual(shouldExpireManualResults(detail, latest), false);
 });
 
 run("resolveApiErrorMessage returns detail string when present", () => {

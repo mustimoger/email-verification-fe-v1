@@ -146,12 +146,39 @@ Goal: replace mock data on `/overview` with real per-user data sourced from our 
     - Ensure the tooltip/legend reflects the additional slice without hardcoded fallback values.
     - Update: Backend now falls back to `total_catchall` from `/metrics/verifications` when `verification_status` omits catch-all, so `verification_totals.catchall` is always populated. The Overview Validation pie already renders Catch-all, so the chart now includes that slice when the API reports it.
 
-21) Overview: keep tiny Validation slices visible (NEW)
-    - Use a small `minAngle` and reduce `paddingAngle` so very small slices (e.g., Catch-all) remain visible.
-    - Keep layout, colors, and data sources unchanged; only adjust pie rendering.
-    - Update: Reduced `paddingAngle` and added `minAngle` on the Overview validation pie so tiny slices (Catch-all) render without altering layout or data.
-    - Update: Increased `minAngle` to 6 degrees and darkened the Catch-all slice color to `#d97706` for better visibility.
-    - Update: Increased `minAngle` to 18 degrees per request to ensure the Catch-all slice is visible even when counts are tiny.
+21) Overview: credit usage chart axis tick styling (NEW)
+    - Align the Credit Usage chart axis labels/ticks with the API page chart styling for consistent typography and spacing across cards.
+    - Update: Matched the Overview Credit Usage chart axis spacing to the API page by widening the Y-axis width to 40 and aligning the chart right margin.
+
+22) Overview: credit usage tick font styling (NEW)
+    - Apply explicit tick typography (font size, weight, color) for the Credit Usage chart axes to match the API page chart ticks and avoid overflow.
+    - Update: Added a shared tick style for both Overview and API charts so axis labels use consistent size, weight, and color and no longer overflow.
+
+23) Overview: center Current Plan card content (NEW)
+    - Center the Current Plan card body (plan name, purchase date, and item chips) horizontally without changing the header layout.
+    - Update: Wrapped the Current Plan card body in a centered flex container and aligned the item chips with `justify-center`, keeping the header row untouched so only the content block shifts to horizontal center.
+
+24) Overview: icon consistency and meaning (NEW)
+    - Align icon backgrounds, sizes, and colors across the Overview cards and choose icons that better match each metric.
+    - Update: Standardized the header icon wrappers for Validation/Credit Usage and replaced stat + Current Plan icons with more semantically aligned Lucide icons; sizes/colors now match the existing card icon styling.
+
+25) Overview: remove duplicate purchase date label (NEW)
+    - Remove the duplicated "Purchase Date" text under the purchase date value in the Current Plan card to avoid redundant labels.
+    - Update: Removed the extra purchase date label line so the card only shows the pill label above the date.
+
+26) Overview: status popover dismiss on outside click (NEW)
+    - Allow the status breakdown popover to close when the user clicks anywhere outside the pill/popover, not only the same pill.
+    - Update: Added a document-level outside-click handler tied to the open task id so the popover closes on any click/touch outside its container while preserving the pill toggle behavior.
+
+27) Overview: Verification Tasks pagination + remove Month selector (NEW)
+    - Remove the Month label/dropdown from the Verification Tasks card (no API wiring needed).
+    - Add pagination controls at the bottom of the card using Prev/Next plus “Page X of Y” and optional “Showing A–B of total”.
+    - Each page must show 10 tasks (newest to oldest) and use `/tasks?limit=10&offset=...` to rely on server pagination.
+    - Use `overview.recent_tasks` only as a temporary fallback while `/tasks` data is loading.
+    - Keep the Refresh button; refresh should re-fetch the current page with `refresh=true` to sync tasks.
+    - Update: Logged the exact UX + data-source requirements here so the implementation is aligned for newcomers.
+    - Update: Removed the Month label/dropdown, added paginated `/tasks` fetches with limit 10 + offset, and added bottom pagination controls (Prev/Next, Page X of Y, Showing A–B of total). While `/tasks` loads, the table uses `overview.recent_tasks` as a temporary fallback; once `/tasks` resolves, the table uses the paged response. Refresh now re-fetches the current page with `refresh=true`, and tasks are sorted newest-to-oldest by `created_at` for display consistency.
+    - Tests: `npm run test:overview`, `npm run test:history`, `npm run test:auth-guard`, `npm run test:account-purchases`.
 
 Notes:
 - External task source remains the email verification API; Supabase caches per-user task metadata for aggregation/safety.
