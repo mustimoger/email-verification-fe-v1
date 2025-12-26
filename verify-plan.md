@@ -103,9 +103,13 @@ Goal: keep the Verify page flow functional for both manual input and file upload
 - [ ] Verify summary card tweaks (NEW)
   Explanation: Keep the Verification Summary card shown only after a file upload begins, but adjust the summary donut card to show just the file name (no "Latest upload:" label), show hover tooltips with counts like Overview’s Validation chart, and remove the “Upload Another File” action.
   Update: Removed the “Upload Another File” button from the Verification Summary header, switched the donut card label to show only the latest file name, and added a Recharts tooltip to show counts on hover (matching the Overview Validation chart styling).
-- [ ] Verify processing donut + relaxed counts (NEW)
+- [x] Verify processing donut + relaxed counts (NEW)
   Explanation: When a file upload starts, show an immediate Processing donut using available totals, and treat missing valid/invalid/catch-all counts as 0 so refreshes show partial data without waiting for all counts.
   Update: Verification summary donut now builds slices from the latest upload row with missing counts treated as 0; when total emails are known, it adds a Processing slice for the remaining unverified emails so the chart renders immediately after uploads start.
+- [x] Verify Results export menu (NEW)
+  Explanation: Add a lightweight Export control to the manual Results card with Copy (clipboard) and Download CSV, exporting the same per-email fields available in verify responses (email, status, message, validated_at, is_role_based).
+  Update: Backend /verify now extracts export fields from the verify response (and calls `/emails/{address}` when nested email/domain/host data is missing) so manual_results persist role-based, catchall domain, email server, disposable/registered domain, and MX record data for reloads.
+  Update: Results card now includes an Export dropdown (Copy CSV / Download CSV). Export pulls the latest manual task data on demand, builds CSV columns for Email/Status/Role-based/Catchall Domain/Email Server/Disposable Domain/Registered Domain/MX Record, and keeps the UI table unchanged.
 
 Notes:
 - Detailed task history remains in `PLAN.md`.

@@ -1,5 +1,6 @@
 "use client";
 
+import Papa from "papaparse";
 import {
   ApiError,
   BatchFileUploadResponse,
@@ -15,6 +16,13 @@ export type VerificationResult = {
   email: string;
   status: string;
   message: string;
+  validatedAt?: string;
+  isRoleBased?: boolean;
+  catchallDomain?: boolean;
+  emailServer?: string;
+  disposableDomain?: boolean;
+  registeredDomain?: boolean;
+  mxRecord?: string;
 };
 
 export type FileVerificationStatus = "download" | "pending";
@@ -155,7 +163,18 @@ export function buildManualResultsFromStored(
     }
     const status = match.status || "unknown";
     const message = match.message || `Status: ${status}`;
-    return { email: address, status, message };
+    return {
+      email: address,
+      status,
+      message,
+      validatedAt: match.validated_at,
+      isRoleBased: match.is_role_based,
+      catchallDomain: match.catchall_domain,
+      emailServer: match.email_server,
+      disposableDomain: match.disposable_domain,
+      registeredDomain: match.registered_domain,
+      mxRecord: match.mx_record,
+    };
   });
 }
 
@@ -165,6 +184,59 @@ export function mapVerifyFallbackResults(emails: string[], taskId?: string | nul
     status: "pending",
     message: taskId ? `Task ${taskId}` : "Task queued",
   }));
+}
+
+export type ManualExportRow = {
+  Email: string;
+  Status: string;
+  "Role-based": string;
+  "Catchall Domain": string;
+  "Email Server": string;
+  "Disposable Domain": string;
+  "Registered Domain": string;
+  "MX Record": string;
+};
+
+export const MANUAL_EXPORT_COLUMNS: (keyof ManualExportRow)[] = [
+  "Email",
+  "Status",
+  "Role-based",
+  "Catchall Domain",
+  "Email Server",
+  "Disposable Domain",
+  "Registered Domain",
+  "MX Record",
+];
+
+const formatBoolean = (value: boolean | undefined): string => {
+  if (value === true) return "true";
+  if (value === false) return "false";
+  return "";
+};
+
+const formatString = (value: string | undefined | null): string => {
+  if (!value) return "";
+  return value.trim();
+};
+
+export function buildManualExportRows(results: VerificationResult[]): ManualExportRow[] {
+  return results
+    .filter((item) => Boolean(item.email && item.email.trim()))
+    .map((item) => ({
+      Email: item.email.trim(),
+      Status: formatString(item.status),
+      "Role-based": formatBoolean(item.isRoleBased),
+      "Catchall Domain": formatBoolean(item.catchallDomain),
+      "Email Server": formatString(item.emailServer),
+      "Disposable Domain": formatBoolean(item.disposableDomain),
+      "Registered Domain": formatBoolean(item.registeredDomain),
+      "MX Record": formatString(item.mxRecord),
+    }));
+}
+
+export function buildManualExportCsv(results: VerificationResult[]): string {
+  const rows = buildManualExportRows(results);
+  return Papa.unparse(rows, { columns: MANUAL_EXPORT_COLUMNS });
 }
 
 export function createUploadLinks(files: File[]): UploadTaskLink[] {

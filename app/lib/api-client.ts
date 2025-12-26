@@ -41,6 +41,11 @@ export type ManualVerificationResult = {
   message?: string;
   validated_at?: string;
   is_role_based?: boolean;
+  catchall_domain?: boolean;
+  email_server?: string;
+  disposable_domain?: boolean;
+  registered_domain?: boolean;
+  mx_record?: string;
 };
 
 export type TaskResponse = {

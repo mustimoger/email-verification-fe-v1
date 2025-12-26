@@ -18,6 +18,7 @@ import { clearVerifyRequestId, getVerifyRequestId } from "../lib/verify-idempote
 import { buildColumnOptions, FileColumnError, readFileColumnInfo, type FileColumnInfo } from "./file-columns";
 import {
   buildLatestUploadsSummary,
+  buildManualExportCsv,
   buildUploadSummary,
   buildManualResultsFromStored,
   createUploadLinks,
@@ -58,7 +59,11 @@ export default function VerifyPage() {
   const [latestUploadRefreshing, setLatestUploadRefreshing] = useState(false);
   const [latestUploadLabel, setLatestUploadLabel] = useState<string | null>(null);
   const [manualRefreshing, setManualRefreshing] = useState(false);
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const [exportAction, setExportAction] = useState<"copy" | "download" | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const exportMenuRef = useRef<HTMLDivElement | null>(null);
   const parseRef = useRef(0);
   const latestUploadHydratedRef = useRef(false);
   const latestManualHydratedRef = useRef(false);
@@ -144,6 +149,26 @@ export default function VerifyPage() {
     };
   }, [authLoading, inputValue, manualEmails.length, manualTaskId, results.length, session]);
 
+  useEffect(() => {
+    if (!exportMenuOpen) return;
+    const handleOutside = (event: MouseEvent | TouchEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) {
+        setExportMenuOpen(false);
+        return;
+      }
+      if (exportMenuRef.current && !exportMenuRef.current.contains(target)) {
+        setExportMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutside);
+    document.addEventListener("touchstart", handleOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleOutside);
+      document.removeEventListener("touchstart", handleOutside);
+    };
+  }, [exportMenuOpen]);
+
   const applyManualEmails = (emails: string[]) => {
     if (!emails.length) return;
     setManualEmails(emails);
@@ -157,9 +182,11 @@ export default function VerifyPage() {
     }
     setResults(buildManualResultsFromStored(emails, latest.manual_results));
     setErrors(null);
+    setExportError(null);
   };
 
   const refreshManualResults = async () => {
+    setExportError(null);
     setManualRefreshing(true);
     try {
       const latest = await apiClient.getLatestManual();
@@ -175,6 +202,88 @@ export default function VerifyPage() {
       setErrors(message);
     } finally {
       setManualRefreshing(false);
+    }
+  };
+
+  const resolveExportResults = async (): Promise<VerificationResult[]> => {
+    if (!manualTaskId || results.length === 0) {
+      throw new Error("No manual verification results to export.");
+    }
+    let latest: LatestManualResponse | null = null;
+    try {
+      latest = await apiClient.getLatestManual();
+    } catch (err: unknown) {
+      const message = resolveApiErrorMessage(err, "verify.manual.export_latest");
+      console.error("verify.manual.export_latest_failed", { error: message });
+      return results;
+    }
+    if (!latest) {
+      console.warn("verify.manual.export_latest_missing");
+      return results;
+    }
+    if (latest.task_id !== manualTaskId) {
+      console.warn("verify.manual.export_task_mismatch", {
+        current_task_id: manualTaskId,
+        latest_task_id: latest.task_id,
+      });
+      return results;
+    }
+    if (!latest.manual_results || latest.manual_results.length === 0) {
+      console.warn("verify.manual.export_missing_results", { task_id: latest.task_id });
+      return results;
+    }
+    return buildManualResultsFromStored(latest.manual_emails, latest.manual_results);
+  };
+
+  const handleExport = async (action: "copy" | "download") => {
+    if (exportAction) return;
+    setExportError(null);
+    setExportAction(action);
+    try {
+      const exportResults = await resolveExportResults();
+      if (exportResults.length === 0) {
+        setExportError("No results available to export.");
+        return;
+      }
+      const csv = buildManualExportCsv(exportResults);
+      if (!csv) {
+        setExportError("Export is empty.");
+        return;
+      }
+      if (action === "copy") {
+        if (!navigator.clipboard?.writeText) {
+          setExportError("Clipboard access is unavailable.");
+          return;
+        }
+        await navigator.clipboard.writeText(csv);
+        setToast("Results copied to clipboard.");
+      } else {
+        if (!manualTaskId) {
+          setExportError("Export is unavailable without a task id.");
+          return;
+        }
+        const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = `${manualTaskId}.csv`;
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        URL.revokeObjectURL(url);
+        setToast("Download started.");
+      }
+      console.info("verify.manual.export_success", {
+        action,
+        count: exportResults.length,
+      });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : resolveApiErrorMessage(err, "verify.manual.export");
+      console.error("verify.manual.export_failed", { error: message });
+      setExportError(message);
+    } finally {
+      setExportAction(null);
+      setExportMenuOpen(false);
     }
   };
 
@@ -206,6 +315,8 @@ export default function VerifyPage() {
       setResults([]);
       return;
     }
+    setExportError(null);
+    setExportMenuOpen(false);
     if (!limits) {
       setErrors(limitsError ?? "Unable to load verification limits. Please refresh.");
       setResults([]);
@@ -250,7 +361,15 @@ export default function VerifyPage() {
           const message = response.message || `Status: ${status}`;
           setResults((prev) =>
             prev.map((item) =>
-              item.email === email ? { ...item, status, message } : item,
+              item.email === email
+                ? {
+                    ...item,
+                    status,
+                    message,
+                    validatedAt: response.validated_at,
+                    isRoleBased: response.is_role_based,
+                  }
+                : item,
             ),
           );
           firstBatchPayload = false;
@@ -413,6 +532,9 @@ export default function VerifyPage() {
 
   const showSummaryState = flowStage === "summary" && uploadSummary;
   const hasSecondaryContent = flowStage === "popup1" || flowStage === "popup2" || showSummaryState;
+  const exportDisabled = results.length === 0 || exportAction !== null;
+  const exportLabel =
+    exportAction === "copy" ? "Copying..." : exportAction === "download" ? "Downloading..." : "Export";
 
   const proceedToMapping = () => {
     if (!uploadSummary) return;
@@ -618,17 +740,58 @@ export default function VerifyPage() {
           <div className="rounded-2xl bg-white p-5 shadow-md ring-1 ring-slate-100 lg:col-span-2">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-lg font-extrabold text-slate-900">Results</h2>
-              {manualTaskId ? (
-                <button
-                  type="button"
-                  onClick={() => void refreshManualResults()}
-                  disabled={manualRefreshing}
-                  className="rounded-lg border border-slate-300 bg-white px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-[#4c61cc] hover:text-[#4c61cc] disabled:cursor-not-allowed disabled:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4c61cc]"
-                >
-                  {manualRefreshing ? "Refreshing..." : "Refresh status"}
-                </button>
-              ) : null}
+              <div className="flex items-center gap-2">
+                <div className="relative" ref={exportMenuRef}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (exportDisabled) return;
+                      setExportMenuOpen((prev) => !prev);
+                    }}
+                    disabled={exportDisabled}
+                    className="rounded-lg border border-slate-300 bg-white px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-[#4c61cc] hover:text-[#4c61cc] disabled:cursor-not-allowed disabled:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4c61cc]"
+                    aria-expanded={exportMenuOpen}
+                  >
+                    {exportLabel}
+                  </button>
+                  {exportMenuOpen ? (
+                    <div className="absolute right-0 mt-2 w-40 rounded-lg border border-slate-200 bg-white p-1 text-left text-xs font-semibold text-slate-700 shadow-lg">
+                      <button
+                        type="button"
+                        onClick={() => void handleExport("copy")}
+                        disabled={exportAction !== null}
+                        className="w-full rounded-md px-3 py-2 text-left hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        Copy CSV
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void handleExport("download")}
+                        disabled={exportAction !== null}
+                        className="w-full rounded-md px-3 py-2 text-left hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        Download CSV
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+                {manualTaskId ? (
+                  <button
+                    type="button"
+                    onClick={() => void refreshManualResults()}
+                    disabled={manualRefreshing}
+                    className="rounded-lg border border-slate-300 bg-white px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-[#4c61cc] hover:text-[#4c61cc] disabled:cursor-not-allowed disabled:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4c61cc]"
+                  >
+                    {manualRefreshing ? "Refreshing..." : "Refresh status"}
+                  </button>
+                ) : null}
+              </div>
             </div>
+            {exportError ? (
+              <div className="mt-3 rounded-md bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700" role="alert">
+                {exportError}
+              </div>
+            ) : null}
             <div className="mt-4 min-h-[220px] rounded-xl border border-slate-200 bg-slate-50 p-4">
               {results.length === 0 ? (
                 <p className="text-sm font-semibold text-slate-500">

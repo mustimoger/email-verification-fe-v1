@@ -4,7 +4,7 @@ import logging
 import time
 import uuid
 from pathlib import Path
-from typing import Dict, Optional, Set
+from typing import Any, Dict, Optional, Set
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Response, UploadFile, status
 from pydantic import BaseModel
@@ -134,6 +134,91 @@ def resolve_verify_source_id(email: str, payload: dict, result: VerifyEmailRespo
     return generated
 
 
+def _coerce_bool(value: object) -> Optional[bool]:
+    if isinstance(value, bool):
+        return value
+    return None
+
+
+def _extract_email_details(result: VerifyEmailResponse) -> Optional[Dict[str, Any]]:
+    steps = result.verification_steps or []
+    for step in steps:
+        email_data = getattr(step, "email", None)
+        if isinstance(email_data, dict) and email_data:
+            return email_data
+    return None
+
+
+def _find_mx_record(domain: Dict[str, Any]) -> Optional[str]:
+    records = domain.get("dns_records")
+    if not isinstance(records, list):
+        return None
+    for record in records:
+        if not isinstance(record, dict):
+            continue
+        record_type = str(record.get("type") or "").upper()
+        if record_type != "MX":
+            continue
+        value = record.get("value")
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return None
+
+
+def _extract_export_fields(
+    result: VerifyEmailResponse,
+    email_data: Optional[Dict[str, Any]],
+) -> Dict[str, Optional[object]]:
+    resolved: Dict[str, Optional[object]] = {"is_role_based": result.is_role_based}
+    if not isinstance(email_data, dict):
+        return resolved
+    if resolved["is_role_based"] is None:
+        resolved["is_role_based"] = _coerce_bool(email_data.get("is_role_based"))
+    domain = email_data.get("domain")
+    if isinstance(domain, dict):
+        resolved["disposable_domain"] = _coerce_bool(domain.get("is_disposable"))
+        resolved["registered_domain"] = _coerce_bool(domain.get("is_registered"))
+        resolved["mx_record"] = _find_mx_record(domain)
+    host = email_data.get("host")
+    if isinstance(host, dict):
+        resolved["catchall_domain"] = _coerce_bool(host.get("is_catchall"))
+        server_type = host.get("server_type")
+        if isinstance(server_type, str) and server_type.strip():
+            resolved["email_server"] = server_type.strip()
+        else:
+            resolved["email_server"] = None
+    return resolved
+
+
+def _needs_email_detail_fetch(email_data: Optional[Dict[str, Any]]) -> bool:
+    if not isinstance(email_data, dict):
+        return True
+    domain = email_data.get("domain")
+    host = email_data.get("host")
+    if not isinstance(domain, dict) or not isinstance(host, dict):
+        return True
+    if "dns_records" not in domain or domain.get("dns_records") is None:
+        return True
+    for key in ("is_disposable", "is_registered"):
+        if key not in domain or domain.get(key) is None:
+            return True
+    for key in ("is_catchall", "server_type"):
+        if key not in host or host.get(key) is None:
+            return True
+    return False
+
+
+def _merge_export_fields(
+    primary: Dict[str, Optional[object]],
+    fallback: Dict[str, Optional[object]],
+) -> Dict[str, Optional[object]]:
+    merged = dict(primary)
+    for key, value in fallback.items():
+        if merged.get(key) is None and value is not None:
+            merged[key] = value
+    return merged
+
+
 def task_is_complete(detail: TaskDetailResponse) -> bool:
     if detail.finished_at:
         return True
@@ -237,6 +322,26 @@ async def verify_email(
         resolved_batch_emails = [item.strip() for item in batch_emails if isinstance(item, str) and item.strip()]
     try:
         result = await client.verify_email(email=email)
+        email_details = _extract_email_details(result)
+        export_fields = _extract_export_fields(result, email_details)
+        if _needs_email_detail_fetch(email_details):
+            try:
+                email_lookup = await client.get_email_by_address(email)
+                export_fields = _merge_export_fields(
+                    export_fields,
+                    _extract_export_fields(result, email_lookup if isinstance(email_lookup, dict) else None),
+                )
+                logger.info("route.verify.email_lookup", extra={"user_id": user.user_id, "email": email})
+            except ExternalAPIError as exc:
+                logger.warning(
+                    "route.verify.email_lookup_failed",
+                    extra={"user_id": user.user_id, "email": email, "status_code": exc.status_code, "details": exc.details},
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.error(
+                    "route.verify.email_lookup_exception",
+                    extra={"user_id": user.user_id, "email": email, "error": str(exc)},
+                )
         source_id = resolve_verify_source_id(email, payload, result)
         debit = apply_credit_debit(
             user_id=user.user_id,
@@ -254,18 +359,16 @@ async def verify_email(
         record_usage(user.user_id, path="/verify", count=1, api_key_id=None)
         logger.info("route.verify", extra={"user_id": user.user_id, "email": email, "credit_status": debit.get("status")})
         if batch_id:
-            update_manual_task_results(
-                user.user_id,
-                batch_id,
-                {
-                    "email": email,
-                    "status": result.status,
-                    "message": result.message,
-                    "validated_at": result.validated_at,
-                    "is_role_based": result.is_role_based,
-                },
-                manual_emails=resolved_batch_emails,
-            )
+            manual_payload = {
+                "email": email,
+                "status": result.status,
+                "message": result.message,
+                "validated_at": result.validated_at,
+            }
+            for key, value in export_fields.items():
+                if value is not None:
+                    manual_payload[key] = value
+            update_manual_task_results(user.user_id, batch_id, manual_payload, manual_emails=resolved_batch_emails)
         return result
     except ExternalAPIError as exc:
         if exc.status_code in (401, 403):
