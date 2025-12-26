@@ -14,11 +14,12 @@ import {
   type LimitsResponse,
   type TaskDetailResponse,
 } from "../lib/api-client";
+import { clearVerifyRequestId, getVerifyRequestId } from "../lib/verify-idempotency";
 import { buildColumnOptions, FileColumnError, readFileColumnInfo, type FileColumnInfo } from "./file-columns";
 import {
-  buildManualResultsFromDetail,
   buildLatestUploadsSummary,
   buildUploadSummary,
+  buildManualResultsFromStored,
   createUploadLinks,
   formatNumber,
   mapUploadResultsToLinks,
@@ -129,10 +130,7 @@ export default function VerifyPage() {
         if (!active || !latest) return;
         setManualTaskId(latest.task_id);
         if (!active) return;
-        if (latest.manual_emails && latest.manual_emails.length > 0) {
-          applyManualEmails(latest.manual_emails);
-        }
-        await resolveManualDetail(latest.task_id, latest, latest.manual_emails ?? undefined);
+        applyManualStored(latest);
       } catch (err: unknown) {
         if (!active) return;
         const message = resolveApiErrorMessage(err, "verify.manual.hydrate");
@@ -152,32 +150,13 @@ export default function VerifyPage() {
     setInputValue((prev) => (prev.trim().length > 0 ? prev : emails.join("\n")));
   };
 
-  const resolveManualDetail = async (
-    taskId: string,
-    latest?: LatestManualResponse | null,
-    emailsOverride?: string[],
-  ): Promise<void> => {
-    const fallbackEmails =
-      (emailsOverride && emailsOverride.length > 0 && emailsOverride) ||
-      (latest?.manual_emails && latest.manual_emails.length > 0 && latest.manual_emails) ||
-      manualEmails;
-    try {
-      const detail = await apiClient.getTask(taskId);
-      setResults(buildManualResultsFromDetail(fallbackEmails, detail));
-      setErrors(null);
-    } catch (err: unknown) {
-      if (err instanceof ApiError && err.status === 402) {
-        const message = resolveApiErrorMessage(err, "verify.manual.detail");
-        setErrors(message);
-        return;
-      }
-      const message = resolveApiErrorMessage(err, "verify.manual.detail");
-      console.error("verify.manual.detail_failed", { taskId, error: message });
-      setErrors(message);
-      if (fallbackEmails.length > 0 && results.length === 0) {
-        setResults(mapVerifyFallbackResults(fallbackEmails, taskId));
-      }
+  const applyManualStored = (latest: LatestManualResponse) => {
+    const emails = latest.manual_emails ?? [];
+    if (emails.length > 0) {
+      applyManualEmails(emails);
     }
+    setResults(buildManualResultsFromStored(emails, latest.manual_results));
+    setErrors(null);
   };
 
   const refreshManualResults = async () => {
@@ -189,10 +168,7 @@ export default function VerifyPage() {
         return;
       }
       setManualTaskId(latest.task_id);
-      if (latest.manual_emails && latest.manual_emails.length > 0) {
-        applyManualEmails(latest.manual_emails);
-      }
-      await resolveManualDetail(latest.task_id, latest, latest.manual_emails ?? undefined);
+      applyManualStored(latest);
     } catch (err: unknown) {
       const message = resolveApiErrorMessage(err, "verify.manual.refresh");
       console.error("verify.manual.refresh_failed", { error: message });
@@ -247,22 +223,52 @@ export default function VerifyPage() {
       setResults([]);
       return;
     }
+    const randomUUID = globalThis.crypto?.randomUUID;
+    if (typeof randomUUID !== "function") {
+      setErrors("Unable to start verification. Please refresh and try again.");
+      return;
+    }
+    const batchId = randomUUID.call(globalThis.crypto);
     setErrors(null);
-    setResults([]);
-    setManualTaskId(null);
+    setManualTaskId(batchId);
     setManualEmails(parsed);
+    setResults(mapVerifyFallbackResults(parsed, batchId));
     setIsSubmitting(true);
     try {
-      const response = await apiClient.createTask(parsed);
-      const taskId = response.id ?? null;
-      setToast(taskId ? `Task created (${parsed.length} emails)` : `Task queued (${parsed.length} emails)`);
-      if (taskId) {
-        setManualTaskId(taskId);
-        await resolveManualDetail(taskId, null, parsed);
-      } else {
-        console.error("verify.manual.task_id_missing", { response });
-        setErrors("Unable to start verification. Please refresh and try again.");
+      let firstBatchPayload = true;
+      const errorsForBatch: string[] = [];
+      for (const email of parsed) {
+        try {
+          const requestId = getVerifyRequestId(email, { forceNew: true });
+          const response = await apiClient.verifyEmail(email, {
+            requestId,
+            batchId,
+            batchEmails: firstBatchPayload ? parsed : undefined,
+          });
+          clearVerifyRequestId(email);
+          const status = response.status || "unknown";
+          const message = response.message || `Status: ${status}`;
+          setResults((prev) =>
+            prev.map((item) =>
+              item.email === email ? { ...item, status, message } : item,
+            ),
+          );
+          firstBatchPayload = false;
+        } catch (err: unknown) {
+          const message = resolveApiErrorMessage(err, "verify.manual.per_email");
+          console.error("verify.manual.per_email_failed", { email, error: message });
+          errorsForBatch.push(`${email}: ${message}`);
+          setResults((prev) =>
+            prev.map((item) =>
+              item.email === email ? { ...item, status: "unknown", message } : item,
+            ),
+          );
+        }
       }
+      if (errorsForBatch.length > 0) {
+        setErrors(errorsForBatch[0]);
+      }
+      setToast(`Verified ${parsed.length} email${parsed.length === 1 ? "" : "s"}`);
     } catch (err: unknown) {
       const message = resolveApiErrorMessage(err, "verify.manual.submit");
       setErrors(message);

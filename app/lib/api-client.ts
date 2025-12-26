@@ -35,6 +35,14 @@ export type VerifyEmailResponse = {
   verification_steps?: VerificationStep[];
 };
 
+export type ManualVerificationResult = {
+  email: string;
+  status?: string;
+  message?: string;
+  validated_at?: string;
+  is_role_based?: boolean;
+};
+
 export type TaskResponse = {
   id?: string;
   email_count?: number;
@@ -127,6 +135,7 @@ export type LatestManualResponse = {
   catchall_count?: number;
   job_status?: Record<string, number>;
   manual_emails?: string[];
+  manual_results?: ManualVerificationResult[];
 };
 
 export type UploadFileMetadata = {
@@ -465,12 +474,24 @@ const downloadFile = async (path: string, fallbackFileName: string) => {
   return { blob, fileName: resolvedName };
 };
 
+type VerifyEmailOptions = {
+  requestId?: string;
+  batchId?: string;
+  batchEmails?: string[];
+};
+
 export const apiClient = {
-  verifyEmail: async (email: string, requestId?: string) => {
+  verifyEmail: async (email: string, options?: string | VerifyEmailOptions) => {
+    const requestId = typeof options === "string" ? options : options?.requestId;
     const resolvedRequestId = requestId ?? getVerifyRequestId(email);
+    const payload: Record<string, unknown> = { email, request_id: resolvedRequestId };
+    if (options && typeof options === "object") {
+      if (options.batchId) payload.batch_id = options.batchId;
+      if (options.batchEmails) payload.batch_emails = options.batchEmails;
+    }
     const result = await request<VerifyEmailResponse>("/verify", {
       method: "POST",
-      body: { email, request_id: resolvedRequestId },
+      body: payload,
     });
     if (!requestId) {
       clearVerifyRequestId(email);

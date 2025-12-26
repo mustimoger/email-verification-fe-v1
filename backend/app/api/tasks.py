@@ -35,6 +35,7 @@ from ..services.tasks_store import (
     upsert_task_from_detail,
     upsert_tasks_from_list,
     update_task_manual_emails,
+    update_manual_task_results,
     update_task_reservation,
 )
 from ..services.api_keys import INTERNAL_DASHBOARD_KEY_NAME, get_cached_key_by_name
@@ -82,6 +83,7 @@ class LatestManualResponse(BaseModel):
     catchall_count: Optional[int] = None
     job_status: Optional[Dict[str, int]] = None
     manual_emails: Optional[list[str]] = None
+    manual_results: Optional[list[Dict[str, object]]] = None
 
 
 def get_user_external_client(user: AuthContext = Depends(get_current_user)) -> ExternalAPIClient:
@@ -223,8 +225,16 @@ async def verify_email(
     client: ExternalAPIClient = Depends(get_user_external_client),
 ):
     email = payload.get("email")
+    batch_id = payload.get("batch_id")
+    batch_emails = payload.get("batch_emails")
     if not email:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="email is required")
+    if batch_id is not None and (not isinstance(batch_id, str) or not batch_id.strip()):
+        logger.warning("route.verify.invalid_batch_id", extra={"user_id": user.user_id, "batch_id": batch_id})
+        batch_id = None
+    resolved_batch_emails: Optional[list[str]] = None
+    if isinstance(batch_emails, list):
+        resolved_batch_emails = [item.strip() for item in batch_emails if isinstance(item, str) and item.strip()]
     try:
         result = await client.verify_email(email=email)
         source_id = resolve_verify_source_id(email, payload, result)
@@ -243,6 +253,19 @@ async def verify_email(
             raise HTTPException(status_code=status.HTTP_402_PAYMENT_REQUIRED, detail="Insufficient credits")
         record_usage(user.user_id, path="/verify", count=1, api_key_id=None)
         logger.info("route.verify", extra={"user_id": user.user_id, "email": email, "credit_status": debit.get("status")})
+        if batch_id:
+            update_manual_task_results(
+                user.user_id,
+                batch_id,
+                {
+                    "email": email,
+                    "status": result.status,
+                    "message": result.message,
+                    "validated_at": result.validated_at,
+                    "is_role_based": result.is_role_based,
+                },
+                manual_emails=resolved_batch_emails,
+            )
         return result
     except ExternalAPIError as exc:
         if exc.status_code in (401, 403):
@@ -451,6 +474,7 @@ async def list_tasks(
                 catchall_count=row.get("catchall_count"),
                 job_status=row.get("job_status"),
                 integration=row.get("integration"),
+                file_name=row.get("file_name"),
                 created_at=row.get("created_at"),
                 updated_at=row.get("updated_at"),
             )
@@ -664,6 +688,7 @@ async def get_latest_manual(
         catchall_count=latest.get("catchall_count"),
         job_status=latest.get("job_status"),
         manual_emails=latest.get("manual_emails"),
+        manual_results=latest.get("manual_results"),
     )
 
 

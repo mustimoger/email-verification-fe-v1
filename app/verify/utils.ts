@@ -5,6 +5,7 @@ import {
   BatchFileUploadResponse,
   LatestUploadResponse,
   LatestManualResponse,
+  ManualVerificationResult,
   TaskDetailResponse,
   TaskEmailJob,
 } from "../lib/api-client";
@@ -131,6 +132,31 @@ export function buildManualResultsFromDetail(
     return mapTaskDetailToResults(emails, detail);
   }
   return buildLatestManualResults(detail);
+}
+
+export function buildManualResultsFromStored(
+  emails: string[] | null | undefined,
+  storedResults: ManualVerificationResult[] | null | undefined,
+): VerificationResult[] {
+  const results = Array.isArray(storedResults) ? storedResults : [];
+  const map = new Map<string, ManualVerificationResult>();
+  results.forEach((item) => {
+    const address = item.email?.trim();
+    if (!address) return;
+    map.set(address.toLowerCase(), item);
+  });
+
+  const fallbackEmailList = emails && emails.length > 0 ? emails : results.map((item) => item.email);
+  return fallbackEmailList.map((email) => {
+    const address = email.trim();
+    const match = map.get(address.toLowerCase());
+    if (!match) {
+      return { email: address, status: "pending", message: "Awaiting verification" };
+    }
+    const status = match.status || "unknown";
+    const message = match.message || `Status: ${status}`;
+    return { email: address, status, message };
+  });
 }
 
 export function mapVerifyFallbackResults(emails: string[], taskId?: string | null): VerificationResult[] {

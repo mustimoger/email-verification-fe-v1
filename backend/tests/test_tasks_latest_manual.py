@@ -40,6 +40,10 @@ def test_latest_manual_returns_payload(monkeypatch):
         "catchall_count": 1,
         "job_status": {"pending": 1},
         "manual_emails": ["alpha@example.com", "beta@example.com"],
+        "manual_results": [
+            {"email": "alpha@example.com", "status": "exists", "message": "ok"},
+            {"email": "beta@example.com", "status": "unknown", "message": "queued"},
+        ],
     }
     app = _build_app(monkeypatch, latest_task)
     client = TestClient(app)
@@ -51,6 +55,7 @@ def test_latest_manual_returns_payload(monkeypatch):
     assert data["status"] == "processing"
     assert data["job_status"]["pending"] == 1
     assert data["manual_emails"] == ["alpha@example.com", "beta@example.com"]
+    assert data["manual_results"][0]["email"] == "alpha@example.com"
 
 
 def test_latest_manual_returns_no_content(monkeypatch):

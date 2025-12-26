@@ -5,10 +5,12 @@ import type {
   BatchFileUploadResponse,
   LatestManualResponse,
   LatestUploadResponse,
+  ManualVerificationResult,
   TaskDetailResponse,
 } from "../app/lib/api-client";
 import {
   buildManualResultsFromDetail,
+  buildManualResultsFromStored,
   buildLatestManualResults,
   buildLatestUploadsSummary,
   buildLatestUploadSummary,
@@ -190,6 +192,15 @@ run("buildManualResultsFromDetail falls back to job list when emails are missing
   const results = buildManualResultsFromDetail([], detail);
   assert.strictEqual(results.length, 1);
   assert.strictEqual(results[0].email, "alpha@example.com");
+});
+
+run("buildManualResultsFromStored maps stored statuses by email order", () => {
+  const stored: ManualVerificationResult[] = [
+    { email: "beta@example.com", status: "exists", message: "ok" },
+  ];
+  const results = buildManualResultsFromStored(["alpha@example.com", "beta@example.com"], stored);
+  assert.strictEqual(results[0].status, "pending");
+  assert.strictEqual(results[1].status, "exists");
 });
 
 run("shouldExpireManualResults returns true when finished_at is set", () => {

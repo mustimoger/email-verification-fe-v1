@@ -55,6 +55,34 @@ def _coerce_int(value: object) -> Optional[int]:
         return None
 
 
+def _normalize_manual_emails(raw: object) -> List[str]:
+    if not isinstance(raw, list):
+        return []
+    cleaned: List[str] = []
+    for item in raw:
+        if not isinstance(item, str):
+            continue
+        trimmed = item.strip()
+        if not trimmed:
+            continue
+        cleaned.append(trimmed)
+    return cleaned
+
+
+def _normalize_manual_results(raw: object) -> List[Dict[str, object]]:
+    if not isinstance(raw, list):
+        return []
+    cleaned: List[Dict[str, object]] = []
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        email = item.get("email")
+        if not isinstance(email, str) or not email.strip():
+            continue
+        cleaned.append(item)
+    return cleaned
+
+
 def counts_from_metrics(metrics: Optional[TaskMetrics | Dict[str, object]]) -> Optional[Dict[str, int]]:
     if not metrics:
         return None
@@ -328,6 +356,101 @@ def update_task_manual_emails(
     except Exception as exc:  # noqa: BLE001
         logger.error(
             "tasks.manual_emails_update_failed",
+            extra={"user_id": user_id, "task_id": task_id, "error": str(exc)},
+        )
+
+
+def update_manual_task_results(
+    user_id: str,
+    task_id: str,
+    result: Dict[str, object],
+    manual_emails: Optional[List[str]] = None,
+) -> None:
+    if not task_id:
+        return
+    sb: Client = get_supabase()
+    resolved_emails = _normalize_manual_emails(manual_emails)
+    try:
+        res = (
+            sb.table("tasks")
+            .select("manual_results,manual_emails")
+            .eq("user_id", user_id)
+            .eq("task_id", task_id)
+            .limit(1)
+            .execute()
+        )
+        data = res.data or []
+        existing = data[0] if data else {}
+    except Exception as exc:  # noqa: BLE001
+        logger.error(
+            "tasks.manual_results_fetch_failed",
+            extra={"user_id": user_id, "task_id": task_id, "error": str(exc)},
+        )
+        existing = {}
+
+    existing_emails = _normalize_manual_emails(existing.get("manual_emails"))
+    if not resolved_emails:
+        resolved_emails = existing_emails
+    existing_results = _normalize_manual_results(existing.get("manual_results"))
+    result_email = result.get("email")
+    if not isinstance(result_email, str) or not result_email.strip():
+        logger.warning("tasks.manual_results_missing_email", extra={"user_id": user_id, "task_id": task_id})
+        return
+    normalized_key = result_email.strip().lower()
+    results_map: Dict[str, Dict[str, object]] = {}
+    for item in existing_results:
+        email = item.get("email")
+        if isinstance(email, str) and email.strip():
+            results_map[email.strip().lower()] = item
+    results_map[normalized_key] = result
+    merged_results = list(results_map.values())
+
+    total = len(resolved_emails) if resolved_emails else len(merged_results)
+    valid = 0
+    invalid = 0
+    catchall = 0
+    for item in merged_results:
+        status = item.get("status")
+        if status == "exists":
+            valid += 1
+        elif status == "catchall":
+            catchall += 1
+        elif status:
+            invalid += 1
+    pending = max(total - len(merged_results), 0)
+    job_status: Optional[Dict[str, int]] = None
+    status_value: Optional[str] = None
+    if total > 0:
+        job_status = {"completed": len(merged_results)}
+        if pending:
+            job_status["pending"] = pending
+        status_value = "completed" if pending == 0 else "processing"
+
+    payload = _task_payload(
+        user_id=user_id,
+        task_id=task_id,
+        status=status_value,
+        email_count=total if total > 0 else None,
+        manual_emails=resolved_emails or None,
+        counts={"valid": valid, "invalid": invalid, "catchall": catchall} if merged_results else None,
+        job_status=job_status,
+    )
+    payload["manual_results"] = merged_results
+    try:
+        sb.table("tasks").upsert(payload, on_conflict="task_id").execute()
+        logger.info(
+            "tasks.manual_results_updated",
+            extra={
+                "user_id": user_id,
+                "task_id": task_id,
+                "email": result_email,
+                "total": total,
+                "completed": len(merged_results),
+            },
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.error(
+            "tasks.manual_results_update_failed",
             extra={"user_id": user_id, "task_id": task_id, "error": str(exc)},
         )
 

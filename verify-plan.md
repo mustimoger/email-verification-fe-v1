@@ -34,6 +34,21 @@ Goal: keep the Verify page flow functional for both manual input and file upload
 - [x] Add tests for manual email persistence + rehydration flows.
   Explanation: Ensure backend payloads include manual emails and the frontend mapping logic stays stable.
   Update: Added frontend mapping tests for manual fallback behavior; local run requires `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+- [x] Switch manual verification flow to use per-email `/verify` calls instead of `/tasks`.
+  Explanation: Manual verification should return immediate per-email results without waiting for task jobs; keep the task-based flow for file uploads only.
+  Update: `/verify` now calls `/api/verify` for each email and updates the Results card as responses return.
+- [x] Update manual Results rendering to show per-email `/verify` status + message and persist until the next manual batch.
+  Explanation: Preserve UX by keeping the latest manual results visible while providing completed statuses from the single-email verify endpoint.
+  Update: Results rehydrate from stored manual results + email list and remain visible until a new manual batch is started.
+- [x] Add tests for per-email manual verify mapping + persistence.
+  Explanation: Ensure the new manual flow stays stable and is consistent with rehydration behavior.
+  Update: Added mapping tests for stored manual results ordering and pending fallbacks; local run requires `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+- [x] Persist manual per-email results in Supabase for reloads.
+  Explanation: Store manual verification outcomes alongside manual emails so `/verify` reloads can rehydrate completed statuses without re-verifying.
+  Update: Added `tasks.manual_results` (jsonb) and backend upsert logic during `/api/verify` when `batch_id` is provided.
+- [x] Return stored manual results from `/api/tasks/latest-manual`.
+  Explanation: The frontend needs persisted results to repopulate the Results card after reloads or refreshes.
+  Update: `LatestManualResponse` now includes `manual_results` and the route passes the stored results through.
 - [x] Add tests for latest-manual backend response and manual Results mapping (jobs -> status list).
   Explanation: Ensure the API returns the correct task and the UI mapping is stable without hardcoded fallbacks.
   Update: Added backend tests for `/api/tasks/latest-manual` and frontend mapping tests for manual results/expiration helpers.
