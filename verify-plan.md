@@ -107,9 +107,12 @@ Goal: keep the Verify page flow functional for both manual input and file upload
   Explanation: When a file upload starts, show an immediate Processing donut using available totals, and treat missing valid/invalid/catch-all counts as 0 so refreshes show partial data without waiting for all counts.
   Update: Verification summary donut now builds slices from the latest upload row with missing counts treated as 0; when total emails are known, it adds a Processing slice for the remaining unverified emails so the chart renders immediately after uploads start.
 - [x] Verify Results export menu (NEW)
-  Explanation: Add a lightweight Export control to the manual Results card with Copy (clipboard) and Download CSV, exporting the same per-email fields available in verify responses (email, status, message, validated_at, is_role_based).
+  Explanation: Add a lightweight Export control to the manual Results card with Download CSV, exporting the same per-email fields available in verify responses (email, status, message, validated_at, is_role_based).
   Update: Backend /verify now extracts export fields from the verify response (and calls `/emails/{address}` when nested email/domain/host data is missing) so manual_results persist role-based, catchall domain, email server, disposable/registered domain, and MX record data for reloads.
-  Update: Results card now includes an Export dropdown (Copy CSV / Download CSV). Export pulls the latest manual task data on demand, builds CSV columns for Email/Status/Role-based/Catchall Domain/Email Server/Disposable Domain/Registered Domain/MX Record, and keeps the UI table unchanged.
+  Update: Results card now includes an Export dropdown with Download CSV. Export pulls the latest manual task data on demand, builds CSV columns for Email/Status/Role-based/Catchall Domain/Email Server/Disposable Domain/Registered Domain/MX Record, and keeps the UI table unchanged.
+- [ ] Verify export details refresh (NEW)
+  Explanation: When a user downloads the CSV, refresh any missing email/domain/host fields by calling `/emails/{address}` for incomplete rows and persist them before exporting.
+  Update: Pending.
 
 Notes:
 - Detailed task history remains in `PLAN.md`.
