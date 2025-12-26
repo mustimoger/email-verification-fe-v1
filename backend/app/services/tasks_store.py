@@ -10,6 +10,8 @@ from .task_files_store import fetch_task_files
 
 logger = logging.getLogger(__name__)
 
+RUNNING_STATUSES = {"processing", "pending", "started", "queued", "running"}
+
 
 def _task_payload(
     user_id: str,
@@ -128,6 +130,49 @@ def job_status_from_metrics(metrics: Optional[TaskMetrics | Dict[str, object]]) 
     return normalized or None
 
 
+def normalize_status_from_job_status(
+    status: Optional[str],
+    job_status: Optional[Dict[str, int]],
+) -> Optional[str]:
+    if not job_status:
+        return status
+    normalized: Dict[str, int] = {}
+    for key, raw in job_status.items():
+        count = _coerce_int(raw)
+        if count is None:
+            continue
+        normalized[str(key).lower()] = count
+    if not normalized:
+        return status
+    pending = normalized.get("pending", 0)
+    processing = normalized.get("processing", 0)
+    completed = normalized.get("completed", 0)
+    failed = normalized.get("failed", 0)
+    derived: Optional[str] = None
+    if pending + processing > 0:
+        derived = "processing"
+    elif completed > 0:
+        derived = "completed"
+    elif failed > 0:
+        derived = "failed"
+    if not derived:
+        return status
+    current = (status or "").strip().lower()
+    if not current or current in RUNNING_STATUSES:
+        if current != derived:
+            logger.info(
+                "tasks.status.normalized",
+                extra={"status": status, "derived": derived, "job_status": normalized},
+            )
+        return derived
+    if current != derived:
+        logger.debug(
+            "tasks.status.unmodified",
+            extra={"status": status, "derived": derived, "job_status": normalized},
+        )
+    return status
+
+
 def email_count_from_metrics(metrics: Optional[TaskMetrics | Dict[str, object]]) -> Optional[int]:
     if not metrics:
         return None
@@ -167,11 +212,12 @@ def upsert_tasks_from_list(
             metrics = getattr(task, "metrics", None)
             email_count = email_count_from_metrics(metrics)
         job_status = job_status_from_metrics(getattr(task, "metrics", None))
+        status = normalize_status_from_job_status(getattr(task, "status", None), job_status)
         rows.append(
             _task_payload(
                 user_id=user_id,
                 task_id=task.id,
-                status=getattr(task, "status", None),
+                status=status,
                 email_count=email_count,
                 counts=counts,
                 job_status=job_status,

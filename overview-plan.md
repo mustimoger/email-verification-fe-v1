@@ -192,6 +192,9 @@ Goal: replace mock data on `/overview` with real per-user data sourced from our 
     - When `/tasks?refresh=true` upserts external task metrics, derive a status from `job_status` when it indicates completion/failure and the external status is stale.
     - Use the derived status for Supabase task rows so Overview/History reflect completion immediately after refresh.
     - Add backend tests to confirm status normalization for pending/completed/failed job_status states.
+    - Update: Added backend normalization in `tasks_store.upsert_tasks_from_list` to derive status from `job_status` (pending/processing/completed/failed) and only override running/missing statuses, so stale “processing” rows flip to completed/failed after refresh without overwriting terminal statuses.
+    - Update: Added backend unit tests for `normalize_status_from_job_status` to validate pending->processing, completed override, and failed override behavior so refresh normalization is covered.
+    - Tests: `source .venv/bin/activate && pytest backend/tests/test_tasks_store.py`
 
 Notes:
 - External task source remains the email verification API; Supabase caches per-user task metadata for aggregation/safety.

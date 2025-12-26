@@ -43,3 +43,15 @@ def test_upsert_tasks_from_list_accepts_task_response(monkeypatch):
     assert "valid_count" not in row
     assert "invalid_count" not in row
     assert "catchall_count" not in row
+
+
+def test_normalize_status_from_job_status_processing():
+    assert tasks_store.normalize_status_from_job_status(None, {"pending": 2}) == "processing"
+
+
+def test_normalize_status_from_job_status_completed():
+    assert tasks_store.normalize_status_from_job_status("processing", {"completed": 5}) == "completed"
+
+
+def test_normalize_status_from_job_status_failed():
+    assert tasks_store.normalize_status_from_job_status("processing", {"failed": 1}) == "failed"
