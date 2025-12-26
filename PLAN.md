@@ -31,6 +31,8 @@
   Explanation: Added an “All keys” option (empty filter) and defaulted selection to unfiltered on key load; preserved key-specific filtering when a key is selected and logged the selected default. This allows Supabase tasks with null `api_key_id` to appear.
 - [ ] History filter fix (verification) — Add/update tests for the selection logic and verify the UI shows rows without `api_key_id`.
   Explanation: Not done yet. Tests and manual verification are pending; please confirm to proceed.
+- [x] Auth route prefix alignment — Ensure `/api/auth/confirmed` is served by the backend to match frontend base URL, and add a regression test.
+  Explanation: Mounted the auth router at `/api` (keeping the existing `/auth` path) and added a backend test to confirm `/api/auth/confirmed` returns 200, eliminating 404s in the auth confirmation check.
 - [ ] Deprecation warnings cleanup — update Supabase Python client to remove `gotrue` deprecation and adjust httpx per-request cookies in tests.
   Explanation: Warnings only today; likely a dependency bump to `supabase`/`supabase_auth` and a small test change to set cookies on the client.
 - [ ] Enhancements — Only after MVP + tests + staging verification.

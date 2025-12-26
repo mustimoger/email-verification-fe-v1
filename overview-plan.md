@@ -180,6 +180,14 @@ Goal: replace mock data on `/overview` with real per-user data sourced from our 
     - Update: Removed the Month label/dropdown, added paginated `/tasks` fetches with limit 10 + offset, and added bottom pagination controls (Prev/Next, Page X of Y, Showing A–B of total). While `/tasks` loads, the table uses `overview.recent_tasks` as a temporary fallback; once `/tasks` resolves, the table uses the paged response. Refresh now re-fetches the current page with `refresh=true`, and tasks are sorted newest-to-oldest by `created_at` for display consistency.
     - Tests: `npm run test:overview`, `npm run test:history`, `npm run test:auth-guard`, `npm run test:account-purchases`.
 
+28) Overview: handle Supabase fetch failures in `/api/overview` (NEW)
+    - Wrapped Supabase-dependent overview calls (profile/credits/usage summary) with 503 fallback when Supabase is unreachable.
+    - Logged the failing operation and exception message without leaking secrets.
+    - Added a backend test that forces a Supabase failure and asserts the 503 response detail.
+    - Added external client override in the Supabase failure test to avoid Settings validation during isolated runs.
+    - Tests: `source .venv/bin/activate && pytest backend/tests/test_auth_routes.py backend/tests/test_overview.py`
+    - Why: prevents browser-side CORS errors caused by uncaught backend exceptions.
+
 Notes:
 - External task source remains the email verification API; Supabase caches per-user task metadata for aggregation/safety.
 - External API metrics endpoints (`/metrics/verifications`, `/metrics/api-usage`) return lifetime totals by default and range totals when `from`/`to` are provided; they do not return time series.

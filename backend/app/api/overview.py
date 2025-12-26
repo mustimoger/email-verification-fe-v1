@@ -3,7 +3,7 @@ import logging
 import time
 from typing import Dict, List, Optional
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
 from ..clients.external import ExternalAPIClient, ExternalAPIError, VerificationMetricsResponse
@@ -133,15 +133,45 @@ async def get_overview(
     started_at = time.monotonic()
 
     step = time.monotonic()
-    profile = supabase_client.fetch_profile(user.user_id) or {"user_id": user.user_id}
+    try:
+        profile = supabase_client.fetch_profile(user.user_id) or {"user_id": user.user_id}
+    except Exception as exc:  # noqa: BLE001
+        logger.error(
+            "overview.supabase_fetch_failed",
+            extra={"user_id": user.user_id, "operation": "fetch_profile", "error": str(exc)},
+        )
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Supabase temporarily unavailable",
+        ) from exc
     timings["profile_ms"] = round((time.monotonic() - step) * 1000, 2)
 
     step = time.monotonic()
-    credits = supabase_client.fetch_credits(user.user_id)
+    try:
+        credits = supabase_client.fetch_credits(user.user_id)
+    except Exception as exc:  # noqa: BLE001
+        logger.error(
+            "overview.supabase_fetch_failed",
+            extra={"user_id": user.user_id, "operation": "fetch_credits", "error": str(exc)},
+        )
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Supabase temporarily unavailable",
+        ) from exc
     timings["credits_ms"] = round((time.monotonic() - step) * 1000, 2)
 
     step = time.monotonic()
-    usage_summary = summarize_tasks_usage(user.user_id)
+    try:
+        usage_summary = summarize_tasks_usage(user.user_id)
+    except Exception as exc:  # noqa: BLE001
+        logger.error(
+            "overview.supabase_fetch_failed",
+            extra={"user_id": user.user_id, "operation": "summarize_tasks_usage", "error": str(exc)},
+        )
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Supabase temporarily unavailable",
+        ) from exc
     timings["usage_summary_ms"] = round((time.monotonic() - step) * 1000, 2)
     raw_total = usage_summary.get("total")
     if raw_total is None:

@@ -51,6 +51,7 @@ def create_app() -> FastAPI:
     app.include_router(overview_router)
     app.include_router(billing_router)
     app.include_router(debug_router)
+    app.include_router(auth_router, prefix="/api")
     app.include_router(auth_router)
 
     return app

@@ -180,3 +180,25 @@ def test_overview_metrics_error_fallback(monkeypatch):
     assert data["verification_totals"]["valid"] == 4
     assert data["verification_totals"]["invalid"] == 2
     assert data["verification_totals"]["catchall"] == 0
+
+
+def test_overview_supabase_unavailable(monkeypatch):
+    app = _build_app()
+
+    def fake_user():
+        return AuthContext(user_id="user-ov", claims={}, token="t")
+
+    app.dependency_overrides[overview_module.get_current_user] = fake_user
+
+    monkeypatch.setattr(overview_module.supabase_client, "fetch_profile", lambda user_id: {"user_id": user_id})
+
+    def fail_fetch_credits(user_id):
+        raise RuntimeError("supabase down")
+
+    monkeypatch.setattr(overview_module.supabase_client, "fetch_credits", fail_fetch_credits)
+
+    client = TestClient(app)
+    app.dependency_overrides[overview_module.get_user_external_client] = lambda: None
+    resp = client.get("/api/overview")
+    assert resp.status_code == 503
+    assert resp.json()["detail"] == "Supabase temporarily unavailable"
