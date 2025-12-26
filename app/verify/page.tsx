@@ -374,22 +374,28 @@ export default function VerifyPage() {
   };
 
   const validationSlices = useMemo(() => {
-    if (
-      !uploadSummary ||
-      uploadSummary.totalEmails === null ||
-      uploadSummary.totalEmails === undefined ||
-      uploadSummary.totalEmails === 0 ||
-      uploadSummary.aggregates.valid === null ||
-      uploadSummary.aggregates.catchAll === null ||
-      uploadSummary.aggregates.invalid === null
-    ) {
+    if (!uploadSummary || uploadSummary.files.length === 0) {
       return [];
     }
-    return [
-      { name: "Valid", value: uploadSummary.aggregates.valid, color: "#00b69b" },
-      { name: "Catch-all", value: uploadSummary.aggregates.catchAll, color: "#ff990a" },
-      { name: "Invalid", value: uploadSummary.aggregates.invalid, color: "#597cff" },
+    const latestRow = uploadSummary.files[0];
+    const valid = latestRow.valid ?? uploadSummary.aggregates.valid ?? 0;
+    const invalid = latestRow.invalid ?? uploadSummary.aggregates.invalid ?? 0;
+    const catchAll = latestRow.catchAll ?? uploadSummary.aggregates.catchAll ?? 0;
+    const processedTotal = valid + invalid + catchAll;
+    const totalEmails = latestRow.totalEmails ?? uploadSummary.totalEmails;
+    const processing =
+      typeof totalEmails === "number" && Number.isFinite(totalEmails)
+        ? Math.max(totalEmails - processedTotal, 0)
+        : 0;
+    const slices = [
+      { name: "Valid", value: valid, color: "#00b69b" },
+      { name: "Catch-all", value: catchAll, color: "#ff990a" },
+      { name: "Invalid", value: invalid, color: "#597cff" },
     ];
+    if (processing > 0) {
+      slices.push({ name: "Processing", value: processing, color: "#cbd5f5" });
+    }
+    return slices.filter((slice) => slice.value > 0);
   }, [uploadSummary]);
 
   const validPercent = useMemo(() => {

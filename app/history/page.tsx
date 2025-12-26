@@ -8,6 +8,14 @@ import { RequireAuth } from "../components/protected";
 import { useAuth } from "../components/auth-provider";
 import { HistoryRow, mapDetailToHistoryRow, mapTaskToHistoryRow } from "./utils";
 
+const historyCache = new Map<
+  string,
+  {
+    rows: HistoryRow[];
+    total: number | null;
+  }
+>();
+
 const statusColor: Record<HistoryRow["statusTone"], string> = {
   completed: "bg-emerald-500",
   processing: "bg-amber-400",
@@ -31,12 +39,15 @@ export default function HistoryPage() {
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const [activeDownload, setActiveDownload] = useState<string | null>(null);
   const { session } = useAuth();
+  const cacheKey = session?.user?.id ?? "";
 
   useEffect(() => {
     if (!session) {
+      historyCache.clear();
       setRows([]);
       setTotal(null);
       setError(null);
+      setDownloadError(null);
       return;
     }
   }, [session]);
@@ -84,8 +95,15 @@ export default function HistoryPage() {
         }
 
         const nextRows: HistoryRow[] = rowsByIndex.filter((row): row is HistoryRow => Boolean(row));
-        setRows((prev) => (append ? [...prev, ...nextRows] : nextRows));
-        setTotal(tasks.count ?? null);
+        const nextTotal = tasks.count ?? null;
+        setTotal(nextTotal);
+        setRows((prev) => {
+          const updated = append ? [...prev, ...nextRows] : nextRows;
+          if (cacheKey) {
+            historyCache.set(cacheKey, { rows: updated, total: nextTotal });
+          }
+          return updated;
+        });
       } catch (err: unknown) {
         const message =
           err instanceof Error ? err.message : "Failed to load history from the verification service. Please try again.";
@@ -100,15 +118,23 @@ export default function HistoryPage() {
         }
       }
     },
-    [session],
+    [session, cacheKey],
   );
 
   useEffect(() => {
     if (!session) return;
+    const cached = cacheKey ? historyCache.get(cacheKey) : undefined;
+    if (cached) {
+      setRows(cached.rows);
+      setTotal(cached.total);
+      setError(null);
+      return;
+    }
     setRows([]);
     setTotal(null);
+    setError(null);
     void fetchPage(0, false);
-  }, [session, fetchPage]);
+  }, [session, cacheKey, fetchPage]);
 
   const canLoadMore = useMemo(() => {
     if (loading || loadingMore || refreshing) return false;
@@ -189,9 +215,9 @@ export default function HistoryPage() {
                     className="grid grid-cols-6 items-center px-4 py-4 text-sm font-semibold text-slate-800 md:text-base"
                   >
                     <span className="text-xs text-slate-700 md:text-sm">{row.date}</span>
-                  <span className="text-xs text-slate-700 md:text-sm">
-                    {row.label} / <span className="font-extrabold text-slate-800">{formatNumber(row.total)}</span>
-                  </span>
+                    <span className="text-xs text-slate-700 md:text-sm">
+                      {row.label} / <span className="font-extrabold text-slate-800">{formatNumber(row.total)}</span>
+                    </span>
                     <span className="text-right text-xs text-slate-700 md:text-sm">{formatNumber(row.valid)}</span>
                     <span className="text-right text-xs text-slate-700 md:text-sm">{formatNumber(row.invalid)}</span>
                     <span className="text-right text-xs text-slate-700 md:text-sm">{formatNumber(row.catchAll)}</span>

@@ -103,6 +103,9 @@ Goal: keep the Verify page flow functional for both manual input and file upload
 - [ ] Verify summary card tweaks (NEW)
   Explanation: Keep the Verification Summary card shown only after a file upload begins, but adjust the summary donut card to show just the file name (no "Latest upload:" label), show hover tooltips with counts like Overview’s Validation chart, and remove the “Upload Another File” action.
   Update: Removed the “Upload Another File” button from the Verification Summary header, switched the donut card label to show only the latest file name, and added a Recharts tooltip to show counts on hover (matching the Overview Validation chart styling).
+- [ ] Verify processing donut + relaxed counts (NEW)
+  Explanation: When a file upload starts, show an immediate Processing donut using available totals, and treat missing valid/invalid/catch-all counts as 0 so refreshes show partial data without waiting for all counts.
+  Update: Verification summary donut now builds slices from the latest upload row with missing counts treated as 0; when total emails are known, it adds a Processing slice for the remaining unverified emails so the chart renders immediately after uploads start.
 
 Notes:
 - Detailed task history remains in `PLAN.md`.
