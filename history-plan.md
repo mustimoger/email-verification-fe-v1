@@ -39,6 +39,14 @@ Tasks
   Explanation: `task_files` now stores upload metadata, `/api/tasks` joins `file_name` into task rows, and History mapping prefers `file_name` for labels. Upload limits are now split: file size enforced on uploads, manual limits enforced separately.
 - [x] Action column gating: only show Download for file-upload tasks; manual tasks show status pills instead.
   Explanation: History now derives action + status labels per task, showing Download only when a file-backed task is completed. Manual tasks render status pills (Processing/Completed/Failed/Unknown) derived from task status and job state.
+- [x] History table typography: reduce font size for Date/Task-Total/Valid/Invalid/Catch-all columns.
+  Explanation: Reduced header and row text sizes for the specified columns while leaving the Action column unchanged, matching the design scale without altering layout.
+- [x] History header tweak: remove API key selector and add a “PREVIOUS TASKS” title.
+  Explanation: Removed the API key dropdown/label from the History card header and replaced it with a bold “PREVIOUS TASKS” title to match existing card typography without altering layout.
+- [x] History download toggle: show Download on completed rows only when a results file exists.
+  Explanation: Ensured `/api/tasks` includes `file_name` on Supabase-backed rows so the frontend can switch Completed → Download only for completed file tasks; manual tasks remain status-only.
+- [x] History manual refresh: add a refresh button to reload task statuses on demand.
+  Explanation: Added a Refresh button in the History card header that triggers a `refresh=true` task fetch without clearing rows, so users can pull updated statuses on demand.
 
 Notes
 - Supabase tables in place: `tasks` (seeded for user musti), `cached_api_keys` (with `key_plain` + `integration`), `api_usage`, `profiles`, `user_credits`. `/api/tasks` already upserts list/detail to keep Supabase current; upload polling fills the gap until `task_id` is returned.

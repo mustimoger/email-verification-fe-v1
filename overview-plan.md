@@ -188,6 +188,11 @@ Goal: replace mock data on `/overview` with real per-user data sourced from our 
     - Tests: `source .venv/bin/activate && pytest backend/tests/test_auth_routes.py backend/tests/test_overview.py`
     - Why: prevents browser-side CORS errors caused by uncaught backend exceptions.
 
+29) Overview: normalize task status from job_status on refresh (NEW)
+    - When `/tasks?refresh=true` upserts external task metrics, derive a status from `job_status` when it indicates completion/failure and the external status is stale.
+    - Use the derived status for Supabase task rows so Overview/History reflect completion immediately after refresh.
+    - Add backend tests to confirm status normalization for pending/completed/failed job_status states.
+
 Notes:
 - External task source remains the email verification API; Supabase caches per-user task metadata for aggregation/safety.
 - External API metrics endpoints (`/metrics/verifications`, `/metrics/api-usage`) return lifetime totals by default and range totals when `from`/`to` are provided; they do not return time series.
