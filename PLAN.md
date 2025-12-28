@@ -94,8 +94,9 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
   Explanation: Overview now reads `session` + `loading` from `useAuth` and skips both fetch effects until the session is hydrated, preventing 401s and `api.request_failed` logs caused by pre-auth requests.
 - [x] Require confirmed email before sign-in/session use.
   Explanation: Added a Supabase Auth admin check in `get_current_user`, exposed `/auth/confirmed`, and updated the client to sign out unconfirmed sessions and surface the backend message on the sign-in screen so unverified users cannot access APIs or the dashboard.
-- [ ] Email confirmation enforcement tests.
+- [x] Email confirmation enforcement tests.
   Explanation: Add unit/integration tests to cover confirmed vs unconfirmed access and ensure sign-in messaging is triggered; not implemented yet.
+  Update: Added auth tests to cover confirmed claims bypass, confirmed lookup fallback, and unconfirmed denial to ensure enforcement behavior stays stable without live Supabase calls.
 
 ## Data flow alignment (frontend reads Supabase, backend proxies external)
 - [x] Harden `/api/tasks` fallback so Supabase stays primary: if Supabase is empty and external `/tasks` fails, return an empty list without crashing or leaking upstream errors; keep logging. Add a regression test. No schema change expected.  
