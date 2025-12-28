@@ -6,15 +6,16 @@ import { DashboardShell } from "../components/dashboard-shell";
 import { apiClient, ApiError, TaskDetailResponse, TaskListResponse, Task } from "../lib/api-client";
 import { RequireAuth } from "../components/protected";
 import { useAuth } from "../components/auth-provider";
-import { HistoryRow, mapDetailToHistoryRow, mapTaskToHistoryRow } from "./utils";
+import {
+  HistoryRow,
+  mapDetailToHistoryRow,
+  mapTaskToHistoryRow,
+  shouldRefreshHistory,
+  shouldUseHistoryCache,
+  type HistoryCacheEntry,
+} from "./utils";
 
-const historyCache = new Map<
-  string,
-  {
-    rows: HistoryRow[];
-    total: number | null;
-  }
->();
+const historyCache = new Map<string, HistoryCacheEntry>();
 
 const statusColor: Record<HistoryRow["statusTone"], string> = {
   completed: "bg-emerald-500",
@@ -124,7 +125,7 @@ export default function HistoryPage() {
   useEffect(() => {
     if (!session) return;
     const cached = cacheKey ? historyCache.get(cacheKey) : undefined;
-    if (cached) {
+    if (shouldUseHistoryCache(cached, Boolean(session))) {
       setRows(cached.rows);
       setTotal(cached.total);
       setError(null);
@@ -143,7 +144,7 @@ export default function HistoryPage() {
   }, [loading, loadingMore, refreshing, rows.length, total]);
 
   const handleRefresh = () => {
-    if (loading || loadingMore || refreshing) return;
+    if (!shouldRefreshHistory(loading, loadingMore, refreshing)) return;
     void fetchPage(0, false, true);
   };
 

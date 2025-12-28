@@ -1,7 +1,15 @@
 import assert from "node:assert";
 
 import { TaskDetailResponse, Task } from "../app/lib/api-client";
-import { deriveCounts, mapDetailToHistoryRow, mapTaskToHistoryRow, PENDING_STATES, formatHistoryDate } from "../app/history/utils";
+import {
+  deriveCounts,
+  mapDetailToHistoryRow,
+  mapTaskToHistoryRow,
+  PENDING_STATES,
+  formatHistoryDate,
+  shouldRefreshHistory,
+  shouldUseHistoryCache,
+} from "../app/history/utils";
 
 function run(name: string, fn: () => void) {
   try {
@@ -109,12 +117,26 @@ run("mapTaskToHistoryRow exposes download action for completed file tasks", () =
     invalid_count: 1,
     catchall_count: 0,
     file_name: "results.csv",
+    api_key_id: null,
   };
   const row = mapTaskToHistoryRow(task);
   assert(row, "row should not be null");
   assert.strictEqual(row?.action, "download");
   assert.strictEqual(row?.statusTone, "completed");
   assert.strictEqual(row?.statusLabel, "Completed");
+});
+
+run("shouldUseHistoryCache returns true when session exists and rows are cached", () => {
+  const entry = { rows: [{ id: "t1" } as unknown as import("../app/history/utils").HistoryRow], total: 1 };
+  assert.strictEqual(shouldUseHistoryCache(entry, true), true);
+  assert.strictEqual(shouldUseHistoryCache(entry, false), false);
+});
+
+run("shouldRefreshHistory returns false while any load state is active", () => {
+  assert.strictEqual(shouldRefreshHistory(true, false, false), false);
+  assert.strictEqual(shouldRefreshHistory(false, true, false), false);
+  assert.strictEqual(shouldRefreshHistory(false, false, true), false);
+  assert.strictEqual(shouldRefreshHistory(false, false, false), true);
 });
 
 // eslint-disable-next-line no-console

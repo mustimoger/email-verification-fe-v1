@@ -29,8 +29,9 @@
   Explanation: Supabase shows 6 `tasks` rows for user `c105fce3-786b-4708-987c-edb29a8c8ea0`, all created at `2025-12-19 10:27:32+00` with `status`/counts and `api_key_id` null, and no `task_files` file_name. This means `/history` should not be empty when unfiltered, but key‑scoped views can be empty because `api_key_id` is missing.
 - [x] History filter fix (code) — Default `/history` to an unfiltered view (“All keys”) so tasks with missing `api_key_id` are visible; keep key-specific filtering when selected and add minimal logging.
   Explanation: Added an “All keys” option (empty filter) and defaulted selection to unfiltered on key load; preserved key-specific filtering when a key is selected and logged the selected default. This allows Supabase tasks with null `api_key_id` to appear.
-- [ ] History behavior tests — Add/update tests for the unfiltered list, refresh button, cache reuse, and rows without `api_key_id`.
+- [x] History behavior tests — Add/update tests for the unfiltered list, refresh button, cache reuse, and rows without `api_key_id`.
   Explanation: The key selector was removed, so tests should now cover the unfiltered list path, refresh behavior, cache reuse between navigations, and mapping for tasks even when `api_key_id` is null.
+  Update: Added helper guards for cache reuse and refresh gating in History and extended mapping tests to cover cache reuse, refresh gating, and null `api_key_id` mapping.
 - [x] Auth route prefix alignment — Ensure `/api/auth/confirmed` is served by the backend to match frontend base URL, and add a regression test.
   Explanation: Mounted the auth router at `/api` (keeping the existing `/auth` path) and added a backend test to confirm `/api/auth/confirmed` returns 200, eliminating 404s in the auth confirmation check.
 - [x] Deprecation warnings cleanup — update Supabase Python client to remove `gotrue` deprecation and adjust httpx per-request cookies in tests.

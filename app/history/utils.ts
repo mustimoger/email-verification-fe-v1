@@ -146,3 +146,16 @@ export function mapTaskToHistoryRow(task: Task): HistoryRow | null {
     statusLabel: statusInfo.label,
   };
 }
+
+export type HistoryCacheEntry = {
+  rows: HistoryRow[];
+  total: number | null;
+};
+
+export function shouldUseHistoryCache(entry: HistoryCacheEntry | undefined, hasSession: boolean): boolean {
+  return Boolean(hasSession && entry && entry.rows.length > 0);
+}
+
+export function shouldRefreshHistory(loading: boolean, loadingMore: boolean, refreshing: boolean): boolean {
+  return !loading && !loadingMore && !refreshing;
+}
