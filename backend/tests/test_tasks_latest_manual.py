@@ -23,9 +23,13 @@ def _build_app(monkeypatch, latest_task):
     def fake_user():
         return AuthContext(user_id="user-manual", claims={}, token="t")
 
+    def fake_client():
+        return object()
+
     monkeypatch.setattr(tasks_module, "fetch_latest_manual_task", lambda user_id, limit: latest_task)
     monkeypatch.setattr(tasks_module, "record_usage", lambda *args, **kwargs: None)
     app.dependency_overrides[tasks_module.get_current_user] = fake_user
+    app.dependency_overrides[tasks_module.get_user_external_client] = fake_client
     return app
 
 
@@ -65,3 +69,51 @@ def test_latest_manual_returns_no_content(monkeypatch):
     resp = client.get("/api/tasks/latest-manual")
     assert resp.status_code == 204
     assert resp.text == ""
+
+
+def test_latest_manual_refresh_details(monkeypatch):
+    latest_task = {
+        "task_id": "task-manual",
+        "created_at": "2024-02-03T00:00:00Z",
+        "status": "processing",
+        "email_count": 1,
+        "valid_count": 1,
+        "invalid_count": 0,
+        "catchall_count": 0,
+        "job_status": {"pending": 0, "completed": 1},
+        "manual_emails": ["alpha@example.com"],
+        "manual_results": [
+            {"email": "alpha@example.com", "status": "exists", "is_role_based": False},
+        ],
+    }
+    app = _build_app(monkeypatch, latest_task)
+
+    refreshed = [
+        {
+            "email": "alpha@example.com",
+            "status": "exists",
+            "is_role_based": False,
+            "catchall_domain": True,
+            "email_server": "Google Workspace",
+            "disposable_domain": False,
+            "registered_domain": True,
+            "mx_record": "mx.example.com",
+        }
+    ]
+
+    calls = {}
+
+    async def fake_refresh(user_id, task_id, manual_results, manual_emails, client):
+        calls["invoked"] = True
+        assert user_id == "user-manual"
+        assert task_id == "task-manual"
+        return refreshed
+
+    monkeypatch.setattr(tasks_module, "_refresh_manual_results_export_details", fake_refresh)
+    client = TestClient(app)
+
+    resp = client.get("/api/tasks/latest-manual?refresh_details=true")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert calls.get("invoked") is True
+    assert data["manual_results"] == refreshed

@@ -110,9 +110,15 @@ Goal: keep the Verify page flow functional for both manual input and file upload
   Explanation: Add a lightweight Export control to the manual Results card with Download CSV, exporting the same per-email fields available in verify responses (email, status, message, validated_at, is_role_based).
   Update: Backend /verify now extracts export fields from the verify response (and calls `/emails/{address}` when nested email/domain/host data is missing) so manual_results persist role-based, catchall domain, email server, disposable/registered domain, and MX record data for reloads.
   Update: Results card now includes an Export dropdown with Download CSV. Export pulls the latest manual task data on demand, builds CSV columns for Email/Status/Role-based/Catchall Domain/Email Server/Disposable Domain/Registered Domain/MX Record, and keeps the UI table unchanged.
-- [ ] Verify export details refresh (NEW)
+- [x] Verify Results export download-only (NEW)
+  Explanation: Remove the Copy CSV option and keep a single Download CSV action to reduce UI complexity while retaining full export data.
+  Update: Results card now exposes a single Download CSV button and no longer shows Copy in the export controls.
+- [x] Verify export details refresh (NEW)
   Explanation: When a user downloads the CSV, refresh any missing email/domain/host fields by calling `/emails/{address}` for incomplete rows and persist them before exporting.
-  Update: Pending.
+  Update: Backend `/tasks/latest-manual` accepts `refresh_details=true` to enrich missing export fields, and the Verify Results download now calls it before generating CSV so exports are up-to-date.
+- [x] Tests: latest manual refresh_details (NEW)
+  Explanation: Add route-level tests to ensure `refresh_details=true` triggers email detail lookups and returns enriched manual results without breaking the default response.
+  Update: Added route tests for refresh_details and unit coverage for the bulk manual results updater; ran `pytest backend/tests/test_tasks_latest_manual.py backend/tests/test_tasks_store.py` (8 passed, gotrue deprecation warning only).
 
 Notes:
 - Detailed task history remains in `PLAN.md`.

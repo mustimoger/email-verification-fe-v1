@@ -55,3 +55,31 @@ def test_normalize_status_from_job_status_completed():
 
 def test_normalize_status_from_job_status_failed():
     assert tasks_store.normalize_status_from_job_status("processing", {"failed": 1}) == "failed"
+
+
+def test_update_manual_task_results_bulk_sets_counts(monkeypatch):
+    fake = FakeSupabase()
+    monkeypatch.setattr(tasks_store, "get_supabase", lambda: fake)
+
+    results = [
+        {"email": "alpha@example.com", "status": "exists"},
+        {"email": "beta@example.com", "status": "catchall"},
+    ]
+    tasks_store.update_manual_task_results_bulk(
+        "user-1",
+        "task-1",
+        results,
+        manual_emails=["alpha@example.com", "beta@example.com", "gamma@example.com"],
+    )
+
+    assert fake.table_name == "tasks"
+    row = fake.table_obj.rows
+    assert row["task_id"] == "task-1"
+    assert row["user_id"] == "user-1"
+    assert row["email_count"] == 3
+    assert row["valid_count"] == 1
+    assert row["catchall_count"] == 1
+    assert row["invalid_count"] == 0
+    assert row["status"] == "processing"
+    assert row["job_status"]["completed"] == 2
+    assert row["job_status"]["pending"] == 1

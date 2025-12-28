@@ -36,6 +36,7 @@ from ..services.tasks_store import (
     upsert_tasks_from_list,
     update_task_manual_emails,
     update_manual_task_results,
+    update_manual_task_results_bulk,
     update_task_reservation,
 )
 from ..services.api_keys import INTERNAL_DASHBOARD_KEY_NAME, get_cached_key_by_name
@@ -140,6 +141,16 @@ def _coerce_bool(value: object) -> Optional[bool]:
     return None
 
 
+EXPORT_DETAIL_FIELDS = (
+    "is_role_based",
+    "catchall_domain",
+    "email_server",
+    "disposable_domain",
+    "registered_domain",
+    "mx_record",
+)
+
+
 def _extract_email_details(result: VerifyEmailResponse) -> Optional[Dict[str, Any]]:
     steps = result.verification_steps or []
     for step in steps:
@@ -163,6 +174,29 @@ def _find_mx_record(domain: Dict[str, Any]) -> Optional[str]:
         if isinstance(value, str) and value.strip():
             return value.strip()
     return None
+
+
+def _extract_export_fields_from_email_details(
+    email_data: Optional[Dict[str, Any]],
+) -> Dict[str, Optional[object]]:
+    if not isinstance(email_data, dict):
+        return {}
+    resolved: Dict[str, Optional[object]] = {}
+    resolved["is_role_based"] = _coerce_bool(email_data.get("is_role_based"))
+    domain = email_data.get("domain")
+    if isinstance(domain, dict):
+        resolved["disposable_domain"] = _coerce_bool(domain.get("is_disposable"))
+        resolved["registered_domain"] = _coerce_bool(domain.get("is_registered"))
+        resolved["mx_record"] = _find_mx_record(domain)
+    host = email_data.get("host")
+    if isinstance(host, dict):
+        resolved["catchall_domain"] = _coerce_bool(host.get("is_catchall"))
+        server_type = host.get("server_type")
+        if isinstance(server_type, str) and server_type.strip():
+            resolved["email_server"] = server_type.strip()
+        else:
+            resolved["email_server"] = None
+    return resolved
 
 
 def _extract_export_fields(
@@ -217,6 +251,97 @@ def _merge_export_fields(
         if merged.get(key) is None and value is not None:
             merged[key] = value
     return merged
+
+
+def _manual_result_needs_export_refresh(result: Dict[str, object]) -> bool:
+    for key in EXPORT_DETAIL_FIELDS:
+        if key not in result:
+            return True
+        value = result.get(key)
+        if value is None:
+            return True
+        if isinstance(value, str) and not value.strip():
+            return True
+    return False
+
+
+async def _refresh_manual_results_export_details(
+    user_id: str,
+    task_id: str,
+    manual_results: object,
+    manual_emails: Optional[list[str]],
+    client: ExternalAPIClient,
+) -> Optional[list[Dict[str, object]]]:
+    if not isinstance(manual_results, list):
+        logger.warning(
+            "route.tasks.latest_manual.refresh_details.invalid_results",
+            extra={"user_id": user_id, "task_id": task_id, "type": type(manual_results).__name__},
+        )
+        return manual_results if manual_results is None else []
+    if not manual_results:
+        logger.info(
+            "route.tasks.latest_manual.refresh_details.empty_results",
+            extra={"user_id": user_id, "task_id": task_id},
+        )
+        return manual_results
+
+    updated_results: list[Dict[str, object]] = []
+    missing_count = 0
+    updated_count = 0
+    for item in manual_results:
+        if not isinstance(item, dict):
+            logger.warning(
+                "route.tasks.latest_manual.refresh_details.invalid_item",
+                extra={"user_id": user_id, "task_id": task_id},
+            )
+            return manual_results
+        email = item.get("email")
+        if not isinstance(email, str) or not email.strip():
+            updated_results.append(item)
+            continue
+        if not _manual_result_needs_export_refresh(item):
+            updated_results.append(item)
+            continue
+        missing_count += 1
+        try:
+            email_lookup = await client.get_email_by_address(email.strip())
+            fetched_fields = _extract_export_fields_from_email_details(
+                email_lookup if isinstance(email_lookup, dict) else None
+            )
+            existing_fields = {key: item.get(key) for key in EXPORT_DETAIL_FIELDS}
+            merged_fields = _merge_export_fields(existing_fields, fetched_fields)
+            updated_item = dict(item)
+            for key, value in merged_fields.items():
+                if value is not None:
+                    updated_item[key] = value
+            if updated_item != item:
+                updated_count += 1
+            updated_results.append(updated_item)
+        except ExternalAPIError as exc:
+            logger.warning(
+                "route.tasks.latest_manual.refresh_details.lookup_failed",
+                extra={"user_id": user_id, "task_id": task_id, "email": email, "status_code": exc.status_code},
+            )
+            updated_results.append(item)
+        except Exception as exc:  # noqa: BLE001
+            logger.error(
+                "route.tasks.latest_manual.refresh_details.lookup_exception",
+                extra={"user_id": user_id, "task_id": task_id, "email": email, "error": str(exc)},
+            )
+            updated_results.append(item)
+
+    if updated_count:
+        update_manual_task_results_bulk(user_id, task_id, updated_results, manual_emails=manual_emails)
+    logger.info(
+        "route.tasks.latest_manual.refresh_details",
+        extra={
+            "user_id": user_id,
+            "task_id": task_id,
+            "missing_count": missing_count,
+            "updated_count": updated_count,
+        },
+    )
+    return updated_results
 
 
 def task_is_complete(detail: TaskDetailResponse) -> bool:
@@ -767,6 +892,8 @@ async def get_latest_uploads(
 @router.get("/tasks/latest-manual", response_model=LatestManualResponse)
 async def get_latest_manual(
     user: AuthContext = Depends(get_current_user),
+    refresh_details: bool = Query(False),
+    client: ExternalAPIClient = Depends(get_user_external_client),
 ):
     settings = get_settings()
     latest = fetch_latest_manual_task(user.user_id, limit=settings.upload_poll_page_size)
@@ -780,6 +907,15 @@ async def get_latest_manual(
             extra={"user_id": user.user_id, "task_id": task_id},
         )
         return Response(status_code=status.HTTP_204_NO_CONTENT)
+    manual_results = latest.get("manual_results")
+    if refresh_details:
+        manual_results = await _refresh_manual_results_export_details(
+            user.user_id,
+            task_id,
+            manual_results,
+            latest.get("manual_emails"),
+            client,
+        )
     record_usage(user.user_id, path="/tasks/latest-manual", count=1, api_key_id=None)
     return LatestManualResponse(
         task_id=task_id,
@@ -791,7 +927,7 @@ async def get_latest_manual(
         catchall_count=latest.get("catchall_count"),
         job_status=latest.get("job_status"),
         manual_emails=latest.get("manual_emails"),
-        manual_results=latest.get("manual_results"),
+        manual_results=manual_results,
     )
 
 
