@@ -19,6 +19,7 @@ from ..clients.external import (
     TaskListResponse,
     TaskResponse,
     VerifyEmailResponse,
+    get_external_api_client_for_key,
 )
 from ..core.auth import AuthContext, get_current_user
 from ..core.settings import get_settings
@@ -133,6 +134,28 @@ def resolve_verify_source_id(email: str, payload: dict, result: VerifyEmailRespo
     generated = str(uuid.uuid4())
     logger.info("credits.verify.request_id_generated", extra={"email": email})
     return generated
+
+
+def resolve_dashboard_email_client(user_id: str) -> Optional[ExternalAPIClient]:
+    cached = get_cached_key_by_name(user_id, INTERNAL_DASHBOARD_KEY_NAME)
+    if not cached:
+        logger.warning("tasks.dashboard_key.missing", extra={"user_id": user_id})
+        return None
+    key_plain = cached.get("key_plain")
+    if not isinstance(key_plain, str) or not key_plain.strip():
+        logger.warning(
+            "tasks.dashboard_key.secret_missing",
+            extra={"user_id": user_id, "key_id": cached.get("key_id")},
+        )
+        return None
+    try:
+        return get_external_api_client_for_key(key_plain)
+    except Exception as exc:  # noqa: BLE001
+        logger.error(
+            "tasks.dashboard_key.client_failed",
+            extra={"user_id": user_id, "error": str(exc)},
+        )
+        return None
 
 
 def _coerce_bool(value: object) -> Optional[bool]:
@@ -270,8 +293,14 @@ async def _refresh_manual_results_export_details(
     task_id: str,
     manual_results: object,
     manual_emails: Optional[list[str]],
-    client: ExternalAPIClient,
+    client: Optional[ExternalAPIClient],
 ) -> Optional[list[Dict[str, object]]]:
+    if client is None:
+        logger.warning(
+            "route.tasks.latest_manual.refresh_details.missing_client",
+            extra={"user_id": user_id, "task_id": task_id},
+        )
+        return manual_results if isinstance(manual_results, list) else manual_results
     if not isinstance(manual_results, list):
         logger.warning(
             "route.tasks.latest_manual.refresh_details.invalid_results",
@@ -450,23 +479,35 @@ async def verify_email(
         email_details = _extract_email_details(result)
         export_fields = _extract_export_fields(result, email_details)
         if _needs_email_detail_fetch(email_details):
-            try:
-                email_lookup = await client.get_email_by_address(email)
-                export_fields = _merge_export_fields(
-                    export_fields,
-                    _extract_export_fields(result, email_lookup if isinstance(email_lookup, dict) else None),
-                )
-                logger.info("route.verify.email_lookup", extra={"user_id": user.user_id, "email": email})
-            except ExternalAPIError as exc:
+            detail_client = resolve_dashboard_email_client(user.user_id)
+            if detail_client is None:
                 logger.warning(
-                    "route.verify.email_lookup_failed",
-                    extra={"user_id": user.user_id, "email": email, "status_code": exc.status_code, "details": exc.details},
+                    "route.verify.email_lookup_skipped",
+                    extra={"user_id": user.user_id, "email": email, "reason": "dashboard_key_unavailable"},
                 )
-            except Exception as exc:  # noqa: BLE001
-                logger.error(
-                    "route.verify.email_lookup_exception",
-                    extra={"user_id": user.user_id, "email": email, "error": str(exc)},
-                )
+            else:
+                try:
+                    email_lookup = await detail_client.get_email_by_address(email)
+                    export_fields = _merge_export_fields(
+                        export_fields,
+                        _extract_export_fields(result, email_lookup if isinstance(email_lookup, dict) else None),
+                    )
+                    logger.info("route.verify.email_lookup", extra={"user_id": user.user_id, "email": email})
+                except ExternalAPIError as exc:
+                    logger.warning(
+                        "route.verify.email_lookup_failed",
+                        extra={
+                            "user_id": user.user_id,
+                            "email": email,
+                            "status_code": exc.status_code,
+                            "details": exc.details,
+                        },
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    logger.error(
+                        "route.verify.email_lookup_exception",
+                        extra={"user_id": user.user_id, "email": email, "error": str(exc)},
+                    )
         source_id = resolve_verify_source_id(email, payload, result)
         debit = apply_credit_debit(
             user_id=user.user_id,
@@ -902,7 +943,6 @@ async def get_latest_uploads(
 async def get_latest_manual(
     user: AuthContext = Depends(get_current_user),
     refresh_details: bool = Query(False),
-    client: ExternalAPIClient = Depends(get_user_external_client),
 ):
     settings = get_settings()
     latest = fetch_latest_manual_task(user.user_id, limit=settings.upload_poll_page_size)
@@ -918,29 +958,36 @@ async def get_latest_manual(
         return Response(status_code=status.HTTP_204_NO_CONTENT)
     manual_results = latest.get("manual_results")
     if refresh_details:
-        try:
-            manual_results = await _refresh_manual_results_export_details(
-                user.user_id,
-                task_id,
-                manual_results,
-                latest.get("manual_emails"),
-                client,
-            )
-        except ExternalAPIError as exc:
+        detail_client = resolve_dashboard_email_client(user.user_id)
+        if detail_client is None:
             logger.warning(
-                "route.tasks.latest_manual.refresh_details_failed",
-                extra={
-                    "user_id": user.user_id,
-                    "task_id": task_id,
-                    "status_code": exc.status_code,
-                    "details": exc.details,
-                },
+                "route.tasks.latest_manual.refresh_details_skipped",
+                extra={"user_id": user.user_id, "task_id": task_id, "reason": "dashboard_key_unavailable"},
             )
-        except Exception as exc:  # noqa: BLE001
-            logger.error(
-                "route.tasks.latest_manual.refresh_details_exception",
-                extra={"user_id": user.user_id, "task_id": task_id, "error": str(exc)},
-            )
+        else:
+            try:
+                manual_results = await _refresh_manual_results_export_details(
+                    user.user_id,
+                    task_id,
+                    manual_results,
+                    latest.get("manual_emails"),
+                    detail_client,
+                )
+            except ExternalAPIError as exc:
+                logger.warning(
+                    "route.tasks.latest_manual.refresh_details_failed",
+                    extra={
+                        "user_id": user.user_id,
+                        "task_id": task_id,
+                        "status_code": exc.status_code,
+                        "details": exc.details,
+                    },
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.error(
+                    "route.tasks.latest_manual.refresh_details_exception",
+                    extra={"user_id": user.user_id, "task_id": task_id, "error": str(exc)},
+                )
     record_usage(user.user_id, path="/tasks/latest-manual", count=1, api_key_id=None)
     return LatestManualResponse(
         task_id=task_id,

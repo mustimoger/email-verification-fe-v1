@@ -36,6 +36,9 @@
 - [ ] Deprecation warnings cleanup — update Supabase Python client to remove `gotrue` deprecation and adjust httpx per-request cookies in tests.
   Explanation: Warnings only today; likely a dependency bump to `supabase`/`supabase_auth` and a small test change to set cookies on the client.
 - [ ] Enhancements — Only after MVP + tests + staging verification.
+- [ ] Session handover — create root `handover.md` with current findings, changes, and next steps.
+  Explanation: Capture this session’s work (CSV export fix + manual reload diagnosis) so a new Codex session can continue without context loss.
+  Update: Added `handover.md` summarizing fixes, Playwright evidence, test results, and next steps (manual rehydration fix + handling unexpected files).
 - [x] Planning doc rename: `non-dashboard-api-usage-plan.md` -> `verify-plan.md`.
   Explanation: Renamed the external usage plan doc per request and updated references across planning docs to avoid broken links.
 - [x] UI verification — `/api` usage views (per‑key/per‑purpose) with and without date range.

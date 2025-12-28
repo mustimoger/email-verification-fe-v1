@@ -7,6 +7,12 @@ Goal: keep the Verify page flow functional for both manual input and file upload
 - Second Verify state UI is implemented and driven by real task counts where available.
 
 ## Remaining tasks (MVP)
+- [x] Fix manual CSV export enrichment for domain/host fields (catchall, server, disposable, registered, MX).
+  Explanation: `/emails/{address}` rejects Supabase JWTs; refresh_details must use the per-user dashboard API key (if cached) and log/skip gracefully when unavailable so Download CSV fills these columns.
+  Update: Switched email detail lookups in `/api/verify` and `/api/tasks/latest-manual?refresh_details=true` to use the cached per-user dashboard API key via a dedicated client; logs now explain when the key/secret is missing and the export falls back to stored results.
+- [x] Add backend tests for dashboard-key email detail enrichment.
+  Explanation: Cover the new dashboard-key lookup path and missing-key logging behavior so CSV exports stay reliable.
+  Update: Added tests to ensure `/api/tasks/latest-manual?refresh_details=true` uses the dashboard client when available and skips refresh when the key is missing.
 - [x] Persist latest manual verification batch across /verify reloads and show it in the Results card (manual batches only).
   Explanation: Fetch the most recent manual task from Supabase on page load and hydrate the Results list from `/tasks/{id}` jobs (no local storage or placeholders).
   Update: `/verify` now hydrates from `/api/tasks/latest-manual`, then fetches `/api/tasks/{id}` to populate Results from job emails only.
