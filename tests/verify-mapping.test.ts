@@ -19,6 +19,7 @@ import {
   mapTaskDetailToResults,
   mapUploadResultsToLinks,
   resolveApiErrorMessage,
+  shouldHydrateLatestManual,
   shouldExpireManualResults,
 } from "../app/verify/utils";
 
@@ -229,6 +230,32 @@ run("resolveApiErrorMessage falls back to ApiError message without detail", () =
   const error = new ApiError(500, "Internal Server Error");
   const message = resolveApiErrorMessage(error);
   assert.strictEqual(message, "Internal Server Error");
+});
+
+run("shouldHydrateLatestManual returns true on first load with no manual state", () => {
+  const shouldHydrate = shouldHydrateLatestManual({
+    authLoading: false,
+    hasSession: true,
+    manualTaskId: null,
+    resultsCount: 0,
+    manualEmailsCount: 0,
+    inputValue: "",
+    alreadyHydrated: false,
+  });
+  assert.strictEqual(shouldHydrate, true);
+});
+
+run("shouldHydrateLatestManual returns false when manual state exists", () => {
+  const shouldHydrate = shouldHydrateLatestManual({
+    authLoading: false,
+    hasSession: true,
+    manualTaskId: "task-1",
+    resultsCount: 2,
+    manualEmailsCount: 2,
+    inputValue: "alpha@example.com",
+    alreadyHydrated: false,
+  });
+  assert.strictEqual(shouldHydrate, false);
 });
 
 // eslint-disable-next-line no-console

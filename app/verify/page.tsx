@@ -27,6 +27,7 @@ import {
   mapVerifyFallbackResults,
   normalizeEmails,
   resolveApiErrorMessage,
+  shouldHydrateLatestManual,
   type UploadSummary,
   type VerificationResult,
 } from "./utils";
@@ -124,21 +125,35 @@ export default function VerifyPage() {
   useEffect(() => {
     let active = true;
     const hydrateLatestManual = async () => {
-      if (latestManualHydratedRef.current) return;
-      if (authLoading || !session) return;
-      if (manualTaskId || results.length > 0 || manualEmails.length > 0 || inputValue.trim().length > 0) return;
-      latestManualHydratedRef.current = true;
+      if (
+        !shouldHydrateLatestManual({
+          authLoading,
+          hasSession: Boolean(session),
+          manualTaskId,
+          resultsCount: results.length,
+          manualEmailsCount: manualEmails.length,
+          inputValue,
+          alreadyHydrated: latestManualHydratedRef.current,
+        })
+      ) {
+        return;
+      }
       try {
         const latest = await apiClient.getLatestManual();
-        if (!active || !latest) return;
-        setManualTaskId(latest.task_id);
         if (!active) return;
-        applyManualStored(latest);
+        if (latest) {
+          setManualTaskId(latest.task_id);
+          applyManualStored(latest);
+        }
       } catch (err: unknown) {
         if (!active) return;
         const message = resolveApiErrorMessage(err, "verify.manual.hydrate");
         console.error("verify.manual.hydrate_failed", { error: message });
         setErrors(message);
+      } finally {
+        if (active) {
+          latestManualHydratedRef.current = true;
+        }
       }
     };
     void hydrateLatestManual();

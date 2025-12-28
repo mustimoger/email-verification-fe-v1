@@ -182,8 +182,9 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
   Update: Updated `/api/tasks/{task_id}` and `/api/tasks/{task_id}/download` to accept UUIDs only and consistently pass `str(task_id)` through credit/logging and external calls.
 - [ ] Fix `taskIds is not defined` in file upload summary logging.
   Explanation: Upload logging should only reference defined variables to avoid UI errors after file upload.
-- [ ] Fix manual Results rehydration guard on `/verify` reloads (Strict Mode).
+- [x] Fix manual Results rehydration guard on `/verify` reloads (Strict Mode).
   Explanation: `latestManualHydratedRef` is set before fetching; in Strict Mode the first run is cleaned up and the second run bails, so Results never hydrate. Move the guard to lock only after a successful hydrate and add a regression test.
+  Update: Added a shared hydration guard helper, moved the lock to the post-fetch path, and added verify-mapping tests that assert hydration is allowed on first load.
 
 ## Next: Second Verify state (post-upload)
 - [x] Pull Figma specs for second Verify state via Figma MCP; captured screenshot (node `64:75`) showing results table + validation donut. Footer and shell unchanged.

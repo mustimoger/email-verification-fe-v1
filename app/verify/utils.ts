@@ -115,6 +115,26 @@ export function formatNumber(value: number | null | undefined): string {
   return new Intl.NumberFormat().format(value);
 }
 
+export type ManualHydrationGuardState = {
+  authLoading: boolean;
+  hasSession: boolean;
+  manualTaskId: string | null;
+  resultsCount: number;
+  manualEmailsCount: number;
+  inputValue: string;
+  alreadyHydrated: boolean;
+};
+
+export function shouldHydrateLatestManual(state: ManualHydrationGuardState): boolean {
+  if (state.alreadyHydrated) return false;
+  if (state.authLoading || !state.hasSession) return false;
+  if (state.manualTaskId) return false;
+  if (state.resultsCount > 0) return false;
+  if (state.manualEmailsCount > 0) return false;
+  if (state.inputValue.trim().length > 0) return false;
+  return true;
+}
+
 export function mapTaskDetailToResults(emails: string[], detail: TaskDetailResponse): VerificationResult[] {
   const jobs = detail.jobs ?? [];
   const jobMap = new Map<string, TaskEmailJob>();
