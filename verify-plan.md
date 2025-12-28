@@ -7,6 +7,8 @@ Goal: keep the Verify page flow functional for both manual input and file upload
 - Second Verify state UI is implemented and driven by real task counts where available.
 
 ## Remaining tasks (MVP)
+- [ ] Fix manual rehydration guard to avoid Strict Mode double-run skipping Results hydration.
+  Explanation: `latestManualHydratedRef` is set before the fetch, so Strict Mode cleanup prevents the second run from hydrating results; move the guard to only lock after a successful hydrate and add a small test to prevent regressions.
 - [x] Fix manual CSV export enrichment for domain/host fields (catchall, server, disposable, registered, MX).
   Explanation: `/emails/{address}` rejects Supabase JWTs; refresh_details must use the per-user dashboard API key (if cached) and log/skip gracefully when unavailable so Download CSV fills these columns.
   Update: Switched email detail lookups in `/api/verify` and `/api/tasks/latest-manual?refresh_details=true` to use the cached per-user dashboard API key via a dedicated client; logs now explain when the key/secret is missing and the export falls back to stored results.
