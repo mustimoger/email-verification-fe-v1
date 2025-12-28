@@ -18,8 +18,24 @@
   Explanation: Added a “Total Valid” stat card on `/overview` using `verification_totals.valid` from `/api/overview`, and adjusted the stats grid to five columns on large screens so the new card sits alongside the existing metrics.
 - [x] GitHub workflow lock: add GitHub flow + multi-session timing rules to `AGENTS.md`.
   Explanation: Added a GitHub Flow checklist plus timing-based lock rules for shared files so multiple Codex sessions can coordinate without plan-file conflicts.
-- [ ] Dark mode plan — draft a step-by-step MVP-first plan in `drakmode-plan.md`.
-  Explanation: Pending. Track the dark mode planning task so newcomers can follow progress once the plan is created.
+- [x] Dark mode plan — draft a step-by-step MVP-first plan in `drakmode-plan.md`.
+  Explanation: Added `drakmode-plan.md` with a step-by-step MVP plan covering tokenization, theme state + persistence, UI toggle wiring, and required tests so newcomers can follow the dark mode rollout.
+
+## Dark mode MVP implementation
+- [ ] Step 1 — Tokenize theme colors (light + dark) in `app/globals.css` and wire to Tailwind theme variables.
+  Explanation: Pending. Establish a single source of truth for colors before touching component styles.
+- [ ] Step 2 — Theme state + persistence + hydration-safe init.
+  Explanation: Pending. Add a theme provider that respects system preference, stores user overrides, and avoids flash-of-incorrect-theme.
+- [ ] Step 3 — Wire the existing “Dark Mode” menu item to the theme toggle with clear state.
+  Explanation: Pending. Use the existing profile menu entry as the MVP toggle without changing navigation.
+- [ ] Step 4 — Replace hardcoded component colors with semantic tokens.
+  Explanation: Pending. Ensure gradients/shadows/typography adapt to dark mode across pages.
+- [ ] Step 5 — Tests + manual verification (unit + integration).
+  Explanation: Pending. Verify persistence, navigation, and visual correctness before merging.
+- [ ] Step 6 — Deploy to main after MVP verification.
+  Explanation: Pending. Only after tests pass and manual verification is complete.
+- [ ] Step 7 — Post‑MVP enhancements (optional).
+  Explanation: Pending. Defer refinements until after MVP is stable in main.
 - [ ] Remaining pages — Verify, History, Integrations, API, Pricing, Account need to be built using the shared shell once Figma node details are provided. Use first-principles MVPs, no placeholders.
 - [ ] API integration — Wire UI to FastAPI email verification backend once endpoint schemas/contracts are known. Replace mock data with typed fetch layer + error handling/logging; avoid hardcoded fallbacks.
 - [ ] Testing and staging — Add unit/integration coverage and deploy to staging after MVP pages and API wiring are in place; verify flows end-to-end.
