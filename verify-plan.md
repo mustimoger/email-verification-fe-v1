@@ -119,6 +119,9 @@ Goal: keep the Verify page flow functional for both manual input and file upload
 - [x] Tests: latest manual refresh_details (NEW)
   Explanation: Add route-level tests to ensure `refresh_details=true` triggers email detail lookups and returns enriched manual results without breaking the default response.
   Update: Added route tests for refresh_details and unit coverage for the bulk manual results updater; ran `pytest backend/tests/test_tasks_latest_manual.py backend/tests/test_tasks_store.py` (8 passed, gotrue deprecation warning only).
+- [x] Verify Results card scroll (NEW)
+  Explanation: Keep the Results card at its initial height and allow the email list to scroll vertically instead of stretching the layout.
+  Update: Set the Results container to a fixed height and applied overflow-y scrolling on the results list so the card layout stays stable.
 
 Notes:
 - Detailed task history remains in `PLAN.md`.

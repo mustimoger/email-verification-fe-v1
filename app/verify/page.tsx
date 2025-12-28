@@ -731,13 +731,13 @@ export default function VerifyPage() {
                 {exportError}
               </div>
             ) : null}
-            <div className="mt-4 min-h-[220px] rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <div className="mt-4 h-[360px] rounded-xl border border-slate-200 bg-slate-50 p-4">
               {results.length === 0 ? (
                 <p className="text-sm font-semibold text-slate-500">
                   Results will appear here after verification.
                 </p>
               ) : (
-                <div className="space-y-2">
+                <div className="h-full space-y-2 overflow-y-auto pr-2">
                   {results.map((item) => (
                     <div
                       key={item.email}
