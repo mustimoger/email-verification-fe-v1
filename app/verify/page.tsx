@@ -59,11 +59,9 @@ export default function VerifyPage() {
   const [latestUploadRefreshing, setLatestUploadRefreshing] = useState(false);
   const [latestUploadLabel, setLatestUploadLabel] = useState<string | null>(null);
   const [manualRefreshing, setManualRefreshing] = useState(false);
-  const [exportMenuOpen, setExportMenuOpen] = useState(false);
-  const [exportAction, setExportAction] = useState<"copy" | "download" | null>(null);
+  const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const exportMenuRef = useRef<HTMLDivElement | null>(null);
   const parseRef = useRef(0);
   const latestUploadHydratedRef = useRef(false);
   const latestManualHydratedRef = useRef(false);
