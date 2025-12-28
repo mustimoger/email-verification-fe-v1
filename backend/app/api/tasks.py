@@ -502,6 +502,15 @@ async def verify_email(
                 extra={"user_id": user.user_id, "status_code": exc.status_code, "details": exc.details},
             )
             raise HTTPException(status_code=exc.status_code, detail="Not authorized to verify emails")
+        logger.error(
+            "route.verify.external_error",
+            extra={
+                "user_id": user.user_id,
+                "email": email,
+                "status_code": exc.status_code,
+                "details": exc.details,
+            },
+        )
         raise HTTPException(status_code=exc.status_code, detail=exc.details or exc.args[0])
 
 
@@ -909,13 +918,29 @@ async def get_latest_manual(
         return Response(status_code=status.HTTP_204_NO_CONTENT)
     manual_results = latest.get("manual_results")
     if refresh_details:
-        manual_results = await _refresh_manual_results_export_details(
-            user.user_id,
-            task_id,
-            manual_results,
-            latest.get("manual_emails"),
-            client,
-        )
+        try:
+            manual_results = await _refresh_manual_results_export_details(
+                user.user_id,
+                task_id,
+                manual_results,
+                latest.get("manual_emails"),
+                client,
+            )
+        except ExternalAPIError as exc:
+            logger.warning(
+                "route.tasks.latest_manual.refresh_details_failed",
+                extra={
+                    "user_id": user.user_id,
+                    "task_id": task_id,
+                    "status_code": exc.status_code,
+                    "details": exc.details,
+                },
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.error(
+                "route.tasks.latest_manual.refresh_details_exception",
+                extra={"user_id": user.user_id, "task_id": task_id, "error": str(exc)},
+            )
     record_usage(user.user_id, path="/tasks/latest-manual", count=1, api_key_id=None)
     return LatestManualResponse(
         task_id=task_id,

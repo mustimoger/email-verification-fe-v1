@@ -368,8 +368,21 @@ class ExternalAPIClient:
         url = f"{self.base_url}{path}"
         headers = kwargs.pop("headers", {})
         merged_headers = {"Authorization": f"Bearer {self.bearer_token}", **self.extra_headers, **headers}
-        async with httpx.AsyncClient(timeout=self.timeout_seconds) as client:
-            response = await client.request(method=method, url=url, headers=merged_headers, **kwargs)
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout_seconds) as client:
+                response = await client.request(method=method, url=url, headers=merged_headers, **kwargs)
+        except httpx.TimeoutException as exc:
+            logger.error(
+                "external_api.timeout",
+                extra={"method": method, "path": path, "timeout_seconds": self.timeout_seconds, "error": str(exc)},
+            )
+            raise ExternalAPIError(status_code=504, message="External API timeout", details=str(exc)) from exc
+        except httpx.RequestError as exc:
+            logger.error(
+                "external_api.request_error",
+                extra={"method": method, "path": path, "error": str(exc)},
+            )
+            raise ExternalAPIError(status_code=502, message="External API request failed", details=str(exc)) from exc
         logger.info(
             "external_api.request",
             extra={"method": method, "path": path, "status_code": response.status_code},

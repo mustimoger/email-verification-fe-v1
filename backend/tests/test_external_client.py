@@ -1,7 +1,6 @@
 import asyncio
 
-import asyncio
-
+import httpx
 import pytest
 
 from app.clients.external import ExternalAPIClient, ExternalAPIError, VerifyEmailResponse
@@ -44,3 +43,29 @@ def test_upload_rejects_too_large(monkeypatch):
     client = ExternalAPIClient(base_url="https://api.test", bearer_token="key", max_upload_bytes=4)
     with pytest.raises(ExternalAPIError):
         asyncio.run(client.upload_batch_file(filename="file.txt", content=b"012345"))
+
+
+def test_request_timeout_raises_external_api_error(monkeypatch):
+    client = ExternalAPIClient(base_url="https://api.test", bearer_token="key", timeout_seconds=0.01)
+
+    async def fake_request(self, method, url, **kwargs):
+        raise httpx.TimeoutException("timeout")
+
+    monkeypatch.setattr(httpx.AsyncClient, "request", fake_request)
+
+    with pytest.raises(ExternalAPIError) as exc:
+        asyncio.run(client.verify_email("a@test.com"))
+    assert exc.value.status_code == 504
+
+
+def test_request_error_raises_external_api_error(monkeypatch):
+    client = ExternalAPIClient(base_url="https://api.test", bearer_token="key", timeout_seconds=0.01)
+
+    async def fake_request(self, method, url, **kwargs):
+        raise httpx.RequestError("network", request=None)
+
+    monkeypatch.setattr(httpx.AsyncClient, "request", fake_request)
+
+    with pytest.raises(ExternalAPIError) as exc:
+        asyncio.run(client.verify_email("a@test.com"))
+    assert exc.value.status_code == 502

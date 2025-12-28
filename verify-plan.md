@@ -122,6 +122,9 @@ Goal: keep the Verify page flow functional for both manual input and file upload
 - [x] Verify Results card scroll (NEW)
   Explanation: Keep the Results card at its initial height and allow the email list to scroll vertically instead of stretching the layout.
   Update: Set the Results container to a fixed height and applied overflow-y scrolling on the results list so the card layout stays stable.
+- [x] External API timeouts log clearly (NEW)
+  Explanation: When external verification calls fail (timeouts/network), return a proper API error with CORS headers and log when/what/details to avoid misleading CORS errors in the browser.
+  Update: External client now converts timeouts/network errors into 504/502 with detailed logs; `/api/verify` logs external failures, and `/tasks/latest-manual?refresh_details=true` logs and returns the last stored results if refresh fails. Tests passed (`pytest backend/tests/test_external_client.py backend/tests/test_tasks_latest_manual.py`).
 
 Notes:
 - Detailed task history remains in `PLAN.md`.
