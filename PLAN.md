@@ -33,8 +33,9 @@
   Explanation: Not done yet. Tests and manual verification are pending; please confirm to proceed.
 - [x] Auth route prefix alignment — Ensure `/api/auth/confirmed` is served by the backend to match frontend base URL, and add a regression test.
   Explanation: Mounted the auth router at `/api` (keeping the existing `/auth` path) and added a backend test to confirm `/api/auth/confirmed` returns 200, eliminating 404s in the auth confirmation check.
-- [ ] Deprecation warnings cleanup — update Supabase Python client to remove `gotrue` deprecation and adjust httpx per-request cookies in tests.
+- [x] Deprecation warnings cleanup — update Supabase Python client to remove `gotrue` deprecation and adjust httpx per-request cookies in tests.
   Explanation: Warnings only today; likely a dependency bump to `supabase`/`supabase_auth` and a small test change to set cookies on the client.
+  Update: Bumped `supabase` to `2.27.0`, added `supabase_auth`, switched imports to `supabase_auth.types.User`, and updated auth tests to set cookies on the client while adding confirmed claims to avoid network lookups.
 - [ ] Enhancements — Only after MVP + tests + staging verification.
 - [ ] Session handover — create root `handover.md` with current findings, changes, and next steps.
   Explanation: Capture this session’s work (CSV export fix + manual reload diagnosis) so a new Codex session can continue without context loss.

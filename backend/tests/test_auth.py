@@ -45,10 +45,15 @@ def test_auth_valid_token_via_cookie(monkeypatch):
     monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service_key")
     monkeypatch.setenv("SUPABASE_JWT_SECRET", "secret")
     monkeypatch.setenv("SUPABASE_AUTH_COOKIE_NAME", "cookie_name")
-    token = jwt.encode({"sub": "user-123", "aud": "authenticated"}, "secret", algorithm="HS256")
+    token = jwt.encode(
+        {"sub": "user-123", "aud": "authenticated", "confirmed_at": "2024-01-01T00:00:00Z"},
+        "secret",
+        algorithm="HS256",
+    )
     app = _build_app()
     client = TestClient(app)
-    resp = client.get("/me", cookies={"cookie_name": token})
+    client.cookies.set("cookie_name", token)
+    resp = client.get("/me")
     assert resp.status_code == 200
     assert resp.json() == {"user_id": "user-123"}
 
@@ -60,7 +65,12 @@ def test_auth_admin_role_from_app_metadata(monkeypatch):
     monkeypatch.setenv("SUPABASE_JWT_SECRET", "secret")
     monkeypatch.setenv("SUPABASE_AUTH_COOKIE_NAME", "cookie_name")
     token = jwt.encode(
-        {"sub": "user-123", "aud": "authenticated", "app_metadata": {"role": "admin"}},
+        {
+            "sub": "user-123",
+            "aud": "authenticated",
+            "confirmed_at": "2024-01-01T00:00:00Z",
+            "app_metadata": {"role": "admin"},
+        },
         "secret",
         algorithm="HS256",
     )
@@ -77,7 +87,11 @@ def test_auth_admin_role_from_top_level_claim(monkeypatch):
     monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service_key")
     monkeypatch.setenv("SUPABASE_JWT_SECRET", "secret")
     monkeypatch.setenv("SUPABASE_AUTH_COOKIE_NAME", "cookie_name")
-    token = jwt.encode({"sub": "user-123", "aud": "authenticated", "role": "admin"}, "secret", algorithm="HS256")
+    token = jwt.encode(
+        {"sub": "user-123", "aud": "authenticated", "confirmed_at": "2024-01-01T00:00:00Z", "role": "admin"},
+        "secret",
+        algorithm="HS256",
+    )
     app = _build_app_with_role()
     client = TestClient(app)
     resp = client.get("/role", headers={"Authorization": f"Bearer {token}"})
@@ -92,7 +106,11 @@ def test_auth_admin_role_from_dev_api_key(monkeypatch):
     monkeypatch.setenv("SUPABASE_JWT_SECRET", "secret")
     monkeypatch.setenv("SUPABASE_AUTH_COOKIE_NAME", "cookie_name")
     monkeypatch.setenv("DEV_API_KEYS", "devkey")
-    token = jwt.encode({"sub": "user-123", "aud": "authenticated"}, "secret", algorithm="HS256")
+    token = jwt.encode(
+        {"sub": "user-123", "aud": "authenticated", "confirmed_at": "2024-01-01T00:00:00Z"},
+        "secret",
+        algorithm="HS256",
+    )
     app = _build_app_with_role()
     client = TestClient(app)
     resp = client.get("/role", headers={"Authorization": f"Bearer {token}", "X-Dev-Api-Key": "devkey"})

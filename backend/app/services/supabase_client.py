@@ -2,7 +2,7 @@ import logging
 from functools import lru_cache
 from typing import Any, Dict, List, Optional
 
-from gotrue.types import User
+from supabase_auth.types import User
 
 from supabase import Client, create_client
 
