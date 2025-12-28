@@ -18,6 +18,8 @@
   Explanation: Added a “Total Valid” stat card on `/overview` using `verification_totals.valid` from `/api/overview`, and adjusted the stats grid to five columns on large screens so the new card sits alongside the existing metrics.
 - [x] GitHub workflow lock: add GitHub flow + multi-session timing rules to `AGENTS.md`.
   Explanation: Added a GitHub Flow checklist plus timing-based lock rules for shared files so multiple Codex sessions can coordinate without plan-file conflicts.
+- [ ] Dark mode plan — draft a step-by-step MVP-first plan in `drakmode-plan.md`.
+  Explanation: Pending. Track the dark mode planning task so newcomers can follow progress once the plan is created.
 - [ ] Remaining pages — Verify, History, Integrations, API, Pricing, Account need to be built using the shared shell once Figma node details are provided. Use first-principles MVPs, no placeholders.
 - [ ] API integration — Wire UI to FastAPI email verification backend once endpoint schemas/contracts are known. Replace mock data with typed fetch layer + error handling/logging; avoid hardcoded fallbacks.
 - [ ] Testing and staging — Add unit/integration coverage and deploy to staging after MVP pages and API wiring are in place; verify flows end-to-end.
