@@ -58,8 +58,8 @@
   Explanation: Classified each redundancy candidate and recorded the minimal Go/contract changes needed before removing compute, so Step 3 can pick safe removals only.
 - [x] Step 3 — Implement the smallest safe removal set (MVP).
   Explanation: Avoid per-job iteration when task metrics already provide verification counts by using metrics-first counts in `/api/tasks/{id}` and `/api/tasks/{id}/download`. Deferred removals that depend on Go-side confirmations (verify email detail lookup removal, upload count removal) remain listed in Go change requests.
-- [ ] Step 4 — Tests + verification for the MVP set.
-  Explanation: Added backend tests for metrics-first counts in `/api/tasks/{id}` and `/api/tasks/{id}/download`; pytest run is blocked because no local Python venv was found. Need the correct venv path (or create one) before executing the test run.
+- [x] Step 4 — Tests + verification for the MVP set.
+  Explanation: Created a local `.venv`, installed `backend/requirements.txt`, and ran targeted pytest for the metrics-first count changes. Tests passed (with existing dependency warnings), confirming `/api/tasks/{id}` and `/api/tasks/{id}/download` use metrics counts when present.
 - [ ] Step 5 — Deploy to main after verification.
   Explanation: Only ship once tests pass and manual verification confirms no regressions.
 - [ ] Step 6 — Post-MVP removals and refinements.

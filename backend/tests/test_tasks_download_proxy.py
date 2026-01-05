@@ -23,6 +23,9 @@ def test_tasks_download_proxies_file(monkeypatch):
         return AuthContext(user_id="user-1", claims={}, token="t", role="user")
 
     class FakeClient:
+        async def get_task_detail(self, task_id: str):
+            return TaskDetailResponse(id=task_id)
+
         async def download_task_results(self, task_id: str, file_format: str | None = None):
             assert task_id == TASK_ID
             assert file_format == "csv"
@@ -32,6 +35,7 @@ def test_tasks_download_proxies_file(monkeypatch):
                 content_disposition=f'attachment; filename="{TASK_ID}.csv"',
             )
 
+    monkeypatch.setattr(tasks_module, "fetch_task_credit_reservation", lambda *_args, **_kwargs: None)
     app = _build_app(monkeypatch, fake_user, FakeClient(), {"task_id": TASK_ID})
     client = TestClient(app)
     resp = client.get(f"/api/tasks/{TASK_ID}/download?format=csv")
@@ -46,9 +50,13 @@ def test_tasks_download_requires_content_type(monkeypatch):
         return AuthContext(user_id="user-1", claims={}, token="t", role="user")
 
     class FakeClient:
+        async def get_task_detail(self, task_id: str):
+            return TaskDetailResponse(id=task_id)
+
         async def download_task_results(self, task_id: str, file_format: str | None = None):
             return DownloadedFile(content=b"data", content_type=None, content_disposition=None)
 
+    monkeypatch.setattr(tasks_module, "fetch_task_credit_reservation", lambda *_args, **_kwargs: None)
     app = _build_app(monkeypatch, fake_user, FakeClient(), {"task_id": TASK_ID})
     client = TestClient(app)
     resp = client.get(f"/api/tasks/{TASK_ID}/download")
