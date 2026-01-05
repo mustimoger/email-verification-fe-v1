@@ -61,9 +61,23 @@
 - [x] Step 4 — Tests + verification for the MVP set.
   Explanation: Created a local `.venv`, installed `backend/requirements.txt`, and ran targeted pytest for the metrics-first count changes. Tests passed (with existing dependency warnings), confirming `/api/tasks/{id}` and `/api/tasks/{id}/download` use metrics counts when present.
 - [ ] Step 5 — Deploy to main after verification.
-  Explanation: Only ship once tests pass and manual verification confirms no regressions.
+  Explanation: Deployment deferred by request. No deploy was run; requires explicit deployment procedure and confirmation before marking complete.
 - [ ] Step 6 — Post-MVP removals and refinements.
   Explanation: Continue with higher-risk removals or Go-side changes once MVP is stable.
+
+### Step 6 backlog (post-MVP removals pending Go confirmations)
+- [ ] Remove `/emails/{address}` enrichment in `/api/verify` once `/verify` always returns `verification_steps[].email.domain` + `host` + `dns_records`.
+  Explanation: This removes the extra lookup only after Go responses reliably include all export fields.
+- [ ] Remove `refresh_details` work in `/api/tasks/latest-manual` once manual results already contain full export fields from `/verify`.
+  Explanation: Avoid per-email enrichment after the export fields are guaranteed upstream.
+- [ ] Remove local upload parsing for credit reservation after Go provides a count preflight or upload response includes counts.
+  Explanation: Credits must still reserve by count; removal depends on a reliable count source.
+- [ ] Drop per-job count fallback in task detail/download once `metrics.verification_status` + `total_email_addresses` are always present on completion.
+  Explanation: Fully eliminate redundant job iteration only after metrics are contractually reliable.
+- [ ] Remove `/api/tasks` external refresh fallback once Supabase ingestion is guaranteed for all tasks.
+  Explanation: Cache stays, but external refresh becomes redundant when ingestion is complete and verified.
+
+Status: Not implemented yet; awaiting Go confirmations listed above.
 
 ## Open questions to resolve before Step 3
 - Do Go `/verify` responses include `verification_steps[].email` with `domain`/`host`/`dns_records` for export fields?

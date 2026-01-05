@@ -26,6 +26,10 @@
   Explanation: Updated `/api/tasks/{id}` and `/api/tasks/{id}/download` to use Go-provided metrics counts first, skipping redundant per-job loops when metrics already include verification status totals.
 - [x] Redundant compute reduction plan Step 4 — run backend tests for metrics-first counts.
   Explanation: Created `.venv`, installed backend requirements, and ran targeted pytest for metrics-first count behavior; tests passed with dependency warnings.
+- [ ] Redundant compute reduction plan Step 5 — deploy to main after verification.
+  Explanation: Deployment deferred by request; no deploy performed yet. Provide the deployment procedure + confirmation before marking complete.
+- [x] Redundant compute reduction plan Step 6 backlog — documented post‑MVP removals with prerequisites.
+  Explanation: Added a Step 6 backlog in `redundant-compute-plan.md` so future removals are listed with explicit Go confirmation requirements.
 
 ## Dark mode MVP implementation
 - [ ] Step 1 — Tokenize theme colors (light + dark) in `app/globals.css` and wire to Tailwind theme variables.
