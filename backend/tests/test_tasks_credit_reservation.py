@@ -3,7 +3,7 @@ from fastapi.testclient import TestClient
 
 from app.api import tasks as tasks_module
 from app.api.tasks import router
-from app.clients.external import TaskDetailResponse, TaskEmailJob, TaskResponse
+from app.clients.external import TaskDetailResponse, TaskEmailJob, TaskMetrics, TaskResponse
 from app.core.auth import AuthContext
 
 
@@ -94,3 +94,41 @@ def test_tasks_detail_releases_remainder_for_reservation(monkeypatch):
     assert resp.status_code == 200
     assert len(release_calls) == 1
     assert release_calls[0]["credits"] == 2
+
+
+def test_tasks_detail_prefers_metrics_counts(monkeypatch):
+    _set_env(monkeypatch)
+    debit_calls = []
+    task_id = "11111111-1111-1111-1111-111111111111"
+
+    class FakeClient:
+        async def get_task_detail(self, task_id: str):
+            return TaskDetailResponse(
+                id=task_id,
+                finished_at="2024-01-01T00:00:00Z",
+                metrics=TaskMetrics(
+                    verification_status={"exists": 2, "catchall": 1, "not_exists": 3},
+                    total_email_addresses=6,
+                ),
+                jobs=[TaskEmailJob(email={"status": "exists"})],
+            )
+
+    app = _build_app(monkeypatch, FakeClient())
+    client = TestClient(app)
+
+    monkeypatch.setattr(tasks_module, "fetch_task_credit_reservation", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(tasks_module, "upsert_task_from_detail", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        tasks_module,
+        "apply_credit_debit",
+        lambda **kwargs: debit_calls.append(kwargs) or {"status": "applied", "credits_remaining": 10},
+    )
+
+    resp = client.get(f"/api/tasks/{task_id}")
+    assert resp.status_code == 200
+    assert len(debit_calls) == 1
+    assert debit_calls[0]["credits"] == 6
+    meta = debit_calls[0]["meta"]
+    assert meta["valid"] == 2
+    assert meta["invalid"] == 3
+    assert meta["catchall"] == 1

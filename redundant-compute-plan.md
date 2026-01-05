@@ -59,7 +59,7 @@
 - [x] Step 3 — Implement the smallest safe removal set (MVP).
   Explanation: Avoid per-job iteration when task metrics already provide verification counts by using metrics-first counts in `/api/tasks/{id}` and `/api/tasks/{id}/download`. Deferred removals that depend on Go-side confirmations (verify email detail lookup removal, upload count removal) remain listed in Go change requests.
 - [ ] Step 4 — Tests + verification for the MVP set.
-  Explanation: Add unit + integration tests around affected endpoints, run with the venv activated, and confirm credits/exports/history remain correct.
+  Explanation: Added backend tests for metrics-first counts in `/api/tasks/{id}` and `/api/tasks/{id}/download`; pytest run is blocked because no local Python venv was found. Need the correct venv path (or create one) before executing the test run.
 - [ ] Step 5 — Deploy to main after verification.
   Explanation: Only ship once tests pass and manual verification confirms no regressions.
 - [ ] Step 6 — Post-MVP removals and refinements.
