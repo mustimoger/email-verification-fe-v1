@@ -392,6 +392,26 @@ def task_is_complete(detail: TaskDetailResponse) -> bool:
     return False
 
 
+def resolve_counts_from_detail(detail: TaskDetailResponse) -> Optional[Dict[str, int]]:
+    metrics_counts = counts_from_metrics(detail.metrics)
+    if metrics_counts:
+        total = sum(value for value in metrics_counts.values() if isinstance(value, int))
+        if total > 0:
+            return metrics_counts
+    if detail.jobs is None:
+        return metrics_counts if metrics_counts else None
+    counts = {"valid": 0, "invalid": 0, "catchall": 0}
+    for job in detail.jobs:
+        job_status = (job.email and job.email.get("status")) or job.status
+        if job_status == "exists":
+            counts["valid"] += 1
+        elif job_status == "catchall":
+            counts["catchall"] += 1
+        else:
+            counts["invalid"] += 1
+    return counts
+
+
 def resolve_processed_count(detail: TaskDetailResponse, counts: Optional[Dict[str, int]]) -> Optional[int]:
     if counts:
         total = sum(value for value in counts.values() if isinstance(value, int))
@@ -1014,17 +1034,7 @@ async def get_task_detail(
     task_id_str = str(task_id)
     try:
         result = await client.get_task_detail(task_id_str)
-        counts: Optional[Dict[str, int]] = None
-        if result.jobs is not None:
-            counts = {"valid": 0, "invalid": 0, "catchall": 0}
-            for job in result.jobs:
-                job_status = (job.email and job.email.get("status")) or job.status
-                if job_status == "exists":
-                    counts["valid"] += 1
-                elif job_status == "catchall":
-                    counts["catchall"] += 1
-                else:
-                    counts["invalid"] += 1
+        counts = resolve_counts_from_detail(result)
         credit_status = None
         reservation = fetch_task_credit_reservation(user.user_id, task_id_str)
         reserved_count = None
@@ -1452,17 +1462,7 @@ async def download_task_results(
             )
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task file not found")
         detail = await client.get_task_detail(task_id_str)
-        counts: Optional[Dict[str, int]] = None
-        if detail.jobs is not None:
-            counts = {"valid": 0, "invalid": 0, "catchall": 0}
-            for job in detail.jobs:
-                job_status = (job.email and job.email.get("status")) or job.status
-                if job_status == "exists":
-                    counts["valid"] += 1
-                elif job_status == "catchall":
-                    counts["catchall"] += 1
-                else:
-                    counts["invalid"] += 1
+        counts = resolve_counts_from_detail(detail)
         reservation = fetch_task_credit_reservation(target_user_id, task_id_str)
         reserved_count = None
         if reservation and reservation.get("credit_reserved_count") is not None:

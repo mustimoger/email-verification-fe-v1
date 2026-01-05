@@ -56,8 +56,8 @@
   Explanation: Mapped UI/export/credits field requirements to current backend usage and Go API docs so removals target only truly redundant compute and leave known gaps documented.
 - [x] Step 2 — Classify each candidate: required, removable, or needs Go change.
   Explanation: Classified each redundancy candidate and recorded the minimal Go/contract changes needed before removing compute, so Step 3 can pick safe removals only.
-- [ ] Step 3 — Implement the smallest safe removal set (MVP).
-  Explanation: Start with the lowest-risk removals (e.g., avoid extra lookups when Go returns the same fields), behind clear logs and guarded fallbacks.
+- [x] Step 3 — Implement the smallest safe removal set (MVP).
+  Explanation: Avoid per-job iteration when task metrics already provide verification counts by using metrics-first counts in `/api/tasks/{id}` and `/api/tasks/{id}/download`. Deferred removals that depend on Go-side confirmations (verify email detail lookup removal, upload count removal) remain listed in Go change requests.
 - [ ] Step 4 — Tests + verification for the MVP set.
   Explanation: Add unit + integration tests around affected endpoints, run with the venv activated, and confirm credits/exports/history remain correct.
 - [ ] Step 5 — Deploy to main after verification.

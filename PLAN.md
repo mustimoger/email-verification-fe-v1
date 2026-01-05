@@ -22,6 +22,8 @@
   Explanation: Added `drakmode-plan.md` with a step-by-step MVP plan covering tokenization, theme state + persistence, UI toggle wiring, and required tests so newcomers can follow the dark mode rollout.
 - [x] Redundant compute reduction plan Step 2 — classify redundancy candidates and Go dependencies in `redundant-compute-plan.md`.
   Explanation: Documented required vs removable compute paths and listed Go-side confirmations needed before removing any redundant work.
+- [x] Redundant compute reduction plan Step 3 — avoid per-job iteration when metrics counts are available.
+  Explanation: Updated `/api/tasks/{id}` and `/api/tasks/{id}/download` to use Go-provided metrics counts first, skipping redundant per-job loops when metrics already include verification status totals.
 
 ## Dark mode MVP implementation
 - [ ] Step 1 — Tokenize theme colors (light + dark) in `app/globals.css` and wire to Tailwind theme variables.
