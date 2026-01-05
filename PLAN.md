@@ -20,6 +20,8 @@
   Explanation: Added a GitHub Flow checklist plus timing-based lock rules for shared files so multiple Codex sessions can coordinate without plan-file conflicts.
 - [x] Dark mode plan — draft a step-by-step MVP-first plan in `drakmode-plan.md`.
   Explanation: Added `drakmode-plan.md` with a step-by-step MVP plan covering tokenization, theme state + persistence, UI toggle wiring, and required tests so newcomers can follow the dark mode rollout.
+- [x] Redundant compute reduction plan Step 2 — classify redundancy candidates and Go dependencies in `redundant-compute-plan.md`.
+  Explanation: Documented required vs removable compute paths and listed Go-side confirmations needed before removing any redundant work.
 
 ## Dark mode MVP implementation
 - [ ] Step 1 — Tokenize theme colors (light + dark) in `app/globals.css` and wire to Tailwind theme variables.
@@ -198,6 +200,10 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
 - [x] Fix `taskIds is not defined` in file upload summary logging.
   Explanation: Upload logging should only reference defined variables to avoid UI errors after file upload.
   Update: Updated Verify upload logging to derive `task_ids` from the resolved upload links so the console payload is always defined.
+
+## Redundant compute reduction
+- [x] Create a structured plan for removing redundant compute against the Go service.
+  Explanation: Added `redundant-compute-plan.md` with an inventory of candidates, MVP-first steps, and testing/verification gates so newcomers can follow the sequence.
 - [x] Prevent `/api/tasks/{task_id}` from capturing latest-* routes (UUID-only task IDs).
   Explanation: `/api/tasks/latest-*` must resolve to the internal endpoints; UUID path params avoid collisions and prevent external 400s.
   Update: Updated `/api/tasks/{task_id}` and `/api/tasks/{task_id}/download` to accept UUIDs only and consistently pass `str(task_id)` through credit/logging and external calls.
