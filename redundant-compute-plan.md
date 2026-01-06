@@ -60,8 +60,8 @@
   Explanation: Avoid per-job iteration when task metrics already provide verification counts by using metrics-first counts in `/api/tasks/{id}` and `/api/tasks/{id}/download`. Deferred removals that depend on Go-side confirmations (verify email detail lookup removal, upload count removal) remain listed in Go change requests.
 - [x] Step 4 — Tests + verification for the MVP set.
   Explanation: Created a local `.venv`, installed `backend/requirements.txt`, and ran targeted pytest for the metrics-first count changes. Tests passed (with existing dependency warnings), confirming `/api/tasks/{id}` and `/api/tasks/{id}/download` use metrics counts when present.
-- [ ] Step 5 — Deploy to main after verification.
-  Explanation: Deployment deferred by request. No deploy was run; requires explicit deployment procedure and confirmation before marking complete.
+- [x] Step 5 — Deploy to main after verification.
+  Explanation: Deployment to main confirmed completed externally; no additional deploy action required in this session.
 - [ ] Step 6 — Post-MVP removals and refinements.
   Explanation: Continue with higher-risk removals or Go-side changes once MVP is stable.
 
