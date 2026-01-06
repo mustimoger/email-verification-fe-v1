@@ -32,6 +32,10 @@ def _build_app(monkeypatch):
             return external_module.TaskDetailResponse(
                 id=task_id,
                 finished_at="2024-01-01T00:00:00Z",
+                metrics=external_module.TaskMetrics(
+                    verification_status={"exists": 1, "not_exists": 1},
+                    total_email_addresses=2,
+                ),
                 jobs=[
                     external_module.TaskEmailJob(email={"status": "exists"}),
                     external_module.TaskEmailJob(email={"status": "not_exists"}),

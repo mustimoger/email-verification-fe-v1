@@ -204,7 +204,7 @@ export default function VerifyPage() {
     }
     let latest: LatestManualResponse | null = null;
     try {
-      latest = await apiClient.getLatestManual({ refreshDetails: true });
+      latest = await apiClient.getLatestManual();
     } catch (err: unknown) {
       const message = resolveApiErrorMessage(err, "verify.manual.export_latest");
       console.error("verify.manual.export_latest_failed", { error: message });

@@ -30,6 +30,8 @@
   Explanation: Deployment to main confirmed completed externally; no deploy action performed in this session.
 - [x] Redundant compute reduction plan Step 6 backlog — documented post‑MVP removals with prerequisites.
   Explanation: Added a Step 6 backlog in `redundant-compute-plan.md` so future removals are listed with explicit Go confirmation requirements.
+- [x] Redundant compute Step 6 — remove `refresh_details` lookup and rely on metrics-only counts.
+  Explanation: `/api/tasks/latest-manual` no longer performs per-email refresh lookups, and `/api/tasks/{id}` + `/download` now rely exclusively on metrics counts; backend tests updated and re-run successfully.
 
 ## Dark mode MVP implementation
 - [ ] Step 1 — Tokenize theme colors (light + dark) in `app/globals.css` and wire to Tailwind theme variables.

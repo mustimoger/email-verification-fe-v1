@@ -68,16 +68,24 @@
 ### Step 6 backlog (post-MVP removals pending Go confirmations)
 - [ ] Remove `/emails/{address}` enrichment in `/api/verify` once `/verify` always returns `verification_steps[].email.domain` + `host` + `dns_records`.
   Explanation: This removes the extra lookup only after Go responses reliably include all export fields.
-- [ ] Remove `refresh_details` work in `/api/tasks/latest-manual` once manual results already contain full export fields from `/verify`.
-  Explanation: Avoid per-email enrichment after the export fields are guaranteed upstream.
+- [x] Remove `refresh_details` work in `/api/tasks/latest-manual` once manual results already contain full export fields from `/verify`.
+  Explanation: Removed the refresh lookup path and left a compatibility no-op log when the flag is provided.
 - [ ] Remove local upload parsing for credit reservation after Go provides a count preflight or upload response includes counts.
   Explanation: Credits must still reserve by count; removal depends on a reliable count source.
-- [ ] Drop per-job count fallback in task detail/download once `metrics.verification_status` + `total_email_addresses` are always present on completion.
-  Explanation: Fully eliminate redundant job iteration only after metrics are contractually reliable.
+- [x] Drop per-job count fallback in task detail/download once `metrics.verification_status` + `total_email_addresses` are always present on completion.
+  Explanation: Removed job-iteration fallback so metrics are now the sole source of credit counts on completion.
 - [ ] Remove `/api/tasks` external refresh fallback once Supabase ingestion is guaranteed for all tasks.
   Explanation: Cache stays, but external refresh becomes redundant when ingestion is complete and verified.
 
 Status: Not implemented yet; awaiting Go confirmations listed above.
+
+### Step 6 execution tasks (current session)
+- [x] Remove `refresh_details` behavior in `/api/tasks/latest-manual` now that export fields are guaranteed in manual results.
+  Explanation: Dropped the refresh lookup and updated callers/tests to rely on stored export fields only.
+- [ ] Remove local upload parsing for credit reservation and switch to Go-provided email count.
+  Explanation: Credits must still reserve by count; needs the confirmed Go count source details before implementation.
+- [x] Drop per-job count fallback in `/api/tasks/{id}` and `/api/tasks/{id}/download`.
+  Explanation: Metrics-only counts are now used for credit settlement; tests were updated and re-run.
 
 ## Open questions to resolve before Step 3
 - Do Go `/verify` responses include `verification_steps[].email` with `domain`/`host`/`dns_records` for export fields?

@@ -63,6 +63,10 @@ def test_tasks_detail_releases_remainder_for_reservation(monkeypatch):
             return TaskDetailResponse(
                 id=task_id,
                 finished_at="2024-01-01T00:00:00Z",
+                metrics=TaskMetrics(
+                    verification_status={"exists": 3},
+                    total_email_addresses=3,
+                ),
                 jobs=[
                     TaskEmailJob(email={"status": "exists"}),
                     TaskEmailJob(email={"status": "exists"}),

@@ -485,10 +485,6 @@ type VerifyEmailOptions = {
   batchEmails?: string[];
 };
 
-type LatestManualOptions = {
-  refreshDetails?: boolean;
-};
-
 export const apiClient = {
   verifyEmail: async (email: string, options?: string | VerifyEmailOptions) => {
     const requestId = typeof options === "string" ? options : options?.requestId;
@@ -527,12 +523,7 @@ export const apiClient = {
     const qs = params.toString();
     return request<LatestUploadResponse[] | null>(`/tasks/latest-uploads${qs ? `?${qs}` : ""}`, { method: "GET" });
   },
-  getLatestManual: (options?: LatestManualOptions) => {
-    const params = new URLSearchParams();
-    if (options?.refreshDetails) params.append("refresh_details", "true");
-    const qs = params.toString();
-    return request<LatestManualResponse | null>(`/tasks/latest-manual${qs ? `?${qs}` : ""}`, { method: "GET" });
-  },
+  getLatestManual: () => request<LatestManualResponse | null>("/tasks/latest-manual", { method: "GET" }),
   uploadTaskFiles: (files: File[], metadata: UploadFileMetadata[], webhook_url?: string) => {
     const form = new FormData();
     files.forEach((file) => form.append("files", file));
