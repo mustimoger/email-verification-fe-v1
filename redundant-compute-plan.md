@@ -83,7 +83,7 @@ Status: Not implemented yet; awaiting Go confirmations listed above.
 - [x] Remove `refresh_details` behavior in `/api/tasks/latest-manual` now that export fields are guaranteed in manual results.
   Explanation: Dropped the refresh lookup and updated callers/tests to rely on stored export fields only.
 - [ ] Remove local upload parsing for credit reservation and switch to Go-provided email count.
-  Explanation: Credits must still reserve by count; needs the confirmed Go count source details before implementation.
+  Explanation: Credits must still reserve by count; Go app currently returns no count in `/tasks/batch/upload` or `/tasks/batch/uploads/:upload_id`, so the exact count endpoint/field is still needed before implementation.
 - [x] Drop per-job count fallback in `/api/tasks/{id}` and `/api/tasks/{id}/download`.
   Explanation: Metrics-only counts are now used for credit settlement; tests were updated and re-run.
 
