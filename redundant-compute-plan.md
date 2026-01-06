@@ -50,6 +50,8 @@
 - [ ] Confirm `/verify` returns `verification_steps[].email` with `domain` + `host` + `dns_records` for export fields in production.
 - [ ] Confirm `TaskDetailResponse.metrics` includes `verification_status` + `total_email_addresses` on completion so credits can avoid per-job iteration.
 - [ ] Add a lightweight upload email-count response (preflight or upload response) so local parsing can be removed.
+- [x] Create a root-level task/progress doc in the Go repo to track the upload count contract work.
+  Explanation: Created `batch-upload-count-plan.md` in the Go repo root to capture the upload count contract steps and decisions for newcomers.
 
 ## MVP-first plan (step-by-step)
 - [x] Step 1 — Build a contract map between Go responses and dashboard needs.
