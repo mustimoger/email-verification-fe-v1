@@ -32,8 +32,8 @@
   Explanation: Added a Step 6 backlog in `redundant-compute-plan.md` so future removals are listed with explicit Go confirmation requirements.
 - [x] Redundant compute Step 6 — remove `refresh_details` lookup and rely on metrics-only counts.
   Explanation: `/api/tasks/latest-manual` no longer performs per-email refresh lookups, and `/api/tasks/{id}` + `/download` now rely exclusively on metrics counts; backend tests updated and re-run successfully.
-- [ ] Redundant compute Step 6 pending — remove upload parsing once Go exposes a count field/endpoint.
-  Explanation: Go app responses currently omit email counts for batch uploads (`/tasks/batch/upload` + `/tasks/batch/uploads/:upload_id`), so backend still needs local parsing until the count contract is provided.
+- [x] Redundant compute Step 6 — remove upload parsing now that Go exposes `email_count`.
+  Explanation: Uploads now rely on Go’s `email_count` from `/tasks/batch/upload` (and persisted counts from `/tasks/batch/uploads/:upload_id`), so local parsing was removed; credits are reserved using the Go count and tests cover the new flow.
 - [x] Redundant compute Step 6 dependency — create a root-level task/progress doc in the Go repo to track the upload count contract work.
   Explanation: Created `batch-upload-count-plan.md` in the Go repo root with MVP steps, decisions, and scope so the upload count contract work is tracked for newcomers.
 

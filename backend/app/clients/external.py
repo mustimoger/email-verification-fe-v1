@@ -143,6 +143,7 @@ class BatchFileUploadResponse(BaseModel):
     task_id: Optional[str] = None
     upload_id: Optional[str] = None
     uploaded_at: Optional[str] = None
+    email_count: Optional[int] = None
 
 
 class BatchFileUploadError(BaseModel):
