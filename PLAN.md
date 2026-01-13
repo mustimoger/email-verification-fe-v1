@@ -58,6 +58,18 @@
 - [ ] API integration — Wire UI to FastAPI email verification backend once endpoint schemas/contracts are known. Replace mock data with typed fetch layer + error handling/logging; avoid hardcoded fallbacks.
 - [x] External-API-first refactor plan doc — create `refactor.md` with a step-by-step transition plan to move dashboard data sourcing from Supabase to the external API (only keep Supabase for data the external API cannot provide).
   Explanation: Added `refactor.md` with phased tasks/subtasks, explicit external API dependencies (file_name, export fields, credit write-back), UI “data unavailable” handling, and the targeted end architecture so a newcomer can implement safely.
+- [ ] External-API-first refactor Phase 0 — confirm external API dependencies (file_name, export detail fields, credit write-back, metrics mapping).
+  Explanation: Added Phase 0 checkpoints to verify what the external API already provides so we can remove local caches without losing UI fields; will update each item with confirmed vs missing behavior before Phase 1.
+- [x] Phase 0 — confirm file upload response includes filename, note task list/detail file_name gap.
+  Explanation: `ext-api-docs/endpoints/batch_file_controller.md` confirms upload responses include `filename`, but `ext-api-docs/endpoints/task_controller.md` task list/detail schemas do not include `file_name`; UI should keep the field and show “data unavailable” until the API adds it.
+- [x] Phase 0 — confirm export detail fields are admin-only for now.
+  Explanation: `ext-api-docs/endpoints/email_controller.md` documents `/emails` and `/emails/{identifier}` as admin-only; user-scoped export detail fields are not available yet, so UI must show “data unavailable” until this is exposed.
+- [x] Phase 0 — document missing/unclear external data and UI fallback message for ext API dev.
+  Explanation: Updated `refactor.md` with an “IMPORTANT NOTE” section listing missing/unclear external API fields and requiring the UI to show `ext api data is not available` until those capabilities are delivered.
+- [ ] Phase 0 — confirm external API writes credit usage/spend into Supabase.
+  Explanation: External API dev is waiting on the final Supabase schema to implement write-back; still not documented, so credit tracking cannot be removed yet.
+- [ ] Phase 0 — map external metrics to UI “credits used”/usage totals.
+  Explanation: `ext-api-docs/endpoints/metrics_controller.md` exposes totals and series, but the exact mapping to UI credit labels remains unconfirmed and must be clarified with ext API dev to avoid misreporting.
 - [x] Session handover refresh — create a new root `handover.md` with full context, decisions, file changes, and next steps for the upcoming external-API refactor.
   Explanation: Added `handover.md` with decisions, dependencies, current repo state notes, and clear next steps for Phase 0/1 of the external-API-first refactor.
 - [ ] Investigate /api/verify 502 (external_api.request_error) and confirm external API reachability.

@@ -20,6 +20,15 @@ These are required to complete the transition without losing UI functionality.
 
 If any of the above are missing, implement the refactor anyway but keep the UI fields and show a “data unavailable” state until the external API ships the missing data.
 
+## IMPORTANT NOTE FOR EXTERNAL API DEV (Missing/Unclear Data)
+If any required data is missing/undocumented, the UI must display the exact message: `ext api data is not available` (and the backend should avoid silent fallback). This keeps the product ready for the ultimate goal while waiting on external API updates.
+
+Missing/unclear as of now:
+- Task upload responses include `filename`, but task list/detail schemas do not include `file_name`.
+- Manual verification export detail fields are admin-only (`/emails`), not user-scoped.
+- Credit usage/spend write-back to Supabase is pending; external API dev is waiting on final Supabase structure.
+- Mapping for UI “credits used”/“usage totals” to external metrics is not confirmed yet.
+
 ## Target End State (Architecture)
 ```
 Frontend → Backend (FastAPI) → External API (tasks, keys, metrics, verification)
