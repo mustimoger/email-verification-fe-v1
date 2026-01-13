@@ -248,7 +248,7 @@ export default function AccountPage() {
               <input
                 value={profileDraft.display_name ?? ""}
                 onChange={(event) => setProfileDraft((prev) => ({ ...prev, display_name: event.target.value }))}
-                className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700 shadow-inner outline-none focus:border-[#4c61cc] focus:ring-1 focus:ring-[#4c61cc]"
+                className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700 shadow-inner outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--ring)]"
               />
             </div>
             <div className="flex flex-col gap-1">
@@ -256,7 +256,7 @@ export default function AccountPage() {
               <input
                 value={profileDraft.email ?? ""}
                 onChange={(event) => setProfileDraft((prev) => ({ ...prev, email: event.target.value }))}
-                className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700 shadow-inner outline-none focus:border-[#4c61cc] focus:ring-1 focus:ring-[#4c61cc]"
+                className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700 shadow-inner outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--ring)]"
               />
             </div>
           </div>
@@ -268,7 +268,7 @@ export default function AccountPage() {
                 type="password"
                 value={currentPassword}
                 onChange={(event) => setCurrentPassword(event.target.value)}
-                className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700 shadow-inner outline-none focus:border-[#4c61cc] focus:ring-1 focus:ring-[#4c61cc]"
+                className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700 shadow-inner outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--ring)]"
               />
             </div>
             <div className="flex flex-col gap-1">
@@ -277,7 +277,7 @@ export default function AccountPage() {
                 type="password"
                 value={newPassword}
                 onChange={(event) => setNewPassword(event.target.value)}
-                className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700 shadow-inner outline-none focus:border-[#4c61cc] focus:ring-1 focus:ring-[#4c61cc]"
+                className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700 shadow-inner outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--ring)]"
               />
             </div>
           </div>
@@ -295,7 +295,7 @@ export default function AccountPage() {
               type="button"
               onClick={handleUpdate}
               disabled={saving || passwordSaving || loading}
-              className="w-40 cursor-pointer rounded-lg bg-amber-300 px-4 py-2 text-sm font-bold text-slate-800 shadow-sm transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4c61cc]"
+              className="w-40 cursor-pointer rounded-lg bg-amber-300 px-4 py-2 text-sm font-bold text-slate-800 shadow-sm transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
             >
               {saving || passwordSaving ? "Updating..." : "Update"}
             </button>

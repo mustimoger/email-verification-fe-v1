@@ -1,73 +1,47 @@
-# Handover
+# Handover — External API First Refactor Prep
 
-Date: 2025-01-13
+## Context & Decisions
+- Product direction: external API is the **single source of truth** for verification data, tasks, usage, and API keys.
+- Supabase should remain **only** for data the external API does not provide: profiles, credits ledger, billing plans/events/purchases.
+- UI must **keep existing fields** (file name, export detail columns) and show **“data unavailable”** if the external API does not yet return them.
+- Credit flow direction: external API writes spend/usage into Supabase; backend should not track or reserve credits locally once refactor starts.
+- Usage/credits labels remain as-is; map external metrics to the existing UI expectations.
 
-## Scope of this session
-- Investigated missing manual CSV export columns and fixed backend enrichment to use the per-user dashboard API key for `/emails/{address}` lookups.
-- Added backend tests for manual export refresh behavior with the dashboard key.
-- Investigated why **manual verification results do not persist after page reload** (manual-only, not file upload). Confirmed backend returns data but UI fails to hydrate.
+## Work Completed This Session
+- Read external API docs under `ext-api-docs/` and inspected backend/frontend usage patterns.
+- Produced a detailed, phased refactor plan in `refactor.md` (tasks/subtasks, what/why/how, target end state).
+- Updated `PLAN.md` to track and complete the refactor plan doc task.
 
-## Key findings
-- **CSV export columns empty** (Catchall, Domain, Email Server, Disposable Domain, Registered Domain, MX Record):
-  - Root cause: `/emails/{address}` does **not accept Supabase JWT**, returning 401. Enrichment used the JWT, so fields stayed empty.
-  - Fix: use cached **dashboard API key** (`dashboard_api`) for email detail lookups.
+## Key Files Added/Updated
+- `refactor.md` — external-API-first transition plan with dependencies and UI fallback rules.
+- `PLAN.md` — added and completed the refactor plan task; added a new handover task (now to be completed).
 
-- **Manual results disappear after page reload**:
-  - Playwright confirmed `/api/tasks/latest-manual` returns 200 with `manual_emails` + `manual_results` for the latest manual batch, but UI still shows empty Results.
-  - Likely root cause: `latestManualHydratedRef` is set **before** fetch; in React dev Strict Mode, the effect is run/cleaned once and `active` becomes false, so the second run bails because the ref is already true. This prevents `applyManualStored` from running, leaving Results empty even though the API returns data.
+## External API Dependencies (Must Be Confirmed/Implemented)
+These are required for full parity without reintroducing local caches:
+- Task list/detail returns `file_name` (or equivalent) for uploads.
+- Manual verification export detail fields are available to user-scoped requests (currently admin-only `/emails`).
+- External API writes credit usage/spend into Supabase.
+- External metrics align with UI expectations for “credits used”/usage totals.
 
-## Evidence
-- Playwright response for `GET /api/tasks/latest-manual`:
-  - Status 200, payload includes `manual_emails` and `manual_results` for task `db8545a4-bd1f-4043-b0ff-757fb2bea478` (user `mkural2016@gmail.com`).
-  - UI still shows empty Results after reload.
+If any dependency is missing, keep the UI fields and show “data unavailable” until the external API ships them.
 
-## Changes made
-- Backend: switched manual export enrichment to use dashboard API key, not JWT.
-  - Files:
-    - `backend/app/api/tasks.py`
-      - added `resolve_dashboard_email_client`
-      - `/api/verify` uses dashboard client for `/emails/{address}` lookup
-      - `/api/tasks/latest-manual?refresh_details=true` uses dashboard client
-- Tests added:
-  - `backend/tests/test_tasks_latest_manual.py`
-    - verifies dashboard client usage and skip behavior when key missing
-- Plan updates:
-  - `verify-plan.md`: marked CSV export fix complete; added tests completion; noted dashboard key usage.
-  - `PLAN.md`: added task for this handover.
+## Current Repo State Notes
+- Repo is **dirty** with many existing changes (not made in this session). Do **not** revert unless explicitly asked.
+- A previous `handover.md` was deleted in the working tree; this new file replaces it.
 
-## Tests run
-- `source .venv/bin/activate && pytest backend/tests/test_tasks_latest_manual.py`
-  - 5 passed, 1 warning (gotrue deprecation).
+## Next Steps (For the Next Session)
+1) **Confirm external API dependencies** listed above (Phase 0 in `refactor.md`).
+2) **Begin Phase 1** from `refactor.md`: remove task caching and proxy tasks directly to the external API.
+3) After each step, **update `PLAN.md`** and **ask for user confirmation** before proceeding (per AGENTS.md).
+4) Ensure UI shows “data unavailable” where external API doesn’t return fields yet.
+5) Run backend tests with the Python venv activated if tests are required.
 
-## Outstanding issues / next steps
-1) **Manual results rehydration after reload (manual only):**
-   - Update `app/verify/page.tsx` hydration effect to avoid Strict Mode double-run suppression.
-   - Suggested fix: set `latestManualHydratedRef.current = true` **after** a successful fetch + active state, or use a state guard tied to session id instead of a ref set pre-fetch.
-   - Add a small frontend test to ensure hydration guard doesn’t block applying results.
-2) **Update plans/progress files** after the manual rehydration fix and tests.
-3) Decide what to do with unexpected files:
-   - Untracked: `before.png`, `after-page-reload.png`
-   - Deleted: `artifacts/overview.png`, `artifacts/verify.png`
-   - User needs to confirm how to handle these.
+## Required Process Rules (From AGENTS.md)
+- For code changes: state the plan first, update root plan/progress markdown **after each completion**, and ask for confirmation before starting the next task.
+- Avoid hardcoding and prefer external API capabilities.
+- Activate Python venv before running tests.
 
-## Files touched this session
-- `backend/app/api/tasks.py`
-- `backend/tests/test_tasks_latest_manual.py`
-- `verify-plan.md`
-- `PLAN.md`
-- `handover.md` (new)
+## Pending Clarifications
+- External API developer confirmation on API-key usage association to user for metrics.
+- Exact field mapping for usage/credits totals in external metrics.
 
-## Commands / tooling notes
-- Playwright used with `key-value-pair.txt` localStorage token to reproduce manual hydration issue.
-- Supabase MCP query confirmed `manual_results` persisted for latest manual task (non-empty).
-
-## Current git status summary
-- Modified: `backend/app/api/tasks.py`, `backend/tests/test_tasks_latest_manual.py`, `verify-plan.md`, `PLAN.md`
-- New: `handover.md`
-- Untracked: `before.png`, `after-page-reload.png`
-- Deleted (unexpected): `artifacts/overview.png`, `artifacts/verify.png`
-
-## Important reminders
-- Follow AGENTS.md: add tasks to plan before work, update plan after each step, confirm before moving to next task.
-- Push to GitHub **before major changes** and at the beginning of a new conversation.
-- Activate `.venv` before running backend tests/scripts.

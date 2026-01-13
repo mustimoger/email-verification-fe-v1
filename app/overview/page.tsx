@@ -69,7 +69,7 @@ type StatusPopover = {
 };
 
 const usageAxisTickStyle = {
-  fill: "#64748b",
+  fill: "var(--text-muted)",
   fontSize: 12,
   fontWeight: 600,
 };
@@ -77,21 +77,21 @@ const usageAxisTickStyle = {
 const TASKS_PAGE_SIZE = 10;
 
 const statusColor: Record<TaskStatus, string> = {
-  Completed: "bg-emerald-500",
-  Running: "bg-amber-400",
-  Cancelled: "bg-rose-500",
+  Completed: "bg-[var(--status-success)]",
+  Running: "bg-[var(--status-warning)]",
+  Cancelled: "bg-[var(--status-danger)]",
 };
 const STATUS_PILL: Record<string, string> = {
-  Processing: "bg-amber-400",
-  Failed: "bg-rose-500",
-  Completed: "bg-emerald-500",
-  Unknown: "bg-slate-400",
+  Processing: "bg-[var(--status-warning)]",
+  Failed: "bg-[var(--status-danger)]",
+  Completed: "bg-[var(--status-success)]",
+  Unknown: "bg-[var(--status-unknown)]",
 };
 const STATUS_DOT: Record<string, string> = {
-  pending: "bg-amber-300",
-  processing: "bg-amber-500",
-  completed: "bg-emerald-500",
-  failed: "bg-rose-500",
+  pending: "bg-[var(--status-warning)]",
+  processing: "bg-[var(--status-warning)]",
+  completed: "bg-[var(--status-success)]",
+  failed: "bg-[var(--status-danger)]",
 };
 const STATUS_LABEL: Record<string, string> = {
   pending: "Pending",
@@ -188,9 +188,9 @@ export default function OverviewPage() {
 
   const validationData: ValidationSlice[] = useMemo(() => {
     const slices = [
-      { name: "Valid", value: validationTotals.valid, color: "#0eb38b" },
-      { name: "Catch-all", value: validationTotals.catchAll, color: "#d97706" },
-      { name: "Invalid", value: validationTotals.invalid, color: "#ff6b6b" },
+      { name: "Valid", value: validationTotals.valid, color: "var(--chart-valid)" },
+      { name: "Catch-all", value: validationTotals.catchAll, color: "var(--chart-catchall)" },
+      { name: "Invalid", value: validationTotals.invalid, color: "var(--chart-invalid)" },
     ];
     if (!overview) return slices;
     return slices.filter((slice) => slice.value > 0);
@@ -333,7 +333,7 @@ export default function OverviewPage() {
                       {stat.value}
                     </p>
                   </div>
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-50 text-[#4c61cc] shadow-inner">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-50 text-[var(--accent)] shadow-inner">
                     <Icon className="h-6 w-6" />
                   </div>
                 </div>
@@ -349,7 +349,7 @@ export default function OverviewPage() {
           <div className="rounded-2xl bg-white p-5 shadow-md ring-1 ring-slate-100">
             <div className="flex items-center justify-between">
               <p className="text-lg font-bold text-slate-900">Validation</p>
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-50 text-[#4c61cc] shadow-inner">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-50 text-[var(--accent)] shadow-inner">
                 <PieChart className="h-6 w-6" />
               </div>
             </div>
@@ -375,7 +375,7 @@ export default function OverviewPage() {
                       cursor={{ fill: "transparent" }}
                       contentStyle={{
                         borderRadius: 12,
-                        border: "1px solid #e2e8f0",
+                        border: "1px solid var(--border)",
                         boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
                       }}
                     />
@@ -397,7 +397,7 @@ export default function OverviewPage() {
           <div className="rounded-2xl bg-white p-5 shadow-md ring-1 ring-slate-100">
             <div className="flex items-center justify-between">
               <p className="text-lg font-bold text-slate-900">Credit Usage</p>
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-50 text-[#4c61cc] shadow-inner">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-50 text-[var(--accent)] shadow-inner">
                 <LineIcon className="h-6 w-6" />
               </div>
             </div>
@@ -416,16 +416,21 @@ export default function OverviewPage() {
                     <Tooltip
                       contentStyle={{
                         borderRadius: 12,
-                        border: "1px solid #e2e8f0",
+                        border: "1px solid var(--border)",
                         boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
                       }}
                     />
                     <Line
                       type="monotone"
                       dataKey="count"
-                      stroke="#3b82f6"
+                      stroke="var(--chart-line)"
                       strokeWidth={3}
-                      dot={{ r: 5, fill: "#3b82f6", strokeWidth: 2, stroke: "white" }}
+                      dot={{
+                        r: 5,
+                        fill: "var(--chart-line)",
+                        strokeWidth: 2,
+                        stroke: "var(--surface-elevated)",
+                      }}
                     />
                   </ReLineChart>
                 </ResponsiveContainer>
@@ -440,12 +445,12 @@ export default function OverviewPage() {
           <div className="rounded-2xl bg-white p-5 shadow-md ring-1 ring-slate-100">
             <div className="flex items-center justify-between">
               <p className="text-lg font-bold text-slate-900">Current Plan</p>
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-50 text-[#4c61cc] shadow-inner">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-50 text-[var(--accent)] shadow-inner">
               <Package className="h-6 w-6" />
               </div>
             </div>
             <div className="mt-6 flex flex-col items-center text-center">
-              <div className="text-2xl font-extrabold text-amber-500">{planName}</div>
+              <div className="text-2xl font-extrabold text-[var(--status-warning)]">{planName}</div>
               <div className="mt-6 inline-flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2 text-emerald-700">
                 <span className="text-sm font-semibold">Purchase Date</span>
               </div>
@@ -477,7 +482,7 @@ export default function OverviewPage() {
                 type="button"
                 onClick={handleRefreshTasks}
                 disabled={tasksRefreshing}
-                className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-[#4c61cc] hover:text-[#4c61cc] disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4c61cc]"
+                className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-[var(--accent)] hover:text-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
               >
                 {tasksRefreshing ? "Refreshing..." : "Refresh"}
               </button>
@@ -582,7 +587,7 @@ export default function OverviewPage() {
                 type="button"
                 onClick={() => fetchTasksPage(tasksPageIndex - 1, { source: "page" })}
                 disabled={!canGoPrev}
-                className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-[#4c61cc] hover:text-[#4c61cc] disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4c61cc]"
+                className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-[var(--accent)] hover:text-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
               >
                 Prev
               </button>
@@ -595,7 +600,7 @@ export default function OverviewPage() {
                 type="button"
                 onClick={() => fetchTasksPage(tasksPageIndex + 1, { source: "page" })}
                 disabled={!canGoNext}
-                className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-[#4c61cc] hover:text-[#4c61cc] disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4c61cc]"
+                className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-[var(--accent)] hover:text-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
               >
                 Next
               </button>

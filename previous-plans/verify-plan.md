@@ -7,6 +7,8 @@ Goal: keep the Verify page flow functional for both manual input and file upload
 - Second Verify state UI is implemented and driven by real task counts where available.
 
 ## Remaining tasks (MVP)
+- [ ] Investigate /api/verify 502 (external_api.request_error) and confirm external API reachability.
+  Explanation: Observed request-level failures (no HTTP response). `EMAIL_API_BASE_URL` points to `https://email-verification.islamsaka.com/api/v1/`, and a direct curl from this host failed to connect on port 443, indicating the external service is unreachable from this environment; next step is to confirm service status/DNS/firewall and decide whether to update the base URL or network rules.
 - [x] Fix manual rehydration guard to avoid Strict Mode double-run skipping Results hydration.
   Explanation: `latestManualHydratedRef` is set before the fetch, so Strict Mode cleanup prevents the second run from hydrating results; move the guard to only lock after a successful hydrate and add a small test to prevent regressions.
   Update: Added a shared `shouldHydrateLatestManual` guard, moved the hydration lock to the post-fetch path, and covered it with new verify-mapping tests to ensure hydration is allowed on first load.

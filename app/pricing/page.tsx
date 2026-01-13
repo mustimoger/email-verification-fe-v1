@@ -106,7 +106,7 @@ export default function PricingPage() {
             <ul className="mx-auto flex flex-1 flex-col items-start gap-3 text-sm font-semibold text-slate-700">
               {plan.features.map((feature) => (
                 <li key={feature} className="flex items-start gap-2 text-left">
-                  <BadgeCheck className="mt-0.5 h-4 w-4 text-[#ffa742]" aria-hidden="true" />
+                  <BadgeCheck className="mt-0.5 h-4 w-4 text-[var(--status-warning)]" aria-hidden="true" />
                   <span>{feature}</span>
                 </li>
               ))}
@@ -130,7 +130,7 @@ export default function PricingPage() {
       {checkoutScript ? (
         <Script src={checkoutScript} strategy="afterInteractive" />
       ) : null}
-      {error ? <p className="mt-4 text-sm text-red-600">{error}</p> : null}
+      {error ? <p className="mt-4 text-sm text-[var(--status-danger)]">{error}</p> : null}
     </DashboardShell>
   );
 }

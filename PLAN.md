@@ -38,22 +38,30 @@
   Explanation: Created `batch-upload-count-plan.md` in the Go repo root with MVP steps, decisions, and scope so the upload count contract work is tracked for newcomers.
 
 ## Dark mode MVP implementation
-- [ ] Step 1 — Tokenize theme colors (light + dark) in `app/globals.css` and wire to Tailwind theme variables.
-  Explanation: Pending. Establish a single source of truth for colors before touching component styles.
-- [ ] Step 2 — Theme state + persistence + hydration-safe init.
-  Explanation: Pending. Add a theme provider that respects system preference, stores user overrides, and avoids flash-of-incorrect-theme.
-- [ ] Step 3 — Wire the existing “Dark Mode” menu item to the theme toggle with clear state.
-  Explanation: Pending. Use the existing profile menu entry as the MVP toggle without changing navigation.
-- [ ] Step 4 — Replace hardcoded component colors with semantic tokens.
-  Explanation: Pending. Ensure gradients/shadows/typography adapt to dark mode across pages.
+- [x] Step 1 — Tokenize theme colors (light + dark) in `app/globals.css` and wire to Tailwind theme variables.
+  Explanation: Added semantic color tokens for light/dark (surface, text, border, accent, ring, background) and mapped them into Tailwind theme variables; `body` background now uses a theme token so future components can rely on shared values.
+- [x] Step 2 — Theme state + persistence + hydration-safe init.
+  Explanation: Added a ThemeProvider with system-aware resolution and persistence, plus a pre-hydration script in `app/layout.tsx` to set `data-theme` early and prevent theme flash; logs are emitted for storage or system preference failures.
+- [x] Step 3 — Wire the existing “Dark Mode” menu item to the theme toggle with clear state.
+  Explanation: Wired the profile menu to display the current theme (system/light/dark) and added inline controls for switching themes without changing navigation behavior.
+- [x] Step 4 — Replace hardcoded component colors with semantic tokens.
+  Explanation: Replaced hardcoded hex colors with theme tokens across shared UI and page components, moved chart palettes/tooltip borders to CSS variables, and added global Tailwind color overrides so existing slate/white utilities resolve to semantic theme colors for dark mode support.
 - [ ] Step 5 — Tests + manual verification (unit + integration).
-  Explanation: Pending. Verify persistence, navigation, and visual correctness before merging.
+  Explanation: Tests ran (`npm run test:overview`, `npm run test:history`, `npm run test:auth-guard`, `npm run test:account-purchases`) with the Python venv active. Manual verification via Playwright confirmed theme toggles (dark/light/system), `data-theme` persistence across `/overview`, `/verify`, `/api`, `/history`, `/integrations`, `/pricing`, `/account`, `/signin`, `/signup`, and chart contrast (see `overview-dark.png`). Remaining: human eye check for any first-load theme flash.
 - [ ] Step 6 — Deploy to main after MVP verification.
   Explanation: Pending. Only after tests pass and manual verification is complete.
 - [ ] Step 7 — Post‑MVP enhancements (optional).
   Explanation: Pending. Defer refinements until after MVP is stable in main.
+- [x] Step 8 — Dark mode profile menu polish (pill overflow + label cleanup).
+  Explanation: Removed the dynamic status text from the Dark Mode menu item and tightened the theme toggle pill sizing/gap so “System” fits cleanly without overflow while preserving the menu layout.
 - [ ] Remaining pages — Verify, History, Integrations, API, Pricing, Account need to be built using the shared shell once Figma node details are provided. Use first-principles MVPs, no placeholders.
 - [ ] API integration — Wire UI to FastAPI email verification backend once endpoint schemas/contracts are known. Replace mock data with typed fetch layer + error handling/logging; avoid hardcoded fallbacks.
+- [x] External-API-first refactor plan doc — create `refactor.md` with a step-by-step transition plan to move dashboard data sourcing from Supabase to the external API (only keep Supabase for data the external API cannot provide).
+  Explanation: Added `refactor.md` with phased tasks/subtasks, explicit external API dependencies (file_name, export fields, credit write-back), UI “data unavailable” handling, and the targeted end architecture so a newcomer can implement safely.
+- [x] Session handover refresh — create a new root `handover.md` with full context, decisions, file changes, and next steps for the upcoming external-API refactor.
+  Explanation: Added `handover.md` with decisions, dependencies, current repo state notes, and clear next steps for Phase 0/1 of the external-API-first refactor.
+- [ ] Investigate /api/verify 502 (external_api.request_error) and confirm external API reachability.
+  Explanation: Observed request-level failures (no HTTP response). `EMAIL_API_BASE_URL` points to `https://email-verification.islamsaka.com/api/v1/`, and a direct curl from this host failed to connect on port 443, indicating the external service is unreachable from this environment; next step is to confirm service status/DNS/firewall and decide whether to update the base URL or network rules.
 - [ ] Testing and staging — Add unit/integration coverage and deploy to staging after MVP pages and API wiring are in place; verify flows end-to-end.
 - [x] Overview backend alignment — Use credits-spent time series from Supabase tasks, add lifetime totals from external /metrics/verifications, and include latest Paddle plan + purchase date in /api/overview.
   Explanation: `/api/overview` now returns credits-spent totals/series from tasks, lifetime validation totals from external metrics (when available), and current plan data from `billing_purchases` + `billing_plans`, including “Multiple items” when a purchase has multiple price_ids.
@@ -72,9 +80,8 @@
   Explanation: Warnings only today; likely a dependency bump to `supabase`/`supabase_auth` and a small test change to set cookies on the client.
   Update: Bumped `supabase` to `2.27.0`, added `supabase_auth`, switched imports to `supabase_auth.types.User`, and updated auth tests to set cookies on the client while adding confirmed claims to avoid network lookups.
 - [ ] Enhancements — Only after MVP + tests + staging verification.
-- [ ] Session handover — create root `handover.md` with current findings, changes, and next steps.
-  Explanation: Capture this session’s work (CSV export fix + manual reload diagnosis) so a new Codex session can continue without context loss.
-  Update: Added `handover.md` summarizing fixes, Playwright evidence, test results, and next steps (manual rehydration fix + handling unexpected files).
+- [x] Session handover — create root `handover.md` with current findings, changes, and next steps.
+  Explanation: Added a new `handover.md` capturing dark mode progress, uncommitted changes, and the exact next steps/tests to run so the next session can resume without guessing.
 - [x] Planning doc rename: `non-dashboard-api-usage-plan.md` -> `verify-plan.md`.
   Explanation: Renamed the external usage plan doc per request and updated references across planning docs to avoid broken links.
 - [x] UI verification — `/api` usage views (per‑key/per‑purpose) with and without date range.

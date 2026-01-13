@@ -488,12 +488,12 @@ export default function VerifyPage() {
         ? Math.max(totalEmails - processedTotal, 0)
         : 0;
     const slices = [
-      { name: "Valid", value: valid, color: "#00b69b" },
-      { name: "Catch-all", value: catchAll, color: "#ff990a" },
-      { name: "Invalid", value: invalid, color: "#597cff" },
+      { name: "Valid", value: valid, color: "var(--chart-valid)" },
+      { name: "Catch-all", value: catchAll, color: "var(--chart-catchall)" },
+      { name: "Invalid", value: invalid, color: "var(--chart-invalid)" },
     ];
     if (processing > 0) {
-      slices.push({ name: "Processing", value: processing, color: "#cbd5f5" });
+      slices.push({ name: "Processing", value: processing, color: "var(--chart-processing)" });
     }
     return slices.filter((slice) => slice.value > 0);
   }, [uploadSummary]);
@@ -693,7 +693,7 @@ export default function VerifyPage() {
                 value={inputValue}
                 onChange={(event) => setInputValue(event.target.value)}
                 rows={8}
-                className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700 shadow-inner outline-none focus:border-[#4c61cc] focus:ring-1 focus:ring-[#4c61cc]"
+                className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700 shadow-inner outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--ring)]"
                 placeholder={"email1@domain1.com\nemail2@domain2.com"}
               />
             </div>
@@ -711,7 +711,7 @@ export default function VerifyPage() {
               type="button"
               onClick={handleVerify}
               disabled={isSubmitting}
-              className="mt-4 w-full rounded-lg bg-[#ffe369] px-4 py-3 text-center text-sm font-bold uppercase text-slate-900 shadow-sm transition hover:bg-[#ffd84d] disabled:cursor-not-allowed disabled:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4c61cc]"
+              className="mt-4 w-full rounded-lg bg-[var(--cta)] px-4 py-3 text-center text-sm font-bold uppercase text-[var(--cta-foreground)] shadow-sm transition hover:bg-[var(--cta-hover)] disabled:cursor-not-allowed disabled:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
             >
               {isSubmitting ? "Verifying..." : "Verify"}
             </button>
@@ -725,7 +725,7 @@ export default function VerifyPage() {
                   type="button"
                   onClick={() => void handleExportDownload()}
                   disabled={exportDisabled}
-                  className="rounded-lg border border-slate-300 bg-white px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-[#4c61cc] hover:text-[#4c61cc] disabled:cursor-not-allowed disabled:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4c61cc]"
+                  className="rounded-lg border border-slate-300 bg-white px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-[var(--accent)] hover:text-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
                 >
                   {exportLabel}
                 </button>
@@ -734,7 +734,7 @@ export default function VerifyPage() {
                     type="button"
                     onClick={() => void refreshManualResults()}
                     disabled={manualRefreshing}
-                    className="rounded-lg border border-slate-300 bg-white px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-[#4c61cc] hover:text-[#4c61cc] disabled:cursor-not-allowed disabled:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4c61cc]"
+                    className="rounded-lg border border-slate-300 bg-white px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-[var(--accent)] hover:text-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
                   >
                     {manualRefreshing ? "Refreshing..." : "Refresh status"}
                   </button>
@@ -759,7 +759,7 @@ export default function VerifyPage() {
                       className="flex items-center justify-between rounded-lg bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200"
                     >
                       <span>{item.email}</span>
-                      <span className="text-xs font-bold uppercase text-[#4c61cc]">
+                      <span className="text-xs font-bold uppercase text-[var(--accent)]">
                         {item.status}
                       </span>
                     </div>
@@ -793,7 +793,7 @@ export default function VerifyPage() {
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs font-bold text-[#4c61cc] shadow-sm transition hover:border-[#4c61cc]"
+                  className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs font-bold text-[var(--accent)] shadow-sm transition hover:border-[var(--accent)]"
                 >
                   Browse files
                 </button>
@@ -886,7 +886,7 @@ export default function VerifyPage() {
                   <button
                     type="button"
                     onClick={() => setFlowStage("idle")}
-                    className="text-sm font-semibold text-[#4c61cc] underline"
+                    className="text-sm font-semibold text-[var(--accent)] underline"
                   >
                     Go back
                   </button>
@@ -894,7 +894,7 @@ export default function VerifyPage() {
                     type="button"
                     onClick={proceedToMapping}
                     disabled={isSubmitting}
-                    className="rounded-lg bg-[#4c61cc] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#3f52ad] disabled:cursor-not-allowed disabled:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4c61cc]"
+                    className="rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[var(--accent-contrast)] shadow-sm transition hover:bg-[var(--accent-hover)] disabled:cursor-not-allowed disabled:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
                   >
                     VERIFY EMAILS
                   </button>
@@ -919,7 +919,7 @@ export default function VerifyPage() {
                         onChange={(event) =>
                           setColumnMapping((prev) => ({ ...prev, [file.fileName]: event.target.value }))
                         }
-                        className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-sm font-semibold text-slate-700 focus:border-[#4c61cc] focus:ring-1 focus:ring-[#4c61cc]"
+                        className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-sm font-semibold text-slate-700 focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--ring)]"
                       >
                         <option value="">Select email column</option>
                         {(fileColumns[file.fileName]
@@ -958,7 +958,7 @@ export default function VerifyPage() {
                   <button
                     type="button"
                     onClick={() => setFlowStage("popup1")}
-                    className="text-sm font-semibold text-[#4c61cc] underline"
+                    className="text-sm font-semibold text-[var(--accent)] underline"
                   >
                     Go back
                   </button>
@@ -966,7 +966,7 @@ export default function VerifyPage() {
                     type="button"
                     onClick={proceedToSummary}
                     disabled={isSubmitting}
-                    className="rounded-lg bg-[#4c61cc] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#3f52ad] disabled:cursor-not-allowed disabled:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4c61cc]"
+                    className="rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[var(--accent-contrast)] shadow-sm transition hover:bg-[var(--accent-hover)] disabled:cursor-not-allowed disabled:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
                   >
                     {isSubmitting ? "Submitting..." : "PROCEED"}
                   </button>
@@ -986,7 +986,7 @@ export default function VerifyPage() {
                       type="button"
                       onClick={() => void refreshLatestUploads()}
                       disabled={latestUploadRefreshing}
-                      className="rounded-lg border border-slate-300 bg-white px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-[#4c61cc] hover:text-[#4c61cc] disabled:cursor-not-allowed disabled:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4c61cc]"
+                      className="rounded-lg border border-slate-300 bg-white px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-[var(--accent)] hover:text-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
                     >
                       {latestUploadRefreshing ? "Refreshing..." : "Refresh status"}
                     </button>
@@ -1075,7 +1075,7 @@ export default function VerifyPage() {
                             cursor={{ fill: "transparent" }}
                             contentStyle={{
                               borderRadius: 12,
-                              border: "1px solid #e2e8f0",
+                              border: "1px solid var(--border)",
                               boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
                             }}
                           />
@@ -1090,12 +1090,12 @@ export default function VerifyPage() {
         </div>
 
         {toast ? (
-          <div className="fixed bottom-6 right-6 z-10 rounded-lg bg-slate-900 px-4 py-3 text-sm font-semibold text-white shadow-lg ring-1 ring-slate-700">
+          <div className="fixed bottom-6 right-6 z-10 rounded-lg bg-[var(--overlay-strong)] px-4 py-3 text-sm font-semibold text-[var(--text-inverse)] shadow-lg ring-1 ring-[var(--border-strong)]">
             {toast}
             <button
               type="button"
               onClick={() => setToast(null)}
-              className="ml-2 text-xs font-bold text-slate-200 hover:text-white"
+              className="ml-2 text-xs font-bold text-[var(--text-inverse)] opacity-80 hover:opacity-100"
             >
               Dismiss
             </button>

@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { Nunito_Sans } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import Providers from "./providers";
+import { themeInitScript } from "./lib/theme";
 
 const nunitoSans = Nunito_Sans({
   variable: "--font-sans",
@@ -21,8 +23,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={nunitoSans.variable}>
-      <body className="antialiased min-h-screen bg-slate-100 text-slate-900">
+    <html lang="en" className={nunitoSans.variable} suppressHydrationWarning>
+      <body className="antialiased min-h-screen">
+        <Script id="theme-init" strategy="beforeInteractive">
+          {themeInitScript}
+        </Script>
         <Providers>{children}</Providers>
       </body>
     </html>

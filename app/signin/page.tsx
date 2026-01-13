@@ -67,7 +67,7 @@ export default function SigninPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="esteban_schiller@gmail.com"
-            className="h-12 w-full rounded-lg border border-[#d8d8d8] bg-[#f1f4f9] px-4 text-slate-900 placeholder:text-[#a6a6a6] focus:border-[#4880ff] focus:outline-none focus:ring-2 focus:ring-[#4880ff]/30"
+            className="h-12 w-full rounded-lg border border-[var(--border-strong)] bg-[var(--surface-strong)] px-4 text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:border-[var(--accent)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
             required
           />
         </div>
@@ -75,7 +75,10 @@ export default function SigninPage() {
         <div>
           <FieldLabel
             action={
-              <button type="button" className="text-sm font-semibold text-slate-700/60 hover:text-slate-900">
+              <button
+                type="button"
+                className="text-sm font-semibold text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+              >
                 Forget Password?
               </button>
             }
@@ -87,7 +90,7 @@ export default function SigninPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="•••••••••"
-            className="h-12 w-full rounded-lg border border-[#d8d8d8] bg-[#f1f4f9] px-4 text-slate-900 placeholder:text-[#a6a6a6] focus:border-[#4880ff] focus:outline-none focus:ring-2 focus:ring-[#4880ff]/30"
+            className="h-12 w-full rounded-lg border border-[var(--border-strong)] bg-[var(--surface-strong)] px-4 text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:border-[var(--accent)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
             required
           />
         </div>
@@ -97,7 +100,7 @@ export default function SigninPage() {
             type="checkbox"
             checked={remember}
             onChange={(e) => setRemember(e.target.checked)}
-            className="h-5 w-5 rounded border border-[#a3a3a3] text-[#4880ff] focus:ring-[#4880ff]"
+            className="h-5 w-5 rounded border border-[var(--border-strong)] text-[var(--accent)] focus:ring-[var(--ring)]"
           />
           Remember Password
         </label>
@@ -107,7 +110,7 @@ export default function SigninPage() {
         <button
           type="submit"
           disabled={loading}
-          className="h-12 w-full rounded-lg bg-[#4880ff] text-[20px] font-bold text-white shadow-sm transition hover:bg-[#3b6de0] disabled:cursor-not-allowed disabled:opacity-60"
+          className="h-12 w-full rounded-lg bg-[var(--accent)] text-[20px] font-bold text-[var(--accent-contrast)] shadow-sm transition hover:bg-[var(--accent-hover)] disabled:cursor-not-allowed disabled:opacity-60"
         >
           {loading ? "Signing In..." : "Sign In"}
         </button>

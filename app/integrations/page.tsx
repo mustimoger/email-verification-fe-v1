@@ -48,7 +48,7 @@ export default function IntegrationsPage() {
               <p className="text-sm font-semibold text-slate-700">{integration.description}</p>
               <Link
                 href={`/api?integration=${encodeURIComponent(integration.name)}`}
-                className="inline-flex w-full items-center justify-center rounded-lg bg-[#4c61cc] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#3f52ad] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4c61cc]"
+                className="inline-flex w-full items-center justify-center rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[var(--accent-contrast)] shadow-sm transition hover:bg-[var(--accent-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
               >
                 Generate key for {integration.name}
               </Link>

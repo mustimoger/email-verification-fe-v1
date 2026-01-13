@@ -23,6 +23,7 @@ import { useAuth } from "./auth-provider";
 import { resolveAuthState } from "./auth-guard-utils";
 import { apiClient } from "../lib/api-client";
 import type { Profile } from "../lib/api-client";
+import { useTheme } from "./theme-provider";
 
 type NavItem = {
   key: string;
@@ -72,6 +73,16 @@ const profileMenu: ProfileMenuItem[] = [
   { key: "logout", label: "Log out", icon: LogOut },
 ];
 
+const themeOptions: Array<{
+  key: "system" | "light" | "dark";
+  label: string;
+  value: "system" | "light" | "dark";
+}> = [
+  { key: "system", label: "System", value: "system" },
+  { key: "light", label: "Light", value: "light" },
+  { key: "dark", label: "Dark", value: "dark" },
+];
+
 function Avatar({ name, src }: { name: string; src?: string }) {
   const initials = useMemo(() => {
     if (!name) return "U";
@@ -84,7 +95,7 @@ function Avatar({ name, src }: { name: string; src?: string }) {
   const [showFallback, setShowFallback] = useState(false);
 
   return (
-    <div className="relative h-11 w-11 overflow-hidden rounded-full bg-gradient-to-br from-[#6ea8ff] via-[#f089ff] to-[#ffba7a] text-white">
+    <div className="relative h-11 w-11 overflow-hidden rounded-full bg-gradient-to-br from-[var(--avatar-start)] via-[var(--avatar-mid)] to-[var(--avatar-end)] text-[var(--text-inverse)]">
       <Image
         src={src || "/profile-image.png"}
         alt={name}
@@ -117,8 +128,8 @@ function NavButton({
   const baseClasses =
     "group flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition";
   const activeClasses = active
-    ? "bg-[#4c61cc] text-white shadow-[0_8px_24px_rgba(0,0,0,0.12)]"
-    : "text-white hover:bg-[#4c61cc]/70 hover:text-white";
+    ? "bg-[var(--nav-active)] text-[var(--text-inverse)] shadow-[var(--nav-shadow)]"
+    : "text-[var(--text-inverse)] hover:bg-[var(--nav-hover)] hover:text-[var(--text-inverse)]";
 
   if (!item.available) {
     return (
@@ -152,6 +163,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { signOut, session, loading, supabase } = useAuth();
+  const { theme, resolvedTheme, setTheme } = useTheme();
   const [isNavOpen, setIsNavOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement | null>(null);
@@ -248,11 +260,11 @@ export function DashboardShell({ children }: { children: ReactNode }) {
     return null;
   }
 
-  return (
-    <div className="flex min-h-screen">
+    return (
+      <div className="flex min-h-screen">
       <aside
         className={[
-          "fixed inset-y-0 z-30 w-64 bg-[#2f47c7] text-white shadow-xl transition-transform duration-200 lg:static lg:translate-x-0",
+          "fixed inset-y-0 z-30 w-64 bg-[var(--nav-surface)] text-[var(--text-inverse)] shadow-xl transition-transform duration-200 lg:static lg:translate-x-0",
           isNavOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
         ].join(" ")}
         aria-label="Primary"
@@ -268,7 +280,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
             />
             <button
               type="button"
-              className="rounded-lg p-2 text-white/80 hover:bg-white/10 lg:hidden"
+              className="rounded-lg p-2 text-[var(--nav-muted)] hover:bg-[var(--nav-muted-hover)] lg:hidden"
               onClick={() => setIsNavOpen(false)}
               aria-label="Close navigation"
             >
@@ -291,7 +303,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
               disabled={loggingOut}
               className={[
                 "group flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition cursor-pointer",
-                "text-white hover:bg-[#4c61cc]/70 hover:text-white disabled:opacity-60 disabled:cursor-not-allowed",
+                "text-[var(--text-inverse)] hover:bg-[var(--nav-hover)] hover:text-[var(--text-inverse)] disabled:opacity-60 disabled:cursor-not-allowed",
               ].join(" ")}
             >
               <LogOut className="h-5 w-5" />
@@ -304,14 +316,14 @@ export function DashboardShell({ children }: { children: ReactNode }) {
       {isNavOpen ? (
         <button
           type="button"
-          className="fixed inset-0 z-20 bg-slate-900/40 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-20 bg-[var(--overlay)] backdrop-blur-sm lg:hidden"
           aria-label="Close navigation overlay"
           onClick={() => setIsNavOpen(false)}
         />
       ) : null}
 
       <div className="flex flex-1 flex-col">
-        <header className="sticky top-0 z-10 flex items-center gap-4 border-b border-slate-100 bg-white/80 px-4 py-3 backdrop-blur md:px-6">
+        <header className="sticky top-0 z-10 flex items-center gap-4 border-b border-[var(--border)] bg-[var(--surface-overlay)] px-4 py-3 backdrop-blur md:px-6">
           <button
             type="button"
             className="rounded-lg p-2 text-slate-700 hover:bg-slate-100 lg:hidden"
@@ -326,16 +338,16 @@ export function DashboardShell({ children }: { children: ReactNode }) {
               <button
                 type="button"
                 onClick={() => setProfileMenuOpen((open) => !open)}
-                className="flex items-center gap-2 rounded-md bg-transparent px-2 py-1 transition hover:bg-white/40"
+                className="flex items-center gap-2 rounded-md bg-transparent px-2 py-1 transition hover:bg-[var(--surface-overlay-strong)]"
                 aria-haspopup="menu"
                 aria-expanded={profileMenuOpen}
               >
                 <Avatar name={profileName} src={profileAvatar} />
                 <div className="text-left">
-                  <p className="text-sm font-semibold text-slate-900">
+                  <p className="text-sm font-semibold text-[var(--text-primary)]">
                     {profileName}
                   </p>
-                  <p className="text-xs font-medium text-slate-500">
+                  <p className="text-xs font-medium text-[var(--text-muted)]">
                     {profileRole}
                   </p>
                 </div>
@@ -345,7 +357,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
                   viewBox="0 0 24 24"
                   strokeWidth={1.5}
                   stroke="currentColor"
-                  className="h-4 w-4 text-slate-500"
+                  className="h-4 w-4 text-[var(--text-muted)]"
                 >
                   <path
                     strokeLinecap="round"
@@ -358,11 +370,12 @@ export function DashboardShell({ children }: { children: ReactNode }) {
               {profileMenuOpen ? (
                 <div
                   role="menu"
-                  className="absolute right-0 mt-2 w-48 rounded-2xl border border-slate-100 bg-white py-2 shadow-2xl ring-1 ring-slate-100"
+                  className="absolute right-0 mt-2 w-48 rounded-2xl border border-[var(--border)] bg-[var(--surface-elevated)] py-2 shadow-2xl ring-1 ring-[var(--border)]"
                 >
                   {profileMenu.map((item) => {
                     const Icon = item.icon;
                     const isLogout = item.key === "logout";
+                    const isTheme = item.key === "dark-mode";
                     return (
                       <button
                         key={item.key}
@@ -379,15 +392,39 @@ export function DashboardShell({ children }: { children: ReactNode }) {
                               }
                         }
                         disabled={isLogout && loggingOut}
-                        className="flex w-full items-center gap-3 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60 disabled:cursor-not-allowed"
+                        className="flex w-full items-center gap-3 px-4 py-3 text-sm font-semibold text-[var(--text-secondary)] hover:bg-[var(--surface-soft)] disabled:opacity-60 disabled:cursor-not-allowed"
                       >
-                        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-50 text-[#4c61cc] shadow-inner">
+                        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--surface-soft)] text-[var(--accent)] shadow-inner">
                           <Icon className="h-4 w-4" />
                         </span>
-                        <span>{isLogout && loggingOut ? "Logging out..." : item.label}</span>
+                        <span>
+                          {isLogout && loggingOut ? "Logging out..." : item.label}
+                        </span>
                       </button>
                     );
                   })}
+                  <div className="px-4 pb-4">
+                    <div className="mt-1 grid grid-cols-3 gap-1">
+                      {themeOptions.map((option) => {
+                        const selected = theme === option.value;
+                        return (
+                          <button
+                            key={option.key}
+                            type="button"
+                            onClick={() => setTheme(option.value)}
+                            className={[
+                              "rounded-full px-1.5 py-1 text-[11px] font-semibold leading-4 whitespace-nowrap transition",
+                              selected
+                                ? "bg-[var(--accent)] text-[var(--accent-contrast)]"
+                                : "bg-[var(--surface-soft)] text-[var(--text-secondary)] hover:bg-[var(--surface-strong)]",
+                            ].join(" ")}
+                          >
+                            {option.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
               ) : null}
             </div>
@@ -397,16 +434,16 @@ export function DashboardShell({ children }: { children: ReactNode }) {
         <main className="flex-1 overflow-y-auto bg-transparent px-4 py-6 sm:px-6 lg:px-10">
           <div className="mx-auto flex max-w-6xl flex-col gap-10">
             {children}
-            <footer className="mt-auto flex flex-wrap gap-8 text-xs font-semibold text-slate-500">
+            <footer className="mt-auto flex flex-wrap gap-8 text-xs font-semibold text-[var(--text-muted)]">
               <button
                 type="button"
-                className="hover:text-[#4c61cc] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4c61cc]"
+                className="hover:text-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
               >
                 Privacy Policy & Terms
               </button>
               <button
                 type="button"
-                className="hover:text-[#4c61cc] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4c61cc]"
+                className="hover:text-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
               >
                 Cookie Preferences
               </button>

@@ -18,10 +18,10 @@ import {
 const historyCache = new Map<string, HistoryCacheEntry>();
 
 const statusColor: Record<HistoryRow["statusTone"], string> = {
-  completed: "bg-emerald-500",
-  processing: "bg-amber-400",
-  failed: "bg-rose-500",
-  unknown: "bg-slate-400",
+  completed: "bg-[var(--status-success)]",
+  processing: "bg-[var(--status-warning)]",
+  failed: "bg-[var(--status-danger)]",
+  unknown: "bg-[var(--status-unknown)]",
 };
 
 const PAGE_SIZE = 10;
@@ -185,7 +185,7 @@ export default function HistoryPage() {
               type="button"
               onClick={handleRefresh}
               disabled={loading || loadingMore || refreshing}
-              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-[#4c61cc] hover:text-[#4c61cc] disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4c61cc]"
+              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-[var(--accent)] hover:text-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
             >
               {refreshing ? "Refreshing..." : "Refresh"}
             </button>
@@ -259,7 +259,7 @@ export default function HistoryPage() {
                 type="button"
                 disabled={!canLoadMore}
                 onClick={() => fetchPage(rows.length, true)}
-                className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-[#4c61cc] hover:text-[#4c61cc] disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4c61cc]"
+                className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-[var(--accent)] hover:text-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
               >
                 {loadingMore ? "Loading..." : canLoadMore ? "Load more" : "All loaded"}
               </button>

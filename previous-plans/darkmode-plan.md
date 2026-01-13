@@ -57,15 +57,17 @@ Goal: add a reliable dark mode that respects system preference, allows a user to
 - Add a quick toggle in auth screens if needed.
 
 ## Implementation tracking
-- [ ] Step 1 — Tokenize theme colors (light + dark) in `app/globals.css` and wire to Tailwind theme variables.
-  Explanation: Pending. Establish shared semantic tokens before touching component styles.
-- [ ] Step 2 — Theme state + persistence + hydration-safe init.
-  Explanation: Pending. Respect system preference, store user overrides, and avoid theme flash on load.
-- [ ] Step 3 — Wire the existing “Dark Mode” menu item to the theme toggle with clear state.
-  Explanation: Pending. Use the profile menu as the MVP entry without changing navigation.
-- [ ] Step 4 — Replace hardcoded component colors with semantic tokens.
-  Explanation: Pending. Ensure gradients, shadows, and text colors adapt across pages.
+- [x] Step 1 — Tokenize theme colors (light + dark) in `app/globals.css` and wire to Tailwind theme variables.
+  Explanation: Added light/dark semantic tokens (surface/text/border/accent/ring/background) and mapped them to Tailwind theme variables so all components can reference a single source of truth.
+- [x] Step 2 — Theme state + persistence + hydration-safe init.
+  Explanation: Added ThemeProvider state/persistence and a before-interactive init script that sets `data-theme` and `data-theme-preference` before hydration to avoid flash.
+- [x] Step 3 — Wire the existing “Dark Mode” menu item to the theme toggle with clear state.
+  Explanation: Added theme controls to the profile menu, showing the current mode and allowing system/light/dark switching without changing navigation.
+- [x] Step 4 — Replace hardcoded component colors with semantic tokens.
+  Explanation: Updated component colors (buttons, headers, chart palettes, tooltips) to use CSS variables and added global overrides so common Tailwind slate/white utilities map to theme tokens in dark mode.
 - [ ] Step 5 — Tests + manual verification (unit + integration).
-  Explanation: Pending. Verify persistence, navigation, and visuals before merging.
+  Explanation: Tests ran (`npm run test:overview`, `npm run test:history`, `npm run test:auth-guard`, `npm run test:account-purchases`) with the Python venv active. Manual verification via Playwright confirmed theme toggles (dark/light/system), `data-theme` persistence across `/overview`, `/verify`, `/api`, `/history`, `/integrations`, `/pricing`, `/account`, `/signin`, `/signup`, and chart contrast (see `overview-dark.png`). Remaining: human eye check for any first-load theme flash.
 - [ ] Step 6 — Deploy to main after MVP verification.
   Explanation: Pending. Only after tests pass and manual verification is complete.
+- [x] Step 7 — Dark mode profile menu polish (pill overflow + label cleanup).
+  Explanation: Removed the dynamic status text from the Dark Mode menu item and tightened the theme toggle pill sizing/gap so “System” fits cleanly without overflow while preserving the menu layout.

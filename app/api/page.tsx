@@ -29,12 +29,12 @@ type KeyStatus = "active" | "disabled";
 type UsageView = "per_key" | "per_purpose";
 
 const statusStyle: Record<KeyStatus, string> = {
-  active: "bg-emerald-100 text-emerald-700",
-  disabled: "bg-slate-200 text-slate-600",
+  active: "bg-[var(--status-success-soft)] text-[var(--status-success)]",
+  disabled: "bg-[var(--surface-muted)] text-[var(--text-muted)]",
 };
 
 const usageAxisTickStyle = {
-  fill: "#64748b",
+  fill: "var(--text-muted)",
   fontSize: 12,
   fontWeight: 600,
 };
@@ -292,7 +292,7 @@ export default function ApiPage() {
             <button
               type="button"
               onClick={() => setShowModal(true)}
-              className="rounded-lg bg-[#4c61cc] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#3f52ad] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4c61cc]"
+              className="rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[var(--accent-contrast)] shadow-sm transition hover:bg-[var(--accent-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
             >
               Generate API Key
             </button>
@@ -340,7 +340,7 @@ export default function ApiPage() {
                     <span className="flex justify-end">
                       <button
                         type="button"
-                        className="rounded-lg border border-slate-300 bg-white px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-[#4c61cc] hover:text-[#4c61cc] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4c61cc]"
+                        className="rounded-lg border border-slate-300 bg-white px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-[var(--accent)] hover:text-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
                         onClick={() => handleRevoke(key.id || "")}
                         disabled={creating}
                       >
@@ -368,7 +368,7 @@ export default function ApiPage() {
               <select
                 value={usageView}
                 onChange={(event) => setUsageView(event.target.value as UsageView)}
-                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm outline-none focus:border-[#4c61cc] focus:ring-1 focus:ring-[#4c61cc]"
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--ring)]"
               >
                 <option value="per_key">Per API key</option>
                 <option value="per_purpose">Per purpose</option>
@@ -382,7 +382,7 @@ export default function ApiPage() {
                 <select
                   value={selectedKey}
                   onChange={(event) => setSelectedKey(event.target.value)}
-                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm outline-none focus:border-[#4c61cc] focus:ring-1 focus:ring-[#4c61cc]"
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--ring)]"
                 >
                   <option value="">All keys</option>
                   {keys.map((key) => (
@@ -395,7 +395,7 @@ export default function ApiPage() {
                 <select
                   value={selectedPurpose}
                   onChange={(event) => setSelectedPurpose(event.target.value)}
-                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm outline-none focus:border-[#4c61cc] focus:ring-1 focus:ring-[#4c61cc]"
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--ring)]"
                 >
                   <option value="">All purposes</option>
                   {purposeOptions.map((purpose) => (
@@ -417,7 +417,7 @@ export default function ApiPage() {
                     type="date"
                     value={dateRange.from}
                     onChange={(event) => setDateRange((prev) => ({ ...prev, from: event.target.value }))}
-                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm outline-none focus:border-[#4c61cc] focus:ring-1 focus:ring-[#4c61cc]"
+                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--ring)]"
                   />
                   <Calendar className="pointer-events-none absolute right-3 top-2.5 h-4 w-4 text-slate-400" />
                 </div>
@@ -426,7 +426,7 @@ export default function ApiPage() {
                     type="date"
                     value={dateRange.to}
                     onChange={(event) => setDateRange((prev) => ({ ...prev, to: event.target.value }))}
-                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm outline-none focus:border-[#4c61cc] focus:ring-1 focus:ring-[#4c61cc]"
+                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--ring)]"
                   />
                   <Calendar className="pointer-events-none absolute right-3 top-2.5 h-4 w-4 text-slate-400" />
                 </div>
@@ -439,14 +439,14 @@ export default function ApiPage() {
               type="button"
               onClick={loadUsage}
               disabled={isLoadingUsage}
-              className="rounded-lg bg-[#4c61cc] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#3f52ad] disabled:cursor-not-allowed disabled:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4c61cc]"
+              className="rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[var(--accent-contrast)] shadow-sm transition hover:bg-[var(--accent-hover)] disabled:cursor-not-allowed disabled:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
             >
               {isLoadingUsage ? "Loading..." : "See Usage"}
             </button>
             <button
               type="button"
               onClick={() => window.print()}
-              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-[#4c61cc] hover:text-[#4c61cc] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4c61cc]"
+              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-[var(--accent)] hover:text-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
             >
               Download
             </button>
@@ -477,16 +477,21 @@ export default function ApiPage() {
                   <Tooltip
                     contentStyle={{
                       borderRadius: 12,
-                      border: "1px solid #e2e8f0",
+                      border: "1px solid var(--border)",
                       boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
                     }}
                   />
                   <Line
                     type="monotone"
                     dataKey="count"
-                    stroke="#3b82f6"
+                    stroke="var(--chart-line)"
                     strokeWidth={3}
-                    dot={{ r: 5, fill: "#3b82f6", strokeWidth: 2, stroke: "white" }}
+                    dot={{
+                      r: 5,
+                      fill: "var(--chart-line)",
+                      strokeWidth: 2,
+                      stroke: "var(--surface-elevated)",
+                    }}
                   />
                 </ReLineChart>
               </ResponsiveContainer>
@@ -507,7 +512,7 @@ export default function ApiPage() {
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="rounded-full p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4c61cc]"
+                  className="rounded-full p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
                   aria-label="Close"
                 >
                   ✕
@@ -527,8 +532,8 @@ export default function ApiPage() {
                   integrationOptions.map((option) => (
                     <label
                       key={option.id}
-                      className={`flex cursor-pointer flex-col gap-2 rounded-xl border px-4 py-3 shadow-sm transition hover:border-[#4c61cc] ${
-                        selectedIntegrationId === option.id ? "border-[#4c61cc] bg-slate-50" : "border-slate-200 bg-white"
+                      className={`flex cursor-pointer flex-col gap-2 rounded-xl border px-4 py-3 shadow-sm transition hover:border-[var(--accent)] ${
+                        selectedIntegrationId === option.id ? "border-[var(--accent)] bg-slate-50" : "border-slate-200 bg-white"
                       }`}
                     >
                       <div className="flex items-center justify-between gap-3">
@@ -538,7 +543,7 @@ export default function ApiPage() {
                             name="integration"
                             checked={selectedIntegrationId === option.id}
                             onChange={() => handleIntegrationChange(option.id)}
-                            className="h-4 w-4 accent-[#4c61cc]"
+                            className="h-4 w-4 accent-[var(--accent)]"
                           />
                           <span className="text-sm font-extrabold text-slate-900">{option.label}</span>
                         </div>
@@ -557,7 +562,7 @@ export default function ApiPage() {
                 <input
                   value={keyName}
                   onChange={(event) => setKeyName(event.target.value)}
-                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm outline-none focus:border-[#4c61cc] focus:ring-1 focus:ring-[#4c61cc]"
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--ring)]"
                   placeholder="Enter a name for this key"
                 />
                 <p className="text-xs font-semibold text-slate-500">
@@ -569,7 +574,7 @@ export default function ApiPage() {
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-[#4c61cc] hover:text-[#4c61cc] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4c61cc]"
+                  className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-[var(--accent)] hover:text-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
                 >
                   Cancel
                 </button>
@@ -577,7 +582,7 @@ export default function ApiPage() {
                   type="button"
                   onClick={handleCreateKey}
                   disabled={creating || !selectedIntegrationId || (keyName.trim() === "" && !selectedIntegrationId)}
-                  className="rounded-lg bg-[#4c61cc] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#3f52ad] disabled:cursor-not-allowed disabled:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4c61cc]"
+                  className="rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[var(--accent-contrast)] shadow-sm transition hover:bg-[var(--accent-hover)] disabled:cursor-not-allowed disabled:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
                 >
                   {creating ? "Creating..." : "Create Key"}
                 </button>
