@@ -70,6 +70,18 @@
   Explanation: External API dev is waiting on the final Supabase schema to implement write-back; still not documented, so credit tracking cannot be removed yet.
 - [ ] Phase 0 — map external metrics to UI “credits used”/usage totals.
   Explanation: `ext-api-docs/endpoints/metrics_controller.md` exposes totals and series, but the exact mapping to UI credit labels remains unconfirmed and must be clarified with ext API dev to avoid misreporting.
+- [ ] External-API-first refactor Phase 1 — remove task caching and proxy tasks directly to external API.
+  Explanation: Phase 1 replaces Supabase task storage with direct external API calls and updates UI data mapping while preserving design; any missing fields must show `ext api data is not available` and be logged.
+- [ ] Phase 1 — backend tasks proxy (list/detail/download/upload) and remove Supabase task upserts/polling.
+  Explanation: Update task endpoints to call external API directly, remove local persistence/polling logic, and ensure request/response logging is explicit for missing fields.
+- [ ] Phase 1 — backend cleanup of task cache services.
+  Explanation: Remove `tasks_store`/`task_files_store` usages and any dependent hooks that only exist for Supabase caching; document any required deferrals if other features still rely on them.
+- [ ] Phase 1 — frontend History uses external task response format.
+  Explanation: Map external task metrics to existing History UI without altering layout, and show `ext api data is not available` for missing file name/export detail fields.
+- [ ] Phase 1 — frontend Verify uses external task/verify responses.
+  Explanation: Wire Verify page to external task/verify responses directly, keep UI states intact, and surface missing export details with `ext api data is not available`.
+- [ ] Phase 1 — tests/verification for task proxying.
+  Explanation: Add/update backend + frontend tests to cover proxy routes and missing-field fallbacks; run targeted tests with the Python venv active.
 - [x] Session handover refresh — create a new root `handover.md` with full context, decisions, file changes, and next steps for the upcoming external-API refactor.
   Explanation: Added `handover.md` with decisions, dependencies, current repo state notes, and clear next steps for Phase 0/1 of the external-API-first refactor.
 - [ ] Investigate /api/verify 502 (external_api.request_error) and confirm external API reachability.
