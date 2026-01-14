@@ -1,6 +1,6 @@
 import pytest
 from fastapi import FastAPI
-from fastapi.testclient import TestClient
+import httpx
 
 from app.api import tasks as tasks_module
 from app.api.tasks import router
@@ -21,7 +21,7 @@ def _build_app(monkeypatch):
     app = FastAPI()
     app.include_router(router)
 
-    def fake_user():
+    async def fake_user():
         return AuthContext(user_id="user-key-scope", claims={}, token="t")
 
     calls = {"external_list": 0}
@@ -32,23 +32,22 @@ def _build_app(monkeypatch):
             return TaskListResponse(count=0, tasks=[])
 
     monkeypatch.setattr(tasks_module, "record_usage", lambda *args, **kwargs: None)
-    monkeypatch.setattr(
-        tasks_module,
-        "fetch_tasks_with_counts",
-        lambda user_id, limit=10, offset=0, api_key_id=None: {"count": 0, "tasks": []},
-    )
+    async def fake_client():
+        return FakeClient()
+
     app.dependency_overrides[tasks_module.get_current_user] = fake_user
-    app.dependency_overrides[tasks_module.get_user_external_client] = lambda: FakeClient()
+    app.dependency_overrides[tasks_module.get_user_external_client] = fake_client
     return app, calls
 
 
-def test_tasks_list_key_scope_skips_external(monkeypatch):
+@pytest.mark.anyio
+async def test_tasks_list_key_scope_calls_external(monkeypatch):
     app, calls = _build_app(monkeypatch)
-    client = TestClient(app)
-
-    resp = client.get("/api/tasks?api_key_id=key-123")
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["count"] == 0
-    assert data["tasks"] == []
-    assert calls["external_list"] == 0
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.get("/api/tasks?api_key_id=key-123")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["count"] == 0
+        assert data["tasks"] == []
+        assert calls["external_list"] == 1

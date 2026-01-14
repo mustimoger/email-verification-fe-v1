@@ -81,7 +81,9 @@
 - [ ] Phase 1 — frontend Verify uses external task/verify responses.
   Explanation: Wire Verify page to external task/verify responses directly, keep UI states intact, and surface missing export details with `ext api data is not available`.
 - [ ] Phase 1 — tests/verification for task proxying.
-  Explanation: Add/update backend + frontend tests to cover proxy routes and missing-field fallbacks; run targeted tests with the Python venv active.
+  Explanation: Add/update backend + frontend tests to cover proxy routes and missing-field fallbacks; run targeted tests with the Python venv active. Backend updates done; frontend tests still pending.
+- [x] Phase 1 — update backend tests for external task proxy behavior.
+  Explanation: Updated task list/latest upload/refresh tests to use async ASGI clients and new external-only behavior, removed upload polling test, and ran pytest for the affected suite (14 passed; warnings from pyiceberg/pydantic).
 - [x] Session handover refresh — create a new root `handover.md` with full context, decisions, file changes, and next steps for the upcoming external-API refactor.
   Explanation: Added `handover.md` with decisions, dependencies, current repo state notes, and clear next steps for Phase 0/1 of the external-API-first refactor.
 - [ ] Investigate /api/verify 502 (external_api.request_error) and confirm external API reachability.

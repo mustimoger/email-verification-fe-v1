@@ -1,6 +1,6 @@
 import pytest
 from fastapi import FastAPI
-from fastapi.testclient import TestClient
+import httpx
 
 from app.api import tasks as tasks_module
 from app.api.tasks import router
@@ -21,7 +21,7 @@ def _build_app(monkeypatch):
   app = FastAPI()
   app.include_router(router)
 
-  def fake_user():
+  async def fake_user():
     return AuthContext(user_id="user-external-fail", claims={}, token="t")
 
   class FakeClient:
@@ -32,22 +32,15 @@ def _build_app(monkeypatch):
     return FakeClient()
 
   monkeypatch.setattr(tasks_module, "record_usage", lambda *args, **kwargs: None)
-  monkeypatch.setattr(
-    tasks_module,
-    "fetch_tasks_with_counts",
-    lambda user_id, limit=10, offset=0, api_key_id=None: {"count": 0, "tasks": []},
-  )
   app.dependency_overrides[tasks_module.get_current_user] = fake_user
   app.dependency_overrides[tasks_module.get_user_external_client] = fake_resolved
   return app
 
 
-def test_tasks_list_handles_external_failure(monkeypatch):
+@pytest.mark.anyio
+async def test_tasks_list_handles_external_failure(monkeypatch):
   app = _build_app(monkeypatch)
-  client = TestClient(app)
-
-  resp = client.get("/api/tasks")
-  assert resp.status_code == 200
-  data = resp.json()
-  assert data["count"] == 0
-  assert data["tasks"] == []
+  transport = httpx.ASGITransport(app=app)
+  async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+    resp = await client.get("/api/tasks")
+    assert resp.status_code == 401

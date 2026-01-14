@@ -1,6 +1,6 @@
 import pytest
 from fastapi import FastAPI
-from fastapi.testclient import TestClient
+import httpx
 
 from app.api import tasks as tasks_module
 from app.api.tasks import router
@@ -17,52 +17,24 @@ def env(monkeypatch):
     monkeypatch.setenv("SUPABASE_AUTH_COOKIE_NAME", "cookie_name")
 
 
-def _build_app(monkeypatch, fake_user, fake_client, *, use_supabase: bool = False):
+def _build_app(monkeypatch, fake_user, fake_client):
     app = FastAPI()
     app.include_router(router)
 
-    async def fake_poll(*args, **kwargs):
-        return None
-
     monkeypatch.setattr(tasks_module, "record_usage", lambda *args, **kwargs: None)
-    monkeypatch.setattr(tasks_module, "upsert_tasks_from_list", lambda *args, **kwargs: None)
-    monkeypatch.setattr(tasks_module, "upsert_task_file", lambda *args, **kwargs: "file-1")
-    monkeypatch.setattr(tasks_module, "poll_tasks_after_upload", fake_poll)
     monkeypatch.setattr(tasks_module, "get_cached_key_by_name", lambda *args, **kwargs: None)
-    if use_supabase:
-        monkeypatch.setattr(
-            tasks_module,
-            "fetch_tasks_with_counts",
-            lambda user_id, limit=10, offset=0, api_key_id=None: {
-                "count": 1,
-                "tasks": [
-                    {
-                        "task_id": "supabase-task",
-                        "user_id": user_id,
-                        "status": "completed",
-                        "email_count": 1,
-                        "valid_count": 1,
-                        "invalid_count": 0,
-                        "catchall_count": 0,
-                        "created_at": "2024-01-01T00:00:00Z",
-                    }
-                ],
-            },
-        )
-    else:
-        monkeypatch.setattr(
-            tasks_module,
-            "fetch_tasks_with_counts",
-            lambda *args, **kwargs: {"count": 0, "tasks": []},
-        )
+
+    async def fake_client_override():
+        return fake_client
 
     app.dependency_overrides[tasks_module.get_current_user] = fake_user
-    app.dependency_overrides[tasks_module.get_user_external_client] = lambda: fake_client
+    app.dependency_overrides[tasks_module.get_user_external_client] = fake_client_override
     return app
 
 
-def test_tasks_list_forbids_user_id_for_non_admin(monkeypatch):
-    def fake_user():
+@pytest.mark.anyio
+async def test_tasks_list_forbids_user_id_for_non_admin(monkeypatch):
+    async def fake_user():
         return AuthContext(user_id="user-basic", claims={}, token="t", role="user")
 
     class FakeClient:
@@ -70,13 +42,15 @@ def test_tasks_list_forbids_user_id_for_non_admin(monkeypatch):
             return TaskListResponse(count=0, tasks=[])
 
     app = _build_app(monkeypatch, fake_user, FakeClient())
-    client = TestClient(app)
-    resp = client.get("/api/tasks?user_id=target-user")
-    assert resp.status_code == 403
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.get("/api/tasks?user_id=target-user")
+        assert resp.status_code == 403
 
 
-def test_tasks_list_allows_user_id_for_admin(monkeypatch):
-    def fake_user():
+@pytest.mark.anyio
+async def test_tasks_list_allows_user_id_for_admin(monkeypatch):
+    async def fake_user():
         return AuthContext(user_id="admin-1", claims={}, token="t", role="admin")
 
     captured = []
@@ -87,14 +61,16 @@ def test_tasks_list_allows_user_id_for_admin(monkeypatch):
             return TaskListResponse(count=0, tasks=[])
 
     app = _build_app(monkeypatch, fake_user, FakeClient())
-    client = TestClient(app)
-    resp = client.get("/api/tasks?user_id=target-user")
-    assert resp.status_code == 200
-    assert captured == ["target-user"]
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.get("/api/tasks?user_id=target-user")
+        assert resp.status_code == 200
+        assert captured == ["target-user"]
 
 
-def test_tasks_create_forbids_user_id_for_non_admin(monkeypatch):
-    def fake_user():
+@pytest.mark.anyio
+async def test_tasks_create_forbids_user_id_for_non_admin(monkeypatch):
+    async def fake_user():
         return AuthContext(user_id="user-basic", claims={}, token="t", role="user")
 
     class FakeClient:
@@ -102,13 +78,15 @@ def test_tasks_create_forbids_user_id_for_non_admin(monkeypatch):
             return TaskResponse(id="task-1", email_count=len(emails))
 
     app = _build_app(monkeypatch, fake_user, FakeClient())
-    client = TestClient(app)
-    resp = client.post("/api/tasks?user_id=target-user", json={"emails": ["a@test.com"]})
-    assert resp.status_code == 400
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.post("/api/tasks?user_id=target-user", json={"emails": ["a@test.com"]})
+        assert resp.status_code == 400
 
 
-def test_tasks_create_rejects_user_id_for_admin(monkeypatch):
-    def fake_user():
+@pytest.mark.anyio
+async def test_tasks_create_rejects_user_id_for_admin(monkeypatch):
+    async def fake_user():
         return AuthContext(user_id="admin-1", claims={}, token="t", role="admin")
 
     class FakeClient:
@@ -116,13 +94,15 @@ def test_tasks_create_rejects_user_id_for_admin(monkeypatch):
             return TaskResponse(id="task-2", email_count=len(emails))
 
     app = _build_app(monkeypatch, fake_user, FakeClient())
-    client = TestClient(app)
-    resp = client.post("/api/tasks?user_id=target-user", json={"emails": ["a@test.com"]})
-    assert resp.status_code == 400
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.post("/api/tasks?user_id=target-user", json={"emails": ["a@test.com"]})
+        assert resp.status_code == 400
 
 
-def test_tasks_upload_forbids_user_id_for_non_admin(monkeypatch):
-    def fake_user():
+@pytest.mark.anyio
+async def test_tasks_upload_forbids_user_id_for_non_admin(monkeypatch):
+    async def fake_user():
         return AuthContext(user_id="user-basic", claims={}, token="t", role="user")
 
     class FakeClient:
@@ -133,19 +113,21 @@ def test_tasks_upload_forbids_user_id_for_non_admin(monkeypatch):
             return BatchFileUploadResponse(status="ok", upload_id="u1", task_id="task-1")
 
     app = _build_app(monkeypatch, fake_user, FakeClient())
-    client = TestClient(app)
-    resp = client.post(
-        "/api/tasks/upload?user_id=target-user",
-        files=[("files", ("emails.csv", b"email@example.com", "text/csv"))],
-        data={
-            "file_metadata": '[{"file_name":"emails.csv","email_column":"A","first_row_has_labels":true,"remove_duplicates":true}]'
-        },
-    )
-    assert resp.status_code == 400
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.post(
+            "/api/tasks/upload?user_id=target-user",
+            files=[("files", ("emails.csv", b"email@example.com", "text/csv"))],
+            data={
+                "file_metadata": '[{"file_name":"emails.csv","email_column":"A","first_row_has_labels":true,"remove_duplicates":true}]'
+            },
+        )
+        assert resp.status_code == 400
 
 
-def test_tasks_upload_rejects_user_id_for_admin(monkeypatch):
-    def fake_user():
+@pytest.mark.anyio
+async def test_tasks_upload_rejects_user_id_for_admin(monkeypatch):
+    async def fake_user():
         return AuthContext(user_id="admin-1", claims={}, token="t", role="admin")
 
     captured = {"list_user_id": None, "email_column": None}
@@ -160,13 +142,14 @@ def test_tasks_upload_rejects_user_id_for_admin(monkeypatch):
             return BatchFileUploadResponse(status="ok", upload_id="u1", task_id="task-1")
 
     app = _build_app(monkeypatch, fake_user, FakeClient())
-    client = TestClient(app)
-    resp = client.post(
-        "/api/tasks/upload?user_id=target-user",
-        files=[("files", ("emails.csv", b"email@example.com", "text/csv"))],
-        data={
-            "file_metadata": '[{"file_name":"emails.csv","email_column":"A","first_row_has_labels":true,"remove_duplicates":true}]'
-        },
-    )
-    assert resp.status_code == 400
-    assert captured["email_column"] is None
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.post(
+            "/api/tasks/upload?user_id=target-user",
+            files=[("files", ("emails.csv", b"email@example.com", "text/csv"))],
+            data={
+                "file_metadata": '[{"file_name":"emails.csv","email_column":"A","first_row_has_labels":true,"remove_duplicates":true}]'
+            },
+        )
+        assert resp.status_code == 400
+        assert captured["email_column"] is None

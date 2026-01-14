@@ -1,6 +1,6 @@
 import pytest
 from fastapi import FastAPI
-from fastapi.testclient import TestClient
+import httpx
 
 from app.api import tasks as tasks_module
 from app.api.tasks import router
@@ -20,10 +20,10 @@ def _build_app(monkeypatch, latest_task):
     app = FastAPI()
     app.include_router(router)
 
-    def fake_user():
+    async def fake_user():
         return AuthContext(user_id="user-manual", claims={}, token="t")
 
-    def fake_client():
+    async def fake_client():
         return object()
 
     monkeypatch.setattr(tasks_module, "fetch_latest_manual_task", lambda user_id, limit: latest_task)
@@ -33,7 +33,8 @@ def _build_app(monkeypatch, latest_task):
     return app
 
 
-def test_latest_manual_returns_payload(monkeypatch):
+@pytest.mark.anyio
+async def test_latest_manual_returns_payload(monkeypatch):
     latest_task = {
         "task_id": "task-manual",
         "created_at": "2024-02-03T00:00:00Z",
@@ -50,28 +51,30 @@ def test_latest_manual_returns_payload(monkeypatch):
         ],
     }
     app = _build_app(monkeypatch, latest_task)
-    client = TestClient(app)
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.get("/api/tasks/latest-manual")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["task_id"] == "task-manual"
+        assert data["status"] == "processing"
+        assert data["job_status"]["pending"] == 1
+        assert data["manual_emails"] == ["alpha@example.com", "beta@example.com"]
+        assert data["manual_results"][0]["email"] == "alpha@example.com"
 
-    resp = client.get("/api/tasks/latest-manual")
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["task_id"] == "task-manual"
-    assert data["status"] == "processing"
-    assert data["job_status"]["pending"] == 1
-    assert data["manual_emails"] == ["alpha@example.com", "beta@example.com"]
-    assert data["manual_results"][0]["email"] == "alpha@example.com"
 
-
-def test_latest_manual_returns_no_content(monkeypatch):
+@pytest.mark.anyio
+async def test_latest_manual_returns_no_content(monkeypatch):
     app = _build_app(monkeypatch, None)
-    client = TestClient(app)
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.get("/api/tasks/latest-manual")
+        assert resp.status_code == 204
+        assert resp.text == ""
 
-    resp = client.get("/api/tasks/latest-manual")
-    assert resp.status_code == 204
-    assert resp.text == ""
 
-
-def test_latest_manual_refresh_details(monkeypatch):
+@pytest.mark.anyio
+async def test_latest_manual_refresh_details(monkeypatch):
     latest_task = {
         "task_id": "task-manual",
         "created_at": "2024-02-03T00:00:00Z",
@@ -92,9 +95,9 @@ def test_latest_manual_refresh_details(monkeypatch):
         raise AssertionError("resolve_dashboard_email_client should not be called when refresh_details is ignored")
 
     monkeypatch.setattr(tasks_module, "resolve_dashboard_email_client", fake_resolve_dashboard)
-    client = TestClient(app)
-
-    resp = client.get("/api/tasks/latest-manual?refresh_details=true")
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["manual_results"] == latest_task["manual_results"]
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.get("/api/tasks/latest-manual?refresh_details=true")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["manual_results"] == latest_task["manual_results"]
