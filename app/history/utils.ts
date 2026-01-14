@@ -44,7 +44,7 @@ function coerceCount(value: unknown): number | null {
   return null;
 }
 
-function deriveCountsFromMetrics(metrics?: TaskMetrics | null): DerivedCounts | null {
+export function deriveCountsFromMetrics(metrics?: TaskMetrics | null): DerivedCounts | null {
   if (!metrics?.verification_status) return null;
   const statusCounts = metrics.verification_status;
   if (typeof statusCounts !== "object" || !statusCounts) return null;

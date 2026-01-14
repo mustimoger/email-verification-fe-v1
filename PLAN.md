@@ -80,8 +80,10 @@
   Explanation: Updated History mapping to use external task metrics (verification_status + job_status) directly, removed reliance on Supabase fields, and ensured missing file_name is rendered as `ext api data is not available` without altering layout.
 - [x] Phase 1 — History external mapping implementation (MVP) + missing-field messaging + tests.
   Explanation: Added metrics-aware mapping + status normalization in `app/history/utils.ts`, surfaced the required missing-field message, updated `tests/history-mapping.test.ts`, and ran `npm run test:history` with the Python venv active (output noted in handover).
-- [ ] Phase 1 — frontend Verify uses external task/verify responses.
-  Explanation: Wire Verify page to external task/verify responses directly, keep UI states intact, and surface missing export details with `ext api data is not available`.
+- [x] Phase 1 — frontend Verify uses external task/verify responses.
+  Explanation: Switched latest-upload hydration/refresh to `/api/tasks` (external task list), mapped external metrics into Verify summaries, and surfaced `ext api data is not available` for missing file/export detail fields while keeping the layout intact. Manual exports still rely on `/tasks/latest-manual` until external user-scoped export details exist.
+- [x] Phase 1 — Verify external task wiring (MVP) + missing export detail messaging + tests.
+  Explanation: Added task-based summary mapping in `app/verify/utils.ts`, disabled downloads when file name is missing, updated CSV export to emit `ext api data is not available` for missing detail fields, and ran `npx tsx tests/verify-mapping.test.ts` (after sourcing `.env.local`) with venv active.
 - [ ] Phase 1 — tests/verification for task proxying.
   Explanation: Add/update backend + frontend tests to cover proxy routes and missing-field fallbacks; run targeted tests with the Python venv active. Backend updates done; frontend tests still pending.
 - [x] Phase 1 — update backend tests for external task proxy behavior.

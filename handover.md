@@ -19,6 +19,11 @@
   - History mapping now uses external task metrics (`verification_status`, `job_status`) and normalizes status from metrics.
   - Missing `file_name` now renders the required `ext api data is not available` message and logs `history.file_name.unavailable`.
   - Updated `tests/history-mapping.test.ts` to cover metrics mapping + missing-file label.
+- Phase 1 frontend Verify wiring completed:
+  - Verify now hydrates/refreshes the upload summary using `/api/tasks` (external task list) instead of `/tasks/latest-uploads`.
+  - Missing file_name displays `ext api data is not available` in the summary and disables download when the name is unknown (log: `verify.file_name.unavailable`).
+  - Manual export CSV now emits `ext api data is not available` for missing export detail fields (role-based, catchall, email server, etc.).
+  - Manual history hydration still uses `/tasks/latest-manual` until external user-scoped export details are available.
 
 ## Key Files Updated
 - `backend/app/api/tasks.py` — removed Supabase task caching, external-only task listing/detail/download/upload, latest-upload(s) 204 behavior, removed file cache dependencies.
@@ -36,6 +41,8 @@
   - Result: 14 passed (pyiceberg/pydantic warnings only).
 - `npm run test:history`
   - Result: all history mapping tests passed (saw expected `history.file_name.unavailable` log for metrics-only task).
+- `npx tsx tests/verify-mapping.test.ts` (with `.env.local` sourced to satisfy Supabase env checks)
+  - Result: verify mapping tests passed; saw expected `verify.file_name.unavailable` + `verify.manual.job_missing_email` logs.
 
 ## Important Test Harness Note (Avoid Rework)
 - `fastapi.TestClient` hangs in this environment. Use `httpx.AsyncClient` + `httpx.ASGITransport` instead.

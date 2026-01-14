@@ -17,7 +17,7 @@ import {
 import { clearVerifyRequestId, getVerifyRequestId } from "../lib/verify-idempotency";
 import { buildColumnOptions, FileColumnError, readFileColumnInfo, type FileColumnInfo } from "./file-columns";
 import {
-  buildLatestUploadsSummary,
+  buildTaskUploadsSummary,
   buildManualExportCsv,
   buildUploadSummary,
   buildManualResultsFromStored,
@@ -100,19 +100,21 @@ export default function VerifyPage() {
       latestUploadHydratedRef.current = true;
       setLatestUploadError(null);
       try {
-        const latestUploads = await apiClient.getLatestUploads();
-        if (!active || !latestUploads || latestUploads.length === 0) return;
-        setUploadSummary(buildLatestUploadsSummary(latestUploads));
-        setLatestUploadLabel(latestUploads[0]?.file_name ?? null);
+        const taskResponse = await apiClient.listTasks();
+        const tasks = taskResponse.tasks ?? [];
+        if (!active || tasks.length === 0) return;
+        const summary = buildTaskUploadsSummary(tasks);
+        setUploadSummary(summary);
+        setLatestUploadLabel(summary.files[0]?.fileName ?? null);
         setFlowStage("summary");
-        console.info("verify.latest_uploads.hydrated", {
-          count: latestUploads.length,
-          latest_task_id: latestUploads[0]?.task_id,
+        console.info("verify.latest_tasks.hydrated", {
+          count: tasks.length,
+          latest_task_id: tasks[0]?.id,
         });
       } catch (err: unknown) {
         if (!active) return;
-        const message = resolveApiErrorMessage(err, "verify.latest_uploads.hydrate");
-        console.error("verify.latest_uploads.hydrate_failed", { error: message });
+        const message = resolveApiErrorMessage(err, "verify.latest_tasks.hydrate");
+        console.error("verify.latest_tasks.hydrate_failed", { error: message });
         setLatestUploadError("Unable to load the latest upload. Please check History.");
       }
     };
@@ -555,21 +557,27 @@ export default function VerifyPage() {
       }));
       const uploadResults = await apiClient.uploadTaskFiles(files, metadata);
       const { links, unmatched, orphaned } = mapUploadResultsToLinks(files, uploadResults);
-      let summary: UploadSummary | null = null;
-      try {
-        const latestUploads = await apiClient.getLatestUploads();
-        if (latestUploads && latestUploads.length > 0) {
-          summary = buildLatestUploadsSummary(latestUploads);
-          setLatestUploadLabel(latestUploads[0]?.file_name ?? null);
-        }
-      } catch (err: unknown) {
-        const message = resolveApiErrorMessage(err, "verify.latest_uploads.after_upload");
-        console.error("verify.latest_uploads.after_upload_failed", { error: message });
-      }
-      if (!summary) {
-        summary = buildUploadSummary(files, links, new Map(), startedAt);
-        setLatestUploadLabel(summary.files[0]?.fileName ?? null);
-      }
+      const detailsByTaskId = new Map<string, TaskDetailResponse>();
+      await Promise.all(
+        links.map(async (link) => {
+          if (!link.taskId) return;
+          try {
+            const detail = await fetchTaskDetailWithRetries(link.taskId);
+            if (detail) {
+              detailsByTaskId.set(link.taskId, detail);
+            }
+          } catch (err: unknown) {
+            const message = resolveApiErrorMessage(err, "verify.upload.detail");
+            if (err instanceof ApiError && err.status === 402) {
+              setFileError(message);
+              return;
+            }
+            console.error("verify.upload.detail_failed", { task_id: link.taskId, error: message });
+          }
+        }),
+      );
+      const summary = buildUploadSummary(files, links, detailsByTaskId, startedAt);
+      setLatestUploadLabel(summary.files[0]?.fileName ?? null);
       setUploadSummary(summary);
       setFlowStage("summary");
       setToast("Upload submitted");
@@ -605,43 +613,26 @@ export default function VerifyPage() {
     setLatestUploadError(null);
     setLatestUploadRefreshing(true);
     try {
-      const latestUploads = await apiClient.getLatestUploads();
-      if (!latestUploads || latestUploads.length === 0) {
+      const taskResponse = await apiClient.listTasks();
+      const tasks = taskResponse.tasks ?? [];
+      if (tasks.length === 0) {
         setUploadSummary(null);
         setFlowStage("idle");
         setLatestUploadLabel(null);
         setLatestUploadError("No recent uploads found. Upload a file to get started.");
         return;
       }
-      const detailsByTaskId = new Map<string, TaskDetailResponse>();
-      await Promise.all(
-        latestUploads.map(async (entry) => {
-          if (!entry.task_id) return;
-          try {
-            const detail = await fetchTaskDetailWithRetries(entry.task_id);
-            if (detail) {
-              detailsByTaskId.set(entry.task_id, detail);
-            }
-          } catch (err: unknown) {
-            const message = resolveApiErrorMessage(err, "verify.latest_uploads.detail");
-            if (err instanceof ApiError && err.status === 402) {
-              setLatestUploadError(message);
-              return;
-            }
-            console.error("verify.latest_uploads.detail_failed", { task_id: entry.task_id, error: message });
-          }
-        }),
-      );
-      setUploadSummary(buildLatestUploadsSummary(latestUploads, detailsByTaskId));
-      setLatestUploadLabel(latestUploads[0]?.file_name ?? null);
+      const summary = buildTaskUploadsSummary(tasks);
+      setUploadSummary(summary);
+      setLatestUploadLabel(summary.files[0]?.fileName ?? null);
       setFlowStage("summary");
-      console.info("verify.latest_uploads.refreshed", {
-        count: latestUploads.length,
-        latest_task_id: latestUploads[0]?.task_id,
+      console.info("verify.latest_tasks.refreshed", {
+        count: tasks.length,
+        latest_task_id: tasks[0]?.id,
       });
     } catch (err: unknown) {
-      const message = resolveApiErrorMessage(err, "verify.latest_uploads.refresh");
-      console.error("verify.latest_uploads.refresh_failed", { error: message });
+      const message = resolveApiErrorMessage(err, "verify.latest_tasks.refresh");
+      console.error("verify.latest_tasks.refresh_failed", { error: message });
       setLatestUploadError(message);
     } finally {
       setLatestUploadRefreshing(false);
@@ -653,14 +644,14 @@ export default function VerifyPage() {
       setFileError("Download unavailable for this file.");
       return;
     }
-    if (!file.fileName) {
+    if (!file.downloadName) {
       setFileError("Download unavailable without a file name.");
       return;
     }
     setFileError(null);
     setActiveDownload(file.taskId);
     try {
-      const { blob, fileName } = await apiClient.downloadTaskResults(file.taskId, file.fileName);
+      const { blob, fileName } = await apiClient.downloadTaskResults(file.taskId, file.downloadName);
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = url;

@@ -7,10 +7,17 @@ import {
   LatestUploadResponse,
   LatestManualResponse,
   ManualVerificationResult,
+  Task,
   TaskDetailResponse,
   TaskEmailJob,
 } from "../lib/api-client";
-import { PENDING_STATES, deriveCounts, formatHistoryDate } from "../history/utils";
+import {
+  EXTERNAL_DATA_UNAVAILABLE,
+  PENDING_STATES,
+  deriveCounts,
+  deriveCountsFromMetrics,
+  formatHistoryDate,
+} from "../history/utils";
 
 export type VerificationResult = {
   email: string;
@@ -29,6 +36,7 @@ export type FileVerificationStatus = "download" | "pending";
 
 export type FileVerification = {
   fileName: string;
+  downloadName?: string | null;
   totalEmails: number | null;
   valid: number | null;
   catchAll: number | null;
@@ -228,14 +236,14 @@ export const MANUAL_EXPORT_COLUMNS: (keyof ManualExportRow)[] = [
   "MX Record",
 ];
 
-const formatBoolean = (value: boolean | undefined): string => {
+const formatBoolean = (value: boolean | undefined, fallback?: string): string => {
   if (value === true) return "true";
   if (value === false) return "false";
-  return "";
+  return fallback ?? "";
 };
 
-const formatString = (value: string | undefined | null): string => {
-  if (!value) return "";
+const formatString = (value: string | undefined | null, fallback?: string): string => {
+  if (!value) return fallback ?? "";
   return value.trim();
 };
 
@@ -245,12 +253,12 @@ export function buildManualExportRows(results: VerificationResult[]): ManualExpo
     .map((item) => ({
       Email: item.email.trim(),
       Status: formatString(item.status),
-      "Role-based": formatBoolean(item.isRoleBased),
-      "Catchall Domain": formatBoolean(item.catchallDomain),
-      "Email Server": formatString(item.emailServer),
-      "Disposable Domain": formatBoolean(item.disposableDomain),
-      "Registered Domain": formatBoolean(item.registeredDomain),
-      "MX Record": formatString(item.mxRecord),
+      "Role-based": formatBoolean(item.isRoleBased, EXTERNAL_DATA_UNAVAILABLE),
+      "Catchall Domain": formatBoolean(item.catchallDomain, EXTERNAL_DATA_UNAVAILABLE),
+      "Email Server": formatString(item.emailServer, EXTERNAL_DATA_UNAVAILABLE),
+      "Disposable Domain": formatBoolean(item.disposableDomain, EXTERNAL_DATA_UNAVAILABLE),
+      "Registered Domain": formatBoolean(item.registeredDomain, EXTERNAL_DATA_UNAVAILABLE),
+      "MX Record": formatString(item.mxRecord, EXTERNAL_DATA_UNAVAILABLE),
     }));
 }
 
@@ -332,6 +340,15 @@ export function buildUploadSummary(
       invalid = counts.invalid;
       catchAll = counts.catchAll;
     }
+    if (detail?.metrics && !hasPending) {
+      const metricsCounts = deriveCountsFromMetrics(detail.metrics);
+      if (metricsCounts) {
+        totalEmails = metricsCounts.total;
+        valid = metricsCounts.valid;
+        invalid = metricsCounts.invalid;
+        catchAll = metricsCounts.catchAll;
+      }
+    }
     const metricsTotal = detail?.metrics?.total_email_addresses;
     if (metricsTotal !== undefined && metricsTotal !== null) {
       totalEmails = metricsTotal;
@@ -339,6 +356,7 @@ export function buildUploadSummary(
     const status: FileVerificationStatus = detail && jobs.length > 0 && !hasPending ? "download" : "pending";
     return {
       fileName: file.name,
+      downloadName: file.name,
       totalEmails,
       valid,
       catchAll,
@@ -466,6 +484,7 @@ const buildLatestUploadRow = (
   const fileCounts = countsFromDetail ?? countsFromLatest;
   return {
     fileName: latest.file_name,
+    downloadName: latest.file_name ?? null,
     totalEmails,
     valid: fileCounts?.valid ?? null,
     catchAll: fileCounts?.catchAll ?? null,
@@ -522,6 +541,113 @@ export function buildLatestUploadsSummary(
   return {
     totalEmails: hasTotals ? latestRow.totalEmails : null,
     uploadDate: formatHistoryDate(latestUploads[0].created_at),
+    files: rows,
+    aggregates: {
+      valid: hasTotals ? latestRow.valid : null,
+      catchAll: hasTotals ? latestRow.catchAll : null,
+      invalid: hasTotals ? latestRow.invalid : null,
+    },
+  };
+}
+
+const resolveTaskStatus = (task: Task, detail?: TaskDetailResponse | null): FileVerificationStatus => {
+  const pendingFromDetail = hasPendingJobs(detail);
+  if (pendingFromDetail !== null) {
+    return pendingFromDetail ? "pending" : "download";
+  }
+  const jobStatus = task.metrics?.job_status ?? task.job_status ?? null;
+  const pendingFromJobStatus = hasPendingJobStatus(jobStatus ?? undefined);
+  if (pendingFromJobStatus !== null) {
+    return pendingFromJobStatus ? "pending" : "download";
+  }
+  const progressPercent = normalizeCount(task.metrics?.progress_percent);
+  if (progressPercent !== null) {
+    return progressPercent >= 100 ? "download" : "pending";
+  }
+  const progress = normalizeCount(task.metrics?.progress);
+  if (progress !== null) {
+    return progress >= 1 ? "download" : "pending";
+  }
+  const statusValue = (task.status || "").toLowerCase();
+  if (statusValue) {
+    return PENDING_STATES.has(statusValue) ? "pending" : "download";
+  }
+  return "pending";
+};
+
+const buildTaskUploadRow = (task: Task, detail?: TaskDetailResponse | null): FileVerification => {
+  const status = resolveTaskStatus(task, detail);
+  const pendingFromDetail = hasPendingJobs(detail);
+  const countsFromDetail =
+    detail?.jobs && detail.jobs.length > 0 && pendingFromDetail === false ? deriveCounts(detail) : null;
+  const metricsCounts = deriveCountsFromMetrics(task.metrics ?? detail?.metrics ?? null);
+  const validCount = normalizeCount(task.valid_count);
+  const invalidCount = normalizeCount(task.invalid_count);
+  const catchAllCount = normalizeCount(task.catchall_count);
+  const hasTaskCounts = [validCount, invalidCount, catchAllCount].every((value) => value !== null);
+  const countsFromTask =
+    status === "download" && hasTaskCounts && validCount !== null && invalidCount !== null && catchAllCount !== null
+      ? {
+          total: validCount + invalidCount + catchAllCount,
+          valid: validCount,
+          invalid: invalidCount,
+          catchAll: catchAllCount,
+        }
+      : null;
+  const countsFromMetrics = status === "download" && metricsCounts ? metricsCounts : null;
+  const metricsTotal = detail?.metrics?.total_email_addresses ?? task.metrics?.total_email_addresses;
+  let totalEmails: number | null = countsFromDetail?.total ?? null;
+  if (metricsTotal !== undefined && metricsTotal !== null) {
+    totalEmails = metricsTotal;
+  } else if (totalEmails === null) {
+    totalEmails =
+      normalizeCount(task.email_count) ??
+      countsFromMetrics?.total ??
+      countsFromTask?.total ??
+      null;
+  }
+  const fileCounts = countsFromDetail ?? countsFromMetrics ?? countsFromTask;
+  const rawFileName = typeof task.file_name === "string" ? task.file_name.trim() : "";
+  if (!rawFileName) {
+    console.info("verify.file_name.unavailable", { task_id: task.id });
+  }
+  return {
+    fileName: rawFileName || EXTERNAL_DATA_UNAVAILABLE,
+    downloadName: rawFileName || null,
+    totalEmails,
+    valid: fileCounts?.valid ?? null,
+    catchAll: fileCounts?.catchAll ?? null,
+    invalid: fileCounts?.invalid ?? null,
+    status,
+    taskId: task.id ?? null,
+  };
+};
+
+export function buildTaskUploadsSummary(
+  tasks: Task[],
+  detailsByTaskId?: Map<string, TaskDetailResponse>,
+): UploadSummary {
+  if (!tasks.length) {
+    return {
+      totalEmails: null,
+      uploadDate: "—",
+      files: [],
+      aggregates: { valid: null, catchAll: null, invalid: null },
+    };
+  }
+  const rows = tasks.map((task) => {
+    const detail = task.id ? detailsByTaskId?.get(task.id) ?? null : null;
+    return buildTaskUploadRow(task, detail);
+  });
+  const latestRow = rows[0];
+  const hasTotals =
+    latestRow.totalEmails !== null &&
+    latestRow.valid !== null &&
+    latestRow.invalid !== null &&
+    latestRow.catchAll !== null;
+  return {
+    totalEmails: hasTotals ? latestRow.totalEmails : null,
+    uploadDate: formatHistoryDate(tasks[0].created_at),
     files: rows,
     aggregates: {
       valid: hasTotals ? latestRow.valid : null,

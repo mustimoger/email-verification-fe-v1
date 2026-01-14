@@ -6,14 +6,17 @@ import type {
   LatestManualResponse,
   LatestUploadResponse,
   ManualVerificationResult,
+  Task,
   TaskDetailResponse,
 } from "../app/lib/api-client";
 import {
+  buildManualExportRows,
   buildManualResultsFromDetail,
   buildManualResultsFromStored,
   buildLatestManualResults,
   buildLatestUploadsSummary,
   buildLatestUploadSummary,
+  buildTaskUploadsSummary,
   buildUploadSummary,
   createUploadLinks,
   mapTaskDetailToResults,
@@ -22,6 +25,7 @@ import {
   shouldHydrateLatestManual,
   shouldExpireManualResults,
 } from "../app/verify/utils";
+import { EXTERNAL_DATA_UNAVAILABLE } from "../app/history/utils";
 
 function run(name: string, fn: () => void) {
   try {
@@ -164,6 +168,26 @@ run("buildLatestUploadsSummary keeps latest upload totals only", () => {
   assert.strictEqual(summary.files[0].fileName, "latest.csv");
 });
 
+run("buildTaskUploadsSummary maps metrics and marks missing file name", () => {
+  const tasks: Task[] = [
+    {
+      id: "task-1",
+      created_at: "2024-03-03T00:00:00Z",
+      metrics: {
+        total_email_addresses: 4,
+        job_status: { completed: 4 },
+        verification_status: { exists: 2, catchall: 1, not_exists: 1 },
+      },
+    },
+  ];
+  const summary = buildTaskUploadsSummary(tasks);
+  assert.strictEqual(summary.files[0].fileName, EXTERNAL_DATA_UNAVAILABLE);
+  assert.strictEqual(summary.files[0].downloadName, null);
+  assert.strictEqual(summary.files[0].status, "download");
+  assert.strictEqual(summary.totalEmails, 4);
+  assert.strictEqual(summary.aggregates.valid, 2);
+});
+
 run("buildLatestManualResults skips jobs without email addresses", () => {
   const detail: TaskDetailResponse = {
     jobs: [
@@ -218,6 +242,18 @@ run("shouldExpireManualResults returns false when pending job_status remains", (
   };
   const latest: LatestManualResponse = { task_id: "task-2", job_status: { pending: 2 } };
   assert.strictEqual(shouldExpireManualResults(detail, latest), false);
+});
+
+run("buildManualExportRows marks missing export fields as unavailable", () => {
+  const rows = buildManualExportRows([
+    {
+      email: "alpha@example.com",
+      status: "exists",
+      message: "ok",
+    },
+  ]);
+  assert.strictEqual(rows[0]["Email Server"], EXTERNAL_DATA_UNAVAILABLE);
+  assert.strictEqual(rows[0]["Role-based"], EXTERNAL_DATA_UNAVAILABLE);
 });
 
 run("resolveApiErrorMessage returns detail string when present", () => {
