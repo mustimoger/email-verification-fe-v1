@@ -368,11 +368,13 @@ def update_task_reservation(
 ) -> None:
     sb: Client = get_supabase()
     payload = {
+        "task_id": task_id,
+        "user_id": user_id,
         "credit_reserved_count": reserved_count,
         "credit_reservation_id": reservation_id,
     }
     try:
-        sb.table("tasks").update(payload).eq("user_id", user_id).eq("task_id", task_id).execute()
+        sb.table("tasks").upsert(payload, on_conflict="task_id").execute()
         logger.info(
             "tasks.reservation_updated",
             extra={"user_id": user_id, "task_id": task_id, "reserved_count": reserved_count},
@@ -392,9 +394,9 @@ def update_task_manual_emails(
     if not manual_emails:
         return
     sb: Client = get_supabase()
-    payload = {"manual_emails": manual_emails}
+    payload = {"task_id": task_id, "user_id": user_id, "manual_emails": manual_emails}
     try:
-        sb.table("tasks").update(payload).eq("user_id", user_id).eq("task_id", task_id).execute()
+        sb.table("tasks").upsert(payload, on_conflict="task_id").execute()
         logger.info(
             "tasks.manual_emails_updated",
             extra={"user_id": user_id, "task_id": task_id, "email_count": len(manual_emails)},
@@ -644,7 +646,9 @@ def fetch_latest_manual_task(user_id: str, limit: int) -> Optional[Dict[str, obj
     result = fetch_tasks_with_counts(user_id, limit=limit, offset=0)
     tasks = result.get("tasks") or []
     for row in tasks:
-        if not row.get("file_name"):
+        manual_emails = row.get("manual_emails")
+        manual_results = row.get("manual_results")
+        if manual_emails or manual_results:
             return row
     logger.info("tasks.latest_manual.not_found", extra={"user_id": user_id, "searched": len(tasks)})
     return None

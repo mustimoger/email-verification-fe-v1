@@ -1,10 +1,8 @@
-import asyncio
 import json
 import logging
 import time
 import uuid
-from pathlib import Path
-from typing import Any, Dict, Optional, Set
+from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Response, UploadFile, status
 from pydantic import BaseModel
@@ -14,7 +12,6 @@ from ..clients.external import (
     DownloadedFile,
     ExternalAPIClient,
     ExternalAPIError,
-    Task,
     TaskDetailResponse,
     TaskListResponse,
     TaskResponse,
@@ -24,17 +21,11 @@ from ..clients.external import (
 from ..core.auth import AuthContext, get_current_user
 from ..core.settings import get_settings
 from ..services.file_processing import _column_letters_to_index
-from ..services.task_files_store import fetch_task_file, upsert_task_file
 from ..services.tasks_store import (
     counts_from_metrics,
     email_count_from_metrics,
-    fetch_latest_file_task,
-    fetch_latest_file_tasks,
     fetch_latest_manual_task,
     fetch_task_credit_reservation,
-    fetch_tasks_with_counts,
-    upsert_task_from_detail,
-    upsert_tasks_from_list,
     update_task_manual_emails,
     update_manual_task_results,
     update_task_reservation,
@@ -97,16 +88,6 @@ def get_user_external_client(user: AuthContext = Depends(get_current_user)) -> E
         bearer_token=user.token,
         max_upload_bytes=settings.upload_max_mb * 1024 * 1024,
     )
-
-
-def resolve_task_api_key_id(user_id: str, api_key_id: Optional[str]) -> Optional[str]:
-    if api_key_id:
-        return api_key_id
-    cached = get_cached_key_by_name(user_id, INTERNAL_DASHBOARD_KEY_NAME)
-    if cached and cached.get("key_id"):
-        return cached["key_id"]
-    logger.info("tasks.api_key_id.unavailable", extra={"user_id": user_id})
-    return None
 
 
 def normalize_email_column_mapping(email_column: str) -> tuple[str, int]:
@@ -287,54 +268,6 @@ def resolve_processed_count(detail: TaskDetailResponse, counts: Optional[Dict[st
     return None
 
 
-async def poll_tasks_after_upload(
-    client: ExternalAPIClient,
-    user_id: str,
-    integration: Optional[str],
-    attempts: int,
-    interval_seconds: float,
-    page_size: int,
-    baseline_ids: Set[str],
-    api_key_id: Optional[str] = None,
-    list_user_id: Optional[str] = None,
-) -> Optional[TaskListResponse]:
-    """
-    Poll recent tasks after an upload to capture new task_ids and upsert into Supabase.
-    Stops early when a new task id appears beyond the baseline.
-    """
-    latest: Optional[TaskListResponse] = None
-    for attempt in range(1, attempts + 1):
-        try:
-            latest = await client.list_tasks(limit=page_size, offset=0, user_id=list_user_id)
-            tasks = latest.tasks or []
-            if tasks:
-                upsert_tasks_from_list(user_id, tasks, integration=integration)
-            new_ids = {task.id for task in tasks or [] if task and task.id} - baseline_ids
-            if api_key_id and new_ids:
-                new_tasks = [task for task in tasks if task and task.id in new_ids]
-                upsert_tasks_from_list(user_id, new_tasks, integration=integration, api_key_id=api_key_id)
-            logger.info(
-                "route.tasks.upload.poll",
-                extra={
-                    "user_id": user_id,
-                    "attempt": attempt,
-                    "new_tasks": len(new_ids),
-                    "returned": len(tasks),
-                    "total_count": latest.count,
-                },
-            )
-            if new_ids:
-                break
-        except ExternalAPIError as exc:
-            logger.warning(
-                "route.tasks.upload.poll_failed",
-                extra={"user_id": user_id, "attempt": attempt, "status_code": exc.status_code, "details": exc.details},
-            )
-        if attempt < attempts:
-            await asyncio.sleep(interval_seconds)
-    return latest
-
-
 @router.post("/verify", response_model=VerifyEmailResponse)
 async def verify_email(
     payload: dict,
@@ -445,6 +378,11 @@ async def create_task(
     api_key_id = payload.get("api_key_id")
     if not emails or not isinstance(emails, list):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="emails array is required")
+    if api_key_id:
+        logger.info(
+            "route.tasks.create.api_key_ignored",
+            extra={"user_id": user.user_id, "api_key_id": api_key_id},
+        )
     settings = get_settings()
     if len(emails) > settings.manual_max_emails:
         logger.warning(
@@ -499,13 +437,6 @@ async def create_task(
                 detail="Unable to reserve credits for this task",
             )
         result = await client.create_task(emails=emails, webhook_url=webhook_url)
-        resolved_api_key_id = resolve_task_api_key_id(target_user_id, api_key_id)
-        upsert_tasks_from_list(
-            target_user_id,
-            [TaskResponse(**result.model_dump())],
-            integration=None,
-            api_key_id=resolved_api_key_id,
-        )
         if result.id:
             update_task_manual_emails(target_user_id, result.id, manual_emails)
         if result.id:
@@ -582,101 +513,21 @@ async def list_tasks(
             "route.tasks.list.admin_scope",
             extra={"admin_user_id": user.user_id, "target_user_id": target_user_id},
         )
-    external_refresh: Optional[TaskListResponse] = None
-    if refresh:
-        if api_key_id:
-            logger.info(
-                "route.tasks.list.refresh_unscoped",
-                extra={"user_id": target_user_id, "api_key_id": api_key_id},
-            )
-        try:
-            external_refresh = await client.list_tasks(limit=limit, offset=offset, user_id=list_user_id)
-            if external_refresh.tasks:
-                upsert_tasks_from_list(target_user_id, external_refresh.tasks, integration=None)
-            logger.info(
-                "route.tasks.list.refresh_external",
-                extra={
-                    "user_id": target_user_id,
-                    "limit": limit,
-                    "offset": offset,
-                    "count": external_refresh.count,
-                    "returned": len(external_refresh.tasks or []),
-                },
-            )
-        except ExternalAPIError as exc:
-            logger.warning(
-                "route.tasks.list.refresh_failed",
-                extra={"user_id": target_user_id, "status_code": exc.status_code, "details": exc.details},
-            )
-        except Exception as exc:  # noqa: BLE001
-            logger.error(
-                "route.tasks.list.refresh_exception",
-                extra={"user_id": target_user_id, "error": str(exc)},
-            )
-
-    # Supabase is primary source for history; return cached tasks first
-    fallback = fetch_tasks_with_counts(target_user_id, limit=limit, offset=offset, api_key_id=api_key_id)
-    tasks_data = fallback.get("tasks") or []
-    supa_tasks: list[Task] = []
-    for row in tasks_data:
-        supa_tasks.append(
-            Task(
-                id=row.get("task_id"),
-                user_id=row.get("user_id"),
-                status=row.get("status"),
-                email_count=row.get("email_count"),
-                valid_count=row.get("valid_count"),
-                invalid_count=row.get("invalid_count"),
-                catchall_count=row.get("catchall_count"),
-                job_status=row.get("job_status"),
-                integration=row.get("integration"),
-                file_name=row.get("file_name"),
-                created_at=row.get("created_at"),
-                updated_at=row.get("updated_at"),
-            )
-        )
-    count_value = fallback.get("count") if isinstance(fallback, dict) else None
-    if supa_tasks:
-        record_usage(target_user_id, path="/tasks", count=len(supa_tasks), api_key_id=api_key_id)
-        logger.info(
-            "route.tasks.list.supabase_primary",
-            extra={
-                "user_id": target_user_id,
-                "limit": limit,
-                "offset": offset,
-                "returned": len(supa_tasks),
-                "count": count_value,
-                "duration_ms": round((time.time() - start) * 1000, 2),
-            },
-        )
-        return TaskListResponse(count=count_value or len(supa_tasks), limit=limit, offset=offset, tasks=supa_tasks)
-
-    # If Supabase is empty, sync from external and upsert
     if api_key_id:
-        record_usage(
-            target_user_id,
-            path="/tasks",
-            count=0,
-            api_key_id=api_key_id,
-        )
         logger.info(
-            "route.tasks.list.key_scope_empty",
-            extra={
-                "user_id": target_user_id,
-                "api_key_id": api_key_id,
-                "limit": limit,
-                "offset": offset,
-                "duration_ms": round((time.time() - start) * 1000, 2),
-            },
+            "route.tasks.list.api_key_filter_ignored",
+            extra={"user_id": target_user_id, "api_key_id": api_key_id},
         )
-        return TaskListResponse(count=0, limit=limit, offset=offset, tasks=[])
+    if refresh:
+        logger.info(
+            "route.tasks.list.refresh_ignored",
+            extra={"user_id": target_user_id, "limit": limit, "offset": offset},
+        )
     try:
-        external_result = external_refresh or await client.list_tasks(limit=limit, offset=offset, user_id=list_user_id)
-        if external_result.tasks:
-            upsert_tasks_from_list(target_user_id, external_result.tasks, integration=None)
+        external_result = await client.list_tasks(limit=limit, offset=offset, user_id=list_user_id)
         record_usage(target_user_id, path="/tasks", count=len(external_result.tasks or []), api_key_id=api_key_id)
         logger.info(
-            "route.tasks.list.external_refresh",
+            "route.tasks.list.external",
             extra={
                 "user_id": target_user_id,
                 "limit": limit,
@@ -688,80 +539,34 @@ async def list_tasks(
         )
         return external_result
     except ExternalAPIError as exc:
-        if exc.status_code in (401, 403):
-            logger.warning(
-                "route.tasks.list.unauthorized",
-                extra={
-                    "user_id": target_user_id,
-                    "status_code": exc.status_code,
-                    "details": exc.details,
-                    "duration_ms": round((time.time() - start) * 1000, 2),
-                },
-            )
-        else:
-            logger.error(
-                "route.tasks.list.failed",
-                extra={
-                    "user_id": target_user_id,
-                    "status_code": exc.status_code,
-                    "details": exc.details,
-                    "duration_ms": round((time.time() - start) * 1000, 2),
-                },
-            )
+        level = logger.warning if exc.status_code in (401, 403) else logger.error
+        level(
+            "route.tasks.list.failed",
+            extra={
+                "user_id": target_user_id,
+                "status_code": exc.status_code,
+                "details": exc.details,
+                "duration_ms": round((time.time() - start) * 1000, 2),
+            },
+        )
+        raise HTTPException(status_code=exc.status_code, detail=exc.details or "Unable to fetch tasks")
     except Exception as exc:  # noqa: BLE001
         logger.error(
             "route.tasks.list.exception",
             extra={"user_id": target_user_id, "duration_ms": round((time.time() - start) * 1000, 2), "error": str(exc)},
         )
-
-    # Nothing in Supabase and external failed/empty
-    record_usage(
-        target_user_id,
-        path="/tasks",
-        count=0,
-        api_key_id=api_key_id,
-    )
-    logger.info(
-        "route.tasks.list.empty_fallback",
-        extra={
-            "user_id": target_user_id,
-            "limit": limit,
-            "offset": offset,
-            "duration_ms": round((time.time() - start) * 1000, 2),
-        },
-    )
-    return TaskListResponse(count=0, limit=limit, offset=offset, tasks=[])
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Upstream tasks service error") from exc
 
 
 @router.get("/tasks/latest-upload", response_model=LatestUploadResponse)
 async def get_latest_upload(
     user: AuthContext = Depends(get_current_user),
 ):
-    settings = get_settings()
-    latest = fetch_latest_file_task(user.user_id, limit=settings.upload_poll_page_size)
-    if not latest:
-        logger.info("route.tasks.latest_upload.empty", extra={"user_id": user.user_id})
-        return Response(status_code=status.HTTP_204_NO_CONTENT)
-    task_id = latest.get("task_id")
-    file_name = latest.get("file_name")
-    if not task_id or not file_name:
-        logger.warning(
-            "route.tasks.latest_upload.invalid_row",
-            extra={"user_id": user.user_id, "task_id": task_id, "file_name": file_name},
-        )
-        return Response(status_code=status.HTTP_204_NO_CONTENT)
-    record_usage(user.user_id, path="/tasks/latest-upload", count=1, api_key_id=None)
-    return LatestUploadResponse(
-        task_id=task_id,
-        file_name=file_name,
-        created_at=latest.get("created_at"),
-        status=latest.get("status"),
-        email_count=latest.get("email_count"),
-        valid_count=latest.get("valid_count"),
-        invalid_count=latest.get("invalid_count"),
-        catchall_count=latest.get("catchall_count"),
-        job_status=latest.get("job_status"),
+    logger.info(
+        "route.tasks.latest_upload.unavailable",
+        extra={"user_id": user.user_id, "reason": "ext_api_missing_file_name"},
     )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/tasks/latest-uploads", response_model=list[LatestUploadResponse])
@@ -769,52 +574,13 @@ async def get_latest_uploads(
     limit: Optional[int] = Query(default=None),
     user: AuthContext = Depends(get_current_user),
 ):
-    settings = get_settings()
-    resolved_limit = limit if limit is not None else settings.latest_uploads_limit
-    if resolved_limit <= 0:
+    if limit is not None and limit <= 0:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="limit must be greater than zero")
-    if resolved_limit > settings.latest_uploads_limit:
-        logger.warning(
-            "route.tasks.latest_uploads.limit_clamped",
-            extra={
-                "user_id": user.user_id,
-                "requested": resolved_limit,
-                "limit": settings.latest_uploads_limit,
-            },
-        )
-        resolved_limit = settings.latest_uploads_limit
-    latest = fetch_latest_file_tasks(user.user_id, limit=resolved_limit)
-    if not latest:
-        logger.info("route.tasks.latest_uploads.empty", extra={"user_id": user.user_id})
-        return Response(status_code=status.HTTP_204_NO_CONTENT)
-    payload = []
-    for row in latest:
-        task_id = row.get("task_id")
-        file_name = row.get("file_name")
-        if not task_id or not file_name:
-            logger.warning(
-                "route.tasks.latest_uploads.invalid_row",
-                extra={"user_id": user.user_id, "task_id": task_id, "file_name": file_name},
-            )
-            continue
-        payload.append(
-            LatestUploadResponse(
-                task_id=task_id,
-                file_name=file_name,
-                created_at=row.get("created_at"),
-                status=row.get("status"),
-                email_count=row.get("email_count"),
-                valid_count=row.get("valid_count"),
-                invalid_count=row.get("invalid_count"),
-                catchall_count=row.get("catchall_count"),
-                job_status=row.get("job_status"),
-            )
-        )
-    if not payload:
-        logger.info("route.tasks.latest_uploads.empty", extra={"user_id": user.user_id})
-        return Response(status_code=status.HTTP_204_NO_CONTENT)
-    record_usage(user.user_id, path="/tasks/latest-uploads", count=len(payload), api_key_id=None)
-    return payload
+    logger.info(
+        "route.tasks.latest_uploads.unavailable",
+        extra={"user_id": user.user_id, "reason": "ext_api_missing_file_name"},
+    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/tasks/latest-manual", response_model=LatestManualResponse)
@@ -940,14 +706,6 @@ async def get_task_detail(
                         extra={"user_id": user.user_id, "task_id": task_id_str, "required": processed_count},
                     )
                     raise HTTPException(status_code=status.HTTP_402_PAYMENT_REQUIRED, detail="Insufficient credits")
-        if result.jobs is not None:
-            upsert_task_from_detail(
-                user.user_id,
-                result,
-                counts=counts,
-                integration=None,
-                api_key_id=api_key_id,
-            )
         record_usage(user.user_id, path="/tasks/{id}", count=1, api_key_id=api_key_id)
         logger.info(
             "route.tasks.detail",
@@ -996,7 +754,6 @@ async def upload_task_file(
     user: AuthContext = Depends(get_current_user),
     client: ExternalAPIClient = Depends(get_user_external_client),
 ):
-    settings = get_settings()
     responses: list[BatchFileUploadResponse] = []
     target_user_id = user.user_id
     if user_id:
@@ -1007,6 +764,11 @@ async def upload_task_file(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="user_id is not supported for batch uploads.",
+        )
+    if api_key_id:
+        logger.info(
+            "route.tasks.upload.api_key_ignored",
+            extra={"user_id": target_user_id, "api_key_id": api_key_id},
         )
 
     try:
@@ -1030,7 +792,6 @@ async def upload_task_file(
     if len(set(upload_names)) != len(upload_names):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Duplicate file names detected")
 
-    resolved_api_key_id = resolve_task_api_key_id(target_user_id, api_key_id)
     prepared_uploads = []
     for file in files:
         metadata = metadata_by_name.get(file.filename or "")
@@ -1137,18 +898,6 @@ async def upload_task_file(
                     status_code=status.HTTP_502_BAD_GATEWAY,
                     detail="Unable to reserve credits for this upload",
                 )
-            upsert_tasks_from_list(
-                target_user_id,
-                [
-                    Task(
-                        id=task_id,
-                        user_id=target_user_id,
-                        status=result.status,
-                    )
-                ],
-                integration=None,
-                api_key_id=resolved_api_key_id,
-            )
             update_task_reservation(
                 target_user_id,
                 task_id,
@@ -1156,17 +905,6 @@ async def upload_task_file(
                 reservation_id,
             )
             record_usage(target_user_id, path="/tasks/upload", count=reserved_count, api_key_id=None)
-            task_file_id = upsert_task_file(
-                user_id=target_user_id,
-                task_id=task_id,
-                file_name=item["file"].filename or "upload",
-                file_extension=Path(item["file"].filename or "upload").suffix.lower(),
-                source_path=None,
-                email_column=item["metadata"].email_column,
-                email_column_index=item["email_column_index"],
-                first_row_has_labels=item["metadata"].first_row_has_labels,
-                remove_duplicates=item["metadata"].remove_duplicates,
-            )
             logger.info(
                 "route.tasks.upload",
                 extra={
@@ -1273,13 +1011,6 @@ async def download_task_results(
         )
 
     try:
-        task_file = fetch_task_file(target_user_id, task_id_str)
-        if not task_file:
-            logger.info(
-                "route.tasks.download.missing_file",
-                extra={"user_id": target_user_id, "task_id": task_id_str},
-            )
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task file not found")
         detail = await client.get_task_detail(task_id_str)
         counts = resolve_counts_from_detail(detail)
         reservation = fetch_task_credit_reservation(target_user_id, task_id_str)
@@ -1349,14 +1080,6 @@ async def download_task_results(
                         extra={"user_id": target_user_id, "task_id": task_id_str, "required": processed_count},
                     )
                     raise HTTPException(status_code=status.HTTP_402_PAYMENT_REQUIRED, detail="Insufficient credits")
-        if detail.jobs is not None:
-            upsert_task_from_detail(
-                target_user_id,
-                detail,
-                counts=counts,
-                integration=None,
-                api_key_id=None,
-            )
         download: DownloadedFile = await client.download_task_results(task_id=task_id_str, file_format=file_format)
     except ExternalAPIError as exc:
         logger.warning(

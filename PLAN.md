@@ -72,10 +72,10 @@
   Explanation: `ext-api-docs/endpoints/metrics_controller.md` exposes totals and series, but the exact mapping to UI credit labels remains unconfirmed and must be clarified with ext API dev to avoid misreporting.
 - [ ] External-API-first refactor Phase 1 — remove task caching and proxy tasks directly to external API.
   Explanation: Phase 1 replaces Supabase task storage with direct external API calls and updates UI data mapping while preserving design; any missing fields must show `ext api data is not available` and be logged.
-- [ ] Phase 1 — backend tasks proxy (list/detail/download/upload) and remove Supabase task upserts/polling.
-  Explanation: Update task endpoints to call external API directly, remove local persistence/polling logic, and ensure request/response logging is explicit for missing fields.
+- [x] Phase 1 — backend tasks proxy (list/detail/download/upload) and remove Supabase task upserts/polling.
+  Explanation: Task list/detail/download/upload now proxy the external API directly, Supabase upserts/polling were removed, and `latest-upload(s)` return 204 with a log noting missing `file_name`; credit reservations/manual results still write minimal task rows for internal state only.
 - [ ] Phase 1 — backend cleanup of task cache services.
-  Explanation: Remove `tasks_store`/`task_files_store` usages and any dependent hooks that only exist for Supabase caching; document any required deferrals if other features still rely on them.
+  Explanation: Deferred: `tasks_store`/`task_files_store` still exist for manual verification storage and credit reservations; full removal must wait until those flows are externalized or moved.
 - [ ] Phase 1 — frontend History uses external task response format.
   Explanation: Map external task metrics to existing History UI without altering layout, and show `ext api data is not available` for missing file name/export detail fields.
 - [ ] Phase 1 — frontend Verify uses external task/verify responses.
