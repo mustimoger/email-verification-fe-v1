@@ -1,7 +1,6 @@
 "use client";
 
-import { TaskDetailResponse, TaskEmailJob } from "../lib/api-client";
-import { Task } from "../lib/api-client";
+import { Task, TaskDetailResponse, TaskEmailJob, TaskMetrics } from "../lib/api-client";
 
 export type HistoryAction = "download" | "status";
 export type HistoryStatusTone = "completed" | "processing" | "failed" | "unknown";
@@ -23,6 +22,95 @@ export type HistoryRow = {
 export const PENDING_STATES = new Set(["pending", "processing", "started", "queued"]);
 const COMPLETED_STATES = new Set(["completed", "complete", "success", "succeeded", "done"]);
 const FAILED_STATES = new Set(["failed", "error", "errored", "cancelled", "canceled"]);
+export const EXTERNAL_DATA_UNAVAILABLE = "ext api data is not available";
+
+type DerivedCounts = {
+  total: number;
+  valid: number;
+  invalid: number;
+  catchAll: number;
+};
+
+function coerceCount(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return Math.trunc(value);
+  }
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    const parsed = Number(trimmed);
+    return Number.isFinite(parsed) ? Math.trunc(parsed) : null;
+  }
+  return null;
+}
+
+function deriveCountsFromMetrics(metrics?: TaskMetrics | null): DerivedCounts | null {
+  if (!metrics?.verification_status) return null;
+  const statusCounts = metrics.verification_status;
+  if (typeof statusCounts !== "object" || !statusCounts) return null;
+  const valid = coerceCount(statusCounts.exists) ?? 0;
+  const catchAll = coerceCount(statusCounts.catchall) ?? 0;
+  let invalid = 0;
+  const unknownStatuses: string[] = [];
+  Object.entries(statusCounts).forEach(([key, raw]) => {
+    if (key === "exists" || key === "catchall") return;
+    const count = coerceCount(raw);
+    if (count === null) return;
+    invalid += count;
+    if (key !== "not_exists" && key !== "invalid_syntax" && key !== "unknown") {
+      unknownStatuses.push(key);
+    }
+  });
+  if (unknownStatuses.length > 0) {
+    console.warn("history.metrics.unknown_statuses", { statuses: unknownStatuses });
+  }
+  const totalFromMetrics = coerceCount(metrics.total_email_addresses);
+  const total = totalFromMetrics ?? valid + invalid + catchAll;
+  return { total, valid, invalid, catchAll };
+}
+
+function normalizeJobStatus(jobStatus?: Record<string, number> | null): Record<string, number> | null {
+  if (!jobStatus || typeof jobStatus !== "object") return null;
+  const normalized: Record<string, number> = {};
+  Object.entries(jobStatus).forEach(([key, raw]) => {
+    const count = coerceCount(raw);
+    if (count === null) return;
+    normalized[key.toLowerCase()] = count;
+  });
+  return Object.keys(normalized).length > 0 ? normalized : null;
+}
+
+function deriveStatusFromJobStatus(
+  status: string | undefined,
+  jobStatus: Record<string, number> | null,
+): string | undefined {
+  const normalized = normalizeJobStatus(jobStatus);
+  if (!normalized) return status;
+  const pending = normalized.pending ?? 0;
+  const processing = normalized.processing ?? 0;
+  const completed = normalized.completed ?? 0;
+  const failed = normalized.failed ?? 0;
+  let derived: string | undefined;
+  if (pending + processing > 0) {
+    derived = "processing";
+  } else if (completed > 0) {
+    derived = "completed";
+  } else if (failed > 0) {
+    derived = "failed";
+  }
+  if (!derived) return status;
+  const current = (status ?? "").trim().toLowerCase();
+  if (!current || PENDING_STATES.has(current)) {
+    return derived;
+  }
+  return status;
+}
+
+function hasPendingFromJobStatus(jobStatus?: Record<string, number> | null): boolean {
+  const normalized = normalizeJobStatus(jobStatus);
+  if (!normalized) return false;
+  return Object.entries(normalized).some(([key, value]) => value > 0 && PENDING_STATES.has(key));
+}
 
 function capitalizeStatus(value: string): string {
   if (!value) return value;
@@ -90,14 +178,18 @@ export function deriveCounts(detail: TaskDetailResponse): { total: number; valid
 
 export function mapDetailToHistoryRow(detail: TaskDetailResponse): HistoryRow | null {
   if (!detail.id && !detail.jobs?.length) return null;
-  const counts = deriveCounts(detail);
+  const counts = deriveCountsFromMetrics(detail.metrics) ?? deriveCounts(detail);
   const jobs = detail.jobs ?? [];
   const hasPending =
     jobs.some((job) => {
       const status = (job.status || "").toLowerCase();
       return PENDING_STATES.has(status);
     }) ?? false;
-  const statusInfo = deriveStatusInfo(undefined, hasPending, counts.total > 0);
+  const jobStatus = detail.metrics?.job_status ?? null;
+  const normalizedStatus = deriveStatusFromJobStatus(undefined, jobStatus);
+  const statusRaw = (normalizedStatus ?? "").toLowerCase();
+  const pendingFromJobStatus = hasPendingFromJobStatus(jobStatus);
+  const statusInfo = deriveStatusInfo(statusRaw, hasPending || pendingFromJobStatus, counts.total > 0);
   return {
     id: detail.id ?? fallbackId(),
     date: formatHistoryDate(detail.created_at),
@@ -115,28 +207,30 @@ export function mapDetailToHistoryRow(detail: TaskDetailResponse): HistoryRow | 
 
 export function mapTaskToHistoryRow(task: Task): HistoryRow | null {
   if (!task.id) return null;
-  const valid = task.valid_count ?? 0;
-  const invalid = task.invalid_count ?? 0;
-  const catchAll = task.catchall_count ?? 0;
-  const total = task.email_count ?? valid + invalid + catchAll;
-  const statusRaw = (task.status || "").toLowerCase();
-  const jobStatus = task.job_status ?? {};
-  const hasPending =
-    (statusRaw ? PENDING_STATES.has(statusRaw) : false) ||
-    Object.entries(jobStatus).some(([key, value]) => {
-      if (!value) return false;
-      return PENDING_STATES.has(key.toLowerCase());
-    });
+  const countsFromMetrics = deriveCountsFromMetrics(task.metrics);
+  const valid = countsFromMetrics?.valid ?? coerceCount(task.valid_count) ?? 0;
+  const invalid = countsFromMetrics?.invalid ?? coerceCount(task.invalid_count) ?? 0;
+  const catchAll = countsFromMetrics?.catchAll ?? coerceCount(task.catchall_count) ?? 0;
+  const total =
+    countsFromMetrics?.total ??
+    coerceCount(task.email_count) ??
+    coerceCount(task.metrics?.total_email_addresses) ??
+    valid + invalid + catchAll;
+  const jobStatus = task.job_status ?? task.metrics?.job_status ?? null;
+  const normalizedStatus = deriveStatusFromJobStatus(task.status, jobStatus);
+  const statusRaw = (normalizedStatus ?? "").toLowerCase();
+  const hasPending = (statusRaw ? PENDING_STATES.has(statusRaw) : false) || hasPendingFromJobStatus(jobStatus);
   const statusInfo = deriveStatusInfo(statusRaw, hasPending, total > 0);
-  const hasFile = Boolean(task.file_name);
-  const isManual = !hasFile && task.id;
-  const action: HistoryAction =
-    hasFile && statusInfo.tone === "completed" ? "download" : "status";
+  const fileName = typeof task.file_name === "string" && task.file_name.trim().length > 0 ? task.file_name : null;
+  if (!fileName) {
+    console.info("history.file_name.unavailable", { task_id: task.id });
+  }
+  const action: HistoryAction = fileName && statusInfo.tone === "completed" ? "download" : "status";
   return {
     id: task.id,
     date: formatHistoryDate(task.created_at),
-    label: hasFile ? task.file_name ?? task.id : isManual ? "Manual verification" : task.id,
-    fileName: task.file_name ?? undefined,
+    label: fileName ?? EXTERNAL_DATA_UNAVAILABLE,
+    fileName: fileName ?? undefined,
     total,
     valid,
     invalid,

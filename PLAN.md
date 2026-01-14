@@ -76,8 +76,10 @@
   Explanation: Task list/detail/download/upload now proxy the external API directly, Supabase upserts/polling were removed, and `latest-upload(s)` return 204 with a log noting missing `file_name`; credit reservations/manual results still write minimal task rows for internal state only.
 - [ ] Phase 1 — backend cleanup of task cache services.
   Explanation: Deferred: `tasks_store`/`task_files_store` still exist for manual verification storage and credit reservations; full removal must wait until those flows are externalized or moved.
-- [ ] Phase 1 — frontend History uses external task response format.
-  Explanation: Map external task metrics to existing History UI without altering layout, and show `ext api data is not available` for missing file name/export detail fields.
+- [x] Phase 1 — frontend History uses external task response format.
+  Explanation: Updated History mapping to use external task metrics (verification_status + job_status) directly, removed reliance on Supabase fields, and ensured missing file_name is rendered as `ext api data is not available` without altering layout.
+- [x] Phase 1 — History external mapping implementation (MVP) + missing-field messaging + tests.
+  Explanation: Added metrics-aware mapping + status normalization in `app/history/utils.ts`, surfaced the required missing-field message, updated `tests/history-mapping.test.ts`, and ran `npm run test:history` with the Python venv active (output noted in handover).
 - [ ] Phase 1 — frontend Verify uses external task/verify responses.
   Explanation: Wire Verify page to external task/verify responses directly, keep UI states intact, and surface missing export details with `ext api data is not available`.
 - [ ] Phase 1 — tests/verification for task proxying.

@@ -6,6 +6,7 @@ import {
   mapDetailToHistoryRow,
   mapTaskToHistoryRow,
   PENDING_STATES,
+  EXTERNAL_DATA_UNAVAILABLE,
   formatHistoryDate,
   shouldRefreshHistory,
   shouldUseHistoryCache,
@@ -122,6 +123,32 @@ run("mapTaskToHistoryRow exposes download action for completed file tasks", () =
   const row = mapTaskToHistoryRow(task);
   assert(row, "row should not be null");
   assert.strictEqual(row?.action, "download");
+  assert.strictEqual(row?.statusTone, "completed");
+  assert.strictEqual(row?.statusLabel, "Completed");
+});
+
+run("mapTaskToHistoryRow maps external metrics and missing file name to unavailable label", () => {
+  const task: Task = {
+    id: "t6",
+    created_at: "2024-03-05T00:00:00Z",
+    metrics: {
+      total_email_addresses: 4,
+      job_status: { completed: 4 },
+      verification_status: {
+        exists: 2,
+        catchall: 1,
+        not_exists: 1,
+      },
+    },
+  };
+  const row = mapTaskToHistoryRow(task);
+  assert(row, "row should not be null");
+  assert.strictEqual(row?.total, 4);
+  assert.strictEqual(row?.valid, 2);
+  assert.strictEqual(row?.catchAll, 1);
+  assert.strictEqual(row?.invalid, 1);
+  assert.strictEqual(row?.label, EXTERNAL_DATA_UNAVAILABLE);
+  assert.strictEqual(row?.action, "status");
   assert.strictEqual(row?.statusTone, "completed");
   assert.strictEqual(row?.statusLabel, "Completed");
 });

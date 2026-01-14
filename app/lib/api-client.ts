@@ -48,6 +48,16 @@ export type ManualVerificationResult = {
   mx_record?: string;
 };
 
+export type TaskMetrics = {
+  job_status?: Record<string, number>;
+  last_verification_completed_at?: string;
+  last_verification_requested_at?: string;
+  progress?: number;
+  progress_percent?: number;
+  total_email_addresses?: number;
+  verification_status?: Record<string, number>;
+};
+
 export type TaskResponse = {
   id?: string;
   email_count?: number;
@@ -68,6 +78,7 @@ export type Task = {
   invalid_count?: number;
   catchall_count?: number;
   job_status?: Record<string, number>;
+  metrics?: TaskMetrics;
   integration?: string;
   file_name?: string;
   created_at?: string;
@@ -96,10 +107,7 @@ export type TaskDetailResponse = {
   finished_at?: string;
   updated_at?: string;
   jobs?: TaskEmailJob[];
-  metrics?: {
-    total_email_addresses?: number;
-    verification_status?: Record<string, number>;
-  };
+  metrics?: TaskMetrics;
 };
 
 export type TaskListResponse = {

@@ -15,6 +15,10 @@
 - Task reservation upserts updated so reservations/manual emails can be stored without a prior task row.
 - Backend tests updated to match external-only behavior and to use async ASGI clients.
 - Removed obsolete upload polling test.
+- Phase 1 frontend History wiring completed:
+  - History mapping now uses external task metrics (`verification_status`, `job_status`) and normalizes status from metrics.
+  - Missing `file_name` now renders the required `ext api data is not available` message and logs `history.file_name.unavailable`.
+  - Updated `tests/history-mapping.test.ts` to cover metrics mapping + missing-file label.
 
 ## Key Files Updated
 - `backend/app/api/tasks.py` — removed Supabase task caching, external-only task listing/detail/download/upload, latest-upload(s) 204 behavior, removed file cache dependencies.
@@ -30,6 +34,8 @@
 ## Test Runs
 - `pytest backend/tests/test_tasks_latest_upload.py backend/tests/test_tasks_latest_uploads.py backend/tests/test_tasks_list_fallback.py backend/tests/test_tasks_list_external_failure.py backend/tests/test_tasks_key_scope.py backend/tests/test_tasks_admin_scope.py backend/tests/test_tasks_latest_manual.py`
   - Result: 14 passed (pyiceberg/pydantic warnings only).
+- `npm run test:history`
+  - Result: all history mapping tests passed (saw expected `history.file_name.unavailable` log for metrics-only task).
 
 ## Important Test Harness Note (Avoid Rework)
 - `fastapi.TestClient` hangs in this environment. Use `httpx.AsyncClient` + `httpx.ASGITransport` instead.
