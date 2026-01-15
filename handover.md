@@ -18,6 +18,9 @@
   - `/api/tasks`, `/api/tasks/{id}`, `/api/tasks/{id}/download`, `/api/tasks/upload` proxy external API directly.
   - `/api/tasks/latest-upload(s)` returns 204 with log `ext_api_missing_file_name` because list/detail lacks `file_name`.
   - Manual verification uses `/api/tasks` + `/api/tasks/{id}/jobs`; local task caching removed.
+- Credits overview/account now external-only:
+  - `/api/overview` and `/api/account/credits` no longer read Supabase credits; `credits_remaining` is nullable with explicit logs.
+  - Overview + Account UI show `ext api data is not available` for credits while keeping layout intact.
 - Local credit enforcement removed:
   - `/api/verify`, `/api/tasks`, `/api/tasks/{id}`, `/api/tasks/{id}/download`, `/api/tasks/upload` no longer apply debits/reservations or return 402.
   - UI 402 parsing remains only for upstream errors.
@@ -76,11 +79,10 @@ If any are missing, `/api/credits/signup-bonus` returns 503 and logs `credits.si
 - Mapping of external metrics to UI “credits used”/usage totals remains unconfirmed.
 
 ## Next Steps (Ordered)
-1) Credits ownership shift — update `/api/overview` + `/api/account/credits` to return unavailable and show `ext api data is not available` in UI.
-2) Credits ownership shift — migrate account purchase history to `credit_grants` (source=`purchase`) and remove dependence on `billing_purchases`.
-3) Update Paddle E2E script + README to assert `credit_grants` instead of `user_credits`.
-4) Resolve signup bonus trigger behavior for email‑confirmed flow (see risk above).
-5) UI re‑verification: manual history/export + file upload summary + missing `file_name` messaging.
+1) Credits ownership shift — migrate account purchase history to `credit_grants` (source=`purchase`) and remove dependence on `billing_purchases`.
+2) Update Paddle E2E script + README to assert `credit_grants` instead of `user_credits`.
+3) Resolve signup bonus trigger behavior for email‑confirmed flow (see risk above).
+4) UI re‑verification: manual history/export + file upload summary + missing `file_name` messaging.
 
 ## Process Reminders
 - For any code changes: state plan first, update root plan/progress markdowns after completion, ask for confirmation before next task.

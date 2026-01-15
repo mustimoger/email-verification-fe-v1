@@ -53,7 +53,7 @@ class CurrentPlan(BaseModel):
 
 class OverviewResponse(BaseModel):
     profile: Dict[str, object]
-    credits_remaining: int
+    credits_remaining: Optional[int] = None
     usage_total: Optional[int] = None
     usage_series: List[UsagePoint]
     task_counts: Dict[str, int]
@@ -238,17 +238,8 @@ async def get_overview(
     timings["profile_ms"] = round((time.monotonic() - step) * 1000, 2)
 
     step = time.monotonic()
-    try:
-        credits = supabase_client.fetch_credits(user.user_id)
-    except Exception as exc:  # noqa: BLE001
-        logger.error(
-            "overview.supabase_fetch_failed",
-            extra={"user_id": user.user_id, "operation": "fetch_credits", "error": str(exc)},
-        )
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Supabase temporarily unavailable",
-        ) from exc
+    credits = None
+    logger.info("overview.credits.unavailable", extra={"user_id": user.user_id})
     timings["credits_ms"] = round((time.monotonic() - step) * 1000, 2)
 
     usage_total: Optional[int] = None

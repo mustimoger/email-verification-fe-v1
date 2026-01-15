@@ -7,6 +7,7 @@ import { DashboardShell } from "../components/dashboard-shell";
 import { RequireAuth } from "../components/protected";
 import { useAuth } from "../components/auth-provider";
 import { apiClient, ApiError, Credits, Profile, Purchase } from "../lib/api-client";
+import { EXTERNAL_DATA_UNAVAILABLE } from "../lib/messages";
 
 export default function AccountPage() {
   const backendBase =
@@ -39,6 +40,10 @@ export default function AccountPage() {
   };
   const formatCount = (value?: number | null) => {
     if (value === undefined || value === null) return "";
+    return value.toLocaleString();
+  };
+  const formatCreditsValue = (value?: number | null) => {
+    if (value === undefined || value === null) return EXTERNAL_DATA_UNAVAILABLE;
     return value.toLocaleString();
   };
 
@@ -339,7 +344,7 @@ export default function AccountPage() {
             <div className="grid grid-cols-2 bg-white px-4 py-3 text-sm font-semibold text-slate-700">
               <span>Total Credits Remaining</span>
               <span className="text-right font-extrabold text-slate-800">
-                {credits ? credits.credits_remaining.toLocaleString() : "—"}
+                {formatCreditsValue(credits?.credits_remaining)}
               </span>
             </div>
           </div>

@@ -9,13 +9,8 @@ import {
   TaskDetailResponse,
   TaskEmailJob,
 } from "../lib/api-client";
-import {
-  EXTERNAL_DATA_UNAVAILABLE,
-  PENDING_STATES,
-  deriveCounts,
-  deriveCountsFromMetrics,
-  formatHistoryDate,
-} from "../history/utils";
+import { EXTERNAL_DATA_UNAVAILABLE } from "../lib/messages";
+import { PENDING_STATES, deriveCounts, deriveCountsFromMetrics, formatHistoryDate } from "../history/utils";
 
 export type VerificationResult = {
   email: string;

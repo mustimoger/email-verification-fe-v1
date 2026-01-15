@@ -76,8 +76,8 @@
   Explanation: Removed local debit/reserve/release logic from `/api/verify`, `/api/tasks`, `/api/tasks/{id}`, `/api/tasks/{id}/download`, and `/api/tasks/upload`, so the backend no longer returns 402 for local credit checks. Updated backend tests to assert the external-only flow; UI 402 parsing remains for upstream errors.
 - [x] Credits ownership shift — update billing webhook + signup flow to write `credit_grants`.
   Explanation: Replaced webhook credit grants with `credit_grants` upserts (`source=purchase`, `source_id=transaction_id`) while keeping billing_events idempotency, added `/api/credits/signup-bonus` with account-age + email-confirm checks, and wired signup to call it once; added backend tests for purchase grant + signup bonus eligibility.
-- [ ] Credits ownership shift — update `/api/overview` + `/api/account/credits` to show external-only credits.
-  Explanation: Return `credits_remaining` as unavailable (and log) and update UI to show `ext api data is not available` instead of numeric balances.
+- [x] Credits ownership shift — update `/api/overview` + `/api/account/credits` to show external-only credits.
+  Explanation: Removed Supabase credit lookups from overview/account endpoints, return `credits_remaining` as null with explicit logs, and updated the Overview + Account UI to display `ext api data is not available` while preserving existing layouts. Tests updated to assert the new nullable contract.
 - [ ] Credits ownership shift — update account purchase history to read from `credit_grants` (purchase source).
   Explanation: Keep purchase history intact while moving the storage source to `credit_grants` so the UI remains unchanged.
 - [ ] Credits ownership shift — update tests + scripts for the new credit grants flow.

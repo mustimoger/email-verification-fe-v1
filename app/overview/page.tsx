@@ -35,6 +35,7 @@ import {
   OverviewResponse,
   TaskListResponse,
 } from "../lib/api-client";
+import { EXTERNAL_DATA_UNAVAILABLE } from "../lib/messages";
 import {
   aggregateValidationCounts,
   buildIntegrationLabelMap,
@@ -168,13 +169,15 @@ export default function OverviewPage() {
   }, [overview]);
 
   const stats: Stat[] = useMemo(() => {
-    const credits = overview?.credits_remaining ?? null;
+    const credits = overview?.credits_remaining;
+    const creditsLabel =
+      credits === null || credits === undefined ? EXTERNAL_DATA_UNAVAILABLE : credits.toLocaleString();
     const totalVerifications = overview?.usage_total ?? null;
     const valid = overview?.verification_totals?.valid ?? null;
     const invalid = overview?.verification_totals?.invalid ?? null;
     const catchAll = overview?.verification_totals?.catchall ?? null;
     return [
-      { title: "Credits Remaining", value: credits !== null ? credits.toLocaleString() : "—", icon: Wallet },
+      { title: "Credits Remaining", value: creditsLabel, icon: Wallet },
       {
         title: "Total Verifications",
         value: totalVerifications !== null ? totalVerifications.toLocaleString() : "—",

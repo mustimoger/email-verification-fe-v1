@@ -1,6 +1,7 @@
 "use client";
 
 import { Task, TaskDetailResponse, TaskEmailJob, TaskMetrics } from "../lib/api-client";
+import { EXTERNAL_DATA_UNAVAILABLE } from "../lib/messages";
 
 export type HistoryAction = "download" | "status";
 export type HistoryStatusTone = "completed" | "processing" | "failed" | "unknown";
@@ -22,7 +23,6 @@ export type HistoryRow = {
 export const PENDING_STATES = new Set(["pending", "processing", "started", "queued"]);
 const COMPLETED_STATES = new Set(["completed", "complete", "success", "succeeded", "done"]);
 const FAILED_STATES = new Set(["failed", "error", "errored", "cancelled", "canceled"]);
-export const EXTERNAL_DATA_UNAVAILABLE = "ext api data is not available";
 
 type DerivedCounts = {
   total: number;

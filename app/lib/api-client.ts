@@ -220,7 +220,7 @@ export type Profile = {
 };
 
 export type Credits = {
-  credits_remaining: number;
+  credits_remaining: number | null;
 };
 
 export type Purchase = {
@@ -295,7 +295,7 @@ export type IntegrationOption = {
 
 export type OverviewResponse = {
   profile: Profile;
-  credits_remaining: number;
+  credits_remaining: number | null;
   usage_total: number | null;
   usage_series: { date: string; count: number }[];
   task_counts: Record<string, number>;

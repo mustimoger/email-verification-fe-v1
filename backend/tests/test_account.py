@@ -129,10 +129,9 @@ def test_get_credits(monkeypatch):
     app.dependency_overrides[account_module.get_current_user] = fake_user
     usage_calls = []
     monkeypatch.setattr(account_module, "record_usage", lambda *args, **kwargs: usage_calls.append(args))
-    monkeypatch.setattr(account_module.supabase_client, "fetch_credits", lambda user_id: 42)
 
     client = TestClient(app)
     resp = client.get("/api/account/credits")
     assert resp.status_code == 200
-    assert resp.json()["credits_remaining"] == 42
+    assert resp.json()["credits_remaining"] is None
     assert usage_calls

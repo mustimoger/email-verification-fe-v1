@@ -36,7 +36,6 @@ def test_overview_success(monkeypatch):
     app.dependency_overrides[overview_module.get_current_user] = fake_user
 
     monkeypatch.setattr(overview_module.supabase_client, "fetch_profile", lambda user_id: {"user_id": user_id, "email": "x@test.com"})
-    monkeypatch.setattr(overview_module.supabase_client, "fetch_credits", lambda user_id: 1000)
     monkeypatch.setattr(overview_module, "get_settings", lambda: _Settings(timeout_seconds=1.0))
     task_metrics = TaskMetrics(
         total_email_addresses=10,
@@ -94,7 +93,7 @@ def test_overview_success(monkeypatch):
     assert resp.status_code == 200
     data = resp.json()
     assert data["profile"]["user_id"] == "user-ov"
-    assert data["credits_remaining"] == 1000
+    assert data["credits_remaining"] is None
     assert data["usage_total"] == 12
     assert len(data["usage_series"]) == 2
     assert data["task_counts"]["completed"] == 1
@@ -125,7 +124,6 @@ def test_overview_metrics_timeout_fallback(monkeypatch):
 
     monkeypatch.setattr(overview_module, "get_settings", lambda: _Settings(timeout_seconds=0.01))
     monkeypatch.setattr(overview_module.supabase_client, "fetch_profile", lambda user_id: {"user_id": user_id})
-    monkeypatch.setattr(overview_module.supabase_client, "fetch_credits", lambda user_id: 0)
     monkeypatch.setattr(overview_module, "list_billing_purchases", lambda user_id, limit=None, offset=None: [])
 
     class FakeClient:
@@ -158,7 +156,6 @@ def test_overview_metrics_error_fallback(monkeypatch):
 
     monkeypatch.setattr(overview_module, "get_settings", lambda: _Settings(timeout_seconds=1.0))
     monkeypatch.setattr(overview_module.supabase_client, "fetch_profile", lambda user_id: {"user_id": user_id})
-    monkeypatch.setattr(overview_module.supabase_client, "fetch_credits", lambda user_id: 0)
     monkeypatch.setattr(overview_module, "list_billing_purchases", lambda user_id, limit=None, offset=None: [])
 
     class FakeClient:
@@ -188,12 +185,10 @@ def test_overview_supabase_unavailable(monkeypatch):
 
     app.dependency_overrides[overview_module.get_current_user] = fake_user
 
-    monkeypatch.setattr(overview_module.supabase_client, "fetch_profile", lambda user_id: {"user_id": user_id})
-
-    def fail_fetch_credits(user_id):
+    def fail_fetch_profile(user_id):
         raise RuntimeError("supabase down")
 
-    monkeypatch.setattr(overview_module.supabase_client, "fetch_credits", fail_fetch_credits)
+    monkeypatch.setattr(overview_module.supabase_client, "fetch_profile", fail_fetch_profile)
 
     client = TestClient(app)
     app.dependency_overrides[overview_module.get_user_external_client] = lambda: None

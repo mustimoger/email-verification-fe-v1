@@ -31,7 +31,7 @@ class ProfileUpdateRequest(BaseModel):
 
 
 class CreditsResponse(BaseModel):
-    credits_remaining: int
+    credits_remaining: Optional[int] = None
 
 
 class PurchaseResponse(BaseModel):
@@ -132,12 +132,8 @@ async def upload_avatar(
 
 @router.get("/credits", response_model=CreditsResponse)
 def get_credits(user: AuthContext = Depends(get_current_user)):
-    try:
-        credits = supabase_client.fetch_credits(user.user_id)
-    except Exception as exc:  # noqa: BLE001
-        logger.error("account.credits.fetch_failed", extra={"user_id": user.user_id, "error": str(exc), "error_type": type(exc).__name__})
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Credits service unavailable") from exc
-    logger.info("account.credits.fetched", extra={"user_id": user.user_id, "credits_remaining": credits})
+    credits = None
+    logger.info("account.credits.unavailable", extra={"user_id": user.user_id})
     record_usage(user.user_id, path="/account/credits", count=1)
     return CreditsResponse(credits_remaining=credits)
 
