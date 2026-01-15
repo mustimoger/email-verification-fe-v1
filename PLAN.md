@@ -80,8 +80,13 @@
   Explanation: Added `TaskJobsResponse` + `list_task_jobs` to the external client and exposed `/api/tasks/{id}/jobs` with validation/logging; added backend tests to cover success and error handling so the manual flow can poll jobs once the UI is updated.
 - [x] Phase 1 — switch manual verification flow to tasks/jobs (frontend wiring).
   Explanation: Verify manual copy‑paste now calls `/api/tasks` once, polls `/api/tasks/{id}/jobs` for results, builds CSV exports from job data, and persists the last manual task in localStorage for hydration; this removes per‑email `/verify` calls while keeping UI layout intact.
-- [ ] Phase 1 — retire `/api/tasks/latest-manual` after manual flow updates.
-  Explanation: Removing the Supabase-backed latest-manual endpoint completes the external-only manual path once the frontend no longer depends on it.
+- [x] Phase 1 — retire `/api/tasks/latest-manual` after manual flow updates.
+  Explanation: Removed the Supabase-backed latest-manual endpoint, its schema/type usage, and its backend tests so the manual path is fully external-only. This prevents stale manual hydrations now that `/verify` uses tasks/jobs with localStorage state.
+  Completed steps:
+  - Removed backend route + handler and dependent schema/type usage.
+  - Removed client types/functions that called `/api/tasks/latest-manual`.
+  - Deleted backend tests targeting the route.
+  - Ran targeted backend tests for task proxying/related endpoints.
 - [ ] Phase 1 — backend cleanup of task cache services.
   Explanation: Deferred: `tasks_store`/`task_files_store` still exist for manual verification storage and credit reservations; full removal must wait until those flows are externalized or moved.
 - [x] Phase 1 — frontend History uses external task response format.
@@ -89,7 +94,7 @@
 - [x] Phase 1 — History external mapping implementation (MVP) + missing-field messaging + tests.
   Explanation: Added metrics-aware mapping + status normalization in `app/history/utils.ts`, surfaced the required missing-field message, updated `tests/history-mapping.test.ts`, and ran `npm run test:history` with the Python venv active (output noted in handover).
 - [x] Phase 1 — frontend Verify uses external task/verify responses.
-  Explanation: Switched latest-upload hydration/refresh to `/api/tasks` (external task list), mapped external metrics into Verify summaries, and surfaced `ext api data is not available` for missing file/export detail fields while keeping the layout intact. Manual exports still rely on `/tasks/latest-manual` until external user-scoped export details exist.
+  Explanation: Switched latest-upload hydration/refresh to `/api/tasks` (external task list), mapped external metrics into Verify summaries, and surfaced `ext api data is not available` for missing file/export detail fields while keeping the layout intact. Manual exports now rely on task jobs data with localStorage hydration.
 - [x] Phase 1 — Verify external task wiring (MVP) + missing export detail messaging + tests.
   Explanation: Added task-based summary mapping in `app/verify/utils.ts`, disabled downloads when file name is missing, updated CSV export to emit `ext api data is not available` for missing detail fields, and ran `npx tsx tests/verify-mapping.test.ts` (after sourcing `.env.local`) with venv active.
 - [ ] Phase 1 — tests/verification for task proxying.
@@ -237,10 +242,10 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
   Update: Added `/api/tasks/latest-upload` with backend tests, and `/verify` now hydrates the latest file-based task on load with a manual refresh button plus frontend mapping tests.
 - [x] Persist latest manual batch on `/verify` and hydrate the Results card from `/tasks/{id}` jobs only (manual batches only).
   Explanation: Manual verification results should survive reloads by fetching the latest manual task and mapping job emails to statuses; no local storage or placeholders.
-  Update: `/verify` now hydrates the latest manual task via `/api/tasks/latest-manual` and maps results exclusively from job emails in `/api/tasks/{id}`.
+  Update: `/verify` now hydrates from localStorage (`verify.manual.state`) and maps results from `/api/tasks/{id}/jobs`; `/api/tasks/latest-manual` has been removed.
 - [x] Add `/api/tasks/latest-manual` (Supabase-backed) and tests.
   Explanation: Manual tasks are identifiable by missing file metadata; expose a lightweight endpoint so the UI can rehydrate without external API polling.
-  Update: Added `fetch_latest_manual_task` in the tasks store plus `/api/tasks/latest-manual`, and covered the endpoint with a new FastAPI test to validate 200/204 responses.
+  Update: Endpoint and related store/test coverage were removed after migrating manual hydration to task jobs + localStorage.
 - [x] Add Results refresh button for manual batches and remove background polling.
   Explanation: Per UX requirement, status updates are user-triggered only.
   Update: Results card now includes a “Refresh status” button that fetches the latest manual task and updates the results without polling.

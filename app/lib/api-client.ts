@@ -160,19 +160,6 @@ export type LatestUploadResponse = {
   job_status?: Record<string, number>;
 };
 
-export type LatestManualResponse = {
-  task_id: string;
-  created_at?: string;
-  status?: string;
-  email_count?: number;
-  valid_count?: number;
-  invalid_count?: number;
-  catchall_count?: number;
-  job_status?: Record<string, number>;
-  manual_emails?: string[];
-  manual_results?: ManualVerificationResult[];
-};
-
 export type UploadFileMetadata = {
   file_name: string;
   email_column: string;
@@ -557,7 +544,6 @@ export const apiClient = {
     const qs = params.toString();
     return request<LatestUploadResponse[] | null>(`/tasks/latest-uploads${qs ? `?${qs}` : ""}`, { method: "GET" });
   },
-  getLatestManual: () => request<LatestManualResponse | null>("/tasks/latest-manual", { method: "GET" }),
   uploadTaskFiles: (files: File[], metadata: UploadFileMetadata[], webhook_url?: string) => {
     const form = new FormData();
     files.forEach((file) => form.append("files", file));

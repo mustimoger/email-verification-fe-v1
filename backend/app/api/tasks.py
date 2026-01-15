@@ -26,7 +26,6 @@ from ..services.task_credit_reservations import fetch_task_credit_reservation, u
 from ..services.tasks_store import (
     counts_from_metrics,
     email_count_from_metrics,
-    fetch_latest_manual_task,
     update_task_manual_emails,
     update_manual_task_results,
 )
@@ -63,19 +62,6 @@ class LatestUploadResponse(BaseModel):
     invalid_count: Optional[int] = None
     catchall_count: Optional[int] = None
     job_status: Optional[Dict[str, int]] = None
-
-
-class LatestManualResponse(BaseModel):
-    task_id: str
-    created_at: Optional[str] = None
-    status: Optional[str] = None
-    email_count: Optional[int] = None
-    valid_count: Optional[int] = None
-    invalid_count: Optional[int] = None
-    catchall_count: Optional[int] = None
-    job_status: Optional[Dict[str, int]] = None
-    manual_emails: Optional[list[str]] = None
-    manual_results: Optional[list[Dict[str, object]]] = None
 
 
 def get_user_external_client(user: AuthContext = Depends(get_current_user)) -> ExternalAPIClient:
@@ -581,44 +567,6 @@ async def get_latest_uploads(
         extra={"user_id": user.user_id, "reason": "ext_api_missing_file_name"},
     )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
-
-
-@router.get("/tasks/latest-manual", response_model=LatestManualResponse)
-async def get_latest_manual(
-    user: AuthContext = Depends(get_current_user),
-    refresh_details: bool = Query(False),
-):
-    settings = get_settings()
-    latest = fetch_latest_manual_task(user.user_id, limit=settings.upload_poll_page_size)
-    if not latest:
-        logger.info("route.tasks.latest_manual.empty", extra={"user_id": user.user_id})
-        return Response(status_code=status.HTTP_204_NO_CONTENT)
-    task_id = latest.get("task_id")
-    if not task_id:
-        logger.warning(
-            "route.tasks.latest_manual.invalid_row",
-            extra={"user_id": user.user_id, "task_id": task_id},
-        )
-        return Response(status_code=status.HTTP_204_NO_CONTENT)
-    manual_results = latest.get("manual_results")
-    if refresh_details:
-        logger.info(
-            "route.tasks.latest_manual.refresh_details_ignored",
-            extra={"user_id": user.user_id, "task_id": task_id},
-        )
-    record_usage(user.user_id, path="/tasks/latest-manual", count=1, api_key_id=None)
-    return LatestManualResponse(
-        task_id=task_id,
-        created_at=latest.get("created_at"),
-        status=latest.get("status"),
-        email_count=latest.get("email_count"),
-        valid_count=latest.get("valid_count"),
-        invalid_count=latest.get("invalid_count"),
-        catchall_count=latest.get("catchall_count"),
-        job_status=latest.get("job_status"),
-        manual_emails=latest.get("manual_emails"),
-        manual_results=manual_results,
-    )
 
 
 @router.get("/tasks/{task_id}/jobs", response_model=TaskJobsResponse)
