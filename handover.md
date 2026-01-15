@@ -90,7 +90,8 @@ If any are missing, `/api/credits/signup-bonus` returns 503 and logs `credits.si
 - `refactor.md` — refreshed with current refactor status + gaps.
 
 ## Tests Run (Recent)
-- No tests run after the Phase 3 backend usage removal + frontend usage messaging changes.
+- `source .venv/bin/activate && pytest backend/tests/test_usage_summary_route.py backend/tests/test_usage_purpose_route.py`
+- `source .venv/bin/activate && ./node_modules/.bin/tsx tests/api-usage-utils.test.ts`
 
 ## Known Gaps / Risks
 - CSV uploads fail with “Unable to parse CSV headers” in Verify; XLSX works. Needs investigation to unblock CSV uploads.
@@ -105,12 +106,11 @@ If any are missing, `/api/credits/signup-bonus` returns 503 and logs `credits.si
 - Per-key usage chart endpoint is not available yet; UI must show `ext api data is not available` for per-key chart data.
 
 ## Next Steps (Ordered)
-1) Run targeted tests: `backend/tests/test_usage_summary_route.py`, `backend/tests/test_usage_purpose_route.py`, and `tests/api-usage-utils.test.ts` (with venv activated).
-2) Investigate CSV header parsing failure on Verify file uploads.
-3) Confirm backend routes for `/api/credits/signup-bonus` and `/api/tasks/{id}/jobs` on the running dev server.
-4) Re-run UI verification after backend route confirmation: manual jobs polling, history refresh, and CSV uploads.
-5) Drop `cached_api_keys` table after external-only key flow is verified in production.
-6) Drop Supabase `api_usage` table after Phase 3 frontend is verified.
+1) Investigate CSV header parsing failure on Verify file uploads.
+2) Confirm backend routes for `/api/credits/signup-bonus` and `/api/tasks/{id}/jobs` on the running dev server.
+3) Re-run UI verification after backend route confirmation: manual jobs polling, history refresh, and CSV uploads.
+4) Drop `cached_api_keys` table after external-only key flow is verified in production.
+5) Drop Supabase `api_usage` table after Phase 3 frontend is verified.
 
 ## Process Reminders
 - For any code changes: state plan first, update root plan/progress markdowns after completion, ask for confirmation before next task.

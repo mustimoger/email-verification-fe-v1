@@ -16,8 +16,8 @@
       Explanation: Removed Supabase usage storage (`usage.py`, `usage_summary.py`, `fetch_usage`, `record_usage` call sites), dropped the `/api/usage` list route, added external metrics summary mapping for `/api/usage/summary` (with per-key unavailable handling), and updated backend tests to reflect the external-only usage flow. Added shared date-range parsing and verification-metrics helpers to reuse logic across overview/usage. Note: the `api_usage` table itself still exists in Supabase; dropping it will require a separate migration and is pending.
     - [x] Step 4c — Frontend: update `/api` usage view to show `ext api data is not available` for any missing data points (including per-key charts until the external endpoint exists).
       Explanation: The API Usage chart now renders the exact missing-data message when per-key charts are selected or when external metrics are unavailable; totals use the same message only when totals are missing, while still showing numeric totals when present. Layout and styling were preserved.
-    - [ ] Step 4d — Tests: run backend usage route tests and frontend API usage utils tests.
-      Explanation: Ensures the new external-only usage flow is stable and missing-data handling remains consistent.
+    - [x] Step 4d — Tests: run backend usage route tests and frontend API usage utils tests.
+      Explanation: Ran `pytest backend/tests/test_usage_summary_route.py backend/tests/test_usage_purpose_route.py` and `tsx tests/api-usage-utils.test.ts` (with the Python venv active); all tests passed (warnings from pyiceberg/pydantic noted).
 
 - [x] Baseline setup — Next.js 14 (app router) with TypeScript, Tailwind, ESLint, npm, and alias `@/*`; React Compiler disabled. Clean base to layer dashboard features.
 - [x] Layout shell + theming — Built shared sidebar/topbar shell per Figma: responsive drawer, notifications/profile, Nunito Sans, gradient surface. Sidebar uses `public/logo.png` (BoltRoute) image logo (matches `Screenshot_1.png`), not text. Avatar uses `public/profile-image.png` with fallback initials. Purpose: consistent chrome to reuse across pages.
