@@ -138,6 +138,8 @@
 - [ ] Testing and staging — Add unit/integration coverage and deploy to staging after MVP pages and API wiring are in place; verify flows end-to-end.
 - [x] Session handover — refresh `handover.md` with latest backend cleanup, tests, and next steps.
   Explanation: Updated `handover.md` with external-only overview/debug details, removed task cache notes, added recent commits, and captured targeted test runs so the next session can continue without re-discovery.
+- [x] Session handover — refresh `handover.md` with latest credit-grants + signup-bonus wiring and remaining next steps.
+  Explanation: Updated `handover.md` with the credit-grants purchase flow, signup bonus endpoint/config, known risks (signup session), and ordered next steps for the external-credits shift.
 - [x] Overview backend alignment — Use credits-spent time series from Supabase tasks, add lifetime totals from external /metrics/verifications, and include latest Paddle plan + purchase date in /api/overview.
   Explanation: `/api/overview` now returns credits-spent totals/series from tasks, lifetime validation totals from external metrics (when available), and current plan data from `billing_purchases` + `billing_plans`, including “Multiple items” when a purchase has multiple price_ids.
 - [x] Dashboard navigation latency — Reproduce the 60s sidebar navigation delay and "Failed to fetch" errors (DashboardShell/API page) using Playwright; capture console/network logs and identify the failing endpoints/base URL before changing code.

@@ -1,135 +1,88 @@
-# Handover — External API First Refactor (Phase 1 in progress)
+# Handover — External API First Refactor (Phase 1 completed, credits shift in progress)
 
-## Context & Decisions
-- External API is the single source of truth for verification data, tasks, usage, and API keys.
-- Supabase should remain only for profiles, billing, and credit grants (purchases + signup grants). No local credit balance/consumption logic should remain once external endpoints exist.
-- This codebase must only write credit grants to Supabase (purchase credits from Paddle webhooks + signup bonuses). External API will read these grants, compute balances, and expose endpoints for balance/usage/low-credit checks.
-- If external data is missing, UI must keep the field and show the exact message: `ext api data is not available` (no silent fallback).
-- Manual copy-paste verification should create a task (`POST /api/v1/tasks`) so history/export is driven by `/api/v1/tasks/{id}/jobs`.
-- `/api/v1/verify` remains realtime and does not return task_id; it is not suitable for manual history/export.
-- External API docs include `/api/v1/tasks/{id}/jobs` with nested verification details (role/disposable/MX/server/validated_at/etc.).
-- Credit usage/low-balance endpoints are not documented yet; once external API adds them, replace the UI placeholders.
+## Current Status Summary
+- External API is the source of truth for verification data, tasks, metrics, and API keys.
+- Supabase is for profiles + billing + append-only credit grants (purchases + signup bonus).
+- Local credit enforcement (debit/reserve/release) has been removed from backend task/verify routes.
+- Billing webhooks now write purchase grants to `credit_grants` and no longer touch `user_credits`.
+- Signup bonus endpoint exists and signup flow attempts to call it once (non-blocking).
 
-## Work Completed (To Date)
-- Phase 0 dependency gap documentation added to `refactor.md` (IMPORTANT NOTE section with missing fields).
-- Phase 1 backend task proxying completed:
-  - `/api/tasks`, `/api/tasks/{id}`, `/api/tasks/{id}/download`, `/api/tasks/upload` now call the external API directly (no Supabase task caching).
-  - `/api/tasks/latest-upload(s)` return 204 and log `ext_api_missing_file_name` because task list/detail do not include file_name yet.
-- Task reservation upserts updated so reservations/manual emails can be stored without a prior task row.
-- Backend tests updated to match external-only behavior and to use async ASGI clients.
-- Removed obsolete upload polling test.
-- Phase 1 frontend History wiring completed:
-  - History mapping uses external task metrics (`verification_status`, `job_status`) and normalizes status from metrics.
-  - Missing `file_name` renders `ext api data is not available` and logs `history.file_name.unavailable`.
-  - Updated `tests/history-mapping.test.ts` to cover metrics mapping + missing-file label.
-- Phase 1 frontend Verify wiring completed:
-  - Verify hydrates/refreshes upload summary via `/api/tasks` (external list) instead of `/tasks/latest-uploads`.
-  - Missing file_name shows `ext api data is not available` and disables download (log: `verify.file_name.unavailable`).
-  - Manual export CSV emits `ext api data is not available` for missing export detail fields.
-- Phase 1 reservation storage moved off `tasks`:
-  - Added Supabase `task_credit_reservations` table via migration `create_task_credit_reservations`, including trigger `set_task_credit_reservations_updated_at`.
-  - Added `backend/app/services/task_credit_reservations.py` and rewired `backend/app/api/tasks.py` to use it.
-- Phase 1 jobs proxy added:
-  - Added `TaskJobsResponse` + `list_task_jobs` to external client and exposed `/api/tasks/{id}/jobs`.
-  - Added backend tests for jobs proxy (`backend/tests/test_tasks_jobs_proxy.py`).
-- Phase 1 manual flow now uses tasks/jobs:
-  - Verify manual copy-paste calls `/api/tasks` once and polls `/api/tasks/{id}/jobs` for results; CSV export built from job data.
-  - Manual state persisted in localStorage under `verify.manual.state` for hydration.
-  - UI no longer calls `/api/tasks/latest-manual`, and the backend route is retired.
-- Phase 1 backend cleanup of task cache services:
-  - Removed `backend/app/services/tasks_store.py` and `backend/app/services/task_files_store.py`.
-  - Added `backend/app/services/task_metrics.py` for shared metrics helpers.
-  - `/api/verify` and `/api/tasks` no longer persist manual emails/results to Supabase.
-  - `/api/overview` and `/api/debug/tasks` use external tasks/metrics only, with explicit logs when data is missing.
-  - Manual verify no longer performs `/emails/{address}` enrichment; export fields rely entirely on task jobs data.
-- Phase 1 backend test coverage added:
-  - Added reservation table service tests and manual jobs flow integration coverage using async ASGI clients.
-  - Updated `test_tasks_credit_reservation` to match external-only task API and async dependency overrides.
-- Credits ownership shift — local enforcement removed:
-  - `/api/verify`, `/api/tasks`, `/api/tasks/{id}`, `/api/tasks/{id}/download`, and `/api/tasks/upload` no longer apply local credit debits/reservations or return 402.
-  - Backend tests updated to assert the external-only flow; UI 402 parsing kept for upstream errors.
-- Credit grants schema + service added for the external-ownership shift:
-  - Added `credit_grants` schema definition to `refactor.md` and `backend/app/services/credit_grants.py`.
-  - Applied Supabase migration `create_credit_grants` successfully (MCP auth fixed).
-- Credit grants shift — purchase + signup now write to `credit_grants`:
-  - Billing webhook upserts `credit_grants` (`source=purchase`, `source_id=transaction_id`) and no longer touches `user_credits`.
-  - Added `/api/credits/signup-bonus` with account-age + email-confirm checks and idempotent upsert, plus signup flow call and backend tests.
+## Core Decisions (Must Preserve)
+- If external data is missing, UI must show exactly: `ext api data is not available`.
+- Manual copy‑paste verification creates a task (`POST /api/v1/tasks`) and reads results from `/api/v1/tasks/{id}/jobs`.
+- `/api/v1/verify` remains realtime only and does not return task_id.
+- This codebase should only **write** credit grants to Supabase; external API owns balances/usage.
+
+## Work Completed (Key Changes)
+- Phase 1 task proxying (external‑only):
+  - `/api/tasks`, `/api/tasks/{id}`, `/api/tasks/{id}/download`, `/api/tasks/upload` proxy external API directly.
+  - `/api/tasks/latest-upload(s)` returns 204 with log `ext_api_missing_file_name` because list/detail lacks `file_name`.
+  - Manual verification uses `/api/tasks` + `/api/tasks/{id}/jobs`; local task caching removed.
+- Local credit enforcement removed:
+  - `/api/verify`, `/api/tasks`, `/api/tasks/{id}`, `/api/tasks/{id}/download`, `/api/tasks/upload` no longer apply debits/reservations or return 402.
+  - UI 402 parsing remains only for upstream errors.
+- Credit grants write‑path updated:
+  - Paddle webhook now upserts `credit_grants` (source=`purchase`, source_id=`transaction_id`) and keeps `billing_events` idempotency.
+  - `billing_purchases` is still written for now (needed until purchase history is migrated).
+- Signup bonus implemented:
+  - New endpoint `POST /api/credits/signup-bonus` validates account age + email confirmation, then upserts `credit_grants` (source=`signup`, source_id=`user_id`).
+  - Signup flow calls the endpoint once after successful signUp if a session exists; failures are logged and do not block signup.
+
+## New/Updated Endpoints
+- `POST /api/credits/signup-bonus` (new):
+  - Requires JWT, allows unconfirmed auth but enforces email confirmation depending on config.
+  - Returns `status: applied|duplicate` with `credits_granted`.
+  - Returns 503 if bonus is not configured.
+
+## Required Config (Signup Bonus)
+Set these env vars (no defaults):
+- `SIGNUP_BONUS_CREDITS`
+- `SIGNUP_BONUS_MAX_ACCOUNT_AGE_SECONDS`
+- `SIGNUP_BONUS_REQUIRE_EMAIL_CONFIRMED`
+
+If any are missing, `/api/credits/signup-bonus` returns 503 and logs `credits.signup_bonus.misconfigured`.
 
 ## Repo State / Alerts
 - Files over 600 lines: `backend/app/api/tasks.py`, `app/verify/page.tsx`, `app/verify/utils.ts`.
-- Planning docs are the source of truth for remaining work; follow `PLAN.md` + `refactor.md`.
 
-## Key Files Updated (So Far)
-- `backend/app/api/tasks.py` — external-only task proxying, credit reservations, latest-upload(s) 204 behavior; manual persistence removed.
-- `backend/app/api/overview.py` — reads usage + tasks directly from external metrics/task list (credits still local for now).
-- `backend/app/api/debug.py` — debug tasks query external task list.
-- `backend/app/clients/external.py` — verification metrics include series points.
-- `backend/app/services/task_credit_reservations.py` — reservation read/write service.
-- `backend/app/services/task_metrics.py` — shared metrics helpers.
-- `backend/app/services/credit_grants.py` — new credit grants helper for purchases + signup.
-- `backend/app/api/credits.py` — signup bonus endpoint with eligibility checks and `credit_grants` upsert.
-- `backend/app/api/billing.py` — webhook credit grants now write to `credit_grants` only.
-- `backend/app/core/settings.py` — signup bonus configuration settings.
-- `app/history/utils.ts` — external metrics mapping + missing file_name handling.
-- `app/verify/page.tsx` + `app/verify/utils.ts` — manual verify uses `/api/tasks` + `/api/tasks/{id}/jobs` with CSV export from jobs.
-- `app/lib/api-client.ts` — TaskJobs types + `getTaskJobs`.
-- `app/components/auth-provider.tsx` — signup flow now requests signup bonus (non-blocking).
-- `backend/tests/test_task_credit_reservations.py`, `backend/tests/test_tasks_manual_jobs_flow.py`, `backend/tests/test_tasks_credit_reservation.py`.
-- `backend/tests/test_signup_bonus.py` — signup bonus eligibility + duplicate coverage.
-- `PLAN.md`, `refactor.md`, `handover.md` updated to reflect credits shift + schema.
+## Key Files Updated
+- `backend/app/api/billing.py` — webhook now writes to `credit_grants` only.
+- `backend/app/api/credits.py` — signup bonus endpoint with eligibility checks.
+- `backend/app/core/settings.py` — new signup bonus settings.
+- `backend/app/main.py` — includes credits router.
+- `app/components/auth-provider.tsx` — signup now calls `claimSignupBonus` (non‑blocking).
+- `app/lib/api-client.ts` — added `claimSignupBonus` client.
+- `backend/tests/test_billing.py` — updated for credit_grants.
+- `backend/tests/test_signup_bonus.py` — signup bonus eligibility coverage.
 
-## Commits (for rollback)
-- `f708b71` — move task credit reservations to new table.
-- `87fe392` — add task jobs proxy.
-- `88564ec` — manual verify flow uses task jobs + localStorage hydration.
-- `31adc62` — retire `/api/tasks/latest-manual` endpoint and client types/tests.
-- `c78b0ff` — remove task cache services; switch overview/debug to external metrics/tasks.
-- `ddd9a69` — add credit_grants service/tests + plan/handover/refactor updates.
-
-## Test Runs
-- `pytest backend/tests/test_tasks_latest_upload.py backend/tests/test_tasks_latest_uploads.py backend/tests/test_tasks_list_fallback.py backend/tests/test_tasks_list_external_failure.py backend/tests/test_tasks_key_scope.py backend/tests/test_tasks_admin_scope.py`
-  - Result: 14 passed (pyiceberg/pydantic warnings only).
-- `pytest backend/tests/test_tasks_jobs_proxy.py backend/tests/test_tasks_list_external_failure.py backend/tests/test_tasks_list_fallback.py backend/tests/test_tasks_key_scope.py backend/tests/test_tasks_admin_scope.py backend/tests/test_tasks_latest_upload.py backend/tests/test_tasks_latest_uploads.py`
-  - Result: 14 passed (pyiceberg/pydantic warnings only).
-- `source .venv/bin/activate && pytest backend/tests/test_overview.py backend/tests/test_tasks_metrics_mapping.py backend/tests/test_credit_enforcement_routes.py`
-  - Result: 10 passed (pyiceberg/pydantic warnings only).
-- `npm run test:history`
-  - Result: all history mapping tests passed (saw expected `history.file_name.unavailable` log for metrics-only task).
-- `pytest backend/tests/test_tasks_jobs_proxy.py`
-  - Result: 3 passed (pyiceberg/pydantic warnings only).
-- `set -a && source .env.local && set +a && source .venv/bin/activate && npx tsx tests/verify-mapping.test.ts`
-  - Result: verify mapping tests passed; saw expected `verify.file_name.unavailable` + `verify.manual.job_missing_email` logs.
-- `source .venv/bin/activate && pytest backend/tests/test_task_credit_reservations.py backend/tests/test_tasks_manual_jobs_flow.py backend/tests/test_tasks_jobs_proxy.py backend/tests/test_tasks_credit_reservation.py`
-  - Result: 12 passed (pyiceberg/pydantic warnings only).
-- `source .venv/bin/activate && pytest backend/tests/test_credit_enforcement_routes.py backend/tests/test_tasks_credit_reservation.py backend/tests/test_tasks_upload_email_count.py backend/tests/test_tasks_download_proxy.py backend/tests/test_tasks_manual_jobs_flow.py`
-  - Result: 9 passed (pyiceberg/pydantic warnings only).
+## Tests Run
 - `source .venv/bin/activate && pytest backend/tests/test_billing.py backend/tests/test_signup_bonus.py`
   - Result: 10 passed (pyiceberg/pydantic warnings only).
+- Prior runs still relevant for task proxying/manual flow; see earlier entries in this handover history.
 
-## Important Test Harness Note (Avoid Rework)
-- `fastapi.TestClient` hangs here. Use `httpx.AsyncClient` + `httpx.ASGITransport` instead.
-- Dependency overrides for async dependencies must be async (`async def fake_user()`), otherwise requests hang.
-- For `get_user_external_client`, return an async override that returns the client instance.
+## Known Gaps / Risks
+- **Signup bonus may be skipped if Supabase signUp returns no session.**
+  - Current flow calls `/credits/signup-bonus` only when `supabase.auth.getSession()` returns a session.
+  - If email confirmation is required, Supabase often returns `session: null`; bonus will not be claimed automatically after confirm/sign-in.
+  - Decide whether to trigger the bonus on first confirmed sign‑in or after confirmation callback.
+- **Account/overview credits still local.**
+  - `/api/overview` and `/api/account/credits` still read `user_credits`; should be switched to “unavailable” until external API exposes balances.
+- **Purchase history still local.**
+  - `/account` purchase history uses `billing_purchases`; needs migration to `credit_grants`.
 
-## External API Status / Gaps
-- Task list/detail still do not include `file_name` (upload response includes filename).
-- Manual export fields are available via `GET /api/v1/tasks/{id}/jobs` (user-scoped) and are now used by the Verify page.
-- Credit usage/spend endpoints are not documented yet; external API will provide credit balance/history/low-credit checks once it reads `credit_grants`.
-- Mapping of external metrics to UI “credits used”/usage totals remains unconfirmed; metrics docs only expose verification totals/series.
+## External API Gaps (Still Pending)
+- Task list/detail do not include `file_name` (upload response includes filename).
+- Credit usage/spend endpoints not documented yet; external API will compute balances from `credit_grants` once ready.
+- Mapping of external metrics to UI “credits used”/usage totals remains unconfirmed.
 
-## Pending Work / Next Steps (Ordered)
-1) Credits ownership shift — update account/overview credits to external-only.
-   - Update `/api/overview` + `/api/account/credits` to return unavailable and log, and update UI to show `ext api data is not available` (no layout change).
-2) Credits ownership shift — update purchase history source.
-   - Read purchase history from `credit_grants` (source=`purchase`) instead of `billing_purchases`.
-3) Tests + scripts.
-   - Update backend tests expecting credit enforcement and `user_credits` changes.
-   - Update Paddle E2E script + README to verify `credit_grants` instead of `user_credits`.
-4) UI re-verification.
-   - Verify manual history/export works with external jobs, file upload summary still functions, and missing file_name shows the required message.
+## Next Steps (Ordered)
+1) Credits ownership shift — update `/api/overview` + `/api/account/credits` to return unavailable and show `ext api data is not available` in UI.
+2) Credits ownership shift — migrate account purchase history to `credit_grants` (source=`purchase`) and remove dependence on `billing_purchases`.
+3) Update Paddle E2E script + README to assert `credit_grants` instead of `user_credits`.
+4) Resolve signup bonus trigger behavior for email‑confirmed flow (see risk above).
+5) UI re‑verification: manual history/export + file upload summary + missing `file_name` messaging.
 
-## Required Process Reminders
-- For any code changes: state plan first, update root plan/progress markdown after completion, ask for confirmation before next task.
-- Add new to-dos to plan docs before execution.
+## Process Reminders
+- For any code changes: state plan first, update root plan/progress markdowns after completion, ask for confirmation before next task.
 - Activate Python venv before running tests or scripts.
 - Keep UI design unchanged while wiring backend.
