@@ -92,6 +92,7 @@ If any are missing, `/api/credits/signup-bonus` returns 503 and logs `credits.si
 - Supabase migration — dropped `public.cached_api_keys` after external-only key flow verification.
 - Supabase migration — dropped `public.api_usage` after external metrics became the source of truth.
 - Supabase migration — dropped `public.tasks`, `public.task_files`, `public.user_credits`, and `public.credit_ledger` to keep local state minimal.
+- Supabase migration — dropped `public.task_credit_reservations` after local credit enforcement removal.
 - `refactor.md` — refreshed with current refactor status + gaps.
 
 ## Tests Run (Recent)
@@ -112,8 +113,7 @@ If any are missing, `/api/credits/signup-bonus` returns 503 and logs `credits.si
 - Per-key usage chart endpoint is not available yet; UI must show `ext api data is not available` for per-key chart data.
 
 ## Next Steps (Ordered)
-1) Decide whether to drop `task_credit_reservations` now that local credit enforcement is removed.
-2) Future enhancements only after MVP + tests + staging.
+1) Future enhancements only after MVP + tests + staging.
 
 ## Process Reminders
 - For any code changes: state plan first, update root plan/progress markdowns after completion, ask for confirmation before next task.

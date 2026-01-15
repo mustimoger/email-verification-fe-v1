@@ -244,12 +244,12 @@ Planned Phase 3 steps (MVP-first):
 **End Result**
 - Supabase schema is limited to non-external responsibilities.
 
-### Phase 5 Status (In Progress)
+### Phase 5 Status (Complete)
 - Purchase history now reads from `credit_grants` (source=`purchase`); `billing_purchases` still written but no longer used for account history.
 - Signup bonus is claimed after confirmed sessions, removing the dependency on a signup session.
 - Paddle E2E script now validates `credit_grants` rather than `billing_purchases`/`user_credits`.
 - Dropped legacy tables now owned by the external API: `tasks`, `task_files`, `cached_api_keys`, `api_usage`, `user_credits`, `credit_ledger`.
-- `task_credit_reservations` still exists; decide whether to drop it now that local credit enforcement is removed.
+- Dropped `task_credit_reservations` after removing local credit enforcement.
 
 ## Testing & Validation
 - Backend integration tests for direct external API proxy routes.
