@@ -124,6 +124,8 @@
 - [ ] Enhancements — Only after MVP + tests + staging verification.
 - [x] Session handover — create root `handover.md` with current findings, changes, and next steps.
   Explanation: Added a new `handover.md` capturing dark mode progress, uncommitted changes, and the exact next steps/tests to run so the next session can resume without guessing.
+- [x] Session handover — refresh `handover.md` after manual flow migration.
+  Explanation: Updated `handover.md` with the task-jobs manual flow, localStorage hydration key, new jobs proxy/test coverage, and the remaining retirement/cleanup steps so the next session can continue without ambiguity.
 - [x] Planning doc rename: `non-dashboard-api-usage-plan.md` -> `verify-plan.md`.
   Explanation: Renamed the external usage plan doc per request and updated references across planning docs to avoid broken links.
 - [x] UI verification — `/api` usage views (per‑key/per‑purpose) with and without date range.
