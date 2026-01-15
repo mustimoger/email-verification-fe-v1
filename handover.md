@@ -27,6 +27,9 @@
   - Missing file_name displays `ext api data is not available` in the summary and disables download when the name is unknown (log: `verify.file_name.unavailable`).
   - Manual export CSV now emits `ext api data is not available` for missing export detail fields (role-based, catchall, email server, etc.).
   - Manual history hydration still uses `/tasks/latest-manual` until external jobs are wired.
+- Phase 1 reservation storage moved off `tasks`:
+  - Added Supabase `task_credit_reservations` table with updated-at trigger.
+  - Added `backend/app/services/task_credit_reservations.py` and rewired `backend/app/api/tasks.py` to use it for reservation reads/writes.
 
 ## Repo State / Alerts
 - Files over 600 lines: `backend/app/api/tasks.py`, `app/verify/page.tsx`, `app/verify/utils.ts`.
@@ -67,25 +70,19 @@
 - Mapping of external metrics → UI “credits used”/usage totals is still unconfirmed.
 
 ## Pending Work / Next Steps (Ordered)
-1) **Create minimal local reservation table** in Supabase:
-   - New table `task_credit_reservations` with `user_id`, `task_id`, `credit_reserved_count`, `credit_reservation_id`, timestamps.
-   - Add unique `(user_id, task_id)` (or `(task_id)` if globally unique) for idempotency.
-2) **Move reservation reads/writes to the new table**:
-   - Replace `update_task_reservation` + `fetch_task_credit_reservation` in `backend/app/api/tasks.py`.
-   - Add a small service (e.g., `backend/app/services/task_credit_reservations.py`) and delete reservation fields from `tasks`.
-3) **Switch manual verification flow to tasks**:
+1) **Switch manual verification flow to tasks**:
    - Frontend: manual copy‑paste should call `/api/tasks` once (not per‑email `/verify`).
    - Backend: add `/api/tasks/{id}/jobs` proxy + types in external client; remove `/api/tasks/latest-manual`.
    - Verify page: poll `/api/tasks/{id}/jobs` for results and build export CSV from jobs.
-4) **Remove Supabase task caching helpers**:
+2) **Remove Supabase task caching helpers**:
    - Delete `backend/app/services/tasks_store.py` and `backend/app/services/task_files_store.py`.
    - Remove or replace `fetch_task_summary`, `summarize_tasks_usage`, `summarize_task_validation_totals` in Overview with external metrics/usage endpoints.
    - Remove `/api/debug/tasks` or rewrite to use external tasks list.
-5) **Update tests**:
+3) **Update tests**:
    - Replace `backend/tests/test_tasks_store.py` and `test_tasks_latest_manual.py` with jobs‑based tests.
    - Add tests for reservation table service and `/api/tasks/{id}/jobs` proxy.
    - Run targeted pytest with venv and update frontend tests for manual task flow.
-6) **Re‑verify UI**:
+4) **Re‑verify UI**:
    - Verify manual history/export works with external jobs, file upload summary still functions, and missing file_name shows the required message.
 
 ## Required Process Reminders
