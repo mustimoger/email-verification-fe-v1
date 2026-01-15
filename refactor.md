@@ -1,13 +1,13 @@
 # External-API-First Refactor Plan
 
 ## Purpose
-Transition the dashboard/backend to use the external API as the single source of truth for verification data, tasks, usage, and API keys. Supabase remains only for data the external API does not provide (profiles, billing, and credit ledger/purchases).
+Transition the dashboard/backend to use the external API as the single source of truth for verification data, tasks, usage, and API keys. Supabase remains only for data the external API does not provide (profiles, billing, and credit grants).
 
 This plan is written for a junior developer to follow step-by-step without ambiguity. It includes what to change, why, how, and the intended end state.
 
 ## Guiding Principles
 - External API is the source of truth for verification data, tasks, usage, and API keys.
-- Supabase is only for: profiles, billing, credit ledger, and purchase history.
+- Supabase is only for: profiles, billing, and credit grants.
 - If the external API doesn’t provide a field, UI must show a clear “data unavailable” state (no silent fallback).
 - Do not reintroduce local caching for external data unless explicitly required.
 
@@ -15,10 +15,10 @@ This plan is written for a junior developer to follow step-by-step without ambig
 These are required to complete the transition without losing UI functionality.
 - Task list/detail includes `file_name` (or equivalent) for uploaded files.
 - Manual verification export detail fields are exposed to user-scoped requests (currently only admin `/emails`).
-- External API writes credit usage/spend to Supabase (single source of truth for credits).
+- External API reads credit grants from Supabase to compute balances/usage.
 - External API metrics align with “credits used” and “usage totals” in UI.
 
-If any of the above are missing, implement the refactor anyway but keep the UI fields and show a “data unavailable” state until the external API ships the missing data.
+If any of the above are missing, implement the refactor anyway but keep the UI fields and show “data unavailable.”
 
 ## IMPORTANT NOTE FOR EXTERNAL API DEV (Missing/Unclear Data)
 If any required data is missing/undocumented, the UI must display the exact message: `ext api data is not available` (and the backend should avoid silent fallback). This keeps the product ready for the ultimate goal while waiting on external API updates.
@@ -33,7 +33,7 @@ Missing/unclear as of now:
 ```
 Frontend → Backend (FastAPI) → External API (tasks, keys, metrics, verification)
                               ↓
-                         Supabase (profiles, credits ledger, billing only)
+                         Supabase (profiles, billing, credit grants only)
 ```
 
 ## Supabase Credit Grants Schema (Final for External API)
@@ -66,6 +66,20 @@ create unique index if not exists credit_grants_user_source_id_key
 create index if not exists credit_grants_user_source_created_idx
   on public.credit_grants (user_id, source, created_at desc);
 ```
+
+### Credit Grants Implementation Notes (Current)
+- Paddle webhook now writes purchase grants to `credit_grants`.
+  - `source=purchase`, `source_id=transaction_id`.
+  - `billing_events` remains the idempotency gate; if grant insert fails, the billing event is deleted so retries can reprocess.
+- Signup bonus is implemented via `POST /api/credits/signup-bonus`.
+  - Validates account age + email confirmation (config-driven).
+  - Upserts `credit_grants` with `source=signup`, `source_id=user_id`.
+  - Required env vars (no defaults):
+    - `SIGNUP_BONUS_CREDITS`
+    - `SIGNUP_BONUS_MAX_ACCOUNT_AGE_SECONDS`
+    - `SIGNUP_BONUS_REQUIRE_EMAIL_CONFIRMED`
+- Signup flow calls `claimSignupBonus` only if Supabase signUp returns a session.
+  - Risk: if Supabase returns `session: null` (common when email confirmation is required), the signup bonus is not auto-claimed. Decide if this should move to first confirmed sign-in or email-confirm callback.
 
 ## Phase 0 — Preconditions and Alignment (Required)
 **What**
@@ -183,20 +197,21 @@ create index if not exists credit_grants_user_source_created_idx
 ## Phase 5 — Retain Only Essential Local State (Final Cleanup)
 **Keep in Supabase**
 - `profiles`
-- `user_credits`
-- `credit_ledger`
+- `credit_grants`
 - `billing_events`
 - `billing_plans`
-- `billing_purchases`
+- `billing_purchases` (until purchase history is migrated to `credit_grants`)
 
 **Remove**
 - `tasks`
 - `task_files`
 - `cached_api_keys`
 - `api_usage`
+- `user_credits`
+- `credit_ledger`
 
 **Why**
-- These retained tables are not covered by the external API and are required for billing/credits/profile data.
+- These retained tables are not covered by the external API and are required for billing/profile data.
 
 **End Result**
 - Supabase schema is limited to non-external responsibilities.
@@ -204,7 +219,7 @@ create index if not exists credit_grants_user_source_created_idx
 ## Testing & Validation
 - Backend integration tests for direct external API proxy routes.
 - UI tests for handling missing fields (“data unavailable”) without breaking layout.
-- Credit flow tests verifying that external API writes spend details to Supabase.
+- Credit flow tests verifying that external API reads `credit_grants` for balances.
 - Usage totals/series consistency checks against external metrics.
 
 ## Rollback Strategy
