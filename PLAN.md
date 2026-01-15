@@ -190,6 +190,8 @@
   Explanation: Dropped `public.cached_api_keys` via Supabase migration (`drop_cached_api_keys`) once external-only API key proxying was verified, eliminating the unused cache table and FK.
 - [x] Drop Supabase `api_usage` table after Phase 3 frontend is verified.
   Explanation: Dropped `public.api_usage` via Supabase migration (`drop_api_usage`) after external metrics were confirmed; this removes the unused local usage table.
+- [x] Drop Supabase tables now owned by the external API: `task_files`, `tasks`, `user_credits`, `credit_ledger`.
+  Explanation: Dropped the four legacy tables via Supabase migration (`drop_legacy_task_and_credit_tables`) to keep the backend focused on external data sources.
 - [x] Session handover refresh — update `refactor.md` with latest refactor changes + open gaps.
   Explanation: Captured current credits/external-only changes, signup bonus trigger behavior, Paddle E2E update, and new UI verification gaps (CSV header parsing and 404s on signup-bonus/jobs) so the refactor doc stays the source of truth.
 - [x] Session handover refresh — update `handover.md` with full context, explanations, and next steps.
