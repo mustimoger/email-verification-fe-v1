@@ -180,10 +180,16 @@
   Explanation: Warnings only today; likely a dependency bump to `supabase`/`supabase_auth` and a small test change to set cookies on the client.
   Update: Bumped `supabase` to `2.27.0`, added `supabase_auth`, switched imports to `supabase_auth.types.User`, and updated auth tests to set cookies on the client while adding confirmed claims to avoid network lookups.
 - [ ] Enhancements — Only after MVP + tests + staging verification.
-- [ ] Investigate CSV header parsing failure on Verify file uploads.
-  Explanation: Valid CSV files trigger “Unable to parse CSV headers” in the UI; XLSX uploads work. Needs follow-up to avoid blocking CSV uploads.
-- [ ] Confirm backend routes for `/api/credits/signup-bonus` and `/api/tasks/{id}/jobs` on the running dev server.
-  Explanation: UI verification observed 404 responses from `http://localhost:8001` for both endpoints; verify the backend instance is up-to-date and routes are mounted.
+- [x] Investigate CSV header parsing failure on Verify file uploads.
+  Explanation: Updated CSV header parsing to tolerate non-fatal PapaParse errors (log warnings instead of blocking), added an early empty-file guard, stripped BOM from headers, and added unit coverage in `tests/file-columns.test.ts` to lock in behavior and prevent regressions.
+- [x] Confirm backend routes for `/api/credits/signup-bonus` and `/api/tasks/{id}/jobs` on the running dev server.
+  Explanation: Verified the running server (`http://localhost:8001`) returns 401 for both endpoints with missing auth, confirming the routes are mounted and the server is up-to-date (previous 404s were likely from a stale process/entrypoint).
+- [x] Re-run UI verification after backend route confirmation (manual jobs polling, history refresh, CSV uploads).
+  Explanation: With a refreshed session token, manual verify created a task and `/api/tasks/{id}/jobs` returned 200 (results stayed pending). History refresh succeeded and displayed rows with `ext api data is not available` for file names (expected). CSV upload now proceeds through column selection and submission, logging `verify.file_columns.csv_parse_warning` without blocking, and the upload summary shows pending counts.
+- [x] Drop `cached_api_keys` table after external-only key flow is verified in production.
+  Explanation: Dropped `public.cached_api_keys` via Supabase migration (`drop_cached_api_keys`) once external-only API key proxying was verified, eliminating the unused cache table and FK.
+- [ ] Drop Supabase `api_usage` table after Phase 3 frontend is verified.
+  Explanation: Pending; this will remove the unused local usage table now that external metrics are the source of truth.
 - [x] Session handover refresh — update `refactor.md` with latest refactor changes + open gaps.
   Explanation: Captured current credits/external-only changes, signup bonus trigger behavior, Paddle E2E update, and new UI verification gaps (CSV header parsing and 404s on signup-bonus/jobs) so the refactor doc stays the source of truth.
 - [x] Session handover refresh — update `handover.md` with full context, explanations, and next steps.

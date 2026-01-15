@@ -38,19 +38,31 @@ const toColumnLetters = (index: number) => {
 
 const normalizeHeader = (value: unknown) => {
   if (value === null || value === undefined) return "";
-  return String(value).trim();
+  const trimmed = String(value).trim();
+  return trimmed.startsWith("\ufeff") ? trimmed.slice(1) : trimmed;
 };
+
+const summarizeCsvErrors = (errors: Papa.ParseError[]) =>
+  errors.map(({ code, message, row, type }) => ({ code, message, row, type }));
 
 const parseCsvHeaders = async (file: File) => {
   const text = await file.text();
-  const parsed = Papa.parse<string[]>(text, { preview: 1 });
-  if (parsed.errors?.length) {
-    const [first] = parsed.errors;
-    throw new FileColumnError("Unable to parse CSV headers.", { message: first?.message });
+  if (!text.trim()) {
+    throw new FileColumnError("CSV file is empty.");
   }
+  const parsed = Papa.parse<string[]>(text, { preview: 1, skipEmptyLines: "greedy" });
   const firstRow = Array.isArray(parsed.data?.[0]) ? parsed.data[0] : [];
   if (!firstRow.length) {
+    if (parsed.errors?.length) {
+      throw new FileColumnError("Unable to parse CSV headers.", { errors: summarizeCsvErrors(parsed.errors) });
+    }
     throw new FileColumnError("CSV file is empty.");
+  }
+  if (parsed.errors?.length) {
+    console.warn("verify.file_columns.csv_parse_warning", {
+      errors: summarizeCsvErrors(parsed.errors),
+      meta: parsed.meta,
+    });
   }
   const headers = firstRow.map((value) => normalizeHeader(value));
   return { headers, columnCount: headers.length };

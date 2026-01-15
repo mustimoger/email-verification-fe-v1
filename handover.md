@@ -48,8 +48,8 @@
 ## UI Re-verification (Latest)
 Session injected via `key-value-pair.txt` (confirmed user). Observations:
 - `/overview`: renders, shows `ext api data is not available` for credits; no layout issues.
-- `/verify` manual: submitted 2 emails, queued state shown; jobs polling to `/api/tasks/{id}/jobs` returned 404; manual export still succeeded with pending rows.
-- `/verify` upload: CSV uploads failed header parsing; XLSX upload succeeded (column assignment → upload summary), and submission logged `verify/upload` success.
+- `/verify` manual: submitted 2 emails, queued state shown; jobs polling to `/api/tasks/{id}/jobs` returned 200 with pending rows (no 404). Manual export still succeeded with pending rows.
+- `/verify` upload: CSV upload now proceeds through column selection and submit; `verify.file_columns.csv_parse_warning` is logged (non-fatal), and the upload summary shows pending totals without blocking.
 - `/history`: after refresh, rows displayed with `ext api data is not available` in Task/Total due to missing `file_name`.
 
 ## New/Updated Endpoints
@@ -87,15 +87,19 @@ If any are missing, `/api/credits/signup-bonus` returns 503 and logs `credits.si
 - `app/lib/messages.ts` — shared `ext api data is not available` constant.
 - `app/lib/api-client.ts` — removed bootstrap API key helper.
 - `app/api/page.tsx` — API key preview display now handles missing secrets cleanly.
+- `app/verify/file-columns.ts` — CSV header parsing now tolerates non-fatal parse errors, strips BOM, and rejects empty files.
+- `tests/file-columns.test.ts` — unit coverage for CSV header parsing (normal, BOM, non-fatal errors, empty files).
+- Supabase migration — dropped `public.cached_api_keys` after external-only key flow verification.
 - `refactor.md` — refreshed with current refactor status + gaps.
 
 ## Tests Run (Recent)
 - `source .venv/bin/activate && pytest backend/tests/test_usage_summary_route.py backend/tests/test_usage_purpose_route.py`
 - `source .venv/bin/activate && ./node_modules/.bin/tsx tests/api-usage-utils.test.ts`
+- `source .venv/bin/activate && npx tsx tests/file-columns.test.ts`
 
 ## Known Gaps / Risks
-- CSV uploads fail with “Unable to parse CSV headers” in Verify; XLSX works. Needs investigation to unblock CSV uploads.
-- Local dev backend on `localhost:8001` still returns 404s for POST `/api/credits/signup-bonus` and GET `/api/tasks/{id}/jobs` (health is 200). Code/tests confirm the routes exist, so the running server is likely an older build or different entrypoint—restart the backend to pick up current routes.
+- External API task list/detail still lacks `file_name`, so History shows `ext api data is not available` for Task/Total (expected until the external API adds it).
+- Signup bonus endpoint returns 503 when `SIGNUP_BONUS_*` env vars are not configured (expected in local dev); console logs show `auth.signup_bonus.failed`.
 - `cached_api_keys` table remains in Supabase even though API key caching has been removed; drop it only after external-only key flow is verified in production.
 - Phase 3 frontend handling is still pending: UI must show `ext api data is not available` for missing usage data points (including per-key charts until the external endpoint exists).
 - Supabase `api_usage` table still exists and needs a separate migration to drop later.
@@ -106,11 +110,7 @@ If any are missing, `/api/credits/signup-bonus` returns 503 and logs `credits.si
 - Per-key usage chart endpoint is not available yet; UI must show `ext api data is not available` for per-key chart data.
 
 ## Next Steps (Ordered)
-1) Investigate CSV header parsing failure on Verify file uploads.
-2) Confirm backend routes for `/api/credits/signup-bonus` and `/api/tasks/{id}/jobs` on the running dev server.
-3) Re-run UI verification after backend route confirmation: manual jobs polling, history refresh, and CSV uploads.
-4) Drop `cached_api_keys` table after external-only key flow is verified in production.
-5) Drop Supabase `api_usage` table after Phase 3 frontend is verified.
+1) Drop Supabase `api_usage` table after Phase 3 frontend is verified.
 
 ## Process Reminders
 - For any code changes: state plan first, update root plan/progress markdowns after completion, ask for confirmation before next task.

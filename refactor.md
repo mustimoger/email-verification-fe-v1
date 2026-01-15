@@ -28,8 +28,8 @@ Missing/unclear as of now:
 - Manual verification export detail fields are admin-only (`/emails`), not user-scoped.
 - Credit usage/spend write-back to Supabase is pending; ext-api-docs do not document any credits/write-back endpoints and the external API dev is waiting on the final Supabase structure.
 - Mapping for UI “credits used”/“usage totals” to external metrics is not confirmed yet; ext-api-docs only describe verification totals/series without explicit credit usage fields.
-- UI CSV uploads currently fail header parsing (XLSX works). Needs investigation before CSV upload can be considered stable.
-- Local dev backend on `localhost:8001` returns 404s for POST `/api/credits/signup-bonus` and GET `/api/tasks/{id}/jobs` even though code/tests include the routes; restart the backend or verify the entrypoint to ensure the running server matches current code.
+- UI CSV header parsing issue resolved in the frontend (non-fatal PapaParse errors are now warnings, BOM is stripped, empty files are rejected). CSV uploads are no longer blocked by header parsing.
+- Local dev backend routes are now confirmed live (401 without auth) for POST `/api/credits/signup-bonus` and GET `/api/tasks/{id}/jobs`; re-verify UI flows with a valid session to ensure the earlier 404s are resolved.
 
 ## Target End State (Architecture)
 ```
@@ -163,7 +163,7 @@ create index if not exists credit_grants_user_source_created_idx
 - `/api/api-keys` now proxies external API key list/create/revoke without any cached fallback or secret storage.
 - `cached_api_keys` service logic removed; the bootstrap endpoint was dropped and client auth no longer calls it.
 - External `purpose` values are mapped to integration IDs for UI display; key previews are no longer persisted after creation.
-  - Not implemented yet: dropping the `cached_api_keys` table in Supabase (defer until external-only flow is verified in production).
+- `cached_api_keys` table has been dropped from Supabase after external-only flow verification.
 
 ## Phase 3 — Remove Local Usage Tracking (Medium Priority)
 **Remove from Supabase**
