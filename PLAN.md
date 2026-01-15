@@ -78,8 +78,8 @@
   Explanation: Replaced webhook credit grants with `credit_grants` upserts (`source=purchase`, `source_id=transaction_id`) while keeping billing_events idempotency, added `/api/credits/signup-bonus` with account-age + email-confirm checks, and wired signup to call it once; added backend tests for purchase grant + signup bonus eligibility.
 - [x] Credits ownership shift — update `/api/overview` + `/api/account/credits` to show external-only credits.
   Explanation: Removed Supabase credit lookups from overview/account endpoints, return `credits_remaining` as null with explicit logs, and updated the Overview + Account UI to display `ext api data is not available` while preserving existing layouts. Tests updated to assert the new nullable contract.
-- [ ] Credits ownership shift — update account purchase history to read from `credit_grants` (purchase source).
-  Explanation: Keep purchase history intact while moving the storage source to `credit_grants` so the UI remains unchanged.
+- [x] Credits ownership shift — update account purchase history to read from `credit_grants` (purchase source).
+  Explanation: `/api/account/purchases` now pulls from `credit_grants` (source=`purchase`), maps only valid rows with structured logging for missing fields, and preserves the existing UI contract while removing the `billing_purchases` dependency for purchase history.
 - [ ] Credits ownership shift — update tests + scripts for the new credit grants flow.
   Explanation: Adjust backend tests that assume local credit enforcement and update the Paddle E2E script to verify `credit_grants` instead of `user_credits`/`billing_purchases`.
 - [ ] External-API-first refactor Phase 1 — remove task caching and proxy tasks directly to external API.

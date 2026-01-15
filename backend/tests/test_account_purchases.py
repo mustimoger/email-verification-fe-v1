@@ -24,7 +24,11 @@ def test_account_purchases_returns_items(monkeypatch):
 
     app.dependency_overrides[account_module.get_current_user] = fake_user
     monkeypatch.setattr(account_module, "record_usage", lambda *args, **kwargs: None)
-    monkeypatch.setattr(account_module, "list_billing_purchases", lambda user_id, limit=None, offset=None: purchases)
+    monkeypatch.setattr(
+        account_module,
+        "list_credit_grants",
+        lambda user_id, source=None, limit=None, offset=None: purchases,
+    )
 
     client = TestClient(app)
     resp = client.get("/api/account/purchases")

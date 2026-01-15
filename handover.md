@@ -21,6 +21,8 @@
 - Credits overview/account now external-only:
   - `/api/overview` and `/api/account/credits` no longer read Supabase credits; `credits_remaining` is nullable with explicit logs.
   - Overview + Account UI show `ext api data is not available` for credits while keeping layout intact.
+- Account purchase history moved to credit grants:
+  - `/api/account/purchases` now reads `credit_grants` with `source=purchase`, maps only valid rows, and logs missing/invalid fields.
 - Local credit enforcement removed:
   - `/api/verify`, `/api/tasks`, `/api/tasks/{id}`, `/api/tasks/{id}/download`, `/api/tasks/upload` no longer apply debits/reservations or return 402.
   - UI 402 parsing remains only for upstream errors.
@@ -79,10 +81,9 @@ If any are missing, `/api/credits/signup-bonus` returns 503 and logs `credits.si
 - Mapping of external metrics to UI “credits used”/usage totals remains unconfirmed.
 
 ## Next Steps (Ordered)
-1) Credits ownership shift — migrate account purchase history to `credit_grants` (source=`purchase`) and remove dependence on `billing_purchases`.
-2) Update Paddle E2E script + README to assert `credit_grants` instead of `user_credits`.
-3) Resolve signup bonus trigger behavior for email‑confirmed flow (see risk above).
-4) UI re‑verification: manual history/export + file upload summary + missing `file_name` messaging.
+1) Update Paddle E2E script + README to assert `credit_grants` instead of `user_credits`.
+2) Resolve signup bonus trigger behavior for email‑confirmed flow (see risk above).
+3) UI re‑verification: manual history/export + file upload summary + missing `file_name` messaging.
 
 ## Process Reminders
 - For any code changes: state plan first, update root plan/progress markdowns after completion, ask for confirmation before next task.
