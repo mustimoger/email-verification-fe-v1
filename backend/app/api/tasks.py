@@ -2,7 +2,7 @@ import json
 import logging
 import time
 import uuid
-from typing import Any, Dict, Optional
+from typing import Dict, Optional
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Response, UploadFile, status
 from pydantic import BaseModel
@@ -17,19 +17,12 @@ from ..clients.external import (
     TaskListResponse,
     TaskResponse,
     VerifyEmailResponse,
-    get_external_api_client_for_key,
 )
 from ..core.auth import AuthContext, get_current_user
 from ..core.settings import get_settings
 from ..services.file_processing import _column_letters_to_index
 from ..services.task_credit_reservations import fetch_task_credit_reservation, update_task_reservation
-from ..services.tasks_store import (
-    counts_from_metrics,
-    email_count_from_metrics,
-    update_task_manual_emails,
-    update_manual_task_results,
-)
-from ..services.api_keys import INTERNAL_DASHBOARD_KEY_NAME, get_cached_key_by_name
+from ..services.task_metrics import counts_from_metrics, email_count_from_metrics
 from ..services.credits import (
     apply_credit_debit,
     apply_credit_release,
@@ -102,111 +95,6 @@ def resolve_verify_source_id(email: str, payload: dict, result: VerifyEmailRespo
     return generated
 
 
-def resolve_dashboard_email_client(user_id: str) -> Optional[ExternalAPIClient]:
-    cached = get_cached_key_by_name(user_id, INTERNAL_DASHBOARD_KEY_NAME)
-    if not cached:
-        logger.warning("tasks.dashboard_key.missing", extra={"user_id": user_id})
-        return None
-    key_plain = cached.get("key_plain")
-    if not isinstance(key_plain, str) or not key_plain.strip():
-        logger.warning(
-            "tasks.dashboard_key.secret_missing",
-            extra={"user_id": user_id, "key_id": cached.get("key_id")},
-        )
-        return None
-    try:
-        return get_external_api_client_for_key(key_plain)
-    except Exception as exc:  # noqa: BLE001
-        logger.error(
-            "tasks.dashboard_key.client_failed",
-            extra={"user_id": user_id, "error": str(exc)},
-        )
-        return None
-
-
-def _coerce_bool(value: object) -> Optional[bool]:
-    if isinstance(value, bool):
-        return value
-    return None
-
-
-def _extract_email_details(result: VerifyEmailResponse) -> Optional[Dict[str, Any]]:
-    steps = result.verification_steps or []
-    for step in steps:
-        email_data = getattr(step, "email", None)
-        if isinstance(email_data, dict) and email_data:
-            return email_data
-    return None
-
-
-def _find_mx_record(domain: Dict[str, Any]) -> Optional[str]:
-    records = domain.get("dns_records")
-    if not isinstance(records, list):
-        return None
-    for record in records:
-        if not isinstance(record, dict):
-            continue
-        record_type = str(record.get("type") or "").upper()
-        if record_type != "MX":
-            continue
-        value = record.get("value")
-        if isinstance(value, str) and value.strip():
-            return value.strip()
-    return None
-
-
-def _extract_export_fields(
-    result: VerifyEmailResponse,
-    email_data: Optional[Dict[str, Any]],
-) -> Dict[str, Optional[object]]:
-    resolved: Dict[str, Optional[object]] = {"is_role_based": result.is_role_based}
-    if not isinstance(email_data, dict):
-        return resolved
-    if resolved["is_role_based"] is None:
-        resolved["is_role_based"] = _coerce_bool(email_data.get("is_role_based"))
-    domain = email_data.get("domain")
-    if isinstance(domain, dict):
-        resolved["disposable_domain"] = _coerce_bool(domain.get("is_disposable"))
-        resolved["registered_domain"] = _coerce_bool(domain.get("is_registered"))
-        resolved["mx_record"] = _find_mx_record(domain)
-    host = email_data.get("host")
-    if isinstance(host, dict):
-        resolved["catchall_domain"] = _coerce_bool(host.get("is_catchall"))
-        server_type = host.get("server_type")
-        if isinstance(server_type, str) and server_type.strip():
-            resolved["email_server"] = server_type.strip()
-        else:
-            resolved["email_server"] = None
-    return resolved
-
-
-def _needs_email_detail_fetch(email_data: Optional[Dict[str, Any]]) -> bool:
-    if not isinstance(email_data, dict):
-        return True
-    domain = email_data.get("domain")
-    host = email_data.get("host")
-    if not isinstance(domain, dict) or not isinstance(host, dict):
-        return True
-    if "dns_records" not in domain or domain.get("dns_records") is None:
-        return True
-    for key in ("is_disposable", "is_registered"):
-        if key not in domain or domain.get(key) is None:
-            return True
-    for key in ("is_catchall", "server_type"):
-        if key not in host or host.get(key) is None:
-            return True
-    return False
-
-
-def _merge_export_fields(
-    primary: Dict[str, Optional[object]],
-    fallback: Dict[str, Optional[object]],
-) -> Dict[str, Optional[object]]:
-    merged = dict(primary)
-    for key, value in fallback.items():
-        if merged.get(key) is None and value is not None:
-            merged[key] = value
-    return merged
 
 
 def task_is_complete(detail: TaskDetailResponse) -> bool:
@@ -262,49 +150,13 @@ async def verify_email(
 ):
     email = payload.get("email")
     batch_id = payload.get("batch_id")
-    batch_emails = payload.get("batch_emails")
     if not email:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="email is required")
     if batch_id is not None and (not isinstance(batch_id, str) or not batch_id.strip()):
         logger.warning("route.verify.invalid_batch_id", extra={"user_id": user.user_id, "batch_id": batch_id})
         batch_id = None
-    resolved_batch_emails: Optional[list[str]] = None
-    if isinstance(batch_emails, list):
-        resolved_batch_emails = [item.strip() for item in batch_emails if isinstance(item, str) and item.strip()]
     try:
         result = await client.verify_email(email=email)
-        email_details = _extract_email_details(result)
-        export_fields = _extract_export_fields(result, email_details)
-        if _needs_email_detail_fetch(email_details):
-            detail_client = resolve_dashboard_email_client(user.user_id)
-            if detail_client is None:
-                logger.warning(
-                    "route.verify.email_lookup_skipped",
-                    extra={"user_id": user.user_id, "email": email, "reason": "dashboard_key_unavailable"},
-                )
-            else:
-                try:
-                    email_lookup = await detail_client.get_email_by_address(email)
-                    export_fields = _merge_export_fields(
-                        export_fields,
-                        _extract_export_fields(result, email_lookup if isinstance(email_lookup, dict) else None),
-                    )
-                    logger.info("route.verify.email_lookup", extra={"user_id": user.user_id, "email": email})
-                except ExternalAPIError as exc:
-                    logger.warning(
-                        "route.verify.email_lookup_failed",
-                        extra={
-                            "user_id": user.user_id,
-                            "email": email,
-                            "status_code": exc.status_code,
-                            "details": exc.details,
-                        },
-                    )
-                except Exception as exc:  # noqa: BLE001
-                    logger.error(
-                        "route.verify.email_lookup_exception",
-                        extra={"user_id": user.user_id, "email": email, "error": str(exc)},
-                    )
         source_id = resolve_verify_source_id(email, payload, result)
         debit = apply_credit_debit(
             user_id=user.user_id,
@@ -322,16 +174,10 @@ async def verify_email(
         record_usage(user.user_id, path="/verify", count=1, api_key_id=None)
         logger.info("route.verify", extra={"user_id": user.user_id, "email": email, "credit_status": debit.get("status")})
         if batch_id:
-            manual_payload = {
-                "email": email,
-                "status": result.status,
-                "message": result.message,
-                "validated_at": result.validated_at,
-            }
-            for key, value in export_fields.items():
-                if value is not None:
-                    manual_payload[key] = value
-            update_manual_task_results(user.user_id, batch_id, manual_payload, manual_emails=resolved_batch_emails)
+            logger.info(
+                "route.verify.manual_persist_skipped",
+                extra={"user_id": user.user_id, "task_id": batch_id, "email": email},
+            )
         return result
     except ExternalAPIError as exc:
         if exc.status_code in (401, 403):
@@ -424,7 +270,10 @@ async def create_task(
             )
         result = await client.create_task(emails=emails, webhook_url=webhook_url)
         if result.id:
-            update_task_manual_emails(target_user_id, result.id, manual_emails)
+            logger.info(
+                "route.tasks.create.manual_emails_skipped",
+                extra={"user_id": target_user_id, "task_id": result.id, "email_count": len(manual_emails)},
+            )
         if result.id:
             update_task_reservation(target_user_id, result.id, reserved_count, reservation_id)
         record_usage(target_user_id, path="/tasks", count=len(emails), api_key_id=None)

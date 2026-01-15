@@ -193,6 +193,18 @@ class APIUsageMetricsResponse(BaseModel):
     user_id: Optional[str] = None
 
 
+class VerificationMetricsSeriesPoint(BaseModel):
+    date: Optional[str] = None
+    total_verifications: Optional[int] = None
+    total_tasks: Optional[int] = None
+    unique_email_addresses: Optional[int] = None
+    job_status: Optional[Dict[str, int]] = None
+    verification_status: Optional[Dict[str, int]] = None
+    total_catchall: Optional[int] = None
+    total_role_based: Optional[int] = None
+    total_disposable_domain_emails: Optional[int] = None
+
+
 class VerificationMetricsResponse(BaseModel):
     job_status: Optional[Dict[str, int]] = None
     last_verification_completed_at: Optional[str] = None
@@ -205,6 +217,7 @@ class VerificationMetricsResponse(BaseModel):
     unique_email_addresses: Optional[int] = None
     user_id: Optional[str] = None
     verification_status: Optional[Dict[str, int]] = None
+    series: Optional[List[VerificationMetricsSeriesPoint]] = None
 
 
 class CreateAPIKeyResponse(BaseModel):

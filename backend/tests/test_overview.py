@@ -5,7 +5,14 @@ from fastapi.testclient import TestClient
 
 from app.api import overview as overview_module
 from app.api.overview import router
-from app.clients.external import ExternalAPIError, VerificationMetricsResponse
+from app.clients.external import (
+    ExternalAPIError,
+    Task,
+    TaskListResponse,
+    TaskMetrics,
+    VerificationMetricsResponse,
+    VerificationMetricsSeriesPoint,
+)
 from app.core.auth import AuthContext
 
 
@@ -31,35 +38,16 @@ def test_overview_success(monkeypatch):
     monkeypatch.setattr(overview_module.supabase_client, "fetch_profile", lambda user_id: {"user_id": user_id, "email": "x@test.com"})
     monkeypatch.setattr(overview_module.supabase_client, "fetch_credits", lambda user_id: 1000)
     monkeypatch.setattr(overview_module, "get_settings", lambda: _Settings(timeout_seconds=1.0))
-    monkeypatch.setattr(
-        overview_module,
-        "summarize_tasks_usage",
-        lambda user_id: {
-            "total": 12,
-            "series": [
-                {"date": "2024-01-01", "count": 5},
-                {"date": "2024-01-02", "count": 7},
-            ],
-        },
+    task_metrics = TaskMetrics(
+        total_email_addresses=10,
+        job_status={"completed": 10},
+        verification_status={"exists": 8, "not_exists": 2},
     )
-    monkeypatch.setattr(
-        overview_module,
-        "fetch_task_summary",
-        lambda user_id, limit=5: {
-            "counts": [{"status": "completed", "count": 2}, {"status": "processing", "count": 1}],
-            "recent": [
-                {
-                    "task_id": "task-1",
-                    "status": "completed",
-                    "email_count": 10,
-                    "valid_count": 8,
-                    "invalid_count": 2,
-                    "catchall_count": 0,
-                    "integration": "dashboard",
-                    "created_at": "2024-01-02T00:00:00Z",
-                }
-            ],
-        },
+    task_list = TaskListResponse(
+        tasks=[Task(id="task-1", created_at="2024-01-02T00:00:00Z", integration="dashboard", metrics=task_metrics)],
+        count=1,
+        limit=5,
+        offset=0,
     )
     monkeypatch.setattr(
         overview_module,
@@ -88,7 +76,14 @@ def test_overview_success(monkeypatch):
                 verification_status={"exists": 6, "not_exists": 4},
                 total_verifications=12,
                 total_catchall=2,
+                series=[
+                    VerificationMetricsSeriesPoint(date="2024-01-01", total_verifications=5),
+                    VerificationMetricsSeriesPoint(date="2024-01-02", total_verifications=7),
+                ],
             )
+
+        async def list_tasks(self, limit=10, offset=0, user_id=None):
+            return task_list
 
     usage_calls = []
     monkeypatch.setattr(overview_module, "record_usage", lambda *args, **kwargs: usage_calls.append(args))
@@ -102,8 +97,13 @@ def test_overview_success(monkeypatch):
     assert data["credits_remaining"] == 1000
     assert data["usage_total"] == 12
     assert len(data["usage_series"]) == 2
-    assert data["task_counts"]["completed"] == 2
+    assert data["task_counts"]["completed"] == 1
     assert len(data["recent_tasks"]) == 1
+    assert data["recent_tasks"][0]["email_count"] == 10
+    assert data["recent_tasks"][0]["valid_count"] == 8
+    assert data["recent_tasks"][0]["invalid_count"] == 2
+    assert data["recent_tasks"][0]["catchall_count"] == 0
+    assert data["recent_tasks"][0]["status"] == "completed"
     assert data["verification_totals"]["total"] == 12
     assert data["verification_totals"]["valid"] == 6
     assert data["verification_totals"]["invalid"] == 4
@@ -126,15 +126,15 @@ def test_overview_metrics_timeout_fallback(monkeypatch):
     monkeypatch.setattr(overview_module, "get_settings", lambda: _Settings(timeout_seconds=0.01))
     monkeypatch.setattr(overview_module.supabase_client, "fetch_profile", lambda user_id: {"user_id": user_id})
     monkeypatch.setattr(overview_module.supabase_client, "fetch_credits", lambda user_id: 0)
-    monkeypatch.setattr(overview_module, "summarize_tasks_usage", lambda user_id: {"total": 0, "series": []})
-    monkeypatch.setattr(overview_module, "fetch_task_summary", lambda user_id, limit=5: {"counts": [], "recent": []})
     monkeypatch.setattr(overview_module, "list_billing_purchases", lambda user_id, limit=None, offset=None: [])
-    monkeypatch.setattr(overview_module, "summarize_task_validation_totals", lambda user_id: {"valid": 2, "invalid": 1, "catchall": 3})
 
     class FakeClient:
         async def get_verification_metrics(self):
             await asyncio.sleep(0.05)
             return VerificationMetricsResponse(total_verifications=12)
+
+        async def list_tasks(self, limit=10, offset=0, user_id=None):
+            return TaskListResponse(tasks=[], count=0, limit=limit, offset=offset)
 
     monkeypatch.setattr(overview_module, "record_usage", lambda *args, **kwargs: None)
 
@@ -143,10 +143,9 @@ def test_overview_metrics_timeout_fallback(monkeypatch):
     resp = client.get("/api/overview")
     assert resp.status_code == 200
     data = resp.json()
-    assert data["verification_totals"]["total"] == 6
-    assert data["verification_totals"]["valid"] == 2
-    assert data["verification_totals"]["invalid"] == 1
-    assert data["verification_totals"]["catchall"] == 3
+    assert data["verification_totals"] is None
+    assert data["usage_total"] is None
+    assert data["usage_series"] == []
 
 
 def test_overview_metrics_error_fallback(monkeypatch):
@@ -160,14 +159,14 @@ def test_overview_metrics_error_fallback(monkeypatch):
     monkeypatch.setattr(overview_module, "get_settings", lambda: _Settings(timeout_seconds=1.0))
     monkeypatch.setattr(overview_module.supabase_client, "fetch_profile", lambda user_id: {"user_id": user_id})
     monkeypatch.setattr(overview_module.supabase_client, "fetch_credits", lambda user_id: 0)
-    monkeypatch.setattr(overview_module, "summarize_tasks_usage", lambda user_id: {"total": 0, "series": []})
-    monkeypatch.setattr(overview_module, "fetch_task_summary", lambda user_id, limit=5: {"counts": [], "recent": []})
     monkeypatch.setattr(overview_module, "list_billing_purchases", lambda user_id, limit=None, offset=None: [])
-    monkeypatch.setattr(overview_module, "summarize_task_validation_totals", lambda user_id: {"valid": 4, "invalid": 2, "catchall": 0})
 
     class FakeClient:
         async def get_verification_metrics(self):
             raise ExternalAPIError(status_code=503, message="down", details={"error": "down"})
+
+        async def list_tasks(self, limit=10, offset=0, user_id=None):
+            return TaskListResponse(tasks=[], count=0, limit=limit, offset=offset)
 
     monkeypatch.setattr(overview_module, "record_usage", lambda *args, **kwargs: None)
 
@@ -176,10 +175,9 @@ def test_overview_metrics_error_fallback(monkeypatch):
     resp = client.get("/api/overview")
     assert resp.status_code == 200
     data = resp.json()
-    assert data["verification_totals"]["total"] == 6
-    assert data["verification_totals"]["valid"] == 4
-    assert data["verification_totals"]["invalid"] == 2
-    assert data["verification_totals"]["catchall"] == 0
+    assert data["verification_totals"] is None
+    assert data["usage_total"] is None
+    assert data["usage_series"] == []
 
 
 def test_overview_supabase_unavailable(monkeypatch):

@@ -47,9 +47,7 @@ def _build_app(monkeypatch):
 
     app.dependency_overrides[tasks_module.get_current_user] = fake_user
     app.dependency_overrides[tasks_module.get_user_external_client] = fake_client
-    monkeypatch.setattr("app.api.tasks.upsert_task_from_detail", lambda *args, **kwargs: None)
     monkeypatch.setattr("app.api.tasks.record_usage", lambda *args, **kwargs: None)
-    monkeypatch.setattr("app.api.tasks.resolve_task_api_key_id", lambda *_args, **_kwargs: None)
     monkeypatch.setattr("app.api.tasks.fetch_task_credit_reservation", lambda *_args, **_kwargs: None)
     return app
 

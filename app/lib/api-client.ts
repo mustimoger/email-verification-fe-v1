@@ -296,7 +296,7 @@ export type IntegrationOption = {
 export type OverviewResponse = {
   profile: Profile;
   credits_remaining: number;
-  usage_total: number;
+  usage_total: number | null;
   usage_series: { date: string; count: number }[];
   task_counts: Record<string, number>;
   recent_tasks: {

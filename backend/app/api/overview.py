@@ -6,17 +6,14 @@ from typing import Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
-from ..clients.external import ExternalAPIClient, ExternalAPIError, VerificationMetricsResponse
+from ..clients.external import ExternalAPIClient, ExternalAPIError, Task, VerificationMetricsResponse
 from ..core.auth import AuthContext, get_current_user
 from ..core.settings import get_settings
 from ..services.billing_plans import get_billing_plans_by_price_ids
 from ..services.billing_purchases import list_purchases as list_billing_purchases
 from ..services import supabase_client
-from ..services.tasks_store import fetch_task_summary
-from ..services.tasks_store import counts_from_metrics
-from ..services.tasks_store import summarize_task_validation_totals
 from ..services.usage import record_usage
-from ..services.usage_summary import summarize_tasks_usage
+from ..services.task_metrics import counts_from_metrics, email_count_from_metrics
 from .api_keys import get_user_external_client
 
 router = APIRouter(prefix="/api/overview", tags=["overview"])
@@ -57,7 +54,7 @@ class CurrentPlan(BaseModel):
 class OverviewResponse(BaseModel):
     profile: Dict[str, object]
     credits_remaining: int
-    usage_total: int
+    usage_total: Optional[int] = None
     usage_series: List[UsagePoint]
     task_counts: Dict[str, int]
     recent_tasks: List[TaskItem]
@@ -65,11 +62,105 @@ class OverviewResponse(BaseModel):
     current_plan: Optional[CurrentPlan] = None
 
 
-def _build_usage_series(summary: Dict[str, object]) -> List[UsagePoint]:
-    series = summary.get("series")
-    if not isinstance(series, list):
+def _coerce_int(value: object) -> Optional[int]:
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _build_usage_series(metrics: Optional[VerificationMetricsResponse]) -> List[UsagePoint]:
+    if not metrics or not isinstance(getattr(metrics, "series", None), list):
         return []
-    return [UsagePoint(**point) for point in series if isinstance(point, dict)]
+    points: List[UsagePoint] = []
+    for point in metrics.series or []:
+        date = getattr(point, "date", None)
+        total = getattr(point, "total_verifications", None)
+        if not isinstance(date, str) or not date.strip():
+            continue
+        count = _coerce_int(total)
+        if count is None:
+            continue
+        points.append(UsagePoint(date=date, count=count))
+    return points
+
+
+def _normalize_job_status(job_status: Optional[Dict[str, object]]) -> Optional[Dict[str, int]]:
+    if not isinstance(job_status, dict):
+        return None
+    normalized: Dict[str, int] = {}
+    for key, raw in job_status.items():
+        count = _coerce_int(raw)
+        if count is None:
+            continue
+        normalized[str(key).lower()] = count
+    return normalized or None
+
+
+def _derive_task_status(raw_status: Optional[str], job_status: Optional[Dict[str, int]]) -> Optional[str]:
+    if job_status:
+        pending = job_status.get("pending", 0)
+        processing = job_status.get("processing", 0)
+        completed = job_status.get("completed", 0)
+        failed = job_status.get("failed", 0)
+        if pending + processing > 0:
+            return "processing"
+        if completed > 0:
+            return "completed"
+        if failed > 0:
+            return "failed"
+    if isinstance(raw_status, str) and raw_status.strip():
+        return raw_status.strip()
+    return None
+
+
+def _build_task_item(task: Task) -> Optional[TaskItem]:
+    if not task.id:
+        return None
+    metrics = task.metrics
+    counts = counts_from_metrics(metrics)
+    valid = _coerce_int(task.valid_count)
+    invalid = _coerce_int(task.invalid_count)
+    catchall = _coerce_int(task.catchall_count)
+    if counts:
+        if valid is None:
+            valid = counts.get("valid")
+        if invalid is None:
+            invalid = counts.get("invalid")
+        if catchall is None:
+            catchall = counts.get("catchall")
+    job_status = _normalize_job_status(task.job_status) or _normalize_job_status(
+        metrics.job_status if metrics else None
+    )
+    status = _derive_task_status(task.status, job_status)
+    email_count = _coerce_int(task.email_count)
+    if email_count is None:
+        email_count = email_count_from_metrics(metrics)
+    if email_count is None and counts:
+        total = sum(counts.values())
+        if total > 0:
+            email_count = total
+    return TaskItem(
+        task_id=task.id,
+        status=status,
+        email_count=email_count,
+        valid_count=valid,
+        invalid_count=invalid,
+        catchall_count=catchall,
+        job_status=job_status,
+        integration=task.integration,
+        created_at=task.created_at,
+    )
+
+
+def _build_task_counts(tasks: List[TaskItem]) -> Dict[str, int]:
+    counts: Dict[str, int] = {}
+    for task in tasks:
+        key = (task.status or "unknown").lower()
+        counts[key] = counts.get(key, 0) + 1
+    return counts
 
 
 def _build_verification_totals(metrics: VerificationMetricsResponse) -> Optional[VerificationTotals]:
@@ -160,40 +251,8 @@ async def get_overview(
         ) from exc
     timings["credits_ms"] = round((time.monotonic() - step) * 1000, 2)
 
-    step = time.monotonic()
-    try:
-        usage_summary = summarize_tasks_usage(user.user_id)
-    except Exception as exc:  # noqa: BLE001
-        logger.error(
-            "overview.supabase_fetch_failed",
-            extra={"user_id": user.user_id, "operation": "summarize_tasks_usage", "error": str(exc)},
-        )
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Supabase temporarily unavailable",
-        ) from exc
-    timings["usage_summary_ms"] = round((time.monotonic() - step) * 1000, 2)
-    raw_total = usage_summary.get("total")
-    if raw_total is None:
-        logger.warning("overview.usage_summary_missing_total", extra={"user_id": user.user_id})
-        usage_total = 0
-    else:
-        try:
-            usage_total = int(raw_total)
-        except (TypeError, ValueError):
-            logger.warning(
-                "overview.usage_summary_invalid_total",
-                extra={"user_id": user.user_id, "total": raw_total},
-            )
-            usage_total = 0
-    usage_series = _build_usage_series(usage_summary)
-
-    step = time.monotonic()
-    task_summary = fetch_task_summary(user.user_id, limit=5)
-    timings["task_summary_ms"] = round((time.monotonic() - step) * 1000, 2)
-    task_counts: Dict[str, int] = {row.get("status") or "unknown": int(row.get("count", 0)) for row in task_summary["counts"]}
-    recent_tasks: List[TaskItem] = [TaskItem(**row) for row in task_summary["recent"]]
-
+    usage_total: Optional[int] = None
+    usage_series: List[UsagePoint] = []
     verification_totals = None
     metrics_source = "external"
     step = time.monotonic()
@@ -202,47 +261,47 @@ async def get_overview(
         timeout_seconds = settings.overview_metrics_timeout_seconds
         metrics = await asyncio.wait_for(client.get_verification_metrics(), timeout=timeout_seconds)
         verification_totals = _build_verification_totals(metrics)
-        if verification_totals is None:
-            metrics_source = "supabase"
+        usage_series = _build_usage_series(metrics)
+        usage_total = verification_totals.total if verification_totals else None
+        if usage_total is None:
+            logger.warning("overview.usage_total_unavailable", extra={"user_id": user.user_id})
+        if not usage_series:
+            logger.info("overview.usage_series_unavailable", extra={"user_id": user.user_id})
     except asyncio.TimeoutError:
-        settings = get_settings()
-        metrics_source = "supabase"
+        metrics_source = "unavailable"
         logger.warning(
             "overview.verification_metrics_timeout",
-            extra={"user_id": user.user_id, "timeout_seconds": settings.overview_metrics_timeout_seconds},
+            extra={"user_id": user.user_id, "timeout_seconds": get_settings().overview_metrics_timeout_seconds},
         )
     except ExternalAPIError as exc:
-        metrics_source = "supabase"
+        metrics_source = "unavailable"
         logger.warning(
             "overview.verification_metrics_failed",
             extra={"user_id": user.user_id, "status_code": exc.status_code, "details": exc.details},
         )
     except Exception as exc:  # noqa: BLE001
-        metrics_source = "supabase"
+        metrics_source = "unavailable"
         logger.error("overview.verification_metrics_error", extra={"user_id": user.user_id, "error": str(exc)})
     finally:
         timings["verification_metrics_ms"] = round((time.monotonic() - step) * 1000, 2)
 
-    if metrics_source == "supabase" and verification_totals is None:
-        step = time.monotonic()
-        fallback = summarize_task_validation_totals(user.user_id)
-        timings["verification_fallback_ms"] = round((time.monotonic() - step) * 1000, 2)
-        if fallback:
-            verification_totals = VerificationTotals(
-                total=sum(fallback.values()),
-                valid=fallback.get("valid"),
-                invalid=fallback.get("invalid"),
-                catchall=fallback.get("catchall"),
-            )
-            logger.info(
-                "overview.verification_totals_fallback",
-                extra={"user_id": user.user_id, "source": metrics_source},
-            )
-        else:
-            logger.warning(
-                "overview.verification_totals_unavailable",
-                extra={"user_id": user.user_id, "source": metrics_source},
-            )
+    step = time.monotonic()
+    recent_tasks: List[TaskItem] = []
+    task_counts: Dict[str, int] = {}
+    try:
+        list_result = await client.list_tasks(limit=5, offset=0)
+        tasks = list_result.tasks or []
+        recent_tasks = [item for item in (_build_task_item(task) for task in tasks) if item is not None]
+        task_counts = _build_task_counts(recent_tasks)
+    except ExternalAPIError as exc:
+        logger.warning(
+            "overview.tasks_list_failed",
+            extra={"user_id": user.user_id, "status_code": exc.status_code, "details": exc.details},
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.error("overview.tasks_list_error", extra={"user_id": user.user_id, "error": str(exc)})
+    finally:
+        timings["tasks_list_ms"] = round((time.monotonic() - step) * 1000, 2)
 
     step = time.monotonic()
     current_plan = _build_current_plan(user.user_id)

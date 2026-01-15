@@ -35,15 +35,23 @@
   - Verify manual copy‑paste calls `/api/tasks` once and polls `/api/tasks/{id}/jobs` for results; CSV export is built from job data.
   - Manual state (task id + emails) is persisted in localStorage under `verify.manual.state` to hydrate after reload.
   - UI no longer calls `/api/tasks/latest-manual`, and the backend route has now been retired.
+- Phase 1 backend cleanup of task cache services:
+  - Removed `backend/app/services/tasks_store.py` and `backend/app/services/task_files_store.py`.
+  - Added `backend/app/services/task_metrics.py` for shared metrics helpers.
+  - `/api/verify` and `/api/tasks` no longer persist manual emails/results to Supabase.
+  - `/api/overview` and `/api/debug/tasks` now use external tasks/metrics only, with explicit logs when data is missing.
 
 ## Repo State / Alerts
-- Files over 600 lines: `backend/app/api/tasks.py`, `backend/app/services/tasks_store.py`, `app/verify/page.tsx`, `app/verify/utils.ts`.
+- Files over 600 lines: `backend/app/api/tasks.py`, `app/verify/page.tsx`, `app/verify/utils.ts`.
 - Planning docs should be the source of truth for upcoming backend steps; follow `PLAN.md` and `refactor.md` for the remaining Phase 1 cleanup.
 
 ## Key Files Updated (So Far)
-- `backend/app/api/tasks.py` — external-only task proxying, credit reservations, latest-upload(s) 204 behavior; latest-manual route removed.
-- `backend/app/services/tasks_store.py` — still used for manual results; latest-manual helper removed; slated for removal.
+- `backend/app/api/tasks.py` — external-only task proxying, credit reservations, latest-upload(s) 204 behavior; manual persistence removed.
+- `backend/app/api/overview.py` — now reads usage + tasks directly from external metrics/task list.
+- `backend/app/api/debug.py` — debug tasks now query the external task list.
+- `backend/app/clients/external.py` — verification metrics now include series points.
 - `backend/app/services/task_credit_reservations.py` — new reservation read/write service for the dedicated table.
+- `backend/app/services/task_metrics.py` — shared metrics helpers (counts/email totals).
 - `app/history/utils.ts` — external metrics mapping + missing file_name handling.
 - `app/verify/page.tsx` + `app/verify/utils.ts` — manual verify now uses `/api/tasks` + `/api/tasks/{id}/jobs`; CSV export built from job data.
 - `app/lib/api-client.ts` — added `TaskJobEmail`, `TaskJobsResponse`, and `getTaskJobs`.
@@ -56,10 +64,12 @@
 - `88564ec` — manual verify flow uses task jobs + localStorage hydration.
 
 ## Test Runs
-- `pytest backend/tests/test_tasks_latest_upload.py backend/tests/test_tasks_latest_uploads.py backend/tests/test_tasks_list_fallback.py backend/tests/test_tasks_list_external_failure.py backend/tests/test_tasks_key_scope.py backend/tests/test_tasks_admin_scope.py backend/tests/test_tasks_latest_manual.py`
+- `pytest backend/tests/test_tasks_latest_upload.py backend/tests/test_tasks_latest_uploads.py backend/tests/test_tasks_list_fallback.py backend/tests/test_tasks_list_external_failure.py backend/tests/test_tasks_key_scope.py backend/tests/test_tasks_admin_scope.py`
   - Result: 14 passed (pyiceberg/pydantic warnings only).
 - `pytest backend/tests/test_tasks_jobs_proxy.py backend/tests/test_tasks_list_external_failure.py backend/tests/test_tasks_list_fallback.py backend/tests/test_tasks_key_scope.py backend/tests/test_tasks_admin_scope.py backend/tests/test_tasks_latest_upload.py backend/tests/test_tasks_latest_uploads.py`
   - Result: 14 passed (pyiceberg/pydantic warnings only).
+- `pytest backend/tests/test_overview.py backend/tests/test_tasks_metrics_mapping.py backend/tests/test_credit_enforcement_routes.py`
+  - Result: 10 passed (pyiceberg/pydantic warnings only).
 - `npm run test:history`
   - Result: all history mapping tests passed (saw expected `history.file_name.unavailable` log for metrics-only task).
 - `pytest backend/tests/test_tasks_jobs_proxy.py`
@@ -79,15 +89,10 @@
 - Mapping of external metrics → UI “credits used”/usage totals is still unconfirmed.
 
 ## Pending Work / Next Steps (Ordered)
-1) **Remove Supabase task caching helpers**:
-   - Delete `backend/app/services/tasks_store.py` and `backend/app/services/task_files_store.py`.
-   - Remove or replace `fetch_task_summary`, `summarize_tasks_usage`, `summarize_task_validation_totals` in Overview with external metrics/usage endpoints.
-   - Remove `/api/debug/tasks` or rewrite to use external tasks list.
-2) **Update tests**:
-   - Replace `backend/tests/test_tasks_store.py` with jobs‑based tests.
-   - Add tests for reservation table service and `/api/tasks/{id}/jobs` proxy (already added for jobs proxy).
-   - Run targeted pytest with venv and update frontend tests for manual task flow.
-3) **Re‑verify UI**:
+1) **Update tests**:
+   - Add tests for reservation table service and any remaining manual-flow integration coverage.
+   - Run targeted pytest with venv and update frontend tests for manual task flow as needed.
+2) **Re‑verify UI**:
    - Verify manual history/export works with external jobs, file upload summary still functions, and missing file_name shows the required message.
 
 ## Required Process Reminders

@@ -87,8 +87,14 @@
   - Removed client types/functions that called `/api/tasks/latest-manual`.
   - Deleted backend tests targeting the route.
   - Ran targeted backend tests for task proxying/related endpoints.
-- [ ] Phase 1 — backend cleanup of task cache services.
-  Explanation: Deferred: `tasks_store`/`task_files_store` still exist for manual verification storage and credit reservations; full removal must wait until those flows are externalized or moved.
+- [x] Phase 1 — backend cleanup of task cache services.
+  Explanation: Removed `tasks_store`/`task_files_store` and moved shared metrics helpers into `task_metrics`. Manual verify no longer persists emails/results to Supabase, and Overview/debug now use external tasks/metrics with explicit logging when data is missing. Tests were updated to reflect the external-only flow.
+  Completed steps:
+  - Moved `counts_from_metrics` + `email_count_from_metrics` to `backend/app/services/task_metrics.py`.
+  - Deleted `backend/app/services/tasks_store.py` and `backend/app/services/task_files_store.py`.
+  - Removed Supabase manual persistence in `/api/verify` and `/api/tasks`.
+  - Updated `/api/overview` + `/api/debug/tasks` to rely on external tasks/metrics only.
+  - Updated overview/metrics/credit enforcement tests and ran targeted pytest.
 - [x] Phase 1 — frontend History uses external task response format.
   Explanation: Updated History mapping to use external task metrics (verification_status + job_status) directly, removed reliance on Supabase fields, and ensured missing file_name is rendered as `ext api data is not available` without altering layout.
 - [x] Phase 1 — History external mapping implementation (MVP) + missing-field messaging + tests.
