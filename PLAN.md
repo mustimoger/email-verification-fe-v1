@@ -116,6 +116,8 @@
 - [ ] Investigate /api/verify 502 (external_api.request_error) and confirm external API reachability.
   Explanation: Observed request-level failures (no HTTP response). `EMAIL_API_BASE_URL` points to `https://email-verification.islamsaka.com/api/v1/`, and a direct curl from this host failed to connect on port 443, indicating the external service is unreachable from this environment; next step is to confirm service status/DNS/firewall and decide whether to update the base URL or network rules.
 - [ ] Testing and staging — Add unit/integration coverage and deploy to staging after MVP pages and API wiring are in place; verify flows end-to-end.
+- [x] Session handover — refresh `handover.md` with latest backend cleanup, tests, and next steps.
+  Explanation: Updated `handover.md` with external-only overview/debug details, removed task cache notes, added recent commits, and captured targeted test runs so the next session can continue without re-discovery.
 - [x] Overview backend alignment — Use credits-spent time series from Supabase tasks, add lifetime totals from external /metrics/verifications, and include latest Paddle plan + purchase date in /api/overview.
   Explanation: `/api/overview` now returns credits-spent totals/series from tasks, lifetime validation totals from external metrics (when available), and current plan data from `billing_purchases` + `billing_plans`, including “Multiple items” when a purchase has multiple price_ids.
 - [x] Dashboard navigation latency — Reproduce the 60s sidebar navigation delay and "Failed to fetch" errors (DashboardShell/API page) using Playwright; capture console/network logs and identify the failing endpoints/base URL before changing code.

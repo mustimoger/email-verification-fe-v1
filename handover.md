@@ -40,6 +40,7 @@
   - Added `backend/app/services/task_metrics.py` for shared metrics helpers.
   - `/api/verify` and `/api/tasks` no longer persist manual emails/results to Supabase.
   - `/api/overview` and `/api/debug/tasks` now use external tasks/metrics only, with explicit logs when data is missing.
+  - Manual verify no longer performs `/emails/{address}` enrichment; export fields now rely entirely on task jobs data (missing values should surface as `ext api data is not available` in the UI export).
 
 ## Repo State / Alerts
 - Files over 600 lines: `backend/app/api/tasks.py`, `app/verify/page.tsx`, `app/verify/utils.ts`.
@@ -62,13 +63,15 @@
 - `f708b71` — move task credit reservations to new table.
 - `87fe392` — add task jobs proxy.
 - `88564ec` — manual verify flow uses task jobs + localStorage hydration.
+- `31adc62` — retire `/api/tasks/latest-manual` endpoint and client types/tests.
+- `c78b0ff` — remove task cache services; switch overview/debug to external metrics/tasks.
 
 ## Test Runs
 - `pytest backend/tests/test_tasks_latest_upload.py backend/tests/test_tasks_latest_uploads.py backend/tests/test_tasks_list_fallback.py backend/tests/test_tasks_list_external_failure.py backend/tests/test_tasks_key_scope.py backend/tests/test_tasks_admin_scope.py`
   - Result: 14 passed (pyiceberg/pydantic warnings only).
 - `pytest backend/tests/test_tasks_jobs_proxy.py backend/tests/test_tasks_list_external_failure.py backend/tests/test_tasks_list_fallback.py backend/tests/test_tasks_key_scope.py backend/tests/test_tasks_admin_scope.py backend/tests/test_tasks_latest_upload.py backend/tests/test_tasks_latest_uploads.py`
   - Result: 14 passed (pyiceberg/pydantic warnings only).
-- `pytest backend/tests/test_overview.py backend/tests/test_tasks_metrics_mapping.py backend/tests/test_credit_enforcement_routes.py`
+- `source .venv/bin/activate && pytest backend/tests/test_overview.py backend/tests/test_tasks_metrics_mapping.py backend/tests/test_credit_enforcement_routes.py`
   - Result: 10 passed (pyiceberg/pydantic warnings only).
 - `npm run test:history`
   - Result: all history mapping tests passed (saw expected `history.file_name.unavailable` log for metrics-only task).
@@ -87,6 +90,7 @@
 - Manual export fields are available via **`GET /api/v1/tasks/{id}/jobs`** (user-scoped) and are now used by the Verify page.
 - Credit usage/spend write-back to Supabase is pending (waiting on final schema).
 - Mapping of external metrics → UI “credits used”/usage totals is still unconfirmed.
+ - Overview usage totals/series now come from `/metrics/verifications` when available (total_verifications + series points).
 
 ## Pending Work / Next Steps (Ordered)
 1) **Update tests**:
