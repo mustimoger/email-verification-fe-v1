@@ -6,8 +6,8 @@
     Explanation: Code/test coverage confirms both routes exist, but the running server on `localhost:8001` still returns 404 for POST `/api/credits/signup-bonus` and GET `/api/tasks/{id}/jobs` (health is 200). This indicates the dev server is running an older build or different app entrypoint; restart the backend to pick up current routes.
   - [x] Step 2 — Align batch/manual verification limit to 10,000 via `MANUAL_MAX_EMAILS` (env + tests).
     Explanation: Updated the env example and test defaults to use `MANUAL_MAX_EMAILS=10000`, keeping upload behavior unchanged while making the manual limit consistent across settings/limits tests.
-  - [ ] Step 3 — Phase 2: remove `cached_api_keys` usage and proxy external API keys directly.
-    Explanation: External API becomes the source of truth for key lifecycle, removing local secret storage.
+  - [x] Step 3 — Phase 2: remove `cached_api_keys` usage and proxy external API keys directly.
+    Explanation: API key routes now rely solely on the external API (no cache fallback, no stored secrets), the bootstrap endpoint was removed, purpose values are mapped to integration IDs, and tests were updated to reflect the new flow.
   - [ ] Step 4 — Phase 3: remove local usage tracking and proxy external metrics.
     Explanation: External metrics replace Supabase usage tables and record_usage calls.
 

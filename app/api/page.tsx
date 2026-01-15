@@ -40,9 +40,11 @@ const usageAxisTickStyle = {
 };
 
 function maskKeyPreview(preview?: string) {
-  if (!preview) return "";
-  if (preview.length <= 3) return preview;
-  return `${preview.slice(0, 3)}***`;
+  if (!preview) return null;
+  const trimmed = preview.trim();
+  if (!trimmed) return null;
+  if (trimmed.length <= 3) return trimmed;
+  return `${trimmed.slice(0, 3)}***`;
 }
 
 function getDefaultName(option?: IntegrationOption) {
@@ -325,7 +327,7 @@ export default function ApiPage() {
                     className="grid grid-cols-5 items-center px-4 py-3 text-sm font-semibold text-slate-800 md:text-base"
                   >
                     <span className="text-slate-700">{key.name}</span>
-                    <span className="text-slate-700">{maskKeyPreview(key.key_preview)}</span>
+                    <span className="text-slate-700">{maskKeyPreview(key.key_preview) ?? ""}</span>
                     <span className="text-slate-700">{key.integration ?? key.purpose ?? "—"}</span>
                     <span>
                       <span
@@ -385,11 +387,15 @@ export default function ApiPage() {
                   className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--ring)]"
                 >
                   <option value="">All keys</option>
-                  {keys.map((key) => (
-                    <option key={key.id} value={key.id}>
-                      {key.name} ({maskKeyPreview(key.key_preview)})
-                    </option>
-                  ))}
+                  {keys.map((key) => {
+                    const preview = maskKeyPreview(key.key_preview);
+                    const label = preview ? `${key.name ?? ""} (${preview})` : key.name ?? "";
+                    return (
+                      <option key={key.id} value={key.id}>
+                        {label}
+                      </option>
+                    );
+                  })}
                 </select>
               ) : (
                 <select

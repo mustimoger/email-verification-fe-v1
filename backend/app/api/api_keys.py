@@ -1,46 +1,25 @@
 import logging
 from datetime import datetime
+from functools import lru_cache
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from ..clients.external import ExternalAPIClient, ExternalAPIError
 from ..core.auth import AuthContext, get_current_user
 from ..core.settings import get_settings
-from ..services.api_keys import (
-    INTERNAL_DASHBOARD_KEY_NAME,
-    cache_api_key,
-    get_cached_key_by_name,
-    list_cached_keys,
-)
-from ..config.integrations import get_integration_by_id, get_integration_ids
+from ..config.integrations import get_integration_by_id, get_integration_ids, get_integrations
 from ..services.usage import record_usage
-from ..clients.external import APIKeySummary, ListAPIKeysResponse, CreateAPIKeyResponse, RevokeAPIKeyResponse
+from ..clients.external import ListAPIKeysResponse, CreateAPIKeyResponse, RevokeAPIKeyResponse
 from ..services.usage_summary import normalize_range_value
-from pydantic import BaseModel
 
 router = APIRouter(prefix="/api", tags=["api-keys"])
 logger = logging.getLogger(__name__)
 
+INTERNAL_DASHBOARD_KEY_NAME = "dashboard_api"
+
 
 def _is_dashboard_key(name: str | None) -> bool:
     return (name or "").lower() == INTERNAL_DASHBOARD_KEY_NAME
-
-
-def _build_key_preview(secret: str | None) -> str | None:
-    if not secret:
-        return None
-    trimmed = secret.strip()
-    if trimmed == "":
-        return None
-    preview = trimmed[:3]
-    return f"{preview}***"
-
-
-class BootstrapKeyResponse(BaseModel):
-    key_id: str | None
-    name: str
-    created: bool = False
-    skipped: bool = False
-    error: str | None = None
 
 
 def get_user_external_client(user: AuthContext = Depends(get_current_user)) -> ExternalAPIClient:
@@ -53,6 +32,23 @@ def get_user_external_client(user: AuthContext = Depends(get_current_user)) -> E
         bearer_token=user.token,
         max_upload_bytes=settings.upload_max_mb * 1024 * 1024,
     )
+
+
+def _normalize_purpose(value: str | None) -> str:
+    if not value:
+        return ""
+    cleaned = value.strip().lower().replace("_", " ").replace("-", " ")
+    return " ".join(cleaned.split())
+
+
+@lru_cache()
+def _purpose_to_integration_id() -> dict[str, str]:
+    mapping: dict[str, str] = {}
+    for integration in get_integrations():
+        normalized = _normalize_purpose(integration.external_purpose)
+        if normalized:
+            mapping[normalized] = integration.id
+    return mapping
 
 
 @router.get("/api-keys", response_model=ListAPIKeysResponse)
@@ -89,7 +85,6 @@ async def list_api_keys(
             "route.api_keys.list.admin_scope",
             extra={"admin_user_id": user.user_id, "target_user_id": target_user_id},
         )
-    cached = {item["key_id"]: item for item in list_cached_keys(target_user_id)}
     try:
         result = await client.list_api_keys(
             user_id=target_user_id if user_id else None,
@@ -98,14 +93,24 @@ async def list_api_keys(
         )
         if result.keys:
             filtered_keys = [k for k in result.keys if include_internal or not _is_dashboard_key(k.name)]
+            purpose_map = _purpose_to_integration_id()
+            unmapped: list[str] = []
             for key in filtered_keys:
-                cached_entry = cached.get(key.id or "")
-                if cached_entry:
-                    key.integration = cached_entry.get("integration") or key.integration
-                    key.key_preview = _build_key_preview(cached_entry.get("key_plain"))
+                if key.integration:
+                    continue
+                normalized = _normalize_purpose(key.purpose)
+                if normalized and normalized in purpose_map:
+                    key.integration = purpose_map[normalized]
+                elif normalized:
+                    unmapped.append(normalized)
+            if unmapped:
+                logger.info(
+                    "route.api_keys.purpose_unmapped",
+                    extra={"user_id": target_user_id, "purposes": sorted(set(unmapped))},
+                )
             result.keys = filtered_keys
             result.count = len(filtered_keys) if filtered_keys is not None else result.count
-        # With per-user JWTs, we can return the full list; fall back to cached if needed.
+        # With per-user JWTs, return the external list (filtered for internal keys if needed).
         record_usage(target_user_id, path="/api-keys", count=1)
         logger.info(
             "route.api_keys.list",
@@ -128,35 +133,7 @@ async def list_api_keys(
                 "route.api_keys.list_external_failed",
                 extra={"user_id": target_user_id, "status_code": exc.status_code, "details": exc.details},
             )
-        if start_value or end_value:
-            logger.warning(
-                "route.api_keys.list_cache_fallback_range_ignored",
-                extra={"user_id": target_user_id, "from": start_value, "to": end_value},
-            )
-        # Safe fallback to cached keys (if any), excluding dashboard unless requested.
-        logger.warning(
-            "route.api_keys.list_cache_fallback",
-            extra={"user_id": target_user_id, "count": len(cached)},
-        )
-        fallback_keys = []
-        if cached:
-            fallback_keys = [
-                APIKeySummary(
-                    id=item.get("key_id"),
-                    name=item.get("name"),
-                    integration=item.get("integration"),
-                    is_active=True,
-                    key_preview=_build_key_preview(item.get("key_plain")),
-                )
-                for item in cached.values()
-                if include_internal or not _is_dashboard_key(item.get("name"))
-            ]
-        record_usage(target_user_id, path="/api-keys", count=len(fallback_keys))
-        logger.info(
-            "route.api_keys.list_cache_fallback",
-            extra={"user_id": target_user_id, "count": len(fallback_keys)},
-        )
-        return ListAPIKeysResponse(count=len(fallback_keys), keys=fallback_keys)
+        raise HTTPException(status_code=exc.status_code, detail=exc.details or exc.args[0])
 
 
 @router.post("/api-keys", response_model=CreateAPIKeyResponse)
@@ -201,9 +178,6 @@ async def create_api_key(
         )
         if not result.key:
             raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="external API did not return a key")
-        cache_api_key(
-            target_user_id, key_id=result.id or name, name=name, key_plain=result.key, integration=integration or name
-        )
         result.integration = integration or name
         record_usage(target_user_id, path="/api-keys", count=1)
         logger.info(
@@ -218,28 +192,6 @@ async def create_api_key(
             extra={"user_id": user.user_id, "status_code": exc.status_code, "details": exc.details},
         )
         raise HTTPException(status_code=exc.status_code, detail=exc.details or "Not authorized to create API keys")
-
-
-@router.post("/api-keys/bootstrap", response_model=BootstrapKeyResponse)
-async def bootstrap_dashboard_key(
-    user: AuthContext = Depends(get_current_user),
-):
-    """
-    Legacy endpoint kept for compatibility. Dashboard key creation via dev master key is disabled.
-    """
-    already = get_cached_key_by_name(user.user_id, INTERNAL_DASHBOARD_KEY_NAME)
-    logger.info(
-        "route.api_keys.bootstrap.disabled",
-        extra={"user_id": user.user_id, "cached": bool(already)},
-    )
-    record_usage(user.user_id, path="/api-keys/bootstrap", count=0)
-    return BootstrapKeyResponse(
-        key_id=already.get("key_id") if already else None,
-        name=INTERNAL_DASHBOARD_KEY_NAME,
-        created=False,
-        skipped=True,
-        error="Dashboard key creation is disabled; external API now expects Supabase JWT auth.",
-    )
 
 
 @router.delete("/api-keys/{api_key_id}", response_model=RevokeAPIKeyResponse)

@@ -159,6 +159,12 @@ create index if not exists credit_grants_user_source_created_idx
 **End Result**
 - API key data is always fetched from the external API.
 
+### Phase 2 Status (Completed)
+- `/api/api-keys` now proxies external API key list/create/revoke without any cached fallback or secret storage.
+- `cached_api_keys` service logic removed; the bootstrap endpoint was dropped and client auth no longer calls it.
+- External `purpose` values are mapped to integration IDs for UI display; key previews are no longer persisted after creation.
+  - Not implemented yet: dropping the `cached_api_keys` table in Supabase (defer until external-only flow is verified in production).
+
 ## Phase 3 — Remove Local Usage Tracking (Medium Priority)
 **Remove from Supabase**
 - `api_usage` table

@@ -20,6 +20,8 @@
   - Manual verification uses `/api/tasks` + `/api/tasks/{id}/jobs`; local task caching removed.
 - Runtime limits alignment:
   - `MANUAL_MAX_EMAILS` defaults were set to 10,000 in `backend/.env.example` and test fixtures, keeping upload size limits intact while aligning the manual/batch cap.
+- API key caching removal (Phase 2):
+  - `/api/api-keys` now proxies external keys directly with no cache fallback or secret storage, maps external `purpose` to integration IDs for UI display, and removes the `/api/api-keys/bootstrap` endpoint; key preview is no longer persisted after creation.
 - Credits ownership shift (external-only view):
   - `/api/overview` and `/api/account/credits` return nullable `credits_remaining` with explicit logs.
   - Overview + Account UI show `ext api data is not available` for credits.
@@ -74,6 +76,7 @@ If any are missing, `/api/credits/signup-bonus` returns 503 and logs `credits.si
 ## Known Gaps / Risks
 - CSV uploads fail with “Unable to parse CSV headers” in Verify; XLSX works. Needs investigation to unblock CSV uploads.
 - Local dev backend on `localhost:8001` still returns 404s for POST `/api/credits/signup-bonus` and GET `/api/tasks/{id}/jobs` (health is 200). Code/tests confirm the routes exist, so the running server is likely an older build or different entrypoint—restart the backend to pick up current routes.
+- `cached_api_keys` table remains in Supabase even though API key caching has been removed; drop it only after external-only key flow is verified in production.
 
 ## External API Gaps (Still Pending)
 - Task list/detail do not include `file_name` (upload response includes filename).

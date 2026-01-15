@@ -24,7 +24,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const supabase = useMemo(() => getSupabaseBrowserClient(), []);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const bootstrapAttemptedRef = useRef(false);
   const profileSyncRef = useRef<{ userId: string; email: string } | null>(null);
   const confirmationCheckRef = useRef<string | null>(null);
   const signupBonusAttemptedRef = useRef<string | null>(null);
@@ -53,20 +52,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       subscription?.subscription.unsubscribe();
     };
   }, [supabase]);
-
-  useEffect(() => {
-    const bootstrap = async () => {
-      if (!session || bootstrapAttemptedRef.current) return;
-      bootstrapAttemptedRef.current = true;
-      try {
-        await apiClient.bootstrapDashboardKey();
-        console.info("auth.bootstrap_dashboard_key.ok");
-      } catch (err) {
-        console.warn("auth.bootstrap_dashboard_key.failed", err);
-      }
-    };
-    void bootstrap();
-  }, [session]);
 
   useEffect(() => {
     const ensureConfirmed = async () => {

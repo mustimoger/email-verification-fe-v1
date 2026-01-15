@@ -202,14 +202,6 @@ export type RevokeApiKeyResponse = {
   message?: string;
 };
 
-export type BootstrapKeyResponse = {
-  key_id?: string | null;
-  name?: string;
-  created?: boolean;
-  skipped?: boolean;
-  error?: unknown;
-};
-
 export type Profile = {
   user_id: string;
   email?: string;
@@ -568,12 +560,6 @@ export const apiClient = {
   createApiKey: (name: string, integration: string) =>
     request<CreateApiKeyResponse>("/api-keys", { method: "POST", body: { name, integration } }),
   revokeApiKey: (id: string) => request<RevokeApiKeyResponse>(`/api-keys/${id}`, { method: "DELETE" }),
-  bootstrapDashboardKey: () =>
-    request<BootstrapKeyResponse>("/api-keys/bootstrap", {
-      method: "POST",
-      suppressErrorLog: true,
-      suppressThrow: true,
-    }),
   getProfile: () => request<Profile>("/account/profile", { method: "GET" }),
   updateProfile: (payload: Partial<Profile>) => request<Profile>("/account/profile", { method: "PATCH", body: payload }),
   uploadAvatar: (file: File) => {
