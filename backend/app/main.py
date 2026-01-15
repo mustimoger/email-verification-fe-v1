@@ -16,6 +16,7 @@ from .api.account import router as account_router
 from .api.usage import router as usage_router
 from .api.debug import router as debug_router
 from .api.auth import router as auth_router
+from .api.credits import router as credits_router
 
 
 def create_app() -> FastAPI:
@@ -50,6 +51,7 @@ def create_app() -> FastAPI:
     app.include_router(limits_router)
     app.include_router(overview_router)
     app.include_router(billing_router)
+    app.include_router(credits_router)
     app.include_router(debug_router)
     app.include_router(auth_router, prefix="/api")
     app.include_router(auth_router)

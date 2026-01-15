@@ -25,7 +25,7 @@ from ..services.billing_plans import (
     get_billing_plans_by_price_ids,
     list_billing_plans,
 )
-from ..services.credits import grant_credits
+from ..services.credit_grants import upsert_credit_grant
 from ..services import supabase_client
 from ..services.paddle_store import get_paddle_ids, get_user_id_by_customer_id, upsert_paddle_ids
 
@@ -595,6 +595,13 @@ async def paddle_webhook(request: Request):
         )
         return {"received": True}
 
+    if not transaction_id:
+        logger.warning(
+            "billing.webhook.credit_grant_missing_transaction_id",
+            extra={"event_id": event_id, "event_type": event_type, "user_id": user_id, "price_ids": price_ids},
+        )
+        return {"received": True}
+
     is_new = record_billing_event(
         event_id=event_id,
         user_id=user_id,
@@ -607,24 +614,44 @@ async def paddle_webhook(request: Request):
     if not is_new:
         return {"received": True}
 
-    try:
-        grant_credits(user_id, total_credits)
-    except Exception as exc:  # noqa: BLE001
+    inserted = upsert_credit_grant(
+        user_id=user_id,
+        source="purchase",
+        source_id=transaction_id,
+        credits_granted=total_credits,
+        event_id=event_id,
+        event_type=event_type,
+        transaction_id=transaction_id,
+        price_ids=price_ids,
+        amount=amount,
+        currency=currency,
+        checkout_email=checkout_email,
+        invoice_id=invoice_id,
+        invoice_number=invoice_number,
+        purchased_at=purchased_at,
+        raw=payload,
+    )
+    if not inserted:
         delete_billing_event(event_id)
         logger.error(
-            "billing.webhook.credits_failed",
+            "billing.webhook.credit_grant_failed",
             extra={
                 "event_id": event_id,
                 "user_id": user_id,
                 "credits": total_credits,
                 "price_ids": price_ids,
-                "error": str(exc),
             },
         )
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Credit grant failed")
 
     logger.info(
         "billing.webhook.credits_granted",
-        extra={"event_id": event_id, "user_id": user_id, "credits": total_credits, "price_ids": price_ids},
+        extra={
+            "event_id": event_id,
+            "user_id": user_id,
+            "credits": total_credits,
+            "price_ids": price_ids,
+            "source_id": transaction_id,
+        },
     )
     return {"received": True, "granted": total_credits}

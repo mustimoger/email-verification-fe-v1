@@ -38,6 +38,9 @@ class Settings(BaseSettings):
     overview_metrics_timeout_seconds: float = 8.0
 
     usage_retention_days: int = 180
+    signup_bonus_credits: Optional[int] = None
+    signup_bonus_max_account_age_seconds: Optional[int] = None
+    signup_bonus_require_email_confirmed: Optional[bool] = None
 
     @field_validator("backend_cors_origins", mode="before")
     @classmethod
@@ -95,6 +98,15 @@ class Settings(BaseSettings):
     @field_validator("overview_metrics_timeout_seconds")
     @classmethod
     def positive_timeout(cls, value):
+        if value <= 0:
+            raise ValueError("must be greater than zero")
+        return value
+
+    @field_validator("signup_bonus_credits", "signup_bonus_max_account_age_seconds")
+    @classmethod
+    def positive_optional(cls, value):
+        if value is None:
+            return value
         if value <= 0:
             raise ValueError("must be greater than zero")
         return value

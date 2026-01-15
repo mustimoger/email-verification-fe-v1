@@ -51,6 +51,9 @@
 - Credit grants schema + service added for the external-ownership shift:
   - Added `credit_grants` schema definition to `refactor.md` and `backend/app/services/credit_grants.py`.
   - Applied Supabase migration `create_credit_grants` successfully (MCP auth fixed).
+- Credit grants shift — purchase + signup now write to `credit_grants`:
+  - Billing webhook upserts `credit_grants` (`source=purchase`, `source_id=transaction_id`) and no longer touches `user_credits`.
+  - Added `/api/credits/signup-bonus` with account-age + email-confirm checks and idempotent upsert, plus signup flow call and backend tests.
 
 ## Repo State / Alerts
 - Files over 600 lines: `backend/app/api/tasks.py`, `app/verify/page.tsx`, `app/verify/utils.ts`.
@@ -64,10 +67,15 @@
 - `backend/app/services/task_credit_reservations.py` — reservation read/write service.
 - `backend/app/services/task_metrics.py` — shared metrics helpers.
 - `backend/app/services/credit_grants.py` — new credit grants helper for purchases + signup.
+- `backend/app/api/credits.py` — signup bonus endpoint with eligibility checks and `credit_grants` upsert.
+- `backend/app/api/billing.py` — webhook credit grants now write to `credit_grants` only.
+- `backend/app/core/settings.py` — signup bonus configuration settings.
 - `app/history/utils.ts` — external metrics mapping + missing file_name handling.
 - `app/verify/page.tsx` + `app/verify/utils.ts` — manual verify uses `/api/tasks` + `/api/tasks/{id}/jobs` with CSV export from jobs.
 - `app/lib/api-client.ts` — TaskJobs types + `getTaskJobs`.
+- `app/components/auth-provider.tsx` — signup flow now requests signup bonus (non-blocking).
 - `backend/tests/test_task_credit_reservations.py`, `backend/tests/test_tasks_manual_jobs_flow.py`, `backend/tests/test_tasks_credit_reservation.py`.
+- `backend/tests/test_signup_bonus.py` — signup bonus eligibility + duplicate coverage.
 - `PLAN.md`, `refactor.md`, `handover.md` updated to reflect credits shift + schema.
 
 ## Commits (for rollback)
@@ -95,6 +103,8 @@
   - Result: 12 passed (pyiceberg/pydantic warnings only).
 - `source .venv/bin/activate && pytest backend/tests/test_credit_enforcement_routes.py backend/tests/test_tasks_credit_reservation.py backend/tests/test_tasks_upload_email_count.py backend/tests/test_tasks_download_proxy.py backend/tests/test_tasks_manual_jobs_flow.py`
   - Result: 9 passed (pyiceberg/pydantic warnings only).
+- `source .venv/bin/activate && pytest backend/tests/test_billing.py backend/tests/test_signup_bonus.py`
+  - Result: 10 passed (pyiceberg/pydantic warnings only).
 
 ## Important Test Harness Note (Avoid Rework)
 - `fastapi.TestClient` hangs here. Use `httpx.AsyncClient` + `httpx.ASGITransport` instead.
@@ -108,17 +118,14 @@
 - Mapping of external metrics to UI “credits used”/usage totals remains unconfirmed; metrics docs only expose verification totals/series.
 
 ## Pending Work / Next Steps (Ordered)
-1) Credits ownership shift — write to `credit_grants` only.
-   - Update billing webhook to insert purchase grants into `credit_grants` (source=`purchase`, source_id=transaction_id).
-   - Add signup bonus insertion into `credit_grants` (source=`signup`, source_id=user_id or auth event id).
-2) Credits ownership shift — update account/overview credits to external-only.
+1) Credits ownership shift — update account/overview credits to external-only.
    - Update `/api/overview` + `/api/account/credits` to return unavailable and log, and update UI to show `ext api data is not available` (no layout change).
-3) Credits ownership shift — update purchase history source.
+2) Credits ownership shift — update purchase history source.
    - Read purchase history from `credit_grants` (source=`purchase`) instead of `billing_purchases`.
-4) Tests + scripts.
+3) Tests + scripts.
    - Update backend tests expecting credit enforcement and `user_credits` changes.
    - Update Paddle E2E script + README to verify `credit_grants` instead of `user_credits`.
-5) UI re-verification.
+4) UI re-verification.
    - Verify manual history/export works with external jobs, file upload summary still functions, and missing file_name shows the required message.
 
 ## Required Process Reminders

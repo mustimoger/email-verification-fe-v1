@@ -156,6 +156,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.error("auth.sign_up_failed", { message: error.message });
           return { error: error.message };
         }
+        try {
+          const { data, error: sessionError } = await supabase.auth.getSession();
+          if (sessionError) {
+            console.warn("auth.signup_bonus.session_lookup_failed", { message: sessionError.message });
+          } else if (!data.session) {
+            console.info("auth.signup_bonus.skipped_no_session");
+          } else {
+            const bonus = await apiClient.claimSignupBonus();
+            console.info("auth.signup_bonus.result", {
+              status: bonus.status,
+              creditsGranted: bonus.credits_granted ?? null,
+            });
+          }
+        } catch (err) {
+          const message = err instanceof ApiError ? err.message : "Signup bonus request failed";
+          console.warn("auth.signup_bonus.failed", { message });
+        }
         return { error: null };
       },
       signOut: async () => {

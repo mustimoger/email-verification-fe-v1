@@ -360,6 +360,11 @@ export type ConfirmedEmailResponse = {
   confirmed: boolean;
 };
 
+export type SignupBonusResponse = {
+  status: string;
+  credits_granted?: number | null;
+};
+
 const rawBase = process.env.NEXT_PUBLIC_API_BASE_URL;
 if (!rawBase) {
   throw new Error("NEXT_PUBLIC_API_BASE_URL is required for API client");
@@ -615,6 +620,11 @@ export const apiClient = {
   requireConfirmedEmail: () =>
     request<ConfirmedEmailResponse>("/auth/confirmed", {
       method: "GET",
+      suppressErrorLog: true,
+    }),
+  claimSignupBonus: () =>
+    request<SignupBonusResponse>("/credits/signup-bonus", {
+      method: "POST",
       suppressErrorLog: true,
     }),
 };

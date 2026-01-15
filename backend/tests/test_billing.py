@@ -190,20 +190,19 @@ def test_create_transaction_rejects_metadata(monkeypatch):
 
 
 def test_webhook_grants_credits(monkeypatch):
-    granted = {}
+    grant_call = {}
     saved = {}
 
     def fake_verify_webhook(raw_body, signature_header, remote_ip, headers=None):
         return True
 
     def fake_record_event(**kwargs):
-        granted["record"] = kwargs
+        grant_call["record"] = kwargs
         return True
 
-    def fake_grant_credits(user_id, credits):
-        granted["credits"] = credits
-        granted["user_id"] = user_id
-        return {"user_id": user_id, "credits_remaining": credits}
+    def fake_upsert_credit_grant(**kwargs):
+        grant_call.update(kwargs)
+        return True
 
     def fake_upsert_purchase(**kwargs):
         saved.update(kwargs)
@@ -211,7 +210,7 @@ def test_webhook_grants_credits(monkeypatch):
 
     monkeypatch.setattr(billing_module, "verify_webhook", fake_verify_webhook)
     monkeypatch.setattr(billing_module, "record_billing_event", lambda **kwargs: fake_record_event(**kwargs))
-    monkeypatch.setattr(billing_module, "grant_credits", fake_grant_credits)
+    monkeypatch.setattr(billing_module, "upsert_credit_grant", fake_upsert_credit_grant)
     monkeypatch.setattr(billing_module, "upsert_purchase", fake_upsert_purchase)
     monkeypatch.setattr(
         billing_module,
@@ -241,8 +240,10 @@ def test_webhook_grants_credits(monkeypatch):
     }
     resp = client.post("/api/billing/webhook", json=payload, headers={"Paddle-Signature": "ts=1;v1=valid"})
     assert resp.status_code == 200
-    assert granted["credits"] == 500
-    assert granted["user_id"] == "user-abc"
+    assert grant_call["credits_granted"] == 500
+    assert grant_call["user_id"] == "user-abc"
+    assert grant_call["source"] == "purchase"
+    assert grant_call["source_id"] == "txn_1"
     assert saved["transaction_id"] == "txn_1"
     assert saved["user_id"] == "user-abc"
     assert saved["credits_granted"] == 500
@@ -261,8 +262,8 @@ def test_webhook_credit_grant_failure_deletes_event(monkeypatch):
     def fake_record_event(**_kwargs):
         return True
 
-    def fake_grant_credits(_user_id, _credits):
-        raise RuntimeError("boom")
+    def fake_upsert_credit_grant(**_kwargs):
+        return False
 
     def fake_delete_event(event_id):
         deleted["event_id"] = event_id
@@ -274,7 +275,7 @@ def test_webhook_credit_grant_failure_deletes_event(monkeypatch):
 
     monkeypatch.setattr(billing_module, "verify_webhook", fake_verify_webhook)
     monkeypatch.setattr(billing_module, "record_billing_event", fake_record_event)
-    monkeypatch.setattr(billing_module, "grant_credits", fake_grant_credits)
+    monkeypatch.setattr(billing_module, "upsert_credit_grant", fake_upsert_credit_grant)
     monkeypatch.setattr(billing_module, "delete_billing_event", fake_delete_event)
     monkeypatch.setattr(billing_module, "upsert_purchase", fake_upsert_purchase)
     monkeypatch.setattr(
