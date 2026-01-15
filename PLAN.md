@@ -165,6 +165,10 @@
   Explanation: Valid CSV files trigger “Unable to parse CSV headers” in the UI; XLSX uploads work. Needs follow-up to avoid blocking CSV uploads.
 - [ ] Confirm backend routes for `/api/credits/signup-bonus` and `/api/tasks/{id}/jobs` on the running dev server.
   Explanation: UI verification observed 404 responses from `http://localhost:8001` for both endpoints; verify the backend instance is up-to-date and routes are mounted.
+- [x] Session handover refresh — update `refactor.md` with latest refactor changes + open gaps.
+  Explanation: Captured current credits/external-only changes, signup bonus trigger behavior, Paddle E2E update, and new UI verification gaps (CSV header parsing and 404s on signup-bonus/jobs) so the refactor doc stays the source of truth.
+- [x] Session handover refresh — update `handover.md` with full context, explanations, and next steps.
+  Explanation: Added a comprehensive handover including verification findings, risks, local artifacts, and ordered next steps for the next session.
 - [x] Session handover — create root `handover.md` with current findings, changes, and next steps.
   Explanation: Added a new `handover.md` capturing dark mode progress, uncommitted changes, and the exact next steps/tests to run so the next session can resume without guessing.
 - [x] Session handover — refresh `handover.md` after manual flow migration.

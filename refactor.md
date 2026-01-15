@@ -28,6 +28,8 @@ Missing/unclear as of now:
 - Manual verification export detail fields are admin-only (`/emails`), not user-scoped.
 - Credit usage/spend write-back to Supabase is pending; ext-api-docs do not document any credits/write-back endpoints and the external API dev is waiting on the final Supabase structure.
 - Mapping for UI “credits used”/“usage totals” to external metrics is not confirmed yet; ext-api-docs only describe verification totals/series without explicit credit usage fields.
+- UI CSV uploads currently fail header parsing (XLSX works). Needs investigation before CSV upload can be considered stable.
+- Local dev backend returned 404s for `/api/credits/signup-bonus` and `/api/tasks/{id}/jobs` during UI verification; confirm the running backend version and route mounting.
 
 ## Target End State (Architecture)
 ```
@@ -127,6 +129,12 @@ create index if not exists credit_grants_user_source_created_idx
 - Task list/detail/download are sourced directly from the external API.
 - No local task storage or polling logic remains.
 
+### Phase 1 Status (Completed)
+- Task proxies (list/detail/download/upload) are external-only.
+- Manual verification uses `/api/tasks` + `/api/tasks/{id}/jobs`.
+- `/api/tasks/latest-upload(s)` returns 204 with `ext_api_missing_file_name`.
+- Local task caches removed (`tasks_store`, `task_files_store`).
+
 ## Phase 2 — Remove API Key Caching (Medium Priority)
 **Remove from Supabase**
 - `cached_api_keys` table
@@ -175,6 +183,10 @@ create index if not exists credit_grants_user_source_created_idx
 **End Result**
 - All usage/metrics are sourced from the external API.
 
+### Phase 3 Status (Partially Complete)
+- Credits remaining are now external-only: `/api/overview` and `/api/account/credits` return nullable `credits_remaining`, and UI shows `ext api data is not available`.
+- Usage totals/series still use external metrics where available, but local usage tracking removal is not complete.
+
 ## Phase 4 — Simplify Manual Verification (Low Priority)
 **What**
 - Stop storing manual verification results locally.
@@ -193,6 +205,9 @@ create index if not exists credit_grants_user_source_created_idx
 
 **End Result**
 - Manual verification flows no longer depend on Supabase task storage.
+
+### Phase 4 Status (Completed)
+- Manual verification uses external tasks/jobs; local manual result storage removed.
 
 ## Phase 5 — Retain Only Essential Local State (Final Cleanup)
 **Keep in Supabase**
@@ -215,6 +230,11 @@ create index if not exists credit_grants_user_source_created_idx
 
 **End Result**
 - Supabase schema is limited to non-external responsibilities.
+
+### Phase 5 Status (In Progress)
+- Purchase history now reads from `credit_grants` (source=`purchase`); `billing_purchases` still written but no longer used for account history.
+- Signup bonus is claimed after confirmed sessions, removing the dependency on a signup session.
+- Paddle E2E script now validates `credit_grants` rather than `billing_purchases`/`user_credits`.
 
 ## Testing & Validation
 - Backend integration tests for direct external API proxy routes.
