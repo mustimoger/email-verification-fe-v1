@@ -131,6 +131,8 @@
   Explanation: Added `handover.md` with decisions, dependencies, current repo state notes, and clear next steps for Phase 0/1 of the external-API-first refactor.
 - [x] Session handover refresh — update `handover.md` with the latest external-API docs changes, manual task decision, and reservation table plan.
   Explanation: Updated `handover.md` with the new `/tasks/{id}/jobs` docs, the decision to move manual verification to `/tasks`, and the plan to replace task-based reservations with a minimal `task_credit_reservations` table.
+- [x] Session handover — refresh `handover.md` with the credit-grants migration + external credit ownership decision.
+  Explanation: Updated `handover.md` with the finalized `credit_grants` table (migration applied), external API credit ownership decision, and the ordered next steps for the credits shift.
 - [ ] Investigate /api/verify 502 (external_api.request_error) and confirm external API reachability.
   Explanation: Observed request-level failures (no HTTP response). `EMAIL_API_BASE_URL` points to `https://email-verification.islamsaka.com/api/v1/`, and a direct curl from this host failed to connect on port 443, indicating the external service is unreachable from this environment; next step is to confirm service status/DNS/firewall and decide whether to update the base URL or network rules.
 - [ ] Testing and staging — Add unit/integration coverage and deploy to staging after MVP pages and API wiring are in place; verify flows end-to-end.
