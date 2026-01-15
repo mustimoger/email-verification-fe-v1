@@ -27,6 +27,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const bootstrapAttemptedRef = useRef(false);
   const profileSyncRef = useRef<{ userId: string; email: string } | null>(null);
   const confirmationCheckRef = useRef<string | null>(null);
+  const signupBonusAttemptedRef = useRef<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -72,6 +73,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const userId = session?.user?.id;
       if (!userId) {
         confirmationCheckRef.current = null;
+        signupBonusAttemptedRef.current = null;
         return;
       }
       if (confirmationCheckRef.current === userId) {
@@ -88,6 +90,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return;
         }
         console.warn("auth.email_confirmation_check_failed", err);
+        return;
+      }
+      if (signupBonusAttemptedRef.current === userId) {
+        return;
+      }
+      try {
+        const bonus = await apiClient.claimSignupBonus();
+        signupBonusAttemptedRef.current = userId;
+        console.info("auth.signup_bonus.result", {
+          status: bonus.status,
+          creditsGranted: bonus.credits_granted ?? null,
+          source: "confirmed_session",
+        });
+      } catch (err) {
+        const message = err instanceof ApiError ? err.message : "Signup bonus request failed";
+        console.warn("auth.signup_bonus.failed", { message, source: "confirmed_session" });
       }
     };
     void ensureConfirmed();
@@ -155,23 +173,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (error) {
           console.error("auth.sign_up_failed", { message: error.message });
           return { error: error.message };
-        }
-        try {
-          const { data, error: sessionError } = await supabase.auth.getSession();
-          if (sessionError) {
-            console.warn("auth.signup_bonus.session_lookup_failed", { message: sessionError.message });
-          } else if (!data.session) {
-            console.info("auth.signup_bonus.skipped_no_session");
-          } else {
-            const bonus = await apiClient.claimSignupBonus();
-            console.info("auth.signup_bonus.result", {
-              status: bonus.status,
-              creditsGranted: bonus.credits_granted ?? null,
-            });
-          }
-        } catch (err) {
-          const message = err instanceof ApiError ? err.message : "Signup bonus request failed";
-          console.warn("auth.signup_bonus.failed", { message });
         }
         return { error: null };
       },

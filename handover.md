@@ -5,7 +5,7 @@
 - Supabase is for profiles + billing + append-only credit grants (purchases + signup bonus).
 - Local credit enforcement (debit/reserve/release) has been removed from backend task/verify routes.
 - Billing webhooks now write purchase grants to `credit_grants` and no longer touch `user_credits`.
-- Signup bonus endpoint exists and signup flow attempts to call it once (non-blocking).
+- Signup bonus is claimed after a confirmed session is established (non-blocking).
 
 ## Core Decisions (Must Preserve)
 - If external data is missing, UI must show exactly: `ext api data is not available`.
@@ -31,10 +31,10 @@
   - UI 402 parsing remains only for upstream errors.
 - Credit grants write‑path updated:
   - Paddle webhook now upserts `credit_grants` (source=`purchase`, source_id=`transaction_id`) and keeps `billing_events` idempotency.
-  - `billing_purchases` is still written for now (needed until purchase history is migrated).
+  - `billing_purchases` is still written for now (pending cleanup).
 - Signup bonus implemented:
   - New endpoint `POST /api/credits/signup-bonus` validates account age + email confirmation, then upserts `credit_grants` (source=`signup`, source_id=`user_id`).
-  - Signup flow calls the endpoint once after successful signUp if a session exists; failures are logged and do not block signup.
+  - Bonus claim now runs after the confirmed-session check so email-confirmed users receive it even if signup returns no session.
 
 ## New/Updated Endpoints
 - `POST /api/credits/signup-bonus` (new):
@@ -51,14 +51,14 @@ Set these env vars (no defaults):
 If any are missing, `/api/credits/signup-bonus` returns 503 and logs `credits.signup_bonus.misconfigured`.
 
 ## Repo State / Alerts
-- Files over 600 lines: `backend/app/api/tasks.py`, `app/verify/page.tsx`, `app/verify/utils.ts`.
+- Files over 600 lines: `app/overview/page.tsx`, `app/verify/page.tsx`, `app/verify/utils.ts`.
 
 ## Key Files Updated
 - `backend/app/api/billing.py` — webhook now writes to `credit_grants` only.
 - `backend/app/api/credits.py` — signup bonus endpoint with eligibility checks.
 - `backend/app/core/settings.py` — new signup bonus settings.
 - `backend/app/main.py` — includes credits router.
-- `app/components/auth-provider.tsx` — signup now calls `claimSignupBonus` (non‑blocking).
+- `app/components/auth-provider.tsx` — signup bonus claim runs after confirmed-session checks (non‑blocking).
 - `app/lib/api-client.ts` — added `claimSignupBonus` client.
 - `backend/tests/test_billing.py` — updated for credit_grants.
 - `backend/tests/test_signup_bonus.py` — signup bonus eligibility coverage.
@@ -69,14 +69,7 @@ If any are missing, `/api/credits/signup-bonus` returns 503 and logs `credits.si
 - Prior runs still relevant for task proxying/manual flow; see earlier entries in this handover history.
 
 ## Known Gaps / Risks
-- **Signup bonus may be skipped if Supabase signUp returns no session.**
-  - Current flow calls `/credits/signup-bonus` only when `supabase.auth.getSession()` returns a session.
-  - If email confirmation is required, Supabase often returns `session: null`; bonus will not be claimed automatically after confirm/sign-in.
-  - Decide whether to trigger the bonus on first confirmed sign‑in or after confirmation callback.
-- **Account/overview credits still local.**
-  - `/api/overview` and `/api/account/credits` still read `user_credits`; should be switched to “unavailable” until external API exposes balances.
-- **Purchase history still local.**
-  - `/account` purchase history uses `billing_purchases`; needs migration to `credit_grants`.
+- None beyond the external API gaps below.
 
 ## External API Gaps (Still Pending)
 - Task list/detail do not include `file_name` (upload response includes filename).
@@ -84,8 +77,7 @@ If any are missing, `/api/credits/signup-bonus` returns 503 and logs `credits.si
 - Mapping of external metrics to UI “credits used”/usage totals remains unconfirmed.
 
 ## Next Steps (Ordered)
-1) Resolve signup bonus trigger behavior for email‑confirmed flow (see risk above).
-2) UI re‑verification: manual history/export + file upload summary + missing `file_name` messaging.
+1) UI re‑verification: manual history/export + file upload summary + missing `file_name` messaging.
 
 ## Process Reminders
 - For any code changes: state plan first, update root plan/progress markdowns after completion, ask for confirmation before next task.

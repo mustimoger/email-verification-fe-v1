@@ -82,6 +82,8 @@
   Explanation: `/api/account/purchases` now pulls from `credit_grants` (source=`purchase`), maps only valid rows with structured logging for missing fields, and preserves the existing UI contract while removing the `billing_purchases` dependency for purchase history.
 - [x] Credits ownership shift — update tests + scripts for the new credit grants flow.
   Explanation: Updated the Paddle E2E script + README to assert `credit_grants` (source=`purchase`) and `credits_granted` instead of `billing_purchases`/`user_credits`; backend credit-grant tests were already updated earlier.
+- [x] Credits ownership shift — trigger signup bonus after confirmed sessions.
+  Explanation: Moved the signup bonus claim to the confirmed-session check in the auth provider so users who confirm email before signing in still receive the bonus, removing the dependency on an immediate signup session.
 - [ ] External-API-first refactor Phase 1 — remove task caching and proxy tasks directly to external API.
   Explanation: Phase 1 replaces Supabase task storage with direct external API calls and updates UI data mapping while preserving design; any missing fields must show `ext api data is not available` and be logged.
 - [x] Phase 1 — backend tasks proxy (list/detail/download/upload) and remove Supabase task upserts/polling.
