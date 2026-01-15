@@ -29,7 +29,7 @@ Missing/unclear as of now:
 - Credit usage/spend write-back to Supabase is pending; ext-api-docs do not document any credits/write-back endpoints and the external API dev is waiting on the final Supabase structure.
 - Mapping for UI “credits used”/“usage totals” to external metrics is not confirmed yet; ext-api-docs only describe verification totals/series without explicit credit usage fields.
 - UI CSV uploads currently fail header parsing (XLSX works). Needs investigation before CSV upload can be considered stable.
-- Local dev backend returned 404s for `/api/credits/signup-bonus` and `/api/tasks/{id}/jobs` during UI verification; confirm the running backend version and route mounting.
+- Local dev backend on `localhost:8001` returns 404s for POST `/api/credits/signup-bonus` and GET `/api/tasks/{id}/jobs` even though code/tests include the routes; restart the backend or verify the entrypoint to ensure the running server matches current code.
 
 ## Target End State (Architecture)
 ```

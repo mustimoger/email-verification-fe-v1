@@ -21,6 +21,6 @@ def clear_settings_cache(monkeypatch):
 
 @pytest.fixture(autouse=True)
 def set_required_limits_env(monkeypatch):
-    monkeypatch.setenv("MANUAL_MAX_EMAILS", "25")
+    monkeypatch.setenv("MANUAL_MAX_EMAILS", "10000")
     monkeypatch.setenv("LATEST_UPLOADS_LIMIT", "6")
     yield

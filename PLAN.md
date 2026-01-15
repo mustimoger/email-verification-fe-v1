@@ -1,5 +1,16 @@
 # Plan (carry forward)
 
+- [ ] Current session execution order (requested) — implement in sequence and confirm before moving on.
+  Explanation: Tracks the ordered backend wiring tasks for this session so progress is visible for handover.
+  - [x] Step 1 — Confirm backend routes for `/api/credits/signup-bonus` and `/api/tasks/{id}/jobs` on the running dev server.
+    Explanation: Code/test coverage confirms both routes exist, but the running server on `localhost:8001` still returns 404 for POST `/api/credits/signup-bonus` and GET `/api/tasks/{id}/jobs` (health is 200). This indicates the dev server is running an older build or different app entrypoint; restart the backend to pick up current routes.
+  - [x] Step 2 — Align batch/manual verification limit to 10,000 via `MANUAL_MAX_EMAILS` (env + tests).
+    Explanation: Updated the env example and test defaults to use `MANUAL_MAX_EMAILS=10000`, keeping upload behavior unchanged while making the manual limit consistent across settings/limits tests.
+  - [ ] Step 3 — Phase 2: remove `cached_api_keys` usage and proxy external API keys directly.
+    Explanation: External API becomes the source of truth for key lifecycle, removing local secret storage.
+  - [ ] Step 4 — Phase 3: remove local usage tracking and proxy external metrics.
+    Explanation: External metrics replace Supabase usage tables and record_usage calls.
+
 - [x] Baseline setup — Next.js 14 (app router) with TypeScript, Tailwind, ESLint, npm, and alias `@/*`; React Compiler disabled. Clean base to layer dashboard features.
 - [x] Layout shell + theming — Built shared sidebar/topbar shell per Figma: responsive drawer, notifications/profile, Nunito Sans, gradient surface. Sidebar uses `public/logo.png` (BoltRoute) image logo (matches `Screenshot_1.png`), not text. Avatar uses `public/profile-image.png` with fallback initials. Purpose: consistent chrome to reuse across pages.
 - [x] Remove notifications icon from dashboard header — Bell icon is not needed; header should only show the profile menu.
@@ -185,8 +196,8 @@
 ## Runtime limits alignment (batch vs upload)
 - [x] Step 1 — remove `upload_max_emails_per_task` requirement and any upload email-count enforcement so file uploads are only size-limited.
   Explanation: Deleted the unused settings/env/tests wiring for `upload_max_emails_per_task` so startup no longer fails when it’s missing. Upload parsing already passes `max_emails=None`, so file uploads remain unlimited in email count while keeping the 10 MB size guard.
-- [ ] Step 2 — align batch/manual verification limit to 10,000 via `MANUAL_MAX_EMAILS` and reflect in env/test defaults.
-  Explanation: Pending confirmation. This will set the batch endpoint limit to 10,000 without adding any new upload email-count enforcement.
+- [x] Step 2 — align batch/manual verification limit to 10,000 via `MANUAL_MAX_EMAILS` and reflect in env/test defaults.
+  Explanation: Set `MANUAL_MAX_EMAILS=10000` in `backend/.env.example` and updated test defaults/expectations to match; manual limit tests that require smaller caps still override locally.
 
 Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` present locally (uncommitted). Root `/` redirects to `/overview`; main page at `app/overview/page.tsx`. A dev server may still be running on port 3001 (see handover if needed). External email verification API is reachable at `https://email-verification.islamsaka.com/api/v1/`; it accepts Supabase JWTs via `Authorization: Bearer <token>`. External usage endpoints return lifetime totals when no `from`/`to` is provided, and range totals when `from`/`to` is provided (per external dev). Supabase seeded for user `mustimoger@gmail.com` with credits and cached keys.
 

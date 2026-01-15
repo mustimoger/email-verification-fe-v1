@@ -18,7 +18,7 @@ def test_limits_returns_runtime_values(monkeypatch):
     monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service_key")
     monkeypatch.setenv("SUPABASE_JWT_SECRET", "secret")
     monkeypatch.setenv("SUPABASE_AUTH_COOKIE_NAME", "cookie_name")
-    monkeypatch.setenv("MANUAL_MAX_EMAILS", "25")
+    monkeypatch.setenv("MANUAL_MAX_EMAILS", "10000")
     monkeypatch.setenv("UPLOAD_MAX_MB", "10")
 
     app = _build_app()
@@ -32,5 +32,5 @@ def test_limits_returns_runtime_values(monkeypatch):
     resp = client.get("/api/limits")
     assert resp.status_code == 200
     data = resp.json()
-    assert data["manual_max_emails"] == 25
+    assert data["manual_max_emails"] == 10000
     assert data["upload_max_mb"] == 10

@@ -22,7 +22,7 @@ def test_settings_loads_with_minimum_env(monkeypatch):
     monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service_key")
     monkeypatch.setenv("SUPABASE_JWT_SECRET", "secret")
     monkeypatch.setenv("SUPABASE_AUTH_COOKIE_NAME", "cookie_name")
-    monkeypatch.setenv("MANUAL_MAX_EMAILS", "25")
+    monkeypatch.setenv("MANUAL_MAX_EMAILS", "10000")
     monkeypatch.setenv("LATEST_UPLOADS_LIMIT", "6")
     settings = get_settings()
     assert settings.email_api_base_url == "https://api.test"

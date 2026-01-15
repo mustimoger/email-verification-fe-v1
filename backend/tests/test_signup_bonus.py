@@ -12,7 +12,7 @@ from app.core.auth import AuthContext
 @pytest.fixture(autouse=True)
 def env(monkeypatch):
     monkeypatch.setenv("EMAIL_API_BASE_URL", "https://api.test")
-    monkeypatch.setenv("MANUAL_MAX_EMAILS", "10")
+    monkeypatch.setenv("MANUAL_MAX_EMAILS", "10000")
     monkeypatch.setenv("LATEST_UPLOADS_LIMIT", "5")
     monkeypatch.setenv("SIGNUP_BONUS_CREDITS", "100")
     monkeypatch.setenv("SIGNUP_BONUS_MAX_ACCOUNT_AGE_SECONDS", "3600")

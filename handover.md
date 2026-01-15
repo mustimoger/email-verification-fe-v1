@@ -18,6 +18,8 @@
   - `/api/tasks`, `/api/tasks/{id}`, `/api/tasks/{id}/download`, `/api/tasks/upload` proxy external API directly.
   - `/api/tasks/latest-upload(s)` returns 204 with log `ext_api_missing_file_name` because list/detail lacks `file_name`.
   - Manual verification uses `/api/tasks` + `/api/tasks/{id}/jobs`; local task caching removed.
+- Runtime limits alignment:
+  - `MANUAL_MAX_EMAILS` defaults were set to 10,000 in `backend/.env.example` and test fixtures, keeping upload size limits intact while aligning the manual/batch cap.
 - Credits ownership shift (external-only view):
   - `/api/overview` and `/api/account/credits` return nullable `credits_remaining` with explicit logs.
   - Overview + Account UI show `ext api data is not available` for credits.
@@ -71,7 +73,7 @@ If any are missing, `/api/credits/signup-bonus` returns 503 and logs `credits.si
 
 ## Known Gaps / Risks
 - CSV uploads fail with “Unable to parse CSV headers” in Verify; XLSX works. Needs investigation to unblock CSV uploads.
-- Local dev backend returned 404s for `/api/credits/signup-bonus` and `/api/tasks/{id}/jobs` during UI verification (likely stale backend or route mismatch).
+- Local dev backend on `localhost:8001` still returns 404s for POST `/api/credits/signup-bonus` and GET `/api/tasks/{id}/jobs` (health is 200). Code/tests confirm the routes exist, so the running server is likely an older build or different entrypoint—restart the backend to pick up current routes.
 
 ## External API Gaps (Still Pending)
 - Task list/detail do not include `file_name` (upload response includes filename).
