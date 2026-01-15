@@ -23,6 +23,9 @@
   - Overview + Account UI show `ext api data is not available` for credits while keeping layout intact.
 - Account purchase history moved to credit grants:
   - `/api/account/purchases` now reads `credit_grants` with `source=purchase`, maps only valid rows, and logs missing/invalid fields.
+- Paddle E2E script updated:
+  - `backend/scripts/paddle_simulation_e2e.py` now validates `credit_grants` (source=`purchase`) and `credits_granted` instead of `billing_purchases`/`user_credits`.
+  - README updated to reflect the new success criteria and timeout messaging.
 - Local credit enforcement removed:
   - `/api/verify`, `/api/tasks`, `/api/tasks/{id}`, `/api/tasks/{id}/download`, `/api/tasks/upload` no longer apply debits/reservations or return 402.
   - UI 402 parsing remains only for upstream errors.
@@ -81,9 +84,8 @@ If any are missing, `/api/credits/signup-bonus` returns 503 and logs `credits.si
 - Mapping of external metrics to UI “credits used”/usage totals remains unconfirmed.
 
 ## Next Steps (Ordered)
-1) Update Paddle E2E script + README to assert `credit_grants` instead of `user_credits`.
-2) Resolve signup bonus trigger behavior for email‑confirmed flow (see risk above).
-3) UI re‑verification: manual history/export + file upload summary + missing `file_name` messaging.
+1) Resolve signup bonus trigger behavior for email‑confirmed flow (see risk above).
+2) UI re‑verification: manual history/export + file upload summary + missing `file_name` messaging.
 
 ## Process Reminders
 - For any code changes: state plan first, update root plan/progress markdowns after completion, ask for confirmation before next task.

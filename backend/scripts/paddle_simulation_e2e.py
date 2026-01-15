@@ -47,7 +47,6 @@ from app.services.billing_plans import (  # noqa: E402
 )
 from app.services.paddle_store import get_paddle_ids  # noqa: E402
 from app.services.supabase_client import (  # noqa: E402
-    fetch_credits,
     fetch_profile_by_email,
     get_supabase,
 )
@@ -273,9 +272,17 @@ def _build_transaction_payload(
     return transaction
 
 
-def _fetch_purchase(transaction_id: str) -> Optional[Dict[str, Any]]:
+def _fetch_credit_grant(user_id: str, transaction_id: str) -> Optional[Dict[str, Any]]:
     sb = get_supabase()
-    res = sb.table("billing_purchases").select("*").eq("transaction_id", transaction_id).limit(1).execute()
+    res = (
+        sb.table("credit_grants")
+        .select("*")
+        .eq("user_id", user_id)
+        .eq("source", "purchase")
+        .eq("source_id", transaction_id)
+        .limit(1)
+        .execute()
+    )
     data = res.data or []
     return data[0] if data else None
 
@@ -351,8 +358,6 @@ async def run_flow(args: argparse.Namespace) -> int:
         run_id=run_id,
     )
 
-    credits_before = fetch_credits(user_id)
-
     client = get_paddle_client()
     simulation_payload = {
         "name": f"e2e-{run_id}",
@@ -385,23 +390,26 @@ async def run_flow(args: argparse.Namespace) -> int:
     poll_interval = args.poll_interval_seconds
     deadline = time.monotonic() + timeout_seconds
 
-    purchase = None
-    credits_after = credits_before
+    credit_grant = None
+    credits_granted = None
     while time.monotonic() < deadline:
-        purchase = _fetch_purchase(transaction_id)
-        credits_after = fetch_credits(user_id)
-        if purchase and credits_after >= credits_before + expected_credits:
+        credit_grant = _fetch_credit_grant(user_id, transaction_id)
+        credits_granted = credit_grant.get("credits_granted") if credit_grant else None
+        if credit_grant and credits_granted is not None:
             break
         time.sleep(poll_interval)
 
-    if not purchase:
-        raise RuntimeError("Timed out waiting for billing_purchases record")
-    if credits_after < credits_before + expected_credits:
+    if not credit_grant:
+        raise RuntimeError("Timed out waiting for credit_grants record")
+    if credits_granted is None:
+        raise RuntimeError("credit_grants record missing credits_granted")
+    if expected_credits > 0 and int(credits_granted) != expected_credits:
         raise RuntimeError(
-            f"Credits did not increment as expected (before={credits_before}, after={credits_after})"
+            "Credits granted did not match expected value "
+            f"(expected={expected_credits}, actual={credits_granted})"
         )
 
-    checkout_email = purchase.get("checkout_email")
+    checkout_email = credit_grant.get("checkout_email")
     if checkout_email and str(checkout_email).lower() != str(args.user_email).lower():
         logger.warning(
             "paddle_simulation_e2e.checkout_email_mismatch",
@@ -414,10 +422,9 @@ async def run_flow(args: argparse.Namespace) -> int:
             "transaction_id": transaction_id,
             "simulation_id": simulation_id,
             "simulation_run_id": simulation_run_id,
-            "credits_before": credits_before,
-            "credits_after": credits_after,
-            "expected_delta": expected_credits,
-            "purchase_id": purchase.get("transaction_id"),
+            "credits_granted": credits_granted,
+            "expected_credits": expected_credits,
+            "credit_grant_id": credit_grant.get("id"),
         },
     )
     return 0

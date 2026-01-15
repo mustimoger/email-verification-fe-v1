@@ -5,7 +5,7 @@ This guide explains how to run the simulation-based Paddle E2E test script and h
 ## What this script does
 - Creates a Paddle transaction using your backend logic (no mocks).
 - Triggers a Paddle webhook simulation to your ngrok-backed webhook URL.
-- Verifies the webhook updated `billing_purchases` and `user_credits` in Supabase.
+- Verifies the webhook wrote a `credit_grants` purchase record in Supabase.
 
 This lets you validate the end-to-end billing flow without manual checkouts.
 
@@ -52,8 +52,8 @@ Optional flags:
 
 ## What success looks like
 - The script logs `paddle_simulation_e2e.success`.
-- A `billing_purchases` row exists for the generated `transaction_id`.
-- `user_credits` increases by `plan_credits * quantity`.
+- A `credit_grants` row exists for the generated `transaction_id` (source=`purchase`).
+- `credits_granted` matches `plan_credits * quantity`.
 
 ## Common failures and fixes
 ### 1) “notification setting cannot be used for simulation traffic”
@@ -72,7 +72,7 @@ Fix: create or update the profile in Supabase.
 Cause: the plan selector doesn’t match `billing_plans`.  
 Fix: confirm `billing_plans` rows or use `--price-id` directly.
 
-### 5) “Timed out waiting for billing_purchases”
+### 5) “Timed out waiting for credit_grants”
 Cause: webhook did not reach backend or mapping failed.  
 Fix:
 - confirm ngrok is running and forwarding to `/api/billing/webhook`,
