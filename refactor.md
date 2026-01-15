@@ -53,10 +53,12 @@ Frontend → Backend (FastAPI) → External API (tasks, keys, metrics, verificat
 
 ## Phase 1 — Remove Task Caching (High Priority)
 **Remove from Supabase**
-- `tasks` table
+- `tasks` table (after credit reservations and manual results are fully externalized)
 - `task_files` table
 
 **Backend Changes**
+- Create a minimal `task_credit_reservations` table (`user_id`, `task_id`, `credit_reserved_count`, `credit_reservation_id`, timestamps) with a unique constraint for idempotency.
+- Add a small reservation service and move reservation reads/writes in `backend/app/api/tasks.py` off the `tasks` table.
 - Remove `backend/app/services/tasks_store.py`.
 - Remove `backend/app/services/task_files_store.py`.
 - Simplify `backend/app/api/tasks.py` to proxy external endpoints directly:
@@ -64,6 +66,7 @@ Frontend → Backend (FastAPI) → External API (tasks, keys, metrics, verificat
   - `GET /api/tasks/{id}` → `/api/v1/tasks/{id}`
   - `GET /api/tasks/{id}/download` → `/api/v1/tasks/{id}/download`
   - `POST /api/tasks/upload` → `/api/v1/tasks/batch/upload`
+- Add `GET /api/tasks/{id}/jobs` → `/api/v1/tasks/{id}/jobs` and deprecate `/api/tasks/latest-manual` (manual verification should read from jobs).
 - Remove all Supabase upsert logic, polling logic, and local task persistence.
 
 **Frontend Changes**

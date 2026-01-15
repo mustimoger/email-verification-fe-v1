@@ -74,6 +74,10 @@
   Explanation: Phase 1 replaces Supabase task storage with direct external API calls and updates UI data mapping while preserving design; any missing fields must show `ext api data is not available` and be logged.
 - [x] Phase 1 — backend tasks proxy (list/detail/download/upload) and remove Supabase task upserts/polling.
   Explanation: Task list/detail/download/upload now proxy the external API directly, Supabase upserts/polling were removed, and `latest-upload(s)` return 204 with a log noting missing `file_name`; credit reservations/manual results still write minimal task rows for internal state only.
+- [ ] Phase 1 — add `task_credit_reservations` table + service and move reservation reads/writes off `tasks`.
+  Explanation: Supabase should only store minimal credit reservation state; moving it to a dedicated table removes the dependency on `tasks` while keeping idempotency and reservation tracking intact.
+- [ ] Phase 1 — add `/api/tasks/{id}/jobs` proxy + external client types; retire `/api/tasks/latest-manual`.
+  Explanation: Manual verification results should come from external task jobs, removing the last Supabase-backed manual-results path while preserving export/history behavior.
 - [ ] Phase 1 — backend cleanup of task cache services.
   Explanation: Deferred: `tasks_store`/`task_files_store` still exist for manual verification storage and credit reservations; full removal must wait until those flows are externalized or moved.
 - [x] Phase 1 — frontend History uses external task response format.
@@ -85,7 +89,7 @@
 - [x] Phase 1 — Verify external task wiring (MVP) + missing export detail messaging + tests.
   Explanation: Added task-based summary mapping in `app/verify/utils.ts`, disabled downloads when file name is missing, updated CSV export to emit `ext api data is not available` for missing detail fields, and ran `npx tsx tests/verify-mapping.test.ts` (after sourcing `.env.local`) with venv active.
 - [ ] Phase 1 — tests/verification for task proxying.
-  Explanation: Add/update backend + frontend tests to cover proxy routes and missing-field fallbacks; run targeted tests with the Python venv active. Backend updates done; frontend tests still pending.
+  Explanation: Add/update backend + frontend tests to cover proxy routes (including `/tasks/{id}/jobs`) and missing-field fallbacks; include reservation-table coverage; run targeted tests with the Python venv active. Backend updates done; frontend tests still pending.
 - [x] Phase 1 — update backend tests for external task proxy behavior.
   Explanation: Updated task list/latest upload/refresh tests to use async ASGI clients and new external-only behavior, removed upload polling test, and ran pytest for the affected suite (14 passed; warnings from pyiceberg/pydantic).
 - [x] Session handover refresh — update `handover.md` with Phase 1 progress, test outcomes, and known test harness constraints.
