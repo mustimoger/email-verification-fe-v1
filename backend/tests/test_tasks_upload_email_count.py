@@ -2,7 +2,7 @@ import json
 
 import pytest
 from fastapi import FastAPI
-from fastapi.testclient import TestClient
+import httpx
 
 from app.api import tasks as tasks_module
 from app.api.tasks import router
@@ -23,24 +23,10 @@ def _build_app(monkeypatch, fake_client):
     app = FastAPI()
     app.include_router(router)
 
-    def fake_user():
+    async def fake_user():
         return AuthContext(user_id="user-1", claims={}, token="t", role="user")
 
-    captured = {"credit_calls": 0, "usage_calls": 0}
-
-    def fake_credit_debit(*, user_id, credits, source, source_id, meta):
-        captured["credit_calls"] += 1
-        captured["credit_credits"] = credits
-        captured["credit_source_id"] = source_id
-        return {"status": "applied"}
-
-    def fake_credit_release(*args, **kwargs):
-        captured["release_calls"] = captured.get("release_calls", 0) + 1
-        return {"status": "released"}
-
-    def fake_update_reservation(user_id, task_id, reserved_count, reservation_id):
-        captured["reserved_count"] = reserved_count
-        captured["reservation_id"] = reservation_id
+    captured = {"usage_calls": 0}
 
     def fake_record_usage(*args, **kwargs):
         captured["usage_calls"] += 1
@@ -49,13 +35,7 @@ def _build_app(monkeypatch, fake_client):
         elif len(args) >= 3:
             captured["usage_count"] = args[2]
 
-    monkeypatch.setattr(tasks_module, "apply_credit_debit", fake_credit_debit)
-    monkeypatch.setattr(tasks_module, "apply_credit_release", fake_credit_release)
-    monkeypatch.setattr(tasks_module, "update_task_reservation", fake_update_reservation)
-    monkeypatch.setattr(tasks_module, "upsert_tasks_from_list", lambda *args, **kwargs: None)
-    monkeypatch.setattr(tasks_module, "upsert_task_file", lambda *args, **kwargs: "file-1")
     monkeypatch.setattr(tasks_module, "record_usage", fake_record_usage)
-    monkeypatch.setattr(tasks_module, "get_cached_key_by_name", lambda *args, **kwargs: None)
 
     app.dependency_overrides[tasks_module.get_current_user] = fake_user
     app.dependency_overrides[tasks_module.get_user_external_client] = lambda: fake_client
@@ -77,7 +57,8 @@ def _upload_payload():
     }
 
 
-def test_upload_uses_email_count_for_reservation(monkeypatch):
+@pytest.mark.anyio
+async def test_upload_uses_email_count_for_usage(monkeypatch):
     class FakeClient:
         async def upload_batch_file(self, filename, content, webhook_url=None, email_column=None):
             return BatchFileUploadResponse(
@@ -89,25 +70,23 @@ def test_upload_uses_email_count_for_reservation(monkeypatch):
             )
 
     app, captured = _build_app(monkeypatch, FakeClient())
-    client = TestClient(app)
-
-    resp = client.post(
-        "/api/tasks/upload",
-        files=[("files", ("emails.csv", b"email@example.com", "text/csv"))],
-        data=_upload_payload(),
-    )
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.post(
+            "/api/tasks/upload",
+            files=[("files", ("emails.csv", b"email@example.com", "text/csv"))],
+            data=_upload_payload(),
+        )
 
     assert resp.status_code == 200
     data = resp.json()
     assert data[0]["email_count"] == 2
-    assert captured["credit_calls"] == 1
-    assert captured["credit_credits"] == 2
-    assert captured["reserved_count"] == 2
     assert captured["usage_calls"] == 1
     assert captured["usage_count"] == 2
 
 
-def test_upload_missing_email_count_returns_502(monkeypatch):
+@pytest.mark.anyio
+async def test_upload_missing_email_count_returns_502(monkeypatch):
     class FakeClient:
         async def upload_batch_file(self, filename, content, webhook_url=None, email_column=None):
             return BatchFileUploadResponse(
@@ -118,13 +97,13 @@ def test_upload_missing_email_count_returns_502(monkeypatch):
             )
 
     app, captured = _build_app(monkeypatch, FakeClient())
-    client = TestClient(app)
-
-    resp = client.post(
-        "/api/tasks/upload",
-        files=[("files", ("emails.csv", b"email@example.com", "text/csv"))],
-        data=_upload_payload(),
-    )
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.post(
+            "/api/tasks/upload",
+            files=[("files", ("emails.csv", b"email@example.com", "text/csv"))],
+            data=_upload_payload(),
+        )
 
     assert resp.status_code == 502
-    assert captured["credit_calls"] == 0
+    assert captured["usage_calls"] == 0

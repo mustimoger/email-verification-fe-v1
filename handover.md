@@ -45,6 +45,9 @@
 - Phase 1 backend test coverage added:
   - Added reservation table service tests and manual jobs flow integration coverage using async ASGI clients.
   - Updated `test_tasks_credit_reservation` to match external-only task API and async dependency overrides.
+- Credits ownership shift — local enforcement removed:
+  - `/api/verify`, `/api/tasks`, `/api/tasks/{id}`, `/api/tasks/{id}/download`, and `/api/tasks/upload` no longer apply local credit debits/reservations or return 402.
+  - Backend tests updated to assert the external-only flow; UI 402 parsing kept for upstream errors.
 - Credit grants schema + service added for the external-ownership shift:
   - Added `credit_grants` schema definition to `refactor.md` and `backend/app/services/credit_grants.py`.
   - Applied Supabase migration `create_credit_grants` successfully (MCP auth fixed).
@@ -90,6 +93,8 @@
   - Result: verify mapping tests passed; saw expected `verify.file_name.unavailable` + `verify.manual.job_missing_email` logs.
 - `source .venv/bin/activate && pytest backend/tests/test_task_credit_reservations.py backend/tests/test_tasks_manual_jobs_flow.py backend/tests/test_tasks_jobs_proxy.py backend/tests/test_tasks_credit_reservation.py`
   - Result: 12 passed (pyiceberg/pydantic warnings only).
+- `source .venv/bin/activate && pytest backend/tests/test_credit_enforcement_routes.py backend/tests/test_tasks_credit_reservation.py backend/tests/test_tasks_upload_email_count.py backend/tests/test_tasks_download_proxy.py backend/tests/test_tasks_manual_jobs_flow.py`
+  - Result: 9 passed (pyiceberg/pydantic warnings only).
 
 ## Important Test Harness Note (Avoid Rework)
 - `fastapi.TestClient` hangs here. Use `httpx.AsyncClient` + `httpx.ASGITransport` instead.
@@ -103,20 +108,17 @@
 - Mapping of external metrics to UI “credits used”/usage totals remains unconfirmed; metrics docs only expose verification totals/series.
 
 ## Pending Work / Next Steps (Ordered)
-1) Credits ownership shift — stop local credit enforcement/reservations.
-   - Remove local debit/reserve/release logic from `/api/verify` and `/api/tasks` and related services/tests.
-   - This codebase should no longer return 402 for insufficient credits.
-2) Credits ownership shift — write to `credit_grants` only.
+1) Credits ownership shift — write to `credit_grants` only.
    - Update billing webhook to insert purchase grants into `credit_grants` (source=`purchase`, source_id=transaction_id).
    - Add signup bonus insertion into `credit_grants` (source=`signup`, source_id=user_id or auth event id).
-3) Credits ownership shift — update account/overview credits to external-only.
+2) Credits ownership shift — update account/overview credits to external-only.
    - Update `/api/overview` + `/api/account/credits` to return unavailable and log, and update UI to show `ext api data is not available` (no layout change).
-4) Credits ownership shift — update purchase history source.
+3) Credits ownership shift — update purchase history source.
    - Read purchase history from `credit_grants` (source=`purchase`) instead of `billing_purchases`.
-5) Tests + scripts.
+4) Tests + scripts.
    - Update backend tests expecting credit enforcement and `user_credits` changes.
    - Update Paddle E2E script + README to verify `credit_grants` instead of `user_credits`.
-6) UI re-verification.
+5) UI re-verification.
    - Verify manual history/export works with external jobs, file upload summary still functions, and missing file_name shows the required message.
 
 ## Required Process Reminders

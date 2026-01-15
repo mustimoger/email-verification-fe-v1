@@ -4,21 +4,27 @@ import httpx
 
 from app.api import tasks as tasks_module
 from app.api.tasks import router
-from app.clients.external import TaskDetailResponse, TaskEmailJob, TaskMetrics, TaskResponse
+from app.clients.external import TaskDetailResponse, TaskResponse
 from app.core.auth import AuthContext
 
 
-def _build_app(monkeypatch, fake_client):
+def _build_app(monkeypatch, fake_client, usage_calls):
     app = FastAPI()
     app.include_router(router)
 
     async def fake_user():
         return AuthContext(user_id="user-reserve", claims={}, token="t", role="user")
 
-    monkeypatch.setattr(tasks_module, "record_usage", lambda *args, **kwargs: None)
+    async def fake_client_override():
+        return fake_client
+
+    def _record_usage(user_id, path, count, api_key_id=None):
+        usage_calls.append({"user_id": user_id, "path": path, "count": count, "api_key_id": api_key_id})
+
+    monkeypatch.setattr(tasks_module, "record_usage", _record_usage)
 
     app.dependency_overrides[tasks_module.get_current_user] = fake_user
-    app.dependency_overrides[tasks_module.get_user_external_client] = lambda: fake_client
+    app.dependency_overrides[tasks_module.get_user_external_client] = fake_client_override
     return app
 
 
@@ -31,109 +37,41 @@ def _set_env(monkeypatch):
 
 
 @pytest.mark.anyio
-async def test_tasks_create_blocks_when_reservation_insufficient(monkeypatch):
+async def test_tasks_create_calls_external_client(monkeypatch):
     _set_env(monkeypatch)
     called = {"create": False}
+    usage_calls = []
 
     class FakeClient:
         async def create_task(self, emails, webhook_url=None):
             called["create"] = True
             return TaskResponse(id="task-1", email_count=len(emails))
 
-    app = _build_app(monkeypatch, FakeClient())
+    app = _build_app(monkeypatch, FakeClient(), usage_calls)
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
-        monkeypatch.setattr(
-            tasks_module,
-            "apply_credit_debit",
-            lambda **_kwargs: {"status": "insufficient", "credits_remaining": 0},
-        )
-
         resp = await client.post("/api/tasks", json={"emails": ["a@test.com", "b@test.com"]})
-        assert resp.status_code == 402
-        assert called["create"] is False
+        assert resp.status_code == 200
+        assert called["create"] is True
+
+    assert {"path": "/tasks", "count": 2, "api_key_id": None, "user_id": "user-reserve"} in usage_calls
 
 
 @pytest.mark.anyio
-async def test_tasks_detail_releases_remainder_for_reservation(monkeypatch):
+async def test_tasks_detail_returns_external_payload(monkeypatch):
     _set_env(monkeypatch)
-    release_calls = []
     task_id = "11111111-1111-1111-1111-111111111111"
+    usage_calls = []
 
     class FakeClient:
         async def get_task_detail(self, task_id: str):
-            return TaskDetailResponse(
-                id=task_id,
-                finished_at="2024-01-01T00:00:00Z",
-                metrics=TaskMetrics(
-                    verification_status={"exists": 3},
-                    total_email_addresses=3,
-                ),
-                jobs=[
-                    TaskEmailJob(email={"status": "exists"}),
-                    TaskEmailJob(email={"status": "exists"}),
-                    TaskEmailJob(email={"status": "exists"}),
-                ],
-            )
+            return TaskDetailResponse(id=task_id)
 
-    app = _build_app(monkeypatch, FakeClient())
+    app = _build_app(monkeypatch, FakeClient(), usage_calls)
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
-        monkeypatch.setattr(
-            tasks_module,
-            "fetch_task_credit_reservation",
-            lambda *_args, **_kwargs: {"credit_reserved_count": 5, "credit_reservation_id": "res-1"},
-        )
-        monkeypatch.setattr(
-            tasks_module,
-            "apply_credit_release",
-            lambda **kwargs: release_calls.append(kwargs) or {"status": "applied", "credits_remaining": 10},
-        )
-
-        def _debit_unexpected(**_kwargs):
-            raise AssertionError("apply_credit_debit should not be called for release-only path")
-
-        monkeypatch.setattr(tasks_module, "apply_credit_debit", _debit_unexpected)
-
         resp = await client.get(f"/api/tasks/{task_id}")
         assert resp.status_code == 200
-        assert len(release_calls) == 1
-        assert release_calls[0]["credits"] == 2
+        assert resp.json()["id"] == task_id
 
-
-@pytest.mark.anyio
-async def test_tasks_detail_prefers_metrics_counts(monkeypatch):
-    _set_env(monkeypatch)
-    debit_calls = []
-    task_id = "11111111-1111-1111-1111-111111111111"
-
-    class FakeClient:
-        async def get_task_detail(self, task_id: str):
-            return TaskDetailResponse(
-                id=task_id,
-                finished_at="2024-01-01T00:00:00Z",
-                metrics=TaskMetrics(
-                    verification_status={"exists": 2, "catchall": 1, "not_exists": 3},
-                    total_email_addresses=6,
-                ),
-                jobs=[TaskEmailJob(email={"status": "exists"})],
-            )
-
-    app = _build_app(monkeypatch, FakeClient())
-    transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
-        monkeypatch.setattr(tasks_module, "fetch_task_credit_reservation", lambda *_args, **_kwargs: None)
-        monkeypatch.setattr(
-            tasks_module,
-            "apply_credit_debit",
-            lambda **kwargs: debit_calls.append(kwargs) or {"status": "applied", "credits_remaining": 10},
-        )
-
-        resp = await client.get(f"/api/tasks/{task_id}")
-        assert resp.status_code == 200
-        assert len(debit_calls) == 1
-        assert debit_calls[0]["credits"] == 6
-        meta = debit_calls[0]["meta"]
-        assert meta["valid"] == 2
-        assert meta["invalid"] == 3
-        assert meta["catchall"] == 1
+    assert {"path": "/tasks/{id}", "count": 1, "api_key_id": None, "user_id": "user-reserve"} in usage_calls

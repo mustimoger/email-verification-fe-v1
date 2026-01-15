@@ -72,8 +72,8 @@
   Explanation: `ext-api-docs/endpoints/metrics_controller.md` exposes verification totals/series only (no explicit credit usage fields); mapping to UI credit labels remains unconfirmed and must be clarified with ext API dev to avoid misreporting.
 - [x] Credits ownership shift (external API) — finalize Supabase credit grants table (Option A).
   Explanation: Added the `credit_grants` schema (documented in `refactor.md`) and `backend/app/services/credit_grants.py`, then applied the Supabase migration `create_credit_grants`.
-- [ ] Credits ownership shift — stop local credit enforcement and reservations.
-  Explanation: Remove local debit/reservation logic from `/api/verify` and `/api/tasks` so credit enforcement is delegated to the external API; ensure local endpoints no longer return 402 for insufficient credits.
+- [x] Credits ownership shift — stop local credit enforcement and reservations.
+  Explanation: Removed local debit/reserve/release logic from `/api/verify`, `/api/tasks`, `/api/tasks/{id}`, `/api/tasks/{id}/download`, and `/api/tasks/upload`, so the backend no longer returns 402 for local credit checks. Updated backend tests to assert the external-only flow; UI 402 parsing remains for upstream errors.
 - [ ] Credits ownership shift — update billing webhook + signup flow to write `credit_grants`.
   Explanation: Replace `user_credits`/`credit_ledger` writes with `credit_grants` inserts for purchases and new signups using idempotent source/source_id keys.
 - [ ] Credits ownership shift — update `/api/overview` + `/api/account/credits` to show external-only credits.

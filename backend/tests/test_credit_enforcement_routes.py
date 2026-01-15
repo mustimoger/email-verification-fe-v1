@@ -1,6 +1,6 @@
 import pytest
 from fastapi import FastAPI
-from fastapi.testclient import TestClient
+import httpx
 
 from app.api import tasks as tasks_module
 from app.api.tasks import router
@@ -21,7 +21,7 @@ def _build_app(monkeypatch):
     app = FastAPI()
     app.include_router(router)
 
-    def fake_user():
+    async def fake_user():
         return AuthContext(user_id="user-credits", claims={}, token="t")
 
     class FakeClient:
@@ -29,18 +29,7 @@ def _build_app(monkeypatch):
             return external_module.VerifyEmailResponse(email=email, status="ok", validated_at="2024-01-01T00:00:00Z")
 
         async def get_task_detail(self, task_id: str):
-            return external_module.TaskDetailResponse(
-                id=task_id,
-                finished_at="2024-01-01T00:00:00Z",
-                metrics=external_module.TaskMetrics(
-                    verification_status={"exists": 1, "not_exists": 1},
-                    total_email_addresses=2,
-                ),
-                jobs=[
-                    external_module.TaskEmailJob(email={"status": "exists"}),
-                    external_module.TaskEmailJob(email={"status": "not_exists"}),
-                ],
-            )
+            return external_module.TaskDetailResponse(id=task_id)
 
     async def fake_client():
         return FakeClient()
@@ -48,34 +37,25 @@ def _build_app(monkeypatch):
     app.dependency_overrides[tasks_module.get_current_user] = fake_user
     app.dependency_overrides[tasks_module.get_user_external_client] = fake_client
     monkeypatch.setattr("app.api.tasks.record_usage", lambda *args, **kwargs: None)
-    monkeypatch.setattr("app.api.tasks.fetch_task_credit_reservation", lambda *_args, **_kwargs: None)
     return app
 
 
-def test_verify_returns_402_on_insufficient_credits(monkeypatch):
+@pytest.mark.anyio
+async def test_verify_succeeds_without_local_credit_enforcement(monkeypatch):
     app = _build_app(monkeypatch)
-    client = TestClient(app)
-
-    monkeypatch.setattr(
-        "app.api.tasks.apply_credit_debit",
-        lambda *args, **kwargs: {"status": "insufficient", "credits_remaining": 0},
-    )
-
-    resp = client.post("/api/verify", json={"email": "alpha@example.com"})
-    assert resp.status_code == 402
-    assert resp.json()["detail"] == "Insufficient credits"
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.post("/api/verify", json={"email": "alpha@example.com"})
+        assert resp.status_code == 200
+        assert resp.json()["email"] == "alpha@example.com"
 
 
-def test_task_detail_returns_402_on_insufficient_credits(monkeypatch):
+@pytest.mark.anyio
+async def test_task_detail_succeeds_without_local_credit_enforcement(monkeypatch):
     app = _build_app(monkeypatch)
-    client = TestClient(app)
-    task_id = "11111111-1111-1111-1111-111111111111"
-
-    monkeypatch.setattr(
-        "app.api.tasks.apply_credit_debit",
-        lambda *args, **kwargs: {"status": "insufficient", "credits_remaining": 0},
-    )
-
-    resp = client.get(f"/api/tasks/{task_id}")
-    assert resp.status_code == 402
-    assert resp.json()["detail"] == "Insufficient credits"
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        task_id = "11111111-1111-1111-1111-111111111111"
+        resp = await client.get(f"/api/tasks/{task_id}")
+        assert resp.status_code == 200
+        assert resp.json()["id"] == task_id

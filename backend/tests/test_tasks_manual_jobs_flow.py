@@ -17,7 +17,7 @@ def env(monkeypatch):
     monkeypatch.setenv("SUPABASE_AUTH_COOKIE_NAME", "cookie_name")
 
 
-def _build_app(monkeypatch, fake_client, usage_calls, reservation_calls):
+def _build_app(monkeypatch, fake_client, usage_calls):
     app = FastAPI()
     app.include_router(router)
 
@@ -30,23 +30,7 @@ def _build_app(monkeypatch, fake_client, usage_calls, reservation_calls):
     def _record_usage(user_id, path, count, api_key_id=None):
         usage_calls.append({"user_id": user_id, "path": path, "count": count, "api_key_id": api_key_id})
 
-    def _update_task_reservation(user_id, task_id, reserved_count, reservation_id):
-        reservation_calls.append(
-            {
-                "user_id": user_id,
-                "task_id": task_id,
-                "reserved_count": reserved_count,
-                "reservation_id": reservation_id,
-            }
-        )
-
     monkeypatch.setattr(tasks_module, "record_usage", _record_usage)
-    monkeypatch.setattr(
-        tasks_module,
-        "apply_credit_debit",
-        lambda **_kwargs: {"status": "applied", "credits_remaining": 100},
-    )
-    monkeypatch.setattr(tasks_module, "update_task_reservation", _update_task_reservation)
 
     app.dependency_overrides[tasks_module.get_current_user] = fake_user
     app.dependency_overrides[tasks_module.get_user_external_client] = fake_client_override
@@ -78,8 +62,7 @@ async def test_manual_task_create_and_jobs_poll(monkeypatch):
             )
 
     usage_calls = []
-    reservation_calls = []
-    app = _build_app(monkeypatch, FakeClient(), usage_calls, reservation_calls)
+    app = _build_app(monkeypatch, FakeClient(), usage_calls)
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
         create_resp = await client.post("/api/tasks", json={"emails": emails})
@@ -93,7 +76,5 @@ async def test_manual_task_create_and_jobs_poll(monkeypatch):
         assert jobs_data["jobs"][0]["task_id"] == task_id
         assert jobs_data["jobs"][0]["email_address"] == "alpha@example.com"
 
-    assert reservation_calls[0]["task_id"] == task_id
-    assert reservation_calls[0]["reserved_count"] == len(emails)
     assert {"path": "/tasks", "count": len(emails), "api_key_id": None, "user_id": "user-manual"} in usage_calls
     assert {"path": "/tasks/{id}/jobs", "count": 1, "api_key_id": None, "user_id": "user-manual"} in usage_calls
