@@ -13,6 +13,7 @@ from ..clients.external import (
     ExternalAPIClient,
     ExternalAPIError,
     TaskDetailResponse,
+    TaskJobsResponse,
     TaskListResponse,
     TaskResponse,
     VerifyEmailResponse,
@@ -618,6 +619,60 @@ async def get_latest_manual(
         manual_emails=latest.get("manual_emails"),
         manual_results=manual_results,
     )
+
+
+@router.get("/tasks/{task_id}/jobs", response_model=TaskJobsResponse)
+async def list_task_jobs(
+    task_id: uuid.UUID,
+    limit: int = 10,
+    offset: int = 0,
+    user: AuthContext = Depends(get_current_user),
+    client: ExternalAPIClient = Depends(get_user_external_client),
+):
+    start = time.time()
+    if limit <= 0:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="limit must be greater than zero")
+    if offset < 0:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="offset must be greater than or equal to zero")
+    task_id_str = str(task_id)
+    try:
+        result = await client.list_task_jobs(task_id_str, limit=limit, offset=offset)
+        record_usage(user.user_id, path="/tasks/{id}/jobs", count=len(result.jobs or []), api_key_id=None)
+        logger.info(
+            "route.tasks.jobs",
+            extra={
+                "user_id": user.user_id,
+                "task_id": task_id_str,
+                "limit": limit,
+                "offset": offset,
+                "returned": len(result.jobs or []),
+                "duration_ms": round((time.time() - start) * 1000, 2),
+            },
+        )
+        return result
+    except ExternalAPIError as exc:
+        level = logger.warning if exc.status_code in (401, 403) else logger.error
+        level(
+            "route.tasks.jobs.failed",
+            extra={
+                "user_id": user.user_id,
+                "task_id": task_id_str,
+                "status_code": exc.status_code,
+                "details": exc.details,
+                "duration_ms": round((time.time() - start) * 1000, 2),
+            },
+        )
+        raise HTTPException(status_code=exc.status_code, detail=exc.details or "Unable to fetch task jobs")
+    except Exception as exc:  # noqa: BLE001
+        logger.exception(
+            "route.tasks.jobs.exception",
+            extra={
+                "user_id": user.user_id,
+                "task_id": task_id_str,
+                "duration_ms": round((time.time() - start) * 1000, 2),
+            },
+        )
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Upstream tasks service error") from exc
 
 
 @router.get("/tasks/{task_id}", response_model=TaskDetailResponse)

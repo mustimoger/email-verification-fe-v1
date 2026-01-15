@@ -3,7 +3,7 @@ from typing import Dict, Optional
 
 from supabase import Client
 
-from ..core.supabase import get_supabase
+from .supabase_client import get_supabase
 
 logger = logging.getLogger(__name__)
 

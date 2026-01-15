@@ -122,6 +122,13 @@ class TaskDetailResponse(BaseModel):
     metrics: Optional[TaskMetrics] = None
 
 
+class TaskJobsResponse(BaseModel):
+    jobs: Optional[List[TaskEmailJob]] = None
+    count: Optional[int] = None
+    limit: Optional[int] = None
+    offset: Optional[int] = None
+
+
 class TaskListResponse(BaseModel):
     count: Optional[int] = None
     limit: Optional[int] = None
@@ -255,6 +262,15 @@ class ExternalAPIClient:
 
     async def get_task_detail(self, task_id: str) -> TaskDetailResponse:
         return await self._get(f"/tasks/{task_id}", TaskDetailResponse)
+
+    async def list_task_jobs(
+        self,
+        task_id: str,
+        limit: int = 10,
+        offset: int = 0,
+    ) -> TaskJobsResponse:
+        params: Dict[str, Any] = {"limit": limit, "offset": offset}
+        return await self._get(f"/tasks/{task_id}/jobs", TaskJobsResponse, params=params)
 
     async def upload_batch_file(
         self,
