@@ -41,6 +41,12 @@
   - `/api/verify` and `/api/tasks` no longer persist manual emails/results to Supabase.
   - `/api/overview` and `/api/debug/tasks` now use external tasks/metrics only, with explicit logs when data is missing.
   - Manual verify no longer performs `/emails/{address}` enrichment; export fields now rely entirely on task jobs data (missing values should surface as `ext api data is not available` in the UI export).
+- Phase 1 backend test coverage added:
+  - Added reservation table service tests and manual jobs flow integration coverage using async ASGI clients.
+  - Updated `test_tasks_credit_reservation` to match the external-only task API and async dependency overrides.
+- Credit grants schema + service drafted for external API ownership shift:
+  - Added `credit_grants` schema definition to `refactor.md` and a new `backend/app/services/credit_grants.py` helper.
+  - Applied Supabase migration `create_credit_grants` successfully.
 
 ## Repo State / Alerts
 - Files over 600 lines: `backend/app/api/tasks.py`, `app/verify/page.tsx`, `app/verify/utils.ts`.
@@ -57,6 +63,7 @@
 - `app/verify/page.tsx` + `app/verify/utils.ts` — manual verify now uses `/api/tasks` + `/api/tasks/{id}/jobs`; CSV export built from job data.
 - `app/lib/api-client.ts` — added `TaskJobEmail`, `TaskJobsResponse`, and `getTaskJobs`.
 - `tests/history-mapping.test.ts`, `tests/verify-mapping.test.ts`, `backend/tests/test_tasks_jobs_proxy.py`.
+- `backend/tests/test_task_credit_reservations.py`, `backend/tests/test_tasks_manual_jobs_flow.py`, `backend/tests/test_tasks_credit_reservation.py`.
 - `PLAN.md`, `refactor.md`, `handover.md`.
 
 ## Commits (for rollback)
@@ -79,6 +86,8 @@
   - Result: 3 passed (pyiceberg/pydantic warnings only).
 - `set -a && source .env.local && set +a && source .venv/bin/activate && npx tsx tests/verify-mapping.test.ts`
   - Result: verify mapping tests passed; saw expected `verify.file_name.unavailable` + `verify.manual.job_missing_email` logs.
+- `source .venv/bin/activate && pytest backend/tests/test_task_credit_reservations.py backend/tests/test_tasks_manual_jobs_flow.py backend/tests/test_tasks_jobs_proxy.py backend/tests/test_tasks_credit_reservation.py`
+  - Result: 12 passed (pyiceberg/pydantic warnings only).
 
 ## Important Test Harness Note (Avoid Rework)
 - `fastapi.TestClient` hangs in this environment. Use `httpx.AsyncClient` + `httpx.ASGITransport` instead.
@@ -88,15 +97,12 @@
 ## External API Status / Gaps
 - Task list/detail **still does not include `file_name`** (upload response includes filename).
 - Manual export fields are available via **`GET /api/v1/tasks/{id}/jobs`** (user-scoped) and are now used by the Verify page.
-- Credit usage/spend write-back to Supabase is pending (waiting on final schema).
-- Mapping of external metrics → UI “credits used”/usage totals is still unconfirmed.
+- Credit usage/spend write-back to Supabase is pending (ext-api-docs do not document any credits/write-back endpoints; waiting on final schema).
+- Mapping of external metrics → UI “credits used”/usage totals is still unconfirmed; metrics docs only expose verification totals/series.
  - Overview usage totals/series now come from `/metrics/verifications` when available (total_verifications + series points).
 
 ## Pending Work / Next Steps (Ordered)
-1) **Update tests**:
-   - Add tests for reservation table service and any remaining manual-flow integration coverage.
-   - Run targeted pytest with venv and update frontend tests for manual task flow as needed.
-2) **Re‑verify UI**:
+1) **Re‑verify UI**:
    - Verify manual history/export works with external jobs, file upload summary still functions, and missing file_name shows the required message.
 
 ## Required Process Reminders

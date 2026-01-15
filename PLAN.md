@@ -67,9 +67,21 @@
 - [x] Phase 0 — document missing/unclear external data and UI fallback message for ext API dev.
   Explanation: Updated `refactor.md` with an “IMPORTANT NOTE” section listing missing/unclear external API fields and requiring the UI to show `ext api data is not available` until those capabilities are delivered.
 - [ ] Phase 0 — confirm external API writes credit usage/spend into Supabase.
-  Explanation: External API dev is waiting on the final Supabase schema to implement write-back; still not documented, so credit tracking cannot be removed yet.
+  Explanation: Reviewed `ext-api-docs` and found no documented credit write-back or credits endpoints; external API dev is still waiting on the final Supabase schema, so credit tracking cannot be removed yet.
 - [ ] Phase 0 — map external metrics to UI “credits used”/usage totals.
-  Explanation: `ext-api-docs/endpoints/metrics_controller.md` exposes totals and series, but the exact mapping to UI credit labels remains unconfirmed and must be clarified with ext API dev to avoid misreporting.
+  Explanation: `ext-api-docs/endpoints/metrics_controller.md` exposes verification totals/series only (no explicit credit usage fields); mapping to UI credit labels remains unconfirmed and must be clarified with ext API dev to avoid misreporting.
+- [x] Credits ownership shift (external API) — finalize Supabase credit grants table (Option A).
+  Explanation: Added the `credit_grants` schema (documented in `refactor.md`) and `backend/app/services/credit_grants.py`, then applied the Supabase migration `create_credit_grants`.
+- [ ] Credits ownership shift — stop local credit enforcement and reservations.
+  Explanation: Remove local debit/reservation logic from `/api/verify` and `/api/tasks` so credit enforcement is delegated to the external API; ensure local endpoints no longer return 402 for insufficient credits.
+- [ ] Credits ownership shift — update billing webhook + signup flow to write `credit_grants`.
+  Explanation: Replace `user_credits`/`credit_ledger` writes with `credit_grants` inserts for purchases and new signups using idempotent source/source_id keys.
+- [ ] Credits ownership shift — update `/api/overview` + `/api/account/credits` to show external-only credits.
+  Explanation: Return `credits_remaining` as unavailable (and log) and update UI to show `ext api data is not available` instead of numeric balances.
+- [ ] Credits ownership shift — update account purchase history to read from `credit_grants` (purchase source).
+  Explanation: Keep purchase history intact while moving the storage source to `credit_grants` so the UI remains unchanged.
+- [ ] Credits ownership shift — update tests + scripts for the new credit grants flow.
+  Explanation: Adjust backend tests that assume local credit enforcement and update the Paddle E2E script to verify `credit_grants` instead of `user_credits`/`billing_purchases`.
 - [ ] External-API-first refactor Phase 1 — remove task caching and proxy tasks directly to external API.
   Explanation: Phase 1 replaces Supabase task storage with direct external API calls and updates UI data mapping while preserving design; any missing fields must show `ext api data is not available` and be logged.
 - [x] Phase 1 — backend tasks proxy (list/detail/download/upload) and remove Supabase task upserts/polling.
@@ -103,8 +115,14 @@
   Explanation: Switched latest-upload hydration/refresh to `/api/tasks` (external task list), mapped external metrics into Verify summaries, and surfaced `ext api data is not available` for missing file/export detail fields while keeping the layout intact. Manual exports now rely on task jobs data with localStorage hydration.
 - [x] Phase 1 — Verify external task wiring (MVP) + missing export detail messaging + tests.
   Explanation: Added task-based summary mapping in `app/verify/utils.ts`, disabled downloads when file name is missing, updated CSV export to emit `ext api data is not available` for missing detail fields, and ran `npx tsx tests/verify-mapping.test.ts` (after sourcing `.env.local`) with venv active.
-- [ ] Phase 1 — tests/verification for task proxying.
-  Explanation: Add/update backend + frontend tests to cover proxy routes (including `/tasks/{id}/jobs`) and missing-field fallbacks; include reservation-table coverage; run targeted tests with the Python venv active. Added backend jobs-proxy tests and updated verify mapping tests; remaining: manual flow integration checks and any additional frontend coverage.
+- [x] Phase 1 — tests/verification for task proxying (remaining).
+  Explanation: Added reservation/manual jobs flow tests and re-ran targeted pytest to validate task proxying coverage without regressions.
+- [x] Phase 1 — add backend tests for `task_credit_reservations`.
+  Explanation: Added `backend/tests/test_task_credit_reservations.py` to cover reservation upsert payloads, fetch success/miss, and error handling so the reservation table remains the single source of truth.
+- [x] Phase 1 — add backend integration tests for manual task jobs flow.
+  Explanation: Added `backend/tests/test_tasks_manual_jobs_flow.py` to exercise `/api/tasks` creation + `/api/tasks/{id}/jobs` polling with record_usage and reservation wiring using async ASGI clients.
+- [x] Phase 1 — re-run targeted pytest for new reservation/manual-flow coverage.
+  Explanation: Ran `pytest backend/tests/test_task_credit_reservations.py backend/tests/test_tasks_manual_jobs_flow.py backend/tests/test_tasks_jobs_proxy.py backend/tests/test_tasks_credit_reservation.py` with the venv active; all 12 tests passed (warnings only).
 - [x] Phase 1 — update backend tests for external task proxy behavior.
   Explanation: Updated task list/latest upload/refresh tests to use async ASGI clients and new external-only behavior, removed upload polling test, and ran pytest for the affected suite (14 passed; warnings from pyiceberg/pydantic).
 - [x] Session handover refresh — update `handover.md` with Phase 1 progress, test outcomes, and known test harness constraints.

@@ -26,14 +26,45 @@ If any required data is missing/undocumented, the UI must display the exact mess
 Missing/unclear as of now:
 - Task upload responses include `filename`, but task list/detail schemas do not include `file_name`.
 - Manual verification export detail fields are admin-only (`/emails`), not user-scoped.
-- Credit usage/spend write-back to Supabase is pending; external API dev is waiting on final Supabase structure.
-- Mapping for UI “credits used”/“usage totals” to external metrics is not confirmed yet.
+- Credit usage/spend write-back to Supabase is pending; ext-api-docs do not document any credits/write-back endpoints and the external API dev is waiting on the final Supabase structure.
+- Mapping for UI “credits used”/“usage totals” to external metrics is not confirmed yet; ext-api-docs only describe verification totals/series without explicit credit usage fields.
 
 ## Target End State (Architecture)
 ```
 Frontend → Backend (FastAPI) → External API (tasks, keys, metrics, verification)
                               ↓
                          Supabase (profiles, credits ledger, billing only)
+```
+
+## Supabase Credit Grants Schema (Final for External API)
+Single append-only table for purchase credits + signup grants. External API should read from this table to compute balances and usage.
+
+```sql
+create table if not exists public.credit_grants (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles(user_id),
+  source text not null,
+  source_id text not null,
+  event_id text null,
+  event_type text null,
+  transaction_id text null,
+  price_ids text[] not null default '{}'::text[],
+  credits_granted integer not null check (credits_granted >= 0),
+  amount integer null check (amount >= 0),
+  currency text null,
+  checkout_email text null,
+  invoice_id text null,
+  invoice_number text null,
+  purchased_at timestamptz null,
+  raw jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
+create unique index if not exists credit_grants_user_source_id_key
+  on public.credit_grants (user_id, source, source_id);
+
+create index if not exists credit_grants_user_source_created_idx
+  on public.credit_grants (user_id, source, created_at desc);
 ```
 
 ## Phase 0 — Preconditions and Alignment (Required)

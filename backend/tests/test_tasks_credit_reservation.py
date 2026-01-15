@@ -1,5 +1,6 @@
+import pytest
 from fastapi import FastAPI
-from fastapi.testclient import TestClient
+import httpx
 
 from app.api import tasks as tasks_module
 from app.api.tasks import router
@@ -11,10 +12,9 @@ def _build_app(monkeypatch, fake_client):
     app = FastAPI()
     app.include_router(router)
 
-    def fake_user():
+    async def fake_user():
         return AuthContext(user_id="user-reserve", claims={}, token="t", role="user")
 
-    monkeypatch.setattr(tasks_module, "upsert_tasks_from_list", lambda *args, **kwargs: None)
     monkeypatch.setattr(tasks_module, "record_usage", lambda *args, **kwargs: None)
 
     app.dependency_overrides[tasks_module.get_current_user] = fake_user
@@ -30,7 +30,8 @@ def _set_env(monkeypatch):
     monkeypatch.setenv("SUPABASE_AUTH_COOKIE_NAME", "cookie_name")
 
 
-def test_tasks_create_blocks_when_reservation_insufficient(monkeypatch):
+@pytest.mark.anyio
+async def test_tasks_create_blocks_when_reservation_insufficient(monkeypatch):
     _set_env(monkeypatch)
     called = {"create": False}
 
@@ -40,20 +41,21 @@ def test_tasks_create_blocks_when_reservation_insufficient(monkeypatch):
             return TaskResponse(id="task-1", email_count=len(emails))
 
     app = _build_app(monkeypatch, FakeClient())
-    client = TestClient(app)
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        monkeypatch.setattr(
+            tasks_module,
+            "apply_credit_debit",
+            lambda **_kwargs: {"status": "insufficient", "credits_remaining": 0},
+        )
 
-    monkeypatch.setattr(
-        tasks_module,
-        "apply_credit_debit",
-        lambda **_kwargs: {"status": "insufficient", "credits_remaining": 0},
-    )
-
-    resp = client.post("/api/tasks", json={"emails": ["a@test.com", "b@test.com"]})
-    assert resp.status_code == 402
-    assert called["create"] is False
+        resp = await client.post("/api/tasks", json={"emails": ["a@test.com", "b@test.com"]})
+        assert resp.status_code == 402
+        assert called["create"] is False
 
 
-def test_tasks_detail_releases_remainder_for_reservation(monkeypatch):
+@pytest.mark.anyio
+async def test_tasks_detail_releases_remainder_for_reservation(monkeypatch):
     _set_env(monkeypatch)
     release_calls = []
     task_id = "11111111-1111-1111-1111-111111111111"
@@ -75,32 +77,32 @@ def test_tasks_detail_releases_remainder_for_reservation(monkeypatch):
             )
 
     app = _build_app(monkeypatch, FakeClient())
-    client = TestClient(app)
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        monkeypatch.setattr(
+            tasks_module,
+            "fetch_task_credit_reservation",
+            lambda *_args, **_kwargs: {"credit_reserved_count": 5, "credit_reservation_id": "res-1"},
+        )
+        monkeypatch.setattr(
+            tasks_module,
+            "apply_credit_release",
+            lambda **kwargs: release_calls.append(kwargs) or {"status": "applied", "credits_remaining": 10},
+        )
 
-    monkeypatch.setattr(
-        tasks_module,
-        "fetch_task_credit_reservation",
-        lambda *_args, **_kwargs: {"credit_reserved_count": 5, "credit_reservation_id": "res-1"},
-    )
-    monkeypatch.setattr(tasks_module, "upsert_task_from_detail", lambda *args, **kwargs: None)
-    monkeypatch.setattr(
-        tasks_module,
-        "apply_credit_release",
-        lambda **kwargs: release_calls.append(kwargs) or {"status": "applied", "credits_remaining": 10},
-    )
+        def _debit_unexpected(**_kwargs):
+            raise AssertionError("apply_credit_debit should not be called for release-only path")
 
-    def _debit_unexpected(**_kwargs):
-        raise AssertionError("apply_credit_debit should not be called for release-only path")
+        monkeypatch.setattr(tasks_module, "apply_credit_debit", _debit_unexpected)
 
-    monkeypatch.setattr(tasks_module, "apply_credit_debit", _debit_unexpected)
-
-    resp = client.get(f"/api/tasks/{task_id}")
-    assert resp.status_code == 200
-    assert len(release_calls) == 1
-    assert release_calls[0]["credits"] == 2
+        resp = await client.get(f"/api/tasks/{task_id}")
+        assert resp.status_code == 200
+        assert len(release_calls) == 1
+        assert release_calls[0]["credits"] == 2
 
 
-def test_tasks_detail_prefers_metrics_counts(monkeypatch):
+@pytest.mark.anyio
+async def test_tasks_detail_prefers_metrics_counts(monkeypatch):
     _set_env(monkeypatch)
     debit_calls = []
     task_id = "11111111-1111-1111-1111-111111111111"
@@ -118,21 +120,20 @@ def test_tasks_detail_prefers_metrics_counts(monkeypatch):
             )
 
     app = _build_app(monkeypatch, FakeClient())
-    client = TestClient(app)
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        monkeypatch.setattr(tasks_module, "fetch_task_credit_reservation", lambda *_args, **_kwargs: None)
+        monkeypatch.setattr(
+            tasks_module,
+            "apply_credit_debit",
+            lambda **kwargs: debit_calls.append(kwargs) or {"status": "applied", "credits_remaining": 10},
+        )
 
-    monkeypatch.setattr(tasks_module, "fetch_task_credit_reservation", lambda *_args, **_kwargs: None)
-    monkeypatch.setattr(tasks_module, "upsert_task_from_detail", lambda *args, **kwargs: None)
-    monkeypatch.setattr(
-        tasks_module,
-        "apply_credit_debit",
-        lambda **kwargs: debit_calls.append(kwargs) or {"status": "applied", "credits_remaining": 10},
-    )
-
-    resp = client.get(f"/api/tasks/{task_id}")
-    assert resp.status_code == 200
-    assert len(debit_calls) == 1
-    assert debit_calls[0]["credits"] == 6
-    meta = debit_calls[0]["meta"]
-    assert meta["valid"] == 2
-    assert meta["invalid"] == 3
-    assert meta["catchall"] == 1
+        resp = await client.get(f"/api/tasks/{task_id}")
+        assert resp.status_code == 200
+        assert len(debit_calls) == 1
+        assert debit_calls[0]["credits"] == 6
+        meta = debit_calls[0]["meta"]
+        assert meta["valid"] == 2
+        assert meta["invalid"] == 3
+        assert meta["catchall"] == 1
