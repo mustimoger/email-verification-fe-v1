@@ -84,9 +84,6 @@ def test_overview_success(monkeypatch):
         async def list_tasks(self, limit=10, offset=0, user_id=None):
             return task_list
 
-    usage_calls = []
-    monkeypatch.setattr(overview_module, "record_usage", lambda *args, **kwargs: usage_calls.append(args))
-
     client = TestClient(app)
     app.dependency_overrides[overview_module.get_user_external_client] = lambda: FakeClient()
     resp = client.get("/api/overview")
@@ -111,7 +108,6 @@ def test_overview_success(monkeypatch):
     assert data["current_plan"]["plan_names"] == ["Starter", "Pro"]
     assert data["current_plan"]["price_ids"] == ["price-1", "price-2"]
     assert data["current_plan"]["purchased_at"] == "2024-01-03T00:00:00Z"
-    assert usage_calls
 
 
 def test_overview_metrics_timeout_fallback(monkeypatch):
@@ -133,8 +129,6 @@ def test_overview_metrics_timeout_fallback(monkeypatch):
 
         async def list_tasks(self, limit=10, offset=0, user_id=None):
             return TaskListResponse(tasks=[], count=0, limit=limit, offset=offset)
-
-    monkeypatch.setattr(overview_module, "record_usage", lambda *args, **kwargs: None)
 
     client = TestClient(app)
     app.dependency_overrides[overview_module.get_user_external_client] = lambda: FakeClient()
@@ -164,8 +158,6 @@ def test_overview_metrics_error_fallback(monkeypatch):
 
         async def list_tasks(self, limit=10, offset=0, user_id=None):
             return TaskListResponse(tasks=[], count=0, limit=limit, offset=offset)
-
-    monkeypatch.setattr(overview_module, "record_usage", lambda *args, **kwargs: None)
 
     client = TestClient(app)
     app.dependency_overrides[overview_module.get_user_external_client] = lambda: FakeClient()

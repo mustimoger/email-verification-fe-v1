@@ -262,7 +262,7 @@ export type UsagePurposeSeriesPoint = {
 
 export type UsageSummaryResponse = {
   source: string;
-  total: number;
+  total: number | null;
   series: UsageSummaryPoint[];
   api_key_id?: string | null;
 };

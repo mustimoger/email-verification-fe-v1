@@ -25,7 +25,6 @@ def _build_app(monkeypatch):
     async def fake_user():
         return AuthContext(user_id="user-latest", claims={}, token="t")
 
-    monkeypatch.setattr(tasks_module, "record_usage", lambda *args, **kwargs: None)
     app.dependency_overrides[tasks_module.get_current_user] = fake_user
     return app
 

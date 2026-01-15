@@ -19,14 +19,11 @@ def test_get_profile_not_found(monkeypatch):
         return AuthContext(user_id="u-1", claims={}, token="t")
 
     app.dependency_overrides[account_module.get_current_user] = fake_user
-    usage_calls = []
-    monkeypatch.setattr(account_module, "record_usage", lambda *args, **kwargs: usage_calls.append(args))
     monkeypatch.setattr(account_module.supabase_client, "fetch_profile", lambda user_id: None)
 
     client = TestClient(app)
     resp = client.get("/api/account/profile")
     assert resp.status_code == 404
-    assert usage_calls == []
 
 
 def test_get_profile_success(monkeypatch):
@@ -36,8 +33,6 @@ def test_get_profile_success(monkeypatch):
         return AuthContext(user_id="u-2", claims={}, token="t")
 
     app.dependency_overrides[account_module.get_current_user] = fake_user
-    usage_calls = []
-    monkeypatch.setattr(account_module, "record_usage", lambda *args, **kwargs: usage_calls.append(args))
     monkeypatch.setattr(
         account_module.supabase_client,
         "fetch_profile",
@@ -50,7 +45,6 @@ def test_get_profile_success(monkeypatch):
     data = resp.json()
     assert data["user_id"] == "u-2"
     assert data["email"] == "x@test.com"
-    assert usage_calls  # one call recorded
 
 
 def test_update_profile(monkeypatch):
@@ -61,8 +55,6 @@ def test_update_profile(monkeypatch):
 
     app.dependency_overrides[account_module.get_current_user] = fake_user
     updated = {"user_id": "u-3", "email": "new@test.com", "display_name": "New"}
-    usage_calls = []
-    monkeypatch.setattr(account_module, "record_usage", lambda *args, **kwargs: usage_calls.append(args))
     monkeypatch.setattr(
         account_module.supabase_client,
         "upsert_profile",
@@ -73,7 +65,6 @@ def test_update_profile(monkeypatch):
     resp = client.patch("/api/account/profile", json={"email": "new@test.com", "display_name": "New"})
     assert resp.status_code == 200
     assert resp.json()["email"] == "new@test.com"
-    assert usage_calls
 
 
 def test_update_profile_email_mismatch(monkeypatch):
@@ -83,8 +74,6 @@ def test_update_profile_email_mismatch(monkeypatch):
         return AuthContext(user_id="u-5", claims={"email": "old@test.com"}, token="t")
 
     app.dependency_overrides[account_module.get_current_user] = fake_user
-    usage_calls = []
-    monkeypatch.setattr(account_module, "record_usage", lambda *args, **kwargs: usage_calls.append(args))
     monkeypatch.setattr(
         account_module.supabase_client,
         "upsert_profile",
@@ -94,7 +83,6 @@ def test_update_profile_email_mismatch(monkeypatch):
     client = TestClient(app)
     resp = client.patch("/api/account/profile", json={"email": "new@test.com"})
     assert resp.status_code == 403
-    assert usage_calls == []
 
 
 def test_update_profile_email_match(monkeypatch):
@@ -105,8 +93,6 @@ def test_update_profile_email_match(monkeypatch):
 
     app.dependency_overrides[account_module.get_current_user] = fake_user
     updated = {"user_id": "u-6", "email": "same@test.com", "display_name": "Same"}
-    usage_calls = []
-    monkeypatch.setattr(account_module, "record_usage", lambda *args, **kwargs: usage_calls.append(args))
     monkeypatch.setattr(
         account_module.supabase_client,
         "upsert_profile",
@@ -117,7 +103,6 @@ def test_update_profile_email_match(monkeypatch):
     resp = client.patch("/api/account/profile", json={"email": "same@test.com", "display_name": "Same"})
     assert resp.status_code == 200
     assert resp.json()["email"] == "same@test.com"
-    assert usage_calls
 
 
 def test_get_credits(monkeypatch):
@@ -127,11 +112,8 @@ def test_get_credits(monkeypatch):
         return AuthContext(user_id="u-4", claims={}, token="t")
 
     app.dependency_overrides[account_module.get_current_user] = fake_user
-    usage_calls = []
-    monkeypatch.setattr(account_module, "record_usage", lambda *args, **kwargs: usage_calls.append(args))
 
     client = TestClient(app)
     resp = client.get("/api/account/credits")
     assert resp.status_code == 200
     assert resp.json()["credits_remaining"] is None
-    assert usage_calls

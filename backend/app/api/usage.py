@@ -9,27 +9,11 @@ from pydantic import BaseModel
 from ..core.auth import AuthContext, get_current_user
 from ..clients.external import ExternalAPIClient, ExternalAPIError, APIUsageMetricsResponse, APIUsageMetricsSeriesPoint
 from .api_keys import get_user_external_client
-from ..services import supabase_client
-from ..services.usage import record_usage
-from ..services.usage_summary import summarize_tasks_usage, normalize_range_value
+from ..services.date_range import normalize_range_value
+from ..services.verification_metrics import usage_series_from_metrics
 
 router = APIRouter(prefix="/api/usage", tags=["usage"])
 logger = logging.getLogger(__name__)
-
-
-class UsageEntry(BaseModel):
-    id: str
-    user_id: str
-    api_key_id: Optional[str] = None
-    path: Optional[str] = None
-    count: int
-    period_start: Optional[str] = None
-    period_end: Optional[str] = None
-    created_at: Optional[str] = None
-
-
-class UsageResponse(BaseModel):
-    items: List[UsageEntry]
 
 
 class UsageSummaryPoint(BaseModel):
@@ -39,7 +23,7 @@ class UsageSummaryPoint(BaseModel):
 
 class UsageSummaryResponse(BaseModel):
     source: str
-    total: int
+    total: Optional[int] = None
     series: List[UsageSummaryPoint]
     api_key_id: Optional[str] = None
 
@@ -54,28 +38,13 @@ class UsagePurposeResponse(BaseModel):
     user_id: Optional[str] = None
 
 
-@router.get("", response_model=UsageResponse)
-def list_usage(
-    start: Optional[str] = Query(default=None, description="ISO timestamp start"),
-    end: Optional[str] = Query(default=None, description="ISO timestamp end"),
-    api_key_id: Optional[str] = Query(default=None, description="Filter by api_key_id"),
-    user: AuthContext = Depends(get_current_user),
-):
-    rows = supabase_client.fetch_usage(user.user_id, start=start, end=end, api_key_id=api_key_id)
-    logger.info(
-        "usage.list",
-        extra={"user_id": user.user_id, "count": len(rows), "start": start, "end": end, "api_key_id": api_key_id},
-    )
-    record_usage(user.user_id, path="/usage", count=1, api_key_id=api_key_id)
-    return UsageResponse(items=rows)
-
-
 @router.get("/summary", response_model=UsageSummaryResponse)
-def get_usage_summary(
+async def get_usage_summary(
     start: Optional[str] = Query(default=None, description="ISO timestamp start"),
     end: Optional[str] = Query(default=None, description="ISO timestamp end"),
     api_key_id: Optional[str] = Query(default=None, description="Filter by api_key_id"),
     user: AuthContext = Depends(get_current_user),
+    client: ExternalAPIClient = Depends(get_user_external_client),
 ):
     try:
         start_value = normalize_range_value(start)
@@ -89,13 +58,36 @@ def get_usage_summary(
         if start_dt > end_dt:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="start must be before end")
 
-    summary = summarize_tasks_usage(user.user_id, api_key_id=api_key_id, start=start_value, end=end_value)
-    logger.info(
-        "usage.summary",
-        extra={"user_id": user.user_id, "api_key_id": api_key_id, "total": summary["total"], "series": len(summary["series"])},
-    )
-    record_usage(user.user_id, path="/usage/summary", count=1, api_key_id=api_key_id)
-    return UsageSummaryResponse(source="dashboard", total=summary["total"], series=summary["series"], api_key_id=api_key_id)
+    if api_key_id:
+        logger.info(
+            "usage.summary.api_key_unavailable",
+            extra={"user_id": user.user_id, "api_key_id": api_key_id, "from": start_value, "to": end_value},
+        )
+        return UsageSummaryResponse(source="unavailable", total=None, series=[], api_key_id=api_key_id)
+
+    try:
+        metrics = await client.get_verification_metrics(start=start_value, end=end_value)
+        series_points = usage_series_from_metrics(metrics)
+        series = [UsageSummaryPoint(date=point["date"], count=point["count"]) for point in series_points]
+        total = metrics.total_verifications if metrics else None
+        logger.info(
+            "usage.summary",
+            extra={"user_id": user.user_id, "total": total, "series": len(series), "from": start_value, "to": end_value},
+        )
+        if total is None:
+            logger.warning("usage.summary.total_unavailable", extra={"user_id": user.user_id})
+        if not series:
+            logger.info("usage.summary.series_unavailable", extra={"user_id": user.user_id})
+        return UsageSummaryResponse(source="external", total=total, series=series, api_key_id=api_key_id)
+    except ExternalAPIError as exc:
+        logger.warning(
+            "usage.summary.external_failed",
+            extra={"user_id": user.user_id, "status_code": exc.status_code, "details": exc.details},
+        )
+        return UsageSummaryResponse(source="unavailable", total=None, series=[], api_key_id=api_key_id)
+    except Exception as exc:  # noqa: BLE001
+        logger.error("usage.summary.external_error", extra={"user_id": user.user_id, "error": str(exc)})
+        return UsageSummaryResponse(source="unavailable", total=None, series=[], api_key_id=api_key_id)
 
 
 @router.get("/purpose", response_model=UsagePurposeResponse)
@@ -138,7 +130,6 @@ async def get_usage_by_purpose(
             start=start_value,
             end=end_value,
         )
-        record_usage(target_user_id, path="/usage/purpose", count=1)
         logger.info(
             "usage.purpose",
             extra={

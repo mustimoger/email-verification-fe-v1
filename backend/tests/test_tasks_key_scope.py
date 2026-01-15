@@ -31,7 +31,6 @@ def _build_app(monkeypatch):
             calls["external_list"] += 1
             return TaskListResponse(count=0, tasks=[])
 
-    monkeypatch.setattr(tasks_module, "record_usage", lambda *args, **kwargs: None)
     async def fake_client():
         return FakeClient()
 

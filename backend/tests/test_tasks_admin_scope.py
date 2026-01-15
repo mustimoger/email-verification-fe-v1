@@ -21,7 +21,6 @@ def _build_app(monkeypatch, fake_user, fake_client):
     app = FastAPI()
     app.include_router(router)
 
-    monkeypatch.setattr(tasks_module, "record_usage", lambda *args, **kwargs: None)
     async def fake_client_override():
         return fake_client
 

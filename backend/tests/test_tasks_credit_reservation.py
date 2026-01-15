@@ -8,7 +8,7 @@ from app.clients.external import TaskDetailResponse, TaskResponse
 from app.core.auth import AuthContext
 
 
-def _build_app(monkeypatch, fake_client, usage_calls):
+def _build_app(monkeypatch, fake_client):
     app = FastAPI()
     app.include_router(router)
 
@@ -17,11 +17,6 @@ def _build_app(monkeypatch, fake_client, usage_calls):
 
     async def fake_client_override():
         return fake_client
-
-    def _record_usage(user_id, path, count, api_key_id=None):
-        usage_calls.append({"user_id": user_id, "path": path, "count": count, "api_key_id": api_key_id})
-
-    monkeypatch.setattr(tasks_module, "record_usage", _record_usage)
 
     app.dependency_overrides[tasks_module.get_current_user] = fake_user
     app.dependency_overrides[tasks_module.get_user_external_client] = fake_client_override
@@ -40,38 +35,33 @@ def _set_env(monkeypatch):
 async def test_tasks_create_calls_external_client(monkeypatch):
     _set_env(monkeypatch)
     called = {"create": False}
-    usage_calls = []
 
     class FakeClient:
         async def create_task(self, emails, webhook_url=None):
             called["create"] = True
             return TaskResponse(id="task-1", email_count=len(emails))
 
-    app = _build_app(monkeypatch, FakeClient(), usage_calls)
+    app = _build_app(monkeypatch, FakeClient())
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
         resp = await client.post("/api/tasks", json={"emails": ["a@test.com", "b@test.com"]})
         assert resp.status_code == 200
         assert called["create"] is True
 
-    assert {"path": "/tasks", "count": 2, "api_key_id": None, "user_id": "user-reserve"} in usage_calls
 
 
 @pytest.mark.anyio
 async def test_tasks_detail_returns_external_payload(monkeypatch):
     _set_env(monkeypatch)
     task_id = "11111111-1111-1111-1111-111111111111"
-    usage_calls = []
 
     class FakeClient:
         async def get_task_detail(self, task_id: str):
             return TaskDetailResponse(id=task_id)
 
-    app = _build_app(monkeypatch, FakeClient(), usage_calls)
+    app = _build_app(monkeypatch, FakeClient())
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
         resp = await client.get(f"/api/tasks/{task_id}")
         assert resp.status_code == 200
         assert resp.json()["id"] == task_id
-
-    assert {"path": "/tasks/{id}", "count": 1, "api_key_id": None, "user_id": "user-reserve"} in usage_calls

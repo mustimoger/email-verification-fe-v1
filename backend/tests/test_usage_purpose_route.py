@@ -51,7 +51,6 @@ def _build_app(monkeypatch, role="user"):
 
     app.dependency_overrides[usage_module.get_current_user] = fake_user
     app.dependency_overrides[usage_module.get_user_external_client] = lambda: FakeClient()
-    monkeypatch.setattr(usage_module, "record_usage", lambda *args, **kwargs: None)
     return app, captured
 
 

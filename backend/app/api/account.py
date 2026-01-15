@@ -9,7 +9,6 @@ from ..services import supabase_client
 from ..services.credit_grants import list_credit_grants
 from ..core.settings import get_settings
 from ..services.supabase_client import get_storage
-from ..services.usage import record_usage
 
 router = APIRouter(prefix="/api/account", tags=["account"])
 logger = logging.getLogger(__name__)
@@ -121,7 +120,6 @@ def get_profile(user: AuthContext = Depends(get_current_user)):
         logger.info("account.profile.not_found", extra={"user_id": user.user_id})
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found")
     logger.info("account.profile.fetched", extra={"user_id": user.user_id})
-    record_usage(user.user_id, path="/account/profile", count=1)
     return profile
 
 
@@ -148,7 +146,6 @@ def update_profile(payload: ProfileUpdateRequest, user: AuthContext = Depends(ge
         user.user_id, email=payload.email, display_name=payload.display_name, avatar_url=payload.avatar_url
     )
     logger.info("account.profile.updated", extra={"user_id": user.user_id})
-    record_usage(user.user_id, path="/account/profile", count=1)
     return updated
 
 
@@ -183,7 +180,6 @@ async def upload_avatar(
     avatar_url = public_url.get("publicUrl") if isinstance(public_url, dict) else public_url
     updated = supabase_client.upsert_profile(user.user_id, email=None, display_name=None, avatar_url=avatar_url)
     logger.info("account.avatar.updated", extra={"user_id": user.user_id, "avatar_url": avatar_url})
-    record_usage(user.user_id, path="/account/avatar", count=1)
     return updated
 
 
@@ -191,7 +187,6 @@ async def upload_avatar(
 def get_credits(user: AuthContext = Depends(get_current_user)):
     credits = None
     logger.info("account.credits.unavailable", extra={"user_id": user.user_id})
-    record_usage(user.user_id, path="/account/credits", count=1)
     return CreditsResponse(credits_remaining=credits)
 
 
@@ -222,5 +217,4 @@ def get_purchases(
         "account.purchases.fetched",
         extra={"user_id": user.user_id, "count": len(mapped), "limit": limit, "offset": offset},
     )
-    record_usage(user.user_id, path="/account/purchases", count=1)
     return PurchaseListResponse(items=mapped)

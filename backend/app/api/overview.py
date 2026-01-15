@@ -12,8 +12,8 @@ from ..core.settings import get_settings
 from ..services.billing_plans import get_billing_plans_by_price_ids
 from ..services.billing_purchases import list_purchases as list_billing_purchases
 from ..services import supabase_client
-from ..services.usage import record_usage
 from ..services.task_metrics import counts_from_metrics, email_count_from_metrics
+from ..services.verification_metrics import coerce_int, usage_series_from_metrics
 from .api_keys import get_user_external_client
 
 router = APIRouter(prefix="/api/overview", tags=["overview"])
@@ -62,28 +62,10 @@ class OverviewResponse(BaseModel):
     current_plan: Optional[CurrentPlan] = None
 
 
-def _coerce_int(value: object) -> Optional[int]:
-    if value is None:
-        return None
-    try:
-        return int(value)
-    except (TypeError, ValueError):
-        return None
-
-
 def _build_usage_series(metrics: Optional[VerificationMetricsResponse]) -> List[UsagePoint]:
-    if not metrics or not isinstance(getattr(metrics, "series", None), list):
-        return []
     points: List[UsagePoint] = []
-    for point in metrics.series or []:
-        date = getattr(point, "date", None)
-        total = getattr(point, "total_verifications", None)
-        if not isinstance(date, str) or not date.strip():
-            continue
-        count = _coerce_int(total)
-        if count is None:
-            continue
-        points.append(UsagePoint(date=date, count=count))
+    for point in usage_series_from_metrics(metrics):
+        points.append(UsagePoint(date=point["date"], count=point["count"]))
     return points
 
 
@@ -92,7 +74,7 @@ def _normalize_job_status(job_status: Optional[Dict[str, object]]) -> Optional[D
         return None
     normalized: Dict[str, int] = {}
     for key, raw in job_status.items():
-        count = _coerce_int(raw)
+        count = coerce_int(raw)
         if count is None:
             continue
         normalized[str(key).lower()] = count
@@ -121,9 +103,9 @@ def _build_task_item(task: Task) -> Optional[TaskItem]:
         return None
     metrics = task.metrics
     counts = counts_from_metrics(metrics)
-    valid = _coerce_int(task.valid_count)
-    invalid = _coerce_int(task.invalid_count)
-    catchall = _coerce_int(task.catchall_count)
+    valid = coerce_int(task.valid_count)
+    invalid = coerce_int(task.invalid_count)
+    catchall = coerce_int(task.catchall_count)
     if counts:
         if valid is None:
             valid = counts.get("valid")
@@ -135,7 +117,7 @@ def _build_task_item(task: Task) -> Optional[TaskItem]:
         metrics.job_status if metrics else None
     )
     status = _derive_task_status(task.status, job_status)
-    email_count = _coerce_int(task.email_count)
+    email_count = coerce_int(task.email_count)
     if email_count is None:
         email_count = email_count_from_metrics(metrics)
     if email_count is None and counts:
@@ -298,7 +280,6 @@ async def get_overview(
     current_plan = _build_current_plan(user.user_id)
     timings["current_plan_ms"] = round((time.monotonic() - step) * 1000, 2)
 
-    record_usage(user.user_id, path="/overview", count=1)
     timings["total_ms"] = round((time.monotonic() - started_at) * 1000, 2)
     logger.info(
         "overview.fetched",

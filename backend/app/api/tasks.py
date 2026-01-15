@@ -21,7 +21,6 @@ from ..clients.external import (
 from ..core.auth import AuthContext, get_current_user
 from ..core.settings import get_settings
 from ..services.file_processing import _column_letters_to_index
-from ..services.usage import record_usage
 
 router = APIRouter(prefix="/api", tags=["tasks"])
 logger = logging.getLogger(__name__)
@@ -88,7 +87,6 @@ async def verify_email(
         batch_id = None
     try:
         result = await client.verify_email(email=email)
-        record_usage(user.user_id, path="/verify", count=1, api_key_id=None)
         logger.info("route.verify", extra={"user_id": user.user_id, "email": email})
         if batch_id:
             logger.info(
@@ -160,7 +158,6 @@ async def create_task(
                 "route.tasks.create.manual_emails_skipped",
                 extra={"user_id": target_user_id, "task_id": result.id, "email_count": len(manual_emails)},
             )
-        record_usage(target_user_id, path="/tasks", count=len(emails), api_key_id=None)
         logger.info("route.tasks.create", extra={"user_id": target_user_id, "count": len(emails)})
         return result
     except HTTPException:
@@ -216,7 +213,6 @@ async def list_tasks(
         )
     try:
         external_result = await client.list_tasks(limit=limit, offset=offset, user_id=list_user_id)
-        record_usage(target_user_id, path="/tasks", count=len(external_result.tasks or []), api_key_id=api_key_id)
         logger.info(
             "route.tasks.list.external",
             extra={
@@ -290,7 +286,6 @@ async def list_task_jobs(
     task_id_str = str(task_id)
     try:
         result = await client.list_task_jobs(task_id_str, limit=limit, offset=offset)
-        record_usage(user.user_id, path="/tasks/{id}/jobs", count=len(result.jobs or []), api_key_id=None)
         logger.info(
             "route.tasks.jobs",
             extra={
@@ -339,7 +334,6 @@ async def get_task_detail(
     task_id_str = str(task_id)
     try:
         result = await client.get_task_detail(task_id_str)
-        record_usage(user.user_id, path="/tasks/{id}", count=1, api_key_id=api_key_id)
         logger.info(
             "route.tasks.detail",
             extra={
@@ -487,7 +481,6 @@ async def upload_task_file(
                     detail="Email count missing from upload response",
                 )
             email_count = int(result.email_count)
-            record_usage(target_user_id, path="/tasks/upload", count=email_count, api_key_id=None)
             logger.info(
                 "route.tasks.upload",
                 extra={

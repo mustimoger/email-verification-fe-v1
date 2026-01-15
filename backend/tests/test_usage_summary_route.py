@@ -4,6 +4,7 @@ from fastapi.testclient import TestClient
 
 from app.api import usage as usage_module
 from app.api.usage import router as usage_router
+from app.clients.external import VerificationMetricsResponse, VerificationMetricsSeriesPoint
 from app.core.auth import AuthContext
 
 
@@ -16,7 +17,7 @@ def env(monkeypatch):
     monkeypatch.setenv("SUPABASE_AUTH_COOKIE_NAME", "cookie_name")
 
 
-def _build_app(monkeypatch):
+def _build_app(monkeypatch, fake_client):
     app = FastAPI()
     app.include_router(usage_router)
 
@@ -24,20 +25,20 @@ def _build_app(monkeypatch):
         return AuthContext(user_id="user-usage", claims={}, token="t")
 
     app.dependency_overrides[usage_module.get_current_user] = fake_user
-    monkeypatch.setattr(usage_module, "record_usage", lambda *args, **kwargs: None)
-    monkeypatch.setattr(
-        usage_module,
-        "summarize_tasks_usage",
-        lambda user_id, api_key_id=None, start=None, end=None: {
-            "total": 5,
-            "series": [{"date": "2024-02-01", "count": 5}],
-        },
-    )
+    app.dependency_overrides[usage_module.get_user_external_client] = lambda: fake_client
     return app
 
 
 def test_usage_summary_returns_data(monkeypatch):
-    app = _build_app(monkeypatch)
+    class FakeClient:
+        async def get_verification_metrics(self, user_id=None, start=None, end=None):
+            return VerificationMetricsResponse(
+                user_id="user-usage",
+                total_verifications=5,
+                series=[VerificationMetricsSeriesPoint(date="2024-02-01", total_verifications=5)],
+            )
+
+    app = _build_app(monkeypatch, FakeClient())
     client = TestClient(app)
     resp = client.get("/api/usage/summary?start=2024-02-01T00:00:00Z")
     assert resp.status_code == 200
@@ -47,7 +48,25 @@ def test_usage_summary_returns_data(monkeypatch):
 
 
 def test_usage_summary_invalid_date(monkeypatch):
-    app = _build_app(monkeypatch)
+    class FakeClient:
+        async def get_verification_metrics(self, user_id=None, start=None, end=None):
+            return VerificationMetricsResponse(user_id="user-usage", total_verifications=5)
+
+    app = _build_app(monkeypatch, FakeClient())
     client = TestClient(app)
     resp = client.get("/api/usage/summary?start=invalid-date")
     assert resp.status_code == 400
+
+
+def test_usage_summary_api_key_unavailable(monkeypatch):
+    class FakeClient:
+        async def get_verification_metrics(self, user_id=None, start=None, end=None):
+            return VerificationMetricsResponse(user_id="user-usage", total_verifications=5)
+
+    app = _build_app(monkeypatch, FakeClient())
+    client = TestClient(app)
+    resp = client.get("/api/usage/summary?api_key_id=key-1")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["total"] is None
+    assert data["series"] == []

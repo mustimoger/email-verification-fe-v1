@@ -207,20 +207,3 @@ def apply_credit_release(
         raise RuntimeError("Credit release returned no row")
     return data[0]
 
-
-def fetch_usage(
-    user_id: str,
-    start: Optional[str] = None,
-    end: Optional[str] = None,
-    api_key_id: Optional[str] = None,
-) -> List[Dict[str, Any]]:
-    sb = get_supabase()
-    query = sb.table("api_usage").select("*").eq("user_id", user_id)
-    if start:
-        query = query.gte("period_start", start)
-    if end:
-        query = query.lte("period_end", end)
-    if api_key_id:
-        query = query.eq("api_key_id", api_key_id)
-    res = query.order("period_start", desc=False).execute()
-    return res.data or []

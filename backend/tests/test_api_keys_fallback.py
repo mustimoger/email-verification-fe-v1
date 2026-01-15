@@ -34,7 +34,6 @@ def _build_app(monkeypatch):
                 message="auth unavailable",
                 details={"error": "Authentication service unavailable"},
             )
-    monkeypatch.setattr(api_keys_module, "record_usage", lambda *args, **kwargs: None)
     app.dependency_overrides[api_keys_module.get_current_user] = fake_user
     app.dependency_overrides[api_keys_module.get_user_external_client] = lambda: FakeClient()
     return app

@@ -23,7 +23,6 @@ def test_account_purchases_returns_items(monkeypatch):
     ]
 
     app.dependency_overrides[account_module.get_current_user] = fake_user
-    monkeypatch.setattr(account_module, "record_usage", lambda *args, **kwargs: None)
     monkeypatch.setattr(
         account_module,
         "list_credit_grants",
@@ -48,7 +47,6 @@ def test_account_purchases_requires_limit_with_offset(monkeypatch):
         return AuthContext(user_id="user-1", claims={}, token="t")
 
     app.dependency_overrides[account_module.get_current_user] = fake_user
-    monkeypatch.setattr(account_module, "record_usage", lambda *args, **kwargs: None)
 
     client = TestClient(app)
     resp = client.get("/api/account/purchases?offset=10")

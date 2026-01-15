@@ -8,9 +8,8 @@ from ..clients.external import ExternalAPIClient, ExternalAPIError
 from ..core.auth import AuthContext, get_current_user
 from ..core.settings import get_settings
 from ..config.integrations import get_integration_by_id, get_integration_ids, get_integrations
-from ..services.usage import record_usage
+from ..services.date_range import normalize_range_value
 from ..clients.external import ListAPIKeysResponse, CreateAPIKeyResponse, RevokeAPIKeyResponse
-from ..services.usage_summary import normalize_range_value
 
 router = APIRouter(prefix="/api", tags=["api-keys"])
 logger = logging.getLogger(__name__)
@@ -111,7 +110,6 @@ async def list_api_keys(
             result.keys = filtered_keys
             result.count = len(filtered_keys) if filtered_keys is not None else result.count
         # With per-user JWTs, return the external list (filtered for internal keys if needed).
-        record_usage(target_user_id, path="/api-keys", count=1)
         logger.info(
             "route.api_keys.list",
             extra={
@@ -179,7 +177,6 @@ async def create_api_key(
         if not result.key:
             raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="external API did not return a key")
         result.integration = integration or name
-        record_usage(target_user_id, path="/api-keys", count=1)
         logger.info(
             "route.api_keys.create",
             extra={"user_id": target_user_id, "key_name": name, "integration": integration},
@@ -219,7 +216,6 @@ async def revoke_api_key(
             api_key_id=api_key_id,
             user_id=target_user_id if user_id else None,
         )
-        record_usage(target_user_id, path="/api-keys", count=1)
         logger.info("route.api_keys.revoke", extra={"user_id": target_user_id, "api_key_id": api_key_id})
         return result
     except ExternalAPIError as exc:

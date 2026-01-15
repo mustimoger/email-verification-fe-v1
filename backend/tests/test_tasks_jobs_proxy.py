@@ -27,7 +27,6 @@ def _build_app(monkeypatch, client):
     async def fake_client():
         return client
 
-    monkeypatch.setattr(tasks_module, "record_usage", lambda *args, **kwargs: None)
     app.dependency_overrides[tasks_module.get_current_user] = fake_user
     app.dependency_overrides[tasks_module.get_user_external_client] = fake_client
     return app

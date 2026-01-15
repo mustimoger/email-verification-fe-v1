@@ -11,7 +11,6 @@ def _build_app(monkeypatch, fake_user, fake_client):
     app = FastAPI()
     app.include_router(router)
 
-    monkeypatch.setattr(tasks_module, "record_usage", lambda *args, **kwargs: None)
     monkeypatch.setattr(tasks_module, "upsert_tasks_from_list", lambda *args, **kwargs: None)
 
     app.dependency_overrides[tasks_module.get_current_user] = fake_user

@@ -26,20 +26,9 @@ def _build_app(monkeypatch, fake_client):
     async def fake_user():
         return AuthContext(user_id="user-1", claims={}, token="t", role="user")
 
-    captured = {"usage_calls": 0}
-
-    def fake_record_usage(*args, **kwargs):
-        captured["usage_calls"] += 1
-        if "count" in kwargs:
-            captured["usage_count"] = kwargs["count"]
-        elif len(args) >= 3:
-            captured["usage_count"] = args[2]
-
-    monkeypatch.setattr(tasks_module, "record_usage", fake_record_usage)
-
     app.dependency_overrides[tasks_module.get_current_user] = fake_user
     app.dependency_overrides[tasks_module.get_user_external_client] = lambda: fake_client
-    return app, captured
+    return app
 
 
 def _upload_payload():
@@ -69,7 +58,7 @@ async def test_upload_uses_email_count_for_usage(monkeypatch):
                 email_count=2,
             )
 
-    app, captured = _build_app(monkeypatch, FakeClient())
+    app = _build_app(monkeypatch, FakeClient())
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
         resp = await client.post(
@@ -81,8 +70,6 @@ async def test_upload_uses_email_count_for_usage(monkeypatch):
     assert resp.status_code == 200
     data = resp.json()
     assert data[0]["email_count"] == 2
-    assert captured["usage_calls"] == 1
-    assert captured["usage_count"] == 2
 
 
 @pytest.mark.anyio
@@ -96,7 +83,7 @@ async def test_upload_missing_email_count_returns_502(monkeypatch):
                 filename=filename,
             )
 
-    app, captured = _build_app(monkeypatch, FakeClient())
+    app = _build_app(monkeypatch, FakeClient())
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
         resp = await client.post(
@@ -106,4 +93,3 @@ async def test_upload_missing_email_count_returns_502(monkeypatch):
         )
 
     assert resp.status_code == 502
-    assert captured["usage_calls"] == 0

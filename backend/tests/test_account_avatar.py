@@ -62,9 +62,6 @@ def test_avatar_upload_reads_bytes_and_sets_profile(monkeypatch):
             supabase_auth_cookie_name="sb",
         ),
     )
-    usage_calls = []
-    monkeypatch.setattr(account_module, "record_usage", lambda *args, **kwargs: usage_calls.append(args))
-
     client = TestClient(app)
     resp = client.post(
         "/api/account/avatar",
@@ -76,4 +73,3 @@ def test_avatar_upload_reads_bytes_and_sets_profile(monkeypatch):
     assert uploaded["content"] == b"abc123"
     assert uploaded["options"]["content-type"] == "image/png"
     assert profile_updates and profile_updates[0]["avatar_url"].startswith("https://example.com/")
-    assert usage_calls

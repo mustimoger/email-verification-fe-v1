@@ -10,6 +10,14 @@
     Explanation: API key routes now rely solely on the external API (no cache fallback, no stored secrets), the bootstrap endpoint was removed, purpose values are mapped to integration IDs, and tests were updated to reflect the new flow.
   - [ ] Step 4 — Phase 3: remove local usage tracking and proxy external metrics.
     Explanation: External metrics replace Supabase usage tables and record_usage calls.
+    - [x] Step 4a — Define Phase 3 sub-steps and missing-data UX rules in plan docs.
+      Explanation: Added explicit sub-steps for backend removal of local usage tracking, external metrics proxying, frontend handling for unavailable data, and test coverage so newcomers can follow Phase 3 without guessing.
+    - [x] Step 4b — Backend: remove local usage tracking (api_usage table, record_usage calls, usage services) and proxy `/api/usage/summary` to `/api/v1/metrics/verifications`.
+      Explanation: Removed Supabase usage storage (`usage.py`, `usage_summary.py`, `fetch_usage`, `record_usage` call sites), dropped the `/api/usage` list route, added external metrics summary mapping for `/api/usage/summary` (with per-key unavailable handling), and updated backend tests to reflect the external-only usage flow. Added shared date-range parsing and verification-metrics helpers to reuse logic across overview/usage. Note: the `api_usage` table itself still exists in Supabase; dropping it will require a separate migration and is pending.
+    - [x] Step 4c — Frontend: update `/api` usage view to show `ext api data is not available` for any missing data points (including per-key charts until the external endpoint exists).
+      Explanation: The API Usage chart now renders the exact missing-data message when per-key charts are selected or when external metrics are unavailable; totals use the same message only when totals are missing, while still showing numeric totals when present. Layout and styling were preserved.
+    - [ ] Step 4d — Tests: run backend usage route tests and frontend API usage utils tests.
+      Explanation: Ensures the new external-only usage flow is stable and missing-data handling remains consistent.
 
 - [x] Baseline setup — Next.js 14 (app router) with TypeScript, Tailwind, ESLint, npm, and alias `@/*`; React Compiler disabled. Clean base to layer dashboard features.
 - [x] Layout shell + theming — Built shared sidebar/topbar shell per Figma: responsive drawer, notifications/profile, Nunito Sans, gradient surface. Sidebar uses `public/logo.png` (BoltRoute) image logo (matches `Screenshot_1.png`), not text. Avatar uses `public/profile-image.png` with fallback initials. Purpose: consistent chrome to reuse across pages.

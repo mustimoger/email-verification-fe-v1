@@ -37,7 +37,6 @@ class Settings(BaseSettings):
     upload_poll_page_size: int = 20
     overview_metrics_timeout_seconds: float = 8.0
 
-    usage_retention_days: int = 180
     signup_bonus_credits: Optional[int] = None
     signup_bonus_max_account_age_seconds: Optional[int] = None
     signup_bonus_require_email_confirmed: Optional[bool] = None

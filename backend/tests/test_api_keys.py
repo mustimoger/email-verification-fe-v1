@@ -41,7 +41,6 @@ def test_list_api_keys_filters_dashboard(monkeypatch):
                 count=2,
             )
 
-    monkeypatch.setattr(api_keys_module, "record_usage", lambda *args, **kwargs: None)
     app = _build_app(lambda: FakeClient(), fake_user)
     client = TestClient(app)
     resp = client.get("/api/api-keys")
@@ -75,7 +74,6 @@ def test_list_api_keys_maps_google_sheets_purpose(monkeypatch):
                 count=1,
             )
 
-    monkeypatch.setattr(api_keys_module, "record_usage", lambda *args, **kwargs: None)
     app = _build_app(lambda: FakeClient(), fake_user)
     client = TestClient(app)
     resp = client.get("/api/api-keys")
@@ -106,7 +104,6 @@ def test_list_api_keys_passes_date_range(monkeypatch):
             received["end"] = end
             return ListAPIKeysResponse(keys=[], count=0)
 
-    monkeypatch.setattr(api_keys_module, "record_usage", lambda *args, **kwargs: None)
     app = _build_app(lambda: FakeClient(), fake_user)
     client = TestClient(app)
     resp = client.get("/api/api-keys?from=2024-02-01T00:00:00Z&to=2024-02-02T00:00:00Z")
@@ -147,7 +144,6 @@ def test_create_api_key_sets_integration(monkeypatch):
         async def create_api_key(self, name: str, purpose: str, user_id: str | None = None):
             recorded.append(purpose)
             return CreateAPIKeyResponse(id="kid-new", key="plain-secret", name=name)
-    monkeypatch.setattr(api_keys_module, "record_usage", lambda *args, **kwargs: None)
     app = _build_app(lambda: FakeClient(), fake_user)
     client = TestClient(app)
     resp = client.post("/api/api-keys", json={"name": "Zapier", "integration": "zapier"})
@@ -202,7 +198,6 @@ def test_list_api_keys_include_internal(monkeypatch):
                 count=2,
             )
 
-    monkeypatch.setattr(api_keys_module, "record_usage", lambda *args, **kwargs: None)
     app = _build_app(lambda: FakeClient(), fake_user)
     client = TestClient(app)
     resp = client.get("/api/api-keys?include_internal=true")
@@ -256,7 +251,6 @@ def test_list_api_keys_allows_user_id_for_admin(monkeypatch):
             captured.append(user_id)
             return ListAPIKeysResponse(keys=[], count=0)
 
-    monkeypatch.setattr(api_keys_module, "record_usage", lambda *args, **kwargs: None)
     app = _build_app(lambda: FakeClient(), fake_user)
     client = TestClient(app)
     resp = client.get("/api/api-keys?user_id=target-user")

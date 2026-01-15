@@ -16,6 +16,7 @@ import {
   UsageSummaryResponse,
   UsagePurposeResponse,
 } from "../lib/api-client";
+import { EXTERNAL_DATA_UNAVAILABLE } from "../lib/messages";
 import {
   formatPurposeLabel,
   listPurposeOptions,
@@ -68,6 +69,7 @@ export default function ApiPage() {
   const [error, setError] = useState<string | null>(null);
   const [isLoadingKeys, setIsLoadingKeys] = useState(false);
   const [isLoadingUsage, setIsLoadingUsage] = useState(false);
+  const [usageLoaded, setUsageLoaded] = useState(false);
   const [creating, setCreating] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [integrationOptions, setIntegrationOptions] = useState<IntegrationOption[]>([]);
@@ -94,10 +96,23 @@ export default function ApiPage() {
     return usageSummary?.series ?? [];
   }, [usageView, usageSummary, purposeUsage, selectedPurpose]);
   const totalUsageLabel = useMemo(() => {
-    if (!hasUsageData || usageTotal === null) return "—";
-    return usageTotal.toLocaleString();
-  }, [hasUsageData, usageTotal]);
+    if (!usageLoaded) return "—";
+    if (hasUsageData && usageTotal !== null) return usageTotal.toLocaleString();
+    return "—";
+  }, [hasUsageData, usageLoaded, usageTotal]);
   const purposeOptions = useMemo(() => listPurposeOptions(purposeUsage), [purposeUsage]);
+  const usageSummaryUnavailable =
+    usageView === "per_key" && usageLoaded && (!usageSummary || usageSummary.source === "unavailable");
+  const purposeUsageUnavailable = usageView === "per_purpose" && usageLoaded && !purposeUsage;
+  const totalUnavailable =
+    usageLoaded && !hasUsageData && (usageView === "per_key" ? usageSummaryUnavailable : purposeUsageUnavailable);
+  const chartUnavailable =
+    usageLoaded &&
+    !isLoadingUsage &&
+    (usageView === "per_key"
+      ? selectedKey !== "" || usageSummaryUnavailable
+      : purposeUsageUnavailable);
+  const totalDisplay = totalUnavailable ? EXTERNAL_DATA_UNAVAILABLE : totalUsageLabel;
 
   const isDashboardKey = (key: ApiKeySummary) => (key.name ?? "").toLowerCase() === "dashboard_api";
 
@@ -109,6 +124,7 @@ export default function ApiPage() {
       setKeyUsageKeys(null);
       setPurposeUsage(null);
       setUsageSummary(null);
+      setUsageLoaded(false);
       setIntegrationOptions([]);
       setSelectedIntegrationId("");
       setKeyName("");
@@ -162,6 +178,7 @@ export default function ApiPage() {
     setKeyUsageKeys(null);
     setPurposeUsage(null);
     setUsageSummary(null);
+    setUsageLoaded(false);
     if (usageView === "per_purpose") {
       setSelectedPurpose("");
     }
@@ -215,7 +232,12 @@ export default function ApiPage() {
         } catch (err: unknown) {
           const message = err instanceof ApiError ? err.message : "Failed to load usage chart";
           console.error("api.usage.summary.failed", { error: message });
-          setUsageSummary(null);
+          setUsageSummary({
+            source: "unavailable",
+            total: null,
+            series: [],
+            api_key_id: selectedKey || null,
+          });
           setError(message);
         }
       } else {
@@ -226,6 +248,7 @@ export default function ApiPage() {
       setError(message);
     } finally {
       setIsLoadingUsage(false);
+      setUsageLoaded(true);
     }
   };
 
@@ -359,7 +382,7 @@ export default function ApiPage() {
         <div className="rounded-2xl bg-white p-5 shadow-md ring-1 ring-slate-200">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <h2 className="text-lg font-extrabold text-slate-900">API Usage</h2>
-            <span className="text-sm font-semibold text-slate-600">Total: {totalUsageLabel}</span>
+            <span className="text-sm font-semibold text-slate-600">Total: {totalDisplay}</span>
           </div>
 
           <div className="mt-4 grid gap-4 lg:grid-cols-3">
@@ -462,6 +485,10 @@ export default function ApiPage() {
             {isLoadingUsage ? (
               <div className="flex h-full items-center justify-center text-sm font-semibold text-slate-600">
                 Loading usage...
+              </div>
+            ) : chartUnavailable ? (
+              <div className="flex h-full items-center justify-center text-sm font-semibold text-slate-600">
+                {EXTERNAL_DATA_UNAVAILABLE}
               </div>
             ) : chartData.length === 0 ? (
               <div className="flex h-full items-center justify-center text-sm font-semibold text-slate-600">

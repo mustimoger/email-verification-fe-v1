@@ -191,7 +191,13 @@ create index if not exists credit_grants_user_source_created_idx
 
 ### Phase 3 Status (Partially Complete)
 - Credits remaining are now external-only: `/api/overview` and `/api/account/credits` return nullable `credits_remaining`, and UI shows `ext api data is not available`.
-- Usage totals/series still use external metrics where available, but local usage tracking removal is not complete.
+- Local usage tracking removed: `record_usage` + Supabase `api_usage` reads are gone, `/api/usage` list removed, and `/api/usage/summary` now proxies `/metrics/verifications` with `total`/series mapped from external metrics (per-key summary returns unavailable). The `api_usage` table still exists in Supabase and needs a separate migration to drop later.
+- Frontend `/api` usage view now shows `ext api data is not available` for missing usage data points (per-key charts and external-metrics outages), while keeping numeric totals when present.
+Planned Phase 3 steps (MVP-first):
+1) Remove local usage tracking (Supabase `api_usage`, `record_usage`, and usage services).
+2) Proxy `/api/usage/summary` to `/api/v1/metrics/verifications` for totals/series.
+3) Frontend `/api` usage charts must show `ext api data is not available` for any missing data points (including per-key charts until the external endpoint is available).
+4) Run targeted backend + frontend tests for usage routes and UI utilities.
 
 ## Phase 4 — Simplify Manual Verification (Low Priority)
 **What**
