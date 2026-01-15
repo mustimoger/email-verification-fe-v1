@@ -29,7 +29,6 @@
   - Manual history hydration still uses `/tasks/latest-manual` until external jobs are wired.
 
 ## Repo State / Alerts
-- Working tree currently has a user-edited doc file: `ext-api-docs/endpoints/task_controller.md` is modified (updated docs). Decide whether to commit it separately.
 - Files over 600 lines: `backend/app/api/tasks.py`, `app/verify/page.tsx`, `app/verify/utils.ts`.
 - Planning docs should be the source of truth for upcoming backend steps; follow `PLAN.md` and `refactor.md` for the reservation table + jobs proxy sequence.
 
