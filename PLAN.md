@@ -92,6 +92,8 @@
   Explanation: Added a detailed Phase 1 handover including external-only task proxying, missing external data notes, test command/results, and the async ASGI client requirement to avoid TestClient hangs.
 - [x] Session handover refresh — create a new root `handover.md` with full context, decisions, file changes, and next steps for the upcoming external-API refactor.
   Explanation: Added `handover.md` with decisions, dependencies, current repo state notes, and clear next steps for Phase 0/1 of the external-API-first refactor.
+- [x] Session handover refresh — update `handover.md` with the latest external-API docs changes, manual task decision, and reservation table plan.
+  Explanation: Updated `handover.md` with the new `/tasks/{id}/jobs` docs, the decision to move manual verification to `/tasks`, and the plan to replace task-based reservations with a minimal `task_credit_reservations` table.
 - [ ] Investigate /api/verify 502 (external_api.request_error) and confirm external API reachability.
   Explanation: Observed request-level failures (no HTTP response). `EMAIL_API_BASE_URL` points to `https://email-verification.islamsaka.com/api/v1/`, and a direct curl from this host failed to connect on port 443, indicating the external service is unreachable from this environment; next step is to confirm service status/DNS/firewall and decide whether to update the base URL or network rules.
 - [ ] Testing and staging — Add unit/integration coverage and deploy to staging after MVP pages and API wiring are in place; verify flows end-to-end.
