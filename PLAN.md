@@ -161,6 +161,10 @@
   Explanation: Warnings only today; likely a dependency bump to `supabase`/`supabase_auth` and a small test change to set cookies on the client.
   Update: Bumped `supabase` to `2.27.0`, added `supabase_auth`, switched imports to `supabase_auth.types.User`, and updated auth tests to set cookies on the client while adding confirmed claims to avoid network lookups.
 - [ ] Enhancements — Only after MVP + tests + staging verification.
+- [ ] Investigate CSV header parsing failure on Verify file uploads.
+  Explanation: Valid CSV files trigger “Unable to parse CSV headers” in the UI; XLSX uploads work. Needs follow-up to avoid blocking CSV uploads.
+- [ ] Confirm backend routes for `/api/credits/signup-bonus` and `/api/tasks/{id}/jobs` on the running dev server.
+  Explanation: UI verification observed 404 responses from `http://localhost:8001` for both endpoints; verify the backend instance is up-to-date and routes are mounted.
 - [x] Session handover — create root `handover.md` with current findings, changes, and next steps.
   Explanation: Added a new `handover.md` capturing dark mode progress, uncommitted changes, and the exact next steps/tests to run so the next session can resume without guessing.
 - [x] Session handover — refresh `handover.md` after manual flow migration.
@@ -171,6 +175,8 @@
   Explanation: Verified locally using the session JSON from `key-value-pair.txt`. Per‑key view shows “Total: —” and “No usage data” both with no date range and with a valid RFC3339 range (no keys/usage for this user). Per‑purpose view loads options (Zapier, n8n, Google Sheets, Custom) and shows “Total: 0” both with no date range and with a date range. No blocking errors observed.
 - [x] UI re-verification — `/api` usage views with real data (keys/tasks created).
   Explanation: Re-tested with refreshed session JSON. `/api` page loaded, but API Keys table still showed “No API keys yet” and the per-key selector only contained “All keys.” Per‑key totals stayed “—” with “No usage data,” and per‑purpose totals were `0` (options loaded: Custom, Zapier, n8n, Google Sheets). Console still logged a refresh-token warning (“Invalid Refresh Token: Already Used”), but the session remained active enough to load usage views; may need a brand‑new session if this persists.
+- [x] UI re-verification — manual history/export + file upload summary + missing `file_name` messaging.
+  Explanation: Manual verify shows queued state and export fallback works even when jobs polling fails; file upload flow succeeds with XLSX (column assignment → upload summary) and History rows render `ext api data is not available` for missing file names. Observed 404s for `/api/credits/signup-bonus` and `/api/tasks/{id}/jobs`, and valid CSV uploads failed to parse headers (XLSX works).
 
 ## Runtime limits alignment (batch vs upload)
 - [x] Step 1 — remove `upload_max_emails_per_task` requirement and any upload email-count enforcement so file uploads are only size-limited.

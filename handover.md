@@ -26,6 +26,9 @@
 - Paddle E2E script updated:
   - `backend/scripts/paddle_simulation_e2e.py` now validates `credit_grants` (source=`purchase`) and `credits_granted` instead of `billing_purchases`/`user_credits`.
   - README updated to reflect the new success criteria and timeout messaging.
+- UI re-verification (manual/history/upload):
+  - Manual verify shows queued state with refresh and CSV export fallback; export succeeds even when jobs polling fails.
+  - File upload flow verified with XLSX (column assignment → upload summary) and History renders `ext api data is not available` for missing file names.
 - Local credit enforcement removed:
   - `/api/verify`, `/api/tasks`, `/api/tasks/{id}`, `/api/tasks/{id}/download`, `/api/tasks/upload` no longer apply debits/reservations or return 402.
   - UI 402 parsing remains only for upstream errors.
@@ -69,7 +72,8 @@ If any are missing, `/api/credits/signup-bonus` returns 503 and logs `credits.si
 - Prior runs still relevant for task proxying/manual flow; see earlier entries in this handover history.
 
 ## Known Gaps / Risks
-- None beyond the external API gaps below.
+- Valid CSV uploads fail with “Unable to parse CSV headers”; XLSX uploads work. Needs investigation.
+- Local dev backend returned 404s for `/api/credits/signup-bonus` and `/api/tasks/{id}/jobs` during UI verification, suggesting a stale server or routing mismatch.
 
 ## External API Gaps (Still Pending)
 - Task list/detail do not include `file_name` (upload response includes filename).
@@ -77,7 +81,8 @@ If any are missing, `/api/credits/signup-bonus` returns 503 and logs `credits.si
 - Mapping of external metrics to UI “credits used”/usage totals remains unconfirmed.
 
 ## Next Steps (Ordered)
-1) UI re‑verification: manual history/export + file upload summary + missing `file_name` messaging.
+1) Investigate CSV header parsing failure on Verify file uploads.
+2) Confirm backend routes for `/api/credits/signup-bonus` and `/api/tasks/{id}/jobs` on the running dev server.
 
 ## Process Reminders
 - For any code changes: state plan first, update root plan/progress markdowns after completion, ask for confirmation before next task.
