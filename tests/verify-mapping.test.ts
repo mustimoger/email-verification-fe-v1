@@ -3,16 +3,15 @@ import assert from "node:assert";
 import { ApiError } from "../app/lib/api-client";
 import type {
   BatchFileUploadResponse,
-  LatestManualResponse,
   LatestUploadResponse,
-  ManualVerificationResult,
   Task,
   TaskDetailResponse,
+  TaskEmailJob,
 } from "../app/lib/api-client";
 import {
   buildManualExportRows,
   buildManualResultsFromDetail,
-  buildManualResultsFromStored,
+  buildManualResultsFromJobs,
   buildLatestManualResults,
   buildLatestUploadsSummary,
   buildLatestUploadSummary,
@@ -22,8 +21,7 @@ import {
   mapTaskDetailToResults,
   mapUploadResultsToLinks,
   resolveApiErrorMessage,
-  shouldHydrateLatestManual,
-  shouldExpireManualResults,
+  shouldHydrateManualState,
 } from "../app/verify/utils";
 import { EXTERNAL_DATA_UNAVAILABLE } from "../app/history/utils";
 
@@ -219,29 +217,31 @@ run("buildManualResultsFromDetail falls back to job list when emails are missing
   assert.strictEqual(results[0].email, "alpha@example.com");
 });
 
-run("buildManualResultsFromStored maps stored statuses by email order", () => {
-  const stored: ManualVerificationResult[] = [
-    { email: "beta@example.com", status: "exists", message: "ok" },
+run("buildManualResultsFromJobs maps email metadata into export fields", () => {
+  const jobs: TaskEmailJob[] = [
+    {
+      email: {
+        email: "alpha@example.com",
+        status: "exists",
+        is_role_based: true,
+        is_disposable: false,
+        is_catchall: false,
+        server_type: "smtp",
+        host_name: "mx.example.com",
+        validated_at: "2024-03-04T00:00:00Z",
+      },
+    },
   ];
-  const results = buildManualResultsFromStored(["alpha@example.com", "beta@example.com"], stored);
-  assert.strictEqual(results[0].status, "pending");
-  assert.strictEqual(results[1].status, "exists");
-});
-
-run("shouldExpireManualResults returns true when finished_at is set", () => {
-  const detail: TaskDetailResponse = {
-    finished_at: "2024-03-02T00:00:00Z",
-  };
-  const latest: LatestManualResponse = { task_id: "task-1" };
-  assert.strictEqual(shouldExpireManualResults(detail, latest), true);
-});
-
-run("shouldExpireManualResults returns false when pending job_status remains", () => {
-  const detail: TaskDetailResponse = {
-    metrics: { job_status: { pending: 2, processing: 0 } },
-  };
-  const latest: LatestManualResponse = { task_id: "task-2", job_status: { pending: 2 } };
-  assert.strictEqual(shouldExpireManualResults(detail, latest), false);
+  const results = buildManualResultsFromJobs(["alpha@example.com"], jobs);
+  assert.strictEqual(results.length, 1);
+  assert.strictEqual(results[0].email, "alpha@example.com");
+  assert.strictEqual(results[0].status, "exists");
+  assert.strictEqual(results[0].isRoleBased, true);
+  assert.strictEqual(results[0].disposableDomain, false);
+  assert.strictEqual(results[0].catchallDomain, false);
+  assert.strictEqual(results[0].emailServer, "smtp");
+  assert.strictEqual(results[0].mxRecord, "mx.example.com");
+  assert.strictEqual(results[0].validatedAt, "2024-03-04T00:00:00Z");
 });
 
 run("buildManualExportRows marks missing export fields as unavailable", () => {
@@ -268,8 +268,8 @@ run("resolveApiErrorMessage falls back to ApiError message without detail", () =
   assert.strictEqual(message, "Internal Server Error");
 });
 
-run("shouldHydrateLatestManual returns true on first load with no manual state", () => {
-  const shouldHydrate = shouldHydrateLatestManual({
+run("shouldHydrateManualState returns true on first load with no manual state", () => {
+  const shouldHydrate = shouldHydrateManualState({
     authLoading: false,
     hasSession: true,
     manualTaskId: null,
@@ -281,8 +281,8 @@ run("shouldHydrateLatestManual returns true on first load with no manual state",
   assert.strictEqual(shouldHydrate, true);
 });
 
-run("shouldHydrateLatestManual returns false when manual state exists", () => {
-  const shouldHydrate = shouldHydrateLatestManual({
+run("shouldHydrateManualState returns false when manual state exists", () => {
+  const shouldHydrate = shouldHydrateManualState({
     authLoading: false,
     hasSession: true,
     manualTaskId: "task-1",

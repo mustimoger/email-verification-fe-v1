@@ -85,12 +85,27 @@ export type Task = {
   updated_at?: string;
 };
 
+export type TaskJobEmail = {
+  id?: string;
+  email?: string;
+  email_address?: string;
+  status?: string;
+  is_role_based?: boolean;
+  is_disposable?: boolean;
+  has_mx_records?: boolean;
+  has_reverse_dns?: boolean;
+  domain_name?: string;
+  host_name?: string;
+  server_type?: string;
+  is_catchall?: boolean;
+  validated_at?: string;
+  unknown_reason?: string | null;
+  needs_physical_verify?: boolean;
+};
+
 export type TaskEmailJob = {
   id?: string;
-  email?: {
-    email_address?: string;
-    status?: string;
-  };
+  email?: TaskJobEmail;
   email_address?: string;
   email_id?: string;
   status?: string;
@@ -115,6 +130,13 @@ export type TaskListResponse = {
   limit?: number;
   offset?: number;
   tasks?: Task[];
+};
+
+export type TaskJobsResponse = {
+  jobs?: TaskEmailJob[];
+  count?: number;
+  limit?: number;
+  offset?: number;
 };
 
 export type BatchFileUploadResponse = {
@@ -524,6 +546,10 @@ export const apiClient = {
       `/tasks/${taskId}${apiKeyId ? `?api_key_id=${encodeURIComponent(apiKeyId)}` : ""}`,
       { method: "GET" },
     ),
+  getTaskJobs: (taskId: string, limit = 10, offset = 0) => {
+    const params = new URLSearchParams({ limit: `${limit}`, offset: `${offset}` });
+    return request<TaskJobsResponse>(`/tasks/${taskId}/jobs?${params.toString()}`, { method: "GET" });
+  },
   getLatestUpload: () => request<LatestUploadResponse | null>("/tasks/latest-upload", { method: "GET" }),
   getLatestUploads: (limit?: number) => {
     const params = new URLSearchParams();

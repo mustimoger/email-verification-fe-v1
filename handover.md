@@ -33,6 +33,9 @@
 - Phase 1 jobs proxy added:
   - Added `TaskJobsResponse` + `list_task_jobs` to the external client and exposed `/api/tasks/{id}/jobs`.
   - Added backend tests for the jobs proxy route.
+- Phase 1 manual flow now uses tasks/jobs:
+  - Verify manual copy‑paste calls `/api/tasks` once and polls `/api/tasks/{id}/jobs` for results; CSV export is built from job data.
+  - Manual state (task id + emails) is persisted in localStorage to hydrate after reload; UI no longer calls `/api/tasks/latest-manual`.
 
 ## Repo State / Alerts
 - Files over 600 lines: `backend/app/api/tasks.py`, `app/verify/page.tsx`, `app/verify/utils.ts`.
@@ -73,21 +76,17 @@
 - Mapping of external metrics → UI “credits used”/usage totals is still unconfirmed.
 
 ## Pending Work / Next Steps (Ordered)
-1) **Switch manual verification flow to tasks**:
-   - Frontend: manual copy‑paste should call `/api/tasks` once (not per‑email `/verify`).
-   - Backend: wire Verify to read from `/api/tasks/{id}/jobs` and drop any dependency on `/api/tasks/latest-manual`.
-   - Verify page: poll `/api/tasks/{id}/jobs` for results and build export CSV from jobs.
-2) **Retire `/api/tasks/latest-manual` after manual flow updates**:
+1) **Retire `/api/tasks/latest-manual` after manual flow updates**:
    - Remove the Supabase-backed latest-manual route once the Verify page no longer depends on it.
-3) **Remove Supabase task caching helpers**:
+2) **Remove Supabase task caching helpers**:
    - Delete `backend/app/services/tasks_store.py` and `backend/app/services/task_files_store.py`.
    - Remove or replace `fetch_task_summary`, `summarize_tasks_usage`, `summarize_task_validation_totals` in Overview with external metrics/usage endpoints.
    - Remove `/api/debug/tasks` or rewrite to use external tasks list.
-4) **Update tests**:
+3) **Update tests**:
    - Replace `backend/tests/test_tasks_store.py` and `test_tasks_latest_manual.py` with jobs‑based tests.
    - Add tests for reservation table service and `/api/tasks/{id}/jobs` proxy.
    - Run targeted pytest with venv and update frontend tests for manual task flow.
-5) **Re‑verify UI**:
+4) **Re‑verify UI**:
    - Verify manual history/export works with external jobs, file upload summary still functions, and missing file_name shows the required message.
 
 ## Required Process Reminders

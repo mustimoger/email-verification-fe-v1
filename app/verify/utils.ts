@@ -5,8 +5,6 @@ import {
   ApiError,
   BatchFileUploadResponse,
   LatestUploadResponse,
-  LatestManualResponse,
-  ManualVerificationResult,
   Task,
   TaskDetailResponse,
   TaskEmailJob,
@@ -133,7 +131,7 @@ export type ManualHydrationGuardState = {
   alreadyHydrated: boolean;
 };
 
-export function shouldHydrateLatestManual(state: ManualHydrationGuardState): boolean {
+export function shouldHydrateManualState(state: ManualHydrationGuardState): boolean {
   if (state.alreadyHydrated) return false;
   if (state.authLoading || !state.hasSession) return false;
   if (state.manualTaskId) return false;
@@ -143,20 +141,101 @@ export function shouldHydrateLatestManual(state: ManualHydrationGuardState): boo
   return true;
 }
 
+const coerceString = (value: unknown): string | undefined => {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+};
+
+const coerceBoolean = (value: unknown): boolean | undefined => {
+  if (typeof value === "boolean") return value;
+  return undefined;
+};
+
+const resolveJobEmailAddress = (job: TaskEmailJob): string | null => {
+  const emailData = job.email ?? {};
+  const address =
+    coerceString(job.email_address) ??
+    coerceString(emailData.email_address) ??
+    coerceString(emailData.email);
+  if (!address) {
+    console.warn("verify.manual.job_missing_email", { job_id: job.id, email_id: job.email_id });
+    return null;
+  }
+  return address;
+};
+
+const resolveJobStatus = (job: TaskEmailJob): string => {
+  const emailData = job.email ?? {};
+  return coerceString(emailData.status) ?? coerceString(job.status) ?? "pending";
+};
+
+const mapJobToVerificationResult = (job: TaskEmailJob): VerificationResult | null => {
+  const address = resolveJobEmailAddress(job);
+  if (!address) return null;
+  const status = resolveJobStatus(job);
+  const message = status === "pending" ? "Awaiting verification" : `Status: ${status}`;
+  const emailData = job.email ?? {};
+  const isRoleBased = coerceBoolean(emailData.is_role_based);
+  const disposableDomain = coerceBoolean(emailData.is_disposable);
+  const catchallDomain = coerceBoolean(emailData.is_catchall);
+  const emailServer = coerceString(emailData.server_type);
+  const mxRecord = coerceString(emailData.host_name);
+  const validatedAt = coerceString(emailData.validated_at);
+  return {
+    email: address,
+    status,
+    message,
+    validatedAt,
+    isRoleBased,
+    catchallDomain,
+    emailServer,
+    disposableDomain,
+    mxRecord,
+  };
+};
+
 export function mapTaskDetailToResults(emails: string[], detail: TaskDetailResponse): VerificationResult[] {
   const jobs = detail.jobs ?? [];
   const jobMap = new Map<string, TaskEmailJob>();
   jobs.forEach((job) => {
-    const address = (job.email_address || job.email?.email_address || "").trim();
+    const address = resolveJobEmailAddress(job);
     if (!address) return;
     jobMap.set(address.toLowerCase(), job);
   });
 
   return emails.map((email) => {
     const job = jobMap.get(email.toLowerCase());
-    const status = job?.email?.status || job?.status || "pending";
-    const message = job ? `Status: ${status}` : "Awaiting verification";
-    return { email, status, message };
+    if (!job) {
+      return { email, status: "pending", message: "Awaiting verification" };
+    }
+    return mapJobToVerificationResult(job) ?? { email, status: "pending", message: "Awaiting verification" };
+  });
+}
+
+export function buildManualResultsFromJobs(
+  emails: string[] | null | undefined,
+  jobs: TaskEmailJob[] | null | undefined,
+): VerificationResult[] {
+  const resolvedJobs = Array.isArray(jobs) ? jobs : [];
+  if (!emails || emails.length === 0) {
+    return resolvedJobs
+      .map((job) => mapJobToVerificationResult(job))
+      .filter((entry): entry is VerificationResult => Boolean(entry));
+  }
+  const jobMap = new Map<string, TaskEmailJob>();
+  resolvedJobs.forEach((job) => {
+    const address = resolveJobEmailAddress(job);
+    if (!address) return;
+    jobMap.set(address.toLowerCase(), job);
+  });
+  return emails.map((email) => {
+    const address = email.trim();
+    const job = jobMap.get(address.toLowerCase());
+    if (!job) {
+      return { email: address, status: "pending", message: "Awaiting verification" };
+    }
+    return mapJobToVerificationResult(job) ?? { email: address, status: "pending", message: "Awaiting verification" };
   });
 }
 
@@ -168,42 +247,6 @@ export function buildManualResultsFromDetail(
     return mapTaskDetailToResults(emails, detail);
   }
   return buildLatestManualResults(detail);
-}
-
-export function buildManualResultsFromStored(
-  emails: string[] | null | undefined,
-  storedResults: ManualVerificationResult[] | null | undefined,
-): VerificationResult[] {
-  const results = Array.isArray(storedResults) ? storedResults : [];
-  const map = new Map<string, ManualVerificationResult>();
-  results.forEach((item) => {
-    const address = item.email?.trim();
-    if (!address) return;
-    map.set(address.toLowerCase(), item);
-  });
-
-  const fallbackEmailList = emails && emails.length > 0 ? emails : results.map((item) => item.email);
-  return fallbackEmailList.map((email) => {
-    const address = email.trim();
-    const match = map.get(address.toLowerCase());
-    if (!match) {
-      return { email: address, status: "pending", message: "Awaiting verification" };
-    }
-    const status = match.status || "unknown";
-    const message = match.message || `Status: ${status}`;
-    return {
-      email: address,
-      status,
-      message,
-      validatedAt: match.validated_at,
-      isRoleBased: match.is_role_based,
-      catchallDomain: match.catchall_domain,
-      emailServer: match.email_server,
-      disposableDomain: match.disposable_domain,
-      registeredDomain: match.registered_domain,
-      mxRecord: match.mx_record,
-    };
-  });
 }
 
 export function mapVerifyFallbackResults(emails: string[], taskId?: string | null): VerificationResult[] {
@@ -660,44 +703,5 @@ export function buildTaskUploadsSummary(
 export function buildLatestManualResults(detail: TaskDetailResponse): VerificationResult[] {
   const jobs = detail.jobs ?? [];
   if (!jobs.length) return [];
-  return jobs
-    .map((job) => {
-      const address = (job.email_address || job.email?.email_address || "").trim();
-      if (!address) {
-        console.warn("verify.manual.job_missing_email", { job_id: job.id, email_id: job.email_id });
-        return null;
-      }
-      const status = job.email?.status || job.status;
-      if (!status) {
-        console.warn("verify.manual.job_missing_status", { job_id: job.id, email_id: job.email_id });
-        return null;
-      }
-      return {
-        email: address,
-        status,
-        message: `Status: ${status}`,
-      };
-    })
-    .filter((entry): entry is VerificationResult => Boolean(entry));
-}
-
-export function shouldExpireManualResults(
-  detail: TaskDetailResponse,
-  latest?: LatestManualResponse | null,
-): boolean {
-  if (detail.finished_at) return true;
-  if (detail.metrics?.progress_percent !== undefined && detail.metrics?.progress_percent !== null) {
-    return detail.metrics.progress_percent >= 100;
-  }
-  if (detail.metrics?.progress !== undefined && detail.metrics?.progress !== null) {
-    return detail.metrics.progress >= 1;
-  }
-  const jobStatus = detail.metrics?.job_status ?? latest?.job_status ?? null;
-  if (jobStatus && typeof jobStatus === "object") {
-    const pending = Number(jobStatus.pending ?? 0);
-    const processing = Number(jobStatus.processing ?? 0);
-    if (pending + processing === 0) return true;
-  }
-  const statusValue = (latest?.status || "").toLowerCase();
-  return statusValue.length > 0 && !PENDING_STATES.has(statusValue);
+  return jobs.map((job) => mapJobToVerificationResult(job)).filter((entry): entry is VerificationResult => Boolean(entry));
 }

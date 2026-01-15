@@ -10,30 +10,31 @@ import { DashboardShell } from "../components/dashboard-shell";
 import {
   apiClient,
   ApiError,
-  type LatestManualResponse,
   type LimitsResponse,
   type TaskDetailResponse,
+  type TaskEmailJob,
 } from "../lib/api-client";
-import { clearVerifyRequestId, getVerifyRequestId } from "../lib/verify-idempotency";
 import { buildColumnOptions, FileColumnError, readFileColumnInfo, type FileColumnInfo } from "./file-columns";
 import {
   buildTaskUploadsSummary,
   buildManualExportCsv,
   buildUploadSummary,
-  buildManualResultsFromStored,
+  buildManualResultsFromJobs,
   createUploadLinks,
   formatNumber,
   mapUploadResultsToLinks,
   mapVerifyFallbackResults,
   normalizeEmails,
   resolveApiErrorMessage,
-  shouldHydrateLatestManual,
+  shouldHydrateManualState,
   type UploadSummary,
   type VerificationResult,
 } from "./utils";
 
 const TASK_POLL_ATTEMPTS = 3;
 const TASK_POLL_INTERVAL_MS = 2000;
+const TASK_JOBS_MAX_PAGE_SIZE = 100;
+const MANUAL_STATE_STORAGE_KEY = "verify.manual.state";
 
 export default function VerifyPage() {
   const { session, loading: authLoading } = useAuth();
@@ -65,9 +66,36 @@ export default function VerifyPage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const parseRef = useRef(0);
   const latestUploadHydratedRef = useRef(false);
-  const latestManualHydratedRef = useRef(false);
+  const manualStateHydratedRef = useRef(false);
 
   const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  const persistManualState = (taskId: string, emails: string[]) => {
+    try {
+      localStorage.setItem(MANUAL_STATE_STORAGE_KEY, JSON.stringify({ taskId, emails }));
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : resolveApiErrorMessage(err, "verify.manual.persist");
+      console.warn("verify.manual.persist_failed", { error: message });
+    }
+  };
+
+  const loadManualState = () => {
+    try {
+      const raw = localStorage.getItem(MANUAL_STATE_STORAGE_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw) as { taskId?: unknown; emails?: unknown };
+      const taskId = typeof parsed.taskId === "string" ? parsed.taskId.trim() : "";
+      const emails = Array.isArray(parsed.emails)
+        ? parsed.emails.filter((email): email is string => typeof email === "string" && email.trim().length > 0)
+        : [];
+      if (!taskId) return null;
+      return { taskId, emails };
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : resolveApiErrorMessage(err, "verify.manual.load");
+      console.warn("verify.manual.load_failed", { error: message });
+      return null;
+    }
+  };
 
   useEffect(() => {
     let active = true;
@@ -126,39 +154,41 @@ export default function VerifyPage() {
 
   useEffect(() => {
     let active = true;
-    const hydrateLatestManual = async () => {
+    const hydrateManualState = async () => {
       if (
-        !shouldHydrateLatestManual({
+        !shouldHydrateManualState({
           authLoading,
           hasSession: Boolean(session),
           manualTaskId,
           resultsCount: results.length,
           manualEmailsCount: manualEmails.length,
           inputValue,
-          alreadyHydrated: latestManualHydratedRef.current,
+          alreadyHydrated: manualStateHydratedRef.current,
         })
       ) {
         return;
       }
+      const stored = loadManualState();
+      if (!stored) {
+        manualStateHydratedRef.current = true;
+        return;
+      }
+      if (!active) return;
+      const { taskId, emails } = stored;
+      setManualTaskId(taskId);
+      if (emails.length > 0) {
+        applyManualEmails(emails);
+      }
+      setResults(mapVerifyFallbackResults(emails, taskId));
+      setErrors(null);
+      setExportError(null);
       try {
-        const latest = await apiClient.getLatestManual();
-        if (!active) return;
-        if (latest) {
-          setManualTaskId(latest.task_id);
-          applyManualStored(latest);
-        }
-      } catch (err: unknown) {
-        if (!active) return;
-        const message = resolveApiErrorMessage(err, "verify.manual.hydrate");
-        console.error("verify.manual.hydrate_failed", { error: message });
-        setErrors(message);
+        await refreshManualResults(taskId, emails, { silent: true });
       } finally {
-        if (active) {
-          latestManualHydratedRef.current = true;
-        }
+        manualStateHydratedRef.current = true;
       }
     };
-    void hydrateLatestManual();
+    void hydrateManualState();
     return () => {
       active = false;
     };
@@ -170,33 +200,96 @@ export default function VerifyPage() {
     setInputValue((prev) => (prev.trim().length > 0 ? prev : emails.join("\n")));
   };
 
-  const applyManualStored = (latest: LatestManualResponse) => {
-    const emails = latest.manual_emails ?? [];
-    if (emails.length > 0) {
-      applyManualEmails(emails);
+  const applyManualJobs = (emails: string[] | null | undefined, jobs: TaskEmailJob[]) => {
+    const resolvedEmails = emails ?? [];
+    if (resolvedEmails.length > 0) {
+      applyManualEmails(resolvedEmails);
     }
-    setResults(buildManualResultsFromStored(emails, latest.manual_results));
+    setResults(buildManualResultsFromJobs(resolvedEmails, jobs));
     setErrors(null);
     setExportError(null);
   };
 
-  const refreshManualResults = async () => {
+  const fetchAllTaskJobs = async (taskId: string, expectedCount?: number): Promise<TaskEmailJob[]> => {
+    const resolvedExpected = typeof expectedCount === "number" && expectedCount > 0 ? expectedCount : null;
+    const pageSize = Math.min(resolvedExpected ?? TASK_JOBS_MAX_PAGE_SIZE, TASK_JOBS_MAX_PAGE_SIZE);
+    const jobs: TaskEmailJob[] = [];
+    let offset = 0;
+    while (true) {
+      const response = await apiClient.getTaskJobs(taskId, pageSize, offset);
+      const pageJobs = response.jobs ?? [];
+      jobs.push(...pageJobs);
+      if (resolvedExpected !== null && jobs.length >= resolvedExpected) {
+        break;
+      }
+      if (pageJobs.length < pageSize) {
+        break;
+      }
+      offset += pageSize;
+    }
+    return jobs;
+  };
+
+  const fetchTaskJobsWithRetries = async (
+    taskId: string,
+    expectedCount?: number,
+  ): Promise<TaskEmailJob[]> => {
+    for (let attempt = 1; attempt <= TASK_POLL_ATTEMPTS; attempt += 1) {
+      try {
+        const jobs = await fetchAllTaskJobs(taskId, expectedCount);
+        if (jobs.length > 0 || expectedCount === 0) {
+          return jobs;
+        }
+      } catch (err: unknown) {
+        if (err instanceof ApiError && err.status === 402) {
+          const message = resolveApiErrorMessage(err, "verify.manual.jobs");
+          console.warn("verify.manual.jobs_insufficient_credits", { taskId, attempt, error: message });
+          throw err;
+        }
+        const message = resolveApiErrorMessage(err, "verify.manual.jobs");
+        console.error("verify.manual.jobs_failed", { taskId, attempt, error: message });
+      }
+      if (attempt < TASK_POLL_ATTEMPTS) {
+        await wait(TASK_POLL_INTERVAL_MS);
+      }
+    }
+    return [];
+  };
+
+  const refreshManualResults = async (
+    taskIdOverride?: string | null,
+    emailsOverride?: string[] | null,
+    options?: { silent?: boolean },
+  ) => {
     setExportError(null);
-    setManualRefreshing(true);
+    if (!options?.silent) {
+      setManualRefreshing(true);
+    }
     try {
-      const latest = await apiClient.getLatestManual();
-      if (!latest) {
-        setErrors("No recent manual verification found.");
+      const taskId = taskIdOverride ?? manualTaskId;
+      if (!taskId) {
+        setErrors("No manual verification task found.");
         return;
       }
-      setManualTaskId(latest.task_id);
-      applyManualStored(latest);
+      const emails = emailsOverride ?? manualEmails;
+      const jobs = await fetchTaskJobsWithRetries(taskId, emails.length || undefined);
+      if (jobs.length === 0) {
+        setErrors("No verification results available yet.");
+        return;
+      }
+      setManualTaskId(taskId);
+      applyManualJobs(emails, jobs);
+      if (emails.length > 0) {
+        persistManualState(taskId, emails);
+      }
     } catch (err: unknown) {
       const message = resolveApiErrorMessage(err, "verify.manual.refresh");
       console.error("verify.manual.refresh_failed", { error: message });
       setErrors(message);
     } finally {
-      setManualRefreshing(false);
+      if (!options?.silent) {
+        setManualRefreshing(false);
+      }
     }
   };
 
@@ -204,30 +297,18 @@ export default function VerifyPage() {
     if (!manualTaskId || results.length === 0) {
       throw new Error("No manual verification results to export.");
     }
-    let latest: LatestManualResponse | null = null;
     try {
-      latest = await apiClient.getLatestManual();
+      const jobs = await fetchAllTaskJobs(manualTaskId, manualEmails.length || undefined);
+      if (jobs.length === 0) {
+        console.warn("verify.manual.export_missing_results", { task_id: manualTaskId });
+        return results;
+      }
+      return buildManualResultsFromJobs(manualEmails, jobs);
     } catch (err: unknown) {
       const message = resolveApiErrorMessage(err, "verify.manual.export_latest");
       console.error("verify.manual.export_latest_failed", { error: message });
       return results;
     }
-    if (!latest) {
-      console.warn("verify.manual.export_latest_missing");
-      return results;
-    }
-    if (latest.task_id !== manualTaskId) {
-      console.warn("verify.manual.export_task_mismatch", {
-        current_task_id: manualTaskId,
-        latest_task_id: latest.task_id,
-      });
-      return results;
-    }
-    if (!latest.manual_results || latest.manual_results.length === 0) {
-      console.warn("verify.manual.export_missing_results", { task_id: latest.task_id });
-      return results;
-    }
-    return buildManualResultsFromStored(latest.manual_emails, latest.manual_results);
   };
 
   const handleExportDownload = async () => {
@@ -317,60 +398,27 @@ export default function VerifyPage() {
       setResults([]);
       return;
     }
-    const randomUUID = globalThis.crypto?.randomUUID;
-    if (typeof randomUUID !== "function") {
-      setErrors("Unable to start verification. Please refresh and try again.");
-      return;
-    }
-    const batchId = randomUUID.call(globalThis.crypto);
     setErrors(null);
-    setManualTaskId(batchId);
-    setManualEmails(parsed);
-    setResults(mapVerifyFallbackResults(parsed, batchId));
     setIsSubmitting(true);
     try {
-      let firstBatchPayload = true;
-      const errorsForBatch: string[] = [];
-      for (const email of parsed) {
-        try {
-          const requestId = getVerifyRequestId(email, { forceNew: true });
-          const response = await apiClient.verifyEmail(email, {
-            requestId,
-            batchId,
-            batchEmails: firstBatchPayload ? parsed : undefined,
-          });
-          clearVerifyRequestId(email);
-          const status = response.status || "unknown";
-          const message = response.message || `Status: ${status}`;
-          setResults((prev) =>
-            prev.map((item) =>
-              item.email === email
-                ? {
-                    ...item,
-                    status,
-                    message,
-                    validatedAt: response.validated_at,
-                    isRoleBased: response.is_role_based,
-                  }
-                : item,
-            ),
-          );
-          firstBatchPayload = false;
-        } catch (err: unknown) {
-          const message = resolveApiErrorMessage(err, "verify.manual.per_email");
-          console.error("verify.manual.per_email_failed", { email, error: message });
-          errorsForBatch.push(`${email}: ${message}`);
-          setResults((prev) =>
-            prev.map((item) =>
-              item.email === email ? { ...item, status: "unknown", message } : item,
-            ),
-          );
-        }
+      const task = await apiClient.createTask(parsed);
+      const taskId = task.id?.trim();
+      if (!taskId) {
+        console.error("verify.manual.task_missing_id", { response: task });
+        setErrors("Unable to start verification. Please try again.");
+        return;
       }
-      if (errorsForBatch.length > 0) {
-        setErrors(errorsForBatch[0]);
+      setManualTaskId(taskId);
+      setManualEmails(parsed);
+      setResults(mapVerifyFallbackResults(parsed, taskId));
+      persistManualState(taskId, parsed);
+      const jobs = await fetchTaskJobsWithRetries(taskId, parsed.length || undefined);
+      if (jobs.length > 0) {
+        applyManualJobs(parsed, jobs);
+      } else {
+        setErrors("Verification is queued. Refresh to check for updates.");
       }
-      setToast(`Verified ${parsed.length} email${parsed.length === 1 ? "" : "s"}`);
+      setToast(`Submitted ${parsed.length} email${parsed.length === 1 ? "" : "s"} for verification`);
     } catch (err: unknown) {
       const message = resolveApiErrorMessage(err, "verify.manual.submit");
       setErrors(message);
