@@ -189,9 +189,9 @@ create index if not exists credit_grants_user_source_created_idx
 **End Result**
 - All usage/metrics are sourced from the external API.
 
-### Phase 3 Status (Partially Complete)
+### Phase 3 Status (Complete)
 - Credits remaining are now external-only: `/api/overview` and `/api/account/credits` return nullable `credits_remaining`, and UI shows `ext api data is not available`.
-- Local usage tracking removed: `record_usage` + Supabase `api_usage` reads are gone, `/api/usage` list removed, and `/api/usage/summary` now proxies `/metrics/verifications` with `total`/series mapped from external metrics (per-key summary returns unavailable). The `api_usage` table still exists in Supabase and needs a separate migration to drop later.
+- Local usage tracking removed: `record_usage` + Supabase `api_usage` reads are gone, `/api/usage` list removed, and `/api/usage/summary` now proxies `/metrics/verifications` with `total`/series mapped from external metrics (per-key summary returns unavailable). The `api_usage` table has been dropped from Supabase.
 - Frontend `/api` usage view now shows `ext api data is not available` for missing usage data points (per-key charts and external-metrics outages), while keeping numeric totals when present.
 - Phase 3 tests run: `backend/tests/test_usage_summary_route.py`, `backend/tests/test_usage_purpose_route.py`, and `tests/api-usage-utils.test.ts` (warnings from pyiceberg/pydantic).
 Planned Phase 3 steps (MVP-first):

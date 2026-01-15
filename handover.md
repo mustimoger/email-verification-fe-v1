@@ -90,6 +90,7 @@ If any are missing, `/api/credits/signup-bonus` returns 503 and logs `credits.si
 - `app/verify/file-columns.ts` — CSV header parsing now tolerates non-fatal parse errors, strips BOM, and rejects empty files.
 - `tests/file-columns.test.ts` — unit coverage for CSV header parsing (normal, BOM, non-fatal errors, empty files).
 - Supabase migration — dropped `public.cached_api_keys` after external-only key flow verification.
+- Supabase migration — dropped `public.api_usage` after external metrics became the source of truth.
 - `refactor.md` — refreshed with current refactor status + gaps.
 
 ## Tests Run (Recent)
@@ -110,7 +111,7 @@ If any are missing, `/api/credits/signup-bonus` returns 503 and logs `credits.si
 - Per-key usage chart endpoint is not available yet; UI must show `ext api data is not available` for per-key chart data.
 
 ## Next Steps (Ordered)
-1) Drop Supabase `api_usage` table after Phase 3 frontend is verified.
+1) (None for Phase 3; api_usage dropped). Next focus: future enhancements only after MVP + tests + staging.
 
 ## Process Reminders
 - For any code changes: state plan first, update root plan/progress markdowns after completion, ask for confirmation before next task.

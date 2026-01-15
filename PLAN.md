@@ -188,8 +188,8 @@
   Explanation: With a refreshed session token, manual verify created a task and `/api/tasks/{id}/jobs` returned 200 (results stayed pending). History refresh succeeded and displayed rows with `ext api data is not available` for file names (expected). CSV upload now proceeds through column selection and submission, logging `verify.file_columns.csv_parse_warning` without blocking, and the upload summary shows pending counts.
 - [x] Drop `cached_api_keys` table after external-only key flow is verified in production.
   Explanation: Dropped `public.cached_api_keys` via Supabase migration (`drop_cached_api_keys`) once external-only API key proxying was verified, eliminating the unused cache table and FK.
-- [ ] Drop Supabase `api_usage` table after Phase 3 frontend is verified.
-  Explanation: Pending; this will remove the unused local usage table now that external metrics are the source of truth.
+- [x] Drop Supabase `api_usage` table after Phase 3 frontend is verified.
+  Explanation: Dropped `public.api_usage` via Supabase migration (`drop_api_usage`) after external metrics were confirmed; this removes the unused local usage table.
 - [x] Session handover refresh — update `refactor.md` with latest refactor changes + open gaps.
   Explanation: Captured current credits/external-only changes, signup bonus trigger behavior, Paddle E2E update, and new UI verification gaps (CSV header parsing and 404s on signup-bonus/jobs) so the refactor doc stays the source of truth.
 - [x] Session handover refresh — update `handover.md` with full context, explanations, and next steps.
