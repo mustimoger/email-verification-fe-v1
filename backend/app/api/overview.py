@@ -10,7 +10,7 @@ from ..clients.external import ExternalAPIClient, ExternalAPIError, Task, Verifi
 from ..core.auth import AuthContext, get_current_user
 from ..core.settings import get_settings
 from ..services.billing_plans import get_billing_plans_by_price_ids
-from ..services.billing_purchases import list_purchases as list_billing_purchases
+from ..services.credit_grants import list_credit_grants
 from ..services import supabase_client
 from ..services.task_metrics import counts_from_metrics, email_count_from_metrics
 from ..services.verification_metrics import coerce_int, usage_series_from_metrics
@@ -165,16 +165,20 @@ def _build_verification_totals(metrics: VerificationMetricsResponse) -> Optional
 
 def _build_current_plan(user_id: str) -> Optional[CurrentPlan]:
     try:
-        purchases = list_billing_purchases(user_id, limit=1, offset=0)
+        purchases = list_credit_grants(user_id=user_id, source="purchase", limit=1, offset=0)
     except Exception as exc:  # noqa: BLE001
         logger.error("overview.current_plan.fetch_failed", extra={"user_id": user_id, "error": str(exc)})
         return None
     if not purchases:
         return None
     purchase = purchases[0]
+    source_id = purchase.get("source_id") or purchase.get("transaction_id") or purchase.get("id")
     price_ids = purchase.get("price_ids") or []
     if not isinstance(price_ids, list):
-        logger.warning("overview.current_plan.invalid_price_ids", extra={"user_id": user_id, "price_ids": price_ids})
+        logger.warning(
+            "overview.current_plan.invalid_price_ids",
+            extra={"user_id": user_id, "price_ids": price_ids, "source_id": source_id},
+        )
         price_ids = []
     plan_rows = get_billing_plans_by_price_ids(price_ids) if price_ids else []
     plan_names_by_id = {
@@ -185,7 +189,10 @@ def _build_current_plan(user_id: str) -> Optional[CurrentPlan]:
     plan_names = [plan_names_by_id[price_id] for price_id in price_ids if price_id in plan_names_by_id]
     missing = [price_id for price_id in price_ids if price_id not in plan_names_by_id]
     if missing:
-        logger.warning("overview.current_plan.missing_price_ids", extra={"user_id": user_id, "price_ids": missing})
+        logger.warning(
+            "overview.current_plan.missing_price_ids",
+            extra={"user_id": user_id, "price_ids": missing, "source_id": source_id},
+        )
     label = None
     if len(price_ids) > 1:
         label = "Multiple items"
@@ -193,7 +200,9 @@ def _build_current_plan(user_id: str) -> Optional[CurrentPlan]:
         label = plan_names[0]
     purchased_at = purchase.get("purchased_at")
     if purchased_at is None:
-        logger.warning("overview.current_plan.missing_purchased_at", extra={"user_id": user_id})
+        logger.warning(
+            "overview.current_plan.missing_purchased_at", extra={"user_id": user_id, "source_id": source_id}
+        )
     return CurrentPlan(label=label, plan_names=plan_names, price_ids=price_ids, purchased_at=purchased_at)
 
 

@@ -19,7 +19,6 @@ from ..paddle.client import (
 from ..paddle.config import get_paddle_config
 from ..paddle.webhook import verify_webhook
 from ..services.billing_events import delete_billing_event, record_billing_event
-from ..services.billing_purchases import upsert_purchase
 from ..services.billing_plans import (
     get_billing_plan_by_price_id,
     get_billing_plans_by_price_ids,
@@ -566,23 +565,7 @@ async def paddle_webhook(request: Request):
             extra={"event_id": event_id, "event_type": event_type, "transaction_id": transaction_id},
         )
 
-    if transaction_id:
-        upsert_purchase(
-            transaction_id=transaction_id,
-            user_id=user_id,
-            event_id=event_id,
-            event_type=event_type,
-            price_ids=price_ids,
-            credits_granted=total_credits,
-            amount=amount,
-            currency=currency,
-            checkout_email=checkout_email,
-            invoice_id=invoice_id,
-            invoice_number=invoice_number,
-            purchased_at=purchased_at,
-            raw=payload,
-        )
-    else:
+    if not transaction_id:
         logger.warning(
             "billing.webhook.transaction_id_missing",
             extra={"event_id": event_id, "event_type": event_type, "user_id": user_id},

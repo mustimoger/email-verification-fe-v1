@@ -50,10 +50,11 @@ def test_overview_success(monkeypatch):
     )
     monkeypatch.setattr(
         overview_module,
-        "list_billing_purchases",
-        lambda user_id, limit=None, offset=None: [
+        "list_credit_grants",
+        lambda user_id, source=None, limit=None, offset=None: [
             {
-                "transaction_id": "txn-1",
+                "source": "purchase",
+                "source_id": "txn-1",
                 "price_ids": ["price-1", "price-2"],
                 "credits_granted": 1000,
                 "purchased_at": "2024-01-03T00:00:00Z",
@@ -120,7 +121,9 @@ def test_overview_metrics_timeout_fallback(monkeypatch):
 
     monkeypatch.setattr(overview_module, "get_settings", lambda: _Settings(timeout_seconds=0.01))
     monkeypatch.setattr(overview_module.supabase_client, "fetch_profile", lambda user_id: {"user_id": user_id})
-    monkeypatch.setattr(overview_module, "list_billing_purchases", lambda user_id, limit=None, offset=None: [])
+    monkeypatch.setattr(
+        overview_module, "list_credit_grants", lambda user_id, source=None, limit=None, offset=None: []
+    )
 
     class FakeClient:
         async def get_verification_metrics(self):
@@ -150,7 +153,9 @@ def test_overview_metrics_error_fallback(monkeypatch):
 
     monkeypatch.setattr(overview_module, "get_settings", lambda: _Settings(timeout_seconds=1.0))
     monkeypatch.setattr(overview_module.supabase_client, "fetch_profile", lambda user_id: {"user_id": user_id})
-    monkeypatch.setattr(overview_module, "list_billing_purchases", lambda user_id, limit=None, offset=None: [])
+    monkeypatch.setattr(
+        overview_module, "list_credit_grants", lambda user_id, source=None, limit=None, offset=None: []
+    )
 
     class FakeClient:
         async def get_verification_metrics(self):

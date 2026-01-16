@@ -228,7 +228,6 @@ Planned Phase 3 steps (MVP-first):
 - `credit_grants`
 - `billing_events`
 - `billing_plans`
-- `billing_purchases` (until purchase history is migrated to `credit_grants`)
 
 **Remove**
 - `tasks`
@@ -237,6 +236,7 @@ Planned Phase 3 steps (MVP-first):
 - `api_usage`
 - `user_credits`
 - `credit_ledger`
+- `billing_purchases`
 
 **Why**
 - These retained tables are not covered by the external API and are required for billing/profile data.
@@ -245,7 +245,7 @@ Planned Phase 3 steps (MVP-first):
 - Supabase schema is limited to non-external responsibilities.
 
 ### Phase 5 Status (Complete)
-- Purchase history now reads from `credit_grants` (source=`purchase`); `billing_purchases` still written but no longer used for account history.
+- Purchase history and Overview current-plan lookups now read from `credit_grants` (source=`purchase`), webhook persistence of `billing_purchases` has been removed, and the `billing_purchases` table was dropped.
 - Signup bonus is claimed after confirmed sessions, removing the dependency on a signup session.
 - Paddle E2E script now validates `credit_grants` rather than `billing_purchases`/`user_credits`.
 - Dropped legacy tables now owned by the external API: `tasks`, `task_files`, `cached_api_keys`, `api_usage`, `user_credits`, `credit_ledger`.

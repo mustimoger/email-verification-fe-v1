@@ -2,7 +2,7 @@
 
 ## Current Status Summary
 - External API is the source of truth for verification data, tasks, metrics, and API keys.
-- Supabase is for profiles + billing + append-only credit grants (purchases + signup bonus). `cached_api_keys` table still exists but is no longer used by the backend.
+- Supabase is for profiles + billing + append-only credit grants (purchases + signup bonus). Legacy task/usage/key tables have been dropped.
 - Local credit enforcement removed from backend task/verify routes.
 - Billing webhooks write purchase grants to `credit_grants` (no `user_credits` mutation).
 - Signup bonus claim now runs after a confirmed session is established (non-blocking).
@@ -32,6 +32,8 @@
   - Overview + Account UI show `ext api data is not available` for credits.
 - Account purchase history moved to credit grants:
   - `/api/account/purchases` reads `credit_grants` (source=`purchase`), maps only valid rows, and logs missing/invalid fields.
+- Billing purchase persistence removed:
+  - Overview current plan now reads the latest `credit_grants` purchase, webhook no longer writes `billing_purchases`, and the `billing_purchases` table has been dropped.
 - Paddle E2E script updated:
   - `backend/scripts/paddle_simulation_e2e.py` validates `credit_grants` (source=`purchase`) and `credits_granted` instead of `billing_purchases`/`user_credits`.
   - README updated to reflect the new success criteria and timeout messaging.
@@ -74,7 +76,7 @@ If any are missing, `/api/credits/signup-bonus` returns 503 and logs `credits.si
 
 ## Key Files Updated (Recent)
 - `backend/app/api/account.py` — purchase history now reads `credit_grants`.
-- `backend/app/api/overview.py` — credits now nullable (external-only view).
+- `backend/app/api/overview.py` — credits now nullable (external-only view); current plan now reads `credit_grants`.
 - `backend/app/api/api_keys.py` — external-only API key proxying; purpose→integration mapping; no cache fallback.
 - `backend/app/services/api_keys.py` — removed (cached API key storage eliminated).
 - `backend/app/api/usage.py` — `/api/usage/summary` now proxies external metrics; per-key summary marked unavailable; `/api/usage` list removed.
@@ -93,6 +95,7 @@ If any are missing, `/api/credits/signup-bonus` returns 503 and logs `credits.si
 - Supabase migration — dropped `public.api_usage` after external metrics became the source of truth.
 - Supabase migration — dropped `public.tasks`, `public.task_files`, `public.user_credits`, and `public.credit_ledger` to keep local state minimal.
 - Supabase migration — dropped `public.task_credit_reservations` after local credit enforcement removal.
+- Supabase migration — dropped `public.billing_purchases` after switching remaining reads/writes to `credit_grants`.
 - `refactor.md` — refreshed with current refactor status + gaps.
 
 ## Tests Run (Recent)
@@ -103,9 +106,7 @@ If any are missing, `/api/credits/signup-bonus` returns 503 and logs `credits.si
 ## Known Gaps / Risks
 - External API task list/detail still lacks `file_name`, so History shows `ext api data is not available` for Task/Total (expected until the external API adds it).
 - Signup bonus endpoint returns 503 when `SIGNUP_BONUS_*` env vars are not configured (expected in local dev); console logs show `auth.signup_bonus.failed`.
-- `cached_api_keys` table remains in Supabase even though API key caching has been removed; drop it only after external-only key flow is verified in production.
 - Phase 3 frontend handling is still pending: UI must show `ext api data is not available` for missing usage data points (including per-key charts until the external endpoint exists).
-- Supabase `api_usage` table still exists and needs a separate migration to drop later.
 
 ## External API Gaps (Still Pending)
 - Task list/detail do not include `file_name` (upload response includes filename).
