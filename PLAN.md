@@ -150,6 +150,8 @@
   Explanation: Added a detailed Phase 1 handover including external-only task proxying, missing external data notes, test command/results, and the async ASGI client requirement to avoid TestClient hangs.
 - [x] Drop `billing_purchases` table and move remaining reads/writes to `credit_grants`.
   Explanation: Overview current-plan lookup now uses `credit_grants` (source=`purchase`), the webhook no longer writes `billing_purchases`, the service/tests were updated, and the `billing_purchases` table was dropped via migration so Supabase only retains the append-only grants.
+- [x] External API gap report — document missing fields/endpoints required for full UI parity.
+  Explanation: Added `external-api-gap-report.md` summarizing documented gaps (task file names, user-scoped detail fields, credit balance/usage, per-key usage series) and requested changes based strictly on `ext-api-docs/`.
 - [x] Session handover refresh — create a new root `handover.md` with full context, decisions, file changes, and next steps for the upcoming external-API refactor.
   Explanation: Added `handover.md` with decisions, dependencies, current repo state notes, and clear next steps for Phase 0/1 of the external-API-first refactor.
 - [x] Session handover refresh — update `handover.md` with the latest external-API docs changes, manual task decision, and reservation table plan.

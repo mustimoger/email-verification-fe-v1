@@ -267,3 +267,6 @@ Planned Phase 3 steps (MVP-first):
 - Simpler backend (no task/usage caching).
 - Fewer Supabase tables and less schema complexity.
 - Clearer separation of responsibilities: external API for verification, Supabase for billing/profile.
+
+## External API Gap Report
+- See `external-api-gap-report.md` for the current list of external API gaps blocking full UI parity.

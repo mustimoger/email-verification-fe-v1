@@ -108,6 +108,9 @@ If any are missing, `/api/credits/signup-bonus` returns 503 and logs `credits.si
 - Signup bonus endpoint returns 503 when `SIGNUP_BONUS_*` env vars are not configured (expected in local dev); console logs show `auth.signup_bonus.failed`.
 - Phase 3 frontend handling is still pending: UI must show `ext api data is not available` for missing usage data points (including per-key charts until the external endpoint exists).
 
+## External API Gap Report
+- `external-api-gap-report.md` documents the remaining external API gaps and requested additions for full UI parity.
+
 ## External API Gaps (Still Pending)
 - Task list/detail do not include `file_name` (upload response includes filename).
 - Credit usage/spend endpoints not documented yet; external API will compute balances from `credit_grants` once ready.
