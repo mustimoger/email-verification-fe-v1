@@ -16,8 +16,8 @@
     Explanation: Added per-field visibility toggles in `app/signin-v2/page.tsx`, `app/signup-v2/page.tsx`, and `app/reset-password/page.tsx`, switching input types between `password` and `text` via clickable eye buttons with accessible labels.
   - [x] Step 7 — Tests + verification (unit + integration).
     Explanation: With the Python venv active, ran `npx tsx tests/oauth-providers.test.ts`, `npx tsx tests/oauth-signin.test.ts`, and `npx tsx tests/verify-idempotency.test.ts`; all passed.
-  - [ ] Step 8 — Fix password recovery session handling so reset links remain valid.
-    Explanation: Ensure the reset flow doesn’t sign out recovery sessions before the password update completes, and surface a clear error only when the recovery session is truly missing/expired.
+  - [x] Step 8 — Fix password recovery session handling so reset links remain valid.
+    Explanation: Added recovery-flow detection in `app/components/auth-provider.tsx` (URL type + auth event) and skipped the confirmed-email enforcement during recovery sessions so the password reset link can establish a session and complete the update.
 
 - [ ] Sign-in v2 page (Figma) — add separate `/signin-v2` page without touching existing signin/signup.
   Explanation: Implement a standalone sign-in UI that matches the provided Figma design, with no backend wiring, and keep `/signin` + `/signup` unchanged.

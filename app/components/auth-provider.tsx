@@ -31,9 +31,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const profileSyncRef = useRef<{ userId: string; email: string } | null>(null);
   const confirmationCheckRef = useRef<string | null>(null);
   const signupBonusAttemptedRef = useRef<string | null>(null);
+  const recoverySessionRef = useRef(false);
 
   useEffect(() => {
     let mounted = true;
+    if (typeof window !== "undefined") {
+      const hash = window.location.hash;
+      const search = window.location.search;
+      const hashParams = new URLSearchParams(hash.startsWith("#") ? hash.slice(1) : hash);
+      const searchParams = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search);
+      const flowType = hashParams.get("type") ?? searchParams.get("type");
+      if (flowType === "recovery") {
+        recoverySessionRef.current = true;
+      }
+    }
     const init = async () => {
       setLoading(true);
       const { data, error } = await supabase.auth.getSession();
@@ -47,8 +58,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
     void init();
 
-    const { data: subscription } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    const { data: subscription } = supabase.auth.onAuthStateChange((event, newSession) => {
       setSession(newSession);
+      if (event === "PASSWORD_RECOVERY") {
+        recoverySessionRef.current = true;
+      }
+      if (event === "SIGNED_OUT") {
+        recoverySessionRef.current = false;
+      }
     });
 
     return () => {
@@ -63,6 +80,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!userId) {
         confirmationCheckRef.current = null;
         signupBonusAttemptedRef.current = null;
+        return;
+      }
+      if (recoverySessionRef.current) {
         return;
       }
       if (confirmationCheckRef.current === userId) {
