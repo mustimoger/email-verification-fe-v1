@@ -89,6 +89,10 @@
   Explanation: Copy now logs and exits when a full key is unavailable without changing the reveal state. Re-ran frontend tests (`npm run test:overview`, `npm run test:history`, `npm run test:auth-guard`, `npm run test:account-purchases`) with the Python venv active.
 - [x] Step 16 — Overview label: rename Verification Tasks to Verification History.
   Explanation: Renamed the Overview header to “Verification History” and re-ran frontend tests (`npm run test:overview`, `npm run test:history`, `npm run test:auth-guard`, `npm run test:account-purchases`) with the Python venv active.
+- [x] Step 17 — Validation card: add fixed-size status pills beside pie chart.
+  Explanation: Added four fixed-size pills (Invalid, Valid, Catch-all, Disposable) alongside the pie chart with matching colors, equal total height to the chart (via a fixed-height grid), and zeroed counts for unavailable values. The chart stays intact but shifts left to make room. Re-ran frontend tests (`npm run test:overview`, `npm run test:history`, `npm run test:auth-guard`, `npm run test:account-purchases`) with the Python venv active.
+- [x] Step 18 — Ignore root-level PNG files.
+  Explanation: Added `/*.png` to `.gitignore` so only root-level PNGs are ignored while subfolder PNGs remain tracked.
 - [ ] Remaining pages — Verify, History, Integrations, API, Pricing, Account need to be built using the shared shell once Figma node details are provided. Use first-principles MVPs, no placeholders.
 - [ ] API integration — Wire UI to FastAPI email verification backend once endpoint schemas/contracts are known. Replace mock data with typed fetch layer + error handling/logging; avoid hardcoded fallbacks.
 - [x] External-API-first refactor plan doc — create `refactor.md` with a step-by-step transition plan to move dashboard data sourcing from Supabase to the external API (only keep Supabase for data the external API cannot provide).

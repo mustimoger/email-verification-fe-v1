@@ -308,6 +308,7 @@ export type OverviewResponse = {
     valid?: number | null;
     invalid?: number | null;
     catchall?: number | null;
+    disposable?: number | null;
   } | null;
   current_plan?: {
     label?: string | null;

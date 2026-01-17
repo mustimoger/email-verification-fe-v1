@@ -162,10 +162,11 @@ export default function OverviewPage() {
         valid: totals.valid ?? 0,
         invalid: totals.invalid ?? 0,
         catchAll: totals.catchall ?? 0,
+        disposable: totals.disposable ?? 0,
         total: totals.total ?? 0,
       };
     }
-    return aggregateValidationCounts(overview?.recent_tasks);
+    return { ...aggregateValidationCounts(overview?.recent_tasks), disposable: 0 };
   }, [overview]);
 
   const stats: Stat[] = useMemo(() => {
@@ -199,6 +200,15 @@ export default function OverviewPage() {
     return slices.filter((slice) => slice.value > 0);
   }, [overview, validationTotals]);
   const validationHasData = validationTotals.total > 0;
+  const validationPills = useMemo(
+    () => [
+      { label: "Invalid", value: validationTotals.invalid, color: "var(--chart-invalid)" },
+      { label: "Valid", value: validationTotals.valid, color: "var(--chart-valid)" },
+      { label: "Catch-all", value: validationTotals.catchAll, color: "var(--chart-catchall)" },
+      { label: "Disposable", value: validationTotals.disposable, color: "var(--chart-processing)" },
+    ],
+    [validationTotals],
+  );
 
   const usageData: UsagePoint[] = useMemo(
     () => (overview?.usage_series ?? []).map((p) => ({ date: p.date, count: p.count })),
@@ -356,9 +366,10 @@ export default function OverviewPage() {
                 <PieChart className="h-6 w-6" />
               </div>
             </div>
-          <div className="mt-4 h-[260px] w-full">
-            {validationHasData ? (
-                <ResponsiveContainer height={260}>
+          <div className="mt-4 flex h-[260px] w-full items-center gap-6">
+            <div className="h-full flex-1 min-w-0">
+              {validationHasData ? (
+                <ResponsiveContainer height="100%" width="100%">
                   <RePieChart>
                     <Pie
                       data={validationData}
@@ -384,11 +395,33 @@ export default function OverviewPage() {
                     />
                   </RePieChart>
                 </ResponsiveContainer>
-            ) : (
-              <div className="flex h-full items-center justify-center text-sm font-semibold text-slate-500">
-                No validation data yet.
-              </div>
-            )}
+              ) : (
+                <div className="flex h-full items-center justify-center text-sm font-semibold text-slate-500">
+                  No validation data yet.
+                </div>
+              )}
+            </div>
+            <div className="grid h-full w-44 grid-rows-4 gap-3">
+              {validationPills.map((pill) => (
+                <div
+                  key={pill.label}
+                  className="flex h-full items-center justify-between rounded-full border border-slate-200 bg-slate-50 px-4"
+                >
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span
+                      className="h-2.5 w-2.5 shrink-0 rounded-full"
+                      style={{ backgroundColor: pill.color }}
+                    />
+                    <span className="text-xs font-semibold text-slate-600 whitespace-nowrap">
+                      {pill.label}
+                    </span>
+                  </div>
+                  <span className="ml-2 text-sm font-bold text-slate-900 tabular-nums">
+                    {pill.value.toLocaleString()}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
           {validationHasData ? (
             <p className="mt-3 text-center text-xs font-semibold text-slate-500">
