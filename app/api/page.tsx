@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Calendar } from "lucide-react";
+import { Calendar, Copy, Eye, EyeOff } from "lucide-react";
 import { Line, LineChart as ReLineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 import { DashboardShell } from "../components/dashboard-shell";
@@ -40,9 +40,9 @@ const usageAxisTickStyle = {
   fontWeight: 600,
 };
 
-function maskKeyPreview(preview?: string) {
-  if (!preview) return null;
-  const trimmed = preview.trim();
+function maskKeyValue(value?: string) {
+  if (!value) return null;
+  const trimmed = value.trim();
   if (!trimmed) return null;
   if (trimmed.length <= 3) return trimmed;
   return `${trimmed.slice(0, 3)}***`;
@@ -77,6 +77,8 @@ export default function ApiPage() {
   const [keyName, setKeyName] = useState<string>("");
   const [loadingIntegrations, setLoadingIntegrations] = useState(false);
   const [lastPlainKey, setLastPlainKey] = useState<string | null>(null);
+  const [fullKeysById, setFullKeysById] = useState<Record<string, string>>({});
+  const [revealedKeys, setRevealedKeys] = useState<Record<string, boolean>>({});
   const { session, loading: authLoading } = useAuth();
 
   const keyUsage = useMemo(
@@ -116,6 +118,71 @@ export default function ApiPage() {
 
   const isDashboardKey = (key: ApiKeySummary) => (key.name ?? "").toLowerCase() === "dashboard_api";
 
+  const resolveFullKey = (key: ApiKeySummary) => {
+    if (key.key && key.key.trim()) return key.key;
+    if (key.id && fullKeysById[key.id]) return fullKeysById[key.id];
+    return null;
+  };
+
+  const syncKeyState = (list: ApiKeySummary[]) => {
+    const ids = new Set(list.map((key) => key.id).filter(Boolean) as string[]);
+    setRevealedKeys((prev) => {
+      const next: Record<string, boolean> = {};
+      ids.forEach((id) => {
+        if (prev[id]) next[id] = prev[id];
+      });
+      return next;
+    });
+    setFullKeysById((prev) => {
+      const next: Record<string, string> = {};
+      list.forEach((key) => {
+        if (!key.id) return;
+        if (key.key && key.key.trim()) {
+          next[key.id] = key.key;
+          return;
+        }
+        if (prev[key.id]) {
+          next[key.id] = prev[key.id];
+        }
+      });
+      return next;
+    });
+  };
+
+  const toggleReveal = (key: ApiKeySummary) => {
+    if (!key.id) {
+      console.warn("api.keys.reveal_missing_id");
+      return;
+    }
+    const hasFullKey = Boolean(resolveFullKey(key));
+    if (!hasFullKey) {
+      console.warn("api.keys.full_key.unavailable", { key_id: key.id });
+    }
+    setRevealedKeys((prev) => ({ ...prev, [key.id as string]: !prev[key.id as string] }));
+  };
+
+  const copyKey = async (key: ApiKeySummary) => {
+    if (!key.id) {
+      console.warn("api.keys.copy_missing_id");
+      return;
+    }
+    const fullKey = resolveFullKey(key);
+    if (!fullKey) {
+      console.warn("api.keys.copy_unavailable", { key_id: key.id });
+      setRevealedKeys((prev) => ({ ...prev, [key.id as string]: true }));
+      return;
+    }
+    if (!navigator?.clipboard?.writeText) {
+      console.warn("api.keys.copy_unsupported", { key_id: key.id });
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(fullKey);
+    } catch (error) {
+      console.warn("api.keys.copy_failed", { key_id: key.id, error });
+    }
+  };
+
   useEffect(() => {
     if (!session) {
       setKeys([]);
@@ -138,6 +205,7 @@ export default function ApiPage() {
         const response: ListApiKeysResponse = await apiClient.listApiKeys();
         const list = (response.keys ?? []).filter((key) => !isDashboardKey(key));
         setKeys(list);
+        syncKeyState(list);
         setSelectedKey("");
         setSelectedPurpose("");
         setKeyUsageKeys(null);
@@ -263,9 +331,13 @@ export default function ApiPage() {
     try {
       const created = await apiClient.createApiKey(resolvedName, selectedIntegrationId);
       setLastPlainKey(created.key || null);
+      if (created.id && created.key) {
+        setFullKeysById((prev) => ({ ...prev, [created.id as string]: created.key as string }));
+      }
       const refreshed = await apiClient.listApiKeys();
       const list = (refreshed.keys ?? []).filter((key) => !isDashboardKey(key));
       setKeys(list);
+      syncKeyState(list);
       setSelectedKey(created.id ?? "");
       setKeyName(resolvedName);
       setShowModal(false);
@@ -290,6 +362,7 @@ export default function ApiPage() {
       const refreshed = await apiClient.listApiKeys();
       const list = (refreshed.keys ?? []).filter((key) => !isDashboardKey(key));
       setKeys(list);
+      syncKeyState(list);
       setSelectedKey(list[0]?.id ?? "");
     } catch (err: unknown) {
       const message = err instanceof ApiError ? err.message : "Failed to revoke API key";
@@ -350,7 +423,46 @@ export default function ApiPage() {
                     className="grid grid-cols-5 items-center px-4 py-3 text-sm font-semibold text-slate-800 md:text-base"
                   >
                     <span className="text-slate-700">{key.name}</span>
-                    <span className="text-slate-700">{maskKeyPreview(key.key_preview) ?? ""}</span>
+                    <span className="flex items-center gap-2 text-slate-700">
+                      <span className="min-w-0 flex-1 break-all">
+                        {(() => {
+                          const fullKey = resolveFullKey(key);
+                          const revealed = Boolean(key.id && revealedKeys[key.id]);
+                          if (revealed) return fullKey ?? EXTERNAL_DATA_UNAVAILABLE;
+                          const masked = maskKeyValue(key.key_preview ?? fullKey ?? "");
+                          return masked ?? EXTERNAL_DATA_UNAVAILABLE;
+                        })()}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => toggleReveal(key)}
+                          disabled={!key.id}
+                          aria-pressed={Boolean(key.id && revealedKeys[key.id])}
+                          aria-label={
+                            Boolean(key.id && revealedKeys[key.id])
+                              ? "Hide API key"
+                              : "Reveal API key"
+                          }
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-600 transition hover:border-[var(--accent)] hover:text-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {Boolean(key.id && revealedKeys[key.id]) ? (
+                            <EyeOff className="h-4 w-4" />
+                          ) : (
+                            <Eye className="h-4 w-4" />
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => copyKey(key)}
+                          disabled={!key.id}
+                          aria-label="Copy API key"
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-600 transition hover:border-[var(--accent)] hover:text-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          <Copy className="h-4 w-4" />
+                        </button>
+                      </span>
+                    </span>
                     <span className="text-slate-700">{key.integration ?? key.purpose ?? "—"}</span>
                     <span>
                       <span
@@ -411,7 +523,7 @@ export default function ApiPage() {
                 >
                   <option value="">All keys</option>
                   {keys.map((key) => {
-                    const preview = maskKeyPreview(key.key_preview);
+                    const preview = maskKeyValue(key.key_preview ?? resolveFullKey(key) ?? "");
                     const label = preview ? `${key.name ?? ""} (${preview})` : key.name ?? "";
                     return (
                       <option key={key.id} value={key.id}>

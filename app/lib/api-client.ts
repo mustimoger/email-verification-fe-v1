@@ -182,6 +182,7 @@ export type ApiKeySummary = {
   total_requests?: number;
   integration?: string;
   key_preview?: string;
+  key?: string;
 };
 
 export type ListApiKeysResponse = {
