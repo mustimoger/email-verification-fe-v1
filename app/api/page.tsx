@@ -404,7 +404,7 @@ export default function ApiPage() {
             </div>
           ) : null}
           <div className="mt-4 overflow-hidden rounded-xl border border-slate-200">
-            <div className="grid grid-cols-5 bg-slate-50 px-4 py-3 text-xs font-extrabold uppercase tracking-wide text-slate-700 md:text-sm">
+            <div className="grid grid-cols-5 bg-slate-50 px-4 py-3 text-xs font-extrabold uppercase tracking-wide text-slate-700 md:text-sm gap-x-4">
               <span>API key name</span>
               <span>API key</span>
               <span>Integration</span>
@@ -420,7 +420,7 @@ export default function ApiPage() {
                 keys.map((key) => (
                   <div
                     key={key.id}
-                    className="grid grid-cols-5 items-center px-4 py-3 text-sm font-semibold text-slate-800 md:text-base"
+                    className="grid grid-cols-5 items-center px-4 py-3 text-sm font-semibold text-slate-800 md:text-base gap-x-4"
                   >
                     <span className="text-slate-700">{key.name}</span>
                     <span className="flex items-center gap-2 text-slate-700">
@@ -447,9 +447,9 @@ export default function ApiPage() {
                           className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-600 transition hover:border-[var(--accent)] hover:text-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-60"
                         >
                           {Boolean(key.id && revealedKeys[key.id]) ? (
-                            <EyeOff className="h-4 w-4" />
+                            <EyeOff className="h-3.5 w-3.5" />
                           ) : (
-                            <Eye className="h-4 w-4" />
+                            <Eye className="h-3.5 w-3.5" />
                           )}
                         </button>
                         <button
@@ -459,7 +459,7 @@ export default function ApiPage() {
                           aria-label="Copy API key"
                           className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-600 transition hover:border-[var(--accent)] hover:text-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-60"
                         >
-                          <Copy className="h-4 w-4" />
+                          <Copy className="h-3.5 w-3.5" />
                         </button>
                       </span>
                     </span>
