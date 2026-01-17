@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { DragEvent } from "react";
 import { AlertCircle, Info, UploadCloud, X } from "lucide-react";
-import { Cell, Pie, PieChart as RePieChart, ResponsiveContainer, Tooltip } from "recharts";
+import { Bar, BarChart, ResponsiveContainer } from "recharts";
 
 import { useAuth } from "../components/auth-provider";
 import { DashboardShell } from "../components/dashboard-shell";
@@ -56,10 +56,8 @@ export default function VerifyPage() {
   const [removeDuplicates] = useState<boolean>(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
-  const [activeDownload, setActiveDownload] = useState<string | null>(null);
   const [latestUploadError, setLatestUploadError] = useState<string | null>(null);
   const [latestUploadRefreshing, setLatestUploadRefreshing] = useState(false);
-  const [latestUploadLabel, setLatestUploadLabel] = useState<string | null>(null);
   const [manualRefreshing, setManualRefreshing] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
@@ -120,37 +118,10 @@ export default function VerifyPage() {
   }, []);
 
   useEffect(() => {
-    let active = true;
-    const hydrateLatestUploads = async () => {
-      if (latestUploadHydratedRef.current) return;
-      if (authLoading || !session) return;
-      if (files.length > 0 || uploadSummary || flowStage !== "idle") return;
-      latestUploadHydratedRef.current = true;
-      setLatestUploadError(null);
-      try {
-        const taskResponse = await apiClient.listTasks();
-        const tasks = taskResponse.tasks ?? [];
-        if (!active || tasks.length === 0) return;
-        const summary = buildTaskUploadsSummary(tasks);
-        setUploadSummary(summary);
-        setLatestUploadLabel(summary.files[0]?.fileName ?? null);
-        setFlowStage("summary");
-        console.info("verify.latest_tasks.hydrated", {
-          count: tasks.length,
-          latest_task_id: tasks[0]?.id,
-        });
-      } catch (err: unknown) {
-        if (!active) return;
-        const message = resolveApiErrorMessage(err, "verify.latest_tasks.hydrate");
-        console.error("verify.latest_tasks.hydrate_failed", { error: message });
-        setLatestUploadError("Unable to load the latest upload. Please check History.");
-      }
-    };
-    void hydrateLatestUploads();
-    return () => {
-      active = false;
-    };
-  }, [authLoading, files.length, flowStage, session, uploadSummary]);
+    if (!uploadSummary) return;
+    if (latestUploadHydratedRef.current) return;
+    latestUploadHydratedRef.current = true;
+  }, [uploadSummary]);
 
   useEffect(() => {
     let active = true;
@@ -508,63 +479,55 @@ export default function VerifyPage() {
     void handleFilesSelected(event.dataTransfer.files);
   };
 
-  const resetUpload = () => {
-    setFiles([]);
-    setFileColumns({});
-    setUploadSummary(null);
-    setFlowStage("idle");
-    setColumnMapping({});
-    setFirstRowHasLabels(true);
-    setRemoveDuplicates(true);
-    setFileError(null);
-    setFileNotice(null);
-    setLatestUploadError(null);
-    setLatestUploadRefreshing(false);
-    setLatestUploadLabel(null);
-  };
-
-  const validationSlices = useMemo(() => {
-    if (!uploadSummary || uploadSummary.files.length === 0) {
-      return [];
-    }
-    const latestRow = uploadSummary.files[0];
-    const valid = latestRow.valid ?? uploadSummary.aggregates.valid ?? 0;
-    const invalid = latestRow.invalid ?? uploadSummary.aggregates.invalid ?? 0;
-    const catchAll = latestRow.catchAll ?? uploadSummary.aggregates.catchAll ?? 0;
-    const processedTotal = valid + invalid + catchAll;
-    const totalEmails = latestRow.totalEmails ?? uploadSummary.totalEmails;
-    const processing =
-      typeof totalEmails === "number" && Number.isFinite(totalEmails)
-        ? Math.max(totalEmails - processedTotal, 0)
-        : 0;
-    const slices = [
-      { name: "Valid", value: valid, color: "var(--chart-valid)" },
-      { name: "Catch-all", value: catchAll, color: "var(--chart-catchall)" },
-      { name: "Invalid", value: invalid, color: "var(--chart-invalid)" },
-    ];
-    if (processing > 0) {
-      slices.push({ name: "Processing", value: processing, color: "var(--chart-processing)" });
-    }
-    return slices.filter((slice) => slice.value > 0);
-  }, [uploadSummary]);
-
-  const validPercent = useMemo(() => {
-    if (
-      !uploadSummary ||
-      uploadSummary.totalEmails === null ||
-      uploadSummary.totalEmails === undefined ||
-      uploadSummary.totalEmails === 0 ||
-      uploadSummary.aggregates.valid === null
-    ) {
-      return null;
-    }
-    return Math.round((uploadSummary.aggregates.valid / uploadSummary.totalEmails) * 100);
-  }, [uploadSummary]);
-
   const showSummaryState = flowStage === "summary" && uploadSummary;
   const hasSecondaryContent = flowStage === "popup1" || flowStage === "popup2" || showSummaryState;
   const exportDisabled = results.length === 0 || exporting;
   const exportLabel = exporting ? "Downloading..." : "Download CSV";
+
+  const summaryStatus = useMemo(() => {
+    if (!uploadSummary || uploadSummary.files.length === 0) return null;
+    const allComplete = uploadSummary.files.every((file) => file.status === "download");
+    return allComplete ? "completed" : "processing";
+  }, [uploadSummary]);
+  const summaryStatusLabel = summaryStatus === "completed" ? "Completed" : "Processing";
+  const summaryStatusClass =
+    summaryStatus === "completed"
+      ? "bg-emerald-100 text-emerald-700"
+      : "bg-amber-100 text-amber-700";
+
+  const summaryBars = useMemo(() => {
+    const values = {
+      valid: uploadSummary?.aggregates.valid ?? null,
+      invalid: uploadSummary?.aggregates.invalid ?? null,
+      catchAll: uploadSummary?.aggregates.catchAll ?? null,
+      disposable: null,
+    };
+    const bars = [
+      { key: "valid", label: "Valid", value: values.valid, color: "var(--chart-valid)" },
+      { key: "invalid", label: "Invalid", value: values.invalid, color: "var(--chart-invalid)" },
+      { key: "catchAll", label: "Catch-all", value: values.catchAll, color: "var(--chart-catchall)" },
+      { key: "disposable", label: "Disposable", value: values.disposable, color: "var(--chart-processing)" },
+    ];
+    return bars.map((bar) => ({
+      ...bar,
+      numericValue: typeof bar.value === "number" ? bar.value : 0,
+    }));
+  }, [uploadSummary]);
+
+  useEffect(() => {
+    if (!uploadSummary) return;
+    const missing = {
+      valid: uploadSummary.aggregates.valid === null,
+      invalid: uploadSummary.aggregates.invalid === null,
+      catchAll: uploadSummary.aggregates.catchAll === null,
+    };
+    if (Object.values(missing).some(Boolean)) {
+      console.info("verify.upload.summary_counts_unavailable", {
+        missing,
+        task_ids: uploadSummary.files.map((file) => file.taskId).filter(Boolean),
+      });
+    }
+  }, [uploadSummary]);
 
   const proceedToMapping = () => {
     if (!uploadSummary) return;
@@ -625,9 +588,12 @@ export default function VerifyPage() {
         }),
       );
       const summary = buildUploadSummary(files, links, detailsByTaskId, startedAt);
-      setLatestUploadLabel(summary.files[0]?.fileName ?? null);
+      setFiles([]);
+      setFileColumns({});
       setUploadSummary(summary);
       setFlowStage("summary");
+      setColumnMapping({});
+      setLatestUploadError(null);
       setToast("Upload submitted");
       setFileNotice(null);
       const pendingFiles = summary.files.filter((file) => file.taskId && file.status === "pending");
@@ -658,21 +624,18 @@ export default function VerifyPage() {
   };
 
   const refreshLatestUploads = async () => {
+    if (!uploadSummary) return;
     setLatestUploadError(null);
     setLatestUploadRefreshing(true);
     try {
       const taskResponse = await apiClient.listTasks();
       const tasks = taskResponse.tasks ?? [];
       if (tasks.length === 0) {
-        setUploadSummary(null);
-        setFlowStage("idle");
-        setLatestUploadLabel(null);
         setLatestUploadError("No recent uploads found. Upload a file to get started.");
         return;
       }
       const summary = buildTaskUploadsSummary(tasks);
       setUploadSummary(summary);
-      setLatestUploadLabel(summary.files[0]?.fileName ?? null);
       setFlowStage("summary");
       console.info("verify.latest_tasks.refreshed", {
         count: tasks.length,
@@ -687,37 +650,6 @@ export default function VerifyPage() {
     }
   };
 
-  const handleDownload = async (file: UploadSummary["files"][number]) => {
-    if (!file.taskId) {
-      setFileError("Download unavailable for this file.");
-      return;
-    }
-    if (!file.downloadName) {
-      setFileError("Download unavailable without a file name.");
-      return;
-    }
-    setFileError(null);
-    setActiveDownload(file.taskId);
-    try {
-      const { blob, fileName } = await apiClient.downloadTaskResults(file.taskId, file.downloadName);
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      anchor.href = url;
-      anchor.download = fileName;
-      document.body.appendChild(anchor);
-      anchor.click();
-      anchor.remove();
-      URL.revokeObjectURL(url);
-      console.info("verify.download.success", { task_id: file.taskId, file_name: fileName });
-    } catch (err: unknown) {
-      const message = resolveApiErrorMessage(err, "verify.download");
-      console.error("verify.download.failed", { task_id: file.taskId, error: message });
-      setFileError(message);
-    } finally {
-      setActiveDownload(null);
-    }
-  };
-
   return (
     <DashboardShell>
       <section className="flex flex-col gap-8">
@@ -726,6 +658,10 @@ export default function VerifyPage() {
             <h2 className="text-lg font-extrabold text-slate-900">Add Emails To Verify</h2>
             <p className="mt-2 text-sm font-semibold text-slate-600">
               Enter emails comma separated or on their own line
+            </p>
+            <p className="mt-3 rounded-lg border border-amber-100 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
+              Manual verification results are only available immediately after completion. Download them right away; they
+              won't be available later.
             </p>
             <div className="mt-4">
               <textarea
@@ -866,161 +802,155 @@ export default function VerifyPage() {
                 {fileNotice}
               </div>
             ) : null}
-            {latestUploadError && !uploadSummary && flowStage === "idle" ? (
-              <div className="mt-2 flex items-center gap-2 rounded-md bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700">
-                <AlertCircle className="h-4 w-4" />
-                {latestUploadError}
-              </div>
-            ) : null}
           </div>
 
-          <div className="lg:col-span-2 space-y-4">
-            {flowStage === "popup1" && uploadSummary ? (
-              <div className="space-y-3 rounded-xl bg-white p-5 shadow-lg ring-1 ring-slate-200">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-base font-extrabold text-slate-900">Verify Emails</h3>
-                  <span className="text-sm font-semibold text-slate-600">
-                    {formatNumber(uploadSummary.totalEmails)} emails detected
-                  </span>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {uploadSummary.files.map((file) => (
-                  <span
-                    key={file.fileName}
-                    className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700"
-                  >
-                    {file.fileName}
-                      <button
-                        type="button"
-                        className="text-slate-500 hover:text-slate-700"
-                        onClick={() => {
-                          const nextFiles = files.filter((f) => f.name !== file.fileName);
-                          setFiles(nextFiles);
-                          const nextSummary = nextFiles.length
-                            ? buildUploadSummary(nextFiles, createUploadLinks(nextFiles), new Map())
-                            : null;
-                          setUploadSummary(nextSummary);
-                          setColumnMapping((prev) => {
-                            if (nextFiles.length === 0) return {};
-                            const next = { ...prev };
-                            delete next[file.fileName];
-                            return next;
-                          });
-                          setFileColumns((prev) => {
-                            if (nextFiles.length === 0) return {};
-                            const next = { ...prev };
-                            delete next[file.fileName];
-                            return next;
-                          });
-                          if (nextFiles.length === 0) setFlowStage("idle");
-                        }}
-                        aria-label={`Remove ${file.fileName}`}
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
+          {hasSecondaryContent ? (
+            <div className="lg:col-span-2 space-y-4">
+              {flowStage === "popup1" && uploadSummary ? (
+                <div className="space-y-3 rounded-xl bg-white p-5 shadow-lg ring-1 ring-slate-200">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-base font-extrabold text-slate-900">Verify Emails</h3>
+                    <span className="text-sm font-semibold text-slate-600">
+                      {formatNumber(uploadSummary.totalEmails)} emails detected
                     </span>
-                  ))}
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setFlowStage("idle")}
-                    className="text-sm font-semibold text-[var(--accent)] underline"
-                  >
-                    Go back
-                  </button>
-                  <button
-                    type="button"
-                    onClick={proceedToMapping}
-                    disabled={isSubmitting}
-                    className="rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[var(--accent-contrast)] shadow-sm transition hover:bg-[var(--accent-hover)] disabled:cursor-not-allowed disabled:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
-                  >
-                    VERIFY EMAILS
-                  </button>
-                </div>
-              </div>
-            ) : null}
-
-            {flowStage === "popup2" && uploadSummary ? (
-              <div className="space-y-3 rounded-xl bg-white p-5 shadow-lg ring-1 ring-slate-200">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-base font-extrabold text-slate-900">Assign Email Column</h3>
-                  <span className="text-sm font-semibold text-slate-600">
-                    {formatNumber(uploadSummary.totalEmails)} emails detected
-                  </span>
-                </div>
-                <div className="space-y-2">
-                  {uploadSummary.files.map((file) => (
-                    <div key={file.fileName} className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2">
-                      <span className="text-sm font-semibold text-slate-700">{file.fileName}</span>
-                      <select
-                        value={columnMapping[file.fileName] ?? ""}
-                        onChange={(event) =>
-                          setColumnMapping((prev) => ({ ...prev, [file.fileName]: event.target.value }))
-                        }
-                        className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-sm font-semibold text-slate-700 focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--ring)]"
-                      >
-                        <option value="">Select email column</option>
-                        {(fileColumns[file.fileName]
-                          ? buildColumnOptions(fileColumns[file.fileName], firstRowHasLabels)
-                          : []
-                        ).map((option) => (
-                          <option key={`${file.fileName}-${option.value}`} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  ))}
-                </div>
-                <div className="grid gap-3 md:grid-cols-2">
-                  <label className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-                    <input
-                      type="checkbox"
-                      checked={firstRowHasLabels}
-                      onChange={(event) => setFirstRowHasLabels(event.target.checked)}
-                    />
-                    First row has column names
-                  </label>
-                  <label className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-                    <input
-                      type="checkbox"
-                      checked={removeDuplicates}
-                      disabled
-                      aria-disabled="true"
-                      className="cursor-not-allowed opacity-70"
-                    />
-                    Remove duplicate emails
-                  </label>
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setFlowStage("popup1")}
-                    className="text-sm font-semibold text-[var(--accent)] underline"
-                  >
-                    Go back
-                  </button>
-                  <button
-                    type="button"
-                    onClick={proceedToSummary}
-                    disabled={isSubmitting}
-                    className="rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[var(--accent-contrast)] shadow-sm transition hover:bg-[var(--accent-hover)] disabled:cursor-not-allowed disabled:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
-                  >
-                    {isSubmitting ? "Submitting..." : "PROCEED"}
-                  </button>
-                </div>
-              </div>
-            ) : null}
-
-            {showSummaryState ? (
-              <div className="space-y-3 rounded-2xl bg-white p-5 shadow-md ring-1 ring-slate-100">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <h3 className="text-base font-extrabold text-slate-900">Verification Summary</h3>
-                    <p className="text-sm font-semibold text-slate-600">{uploadSummary?.uploadDate}</p>
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-wrap gap-2">
+                    {uploadSummary.files.map((file) => (
+                    <span
+                      key={file.fileName}
+                      className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700"
+                    >
+                      {file.fileName}
+                        <button
+                          type="button"
+                          className="text-slate-500 hover:text-slate-700"
+                          onClick={() => {
+                            const nextFiles = files.filter((f) => f.name !== file.fileName);
+                            setFiles(nextFiles);
+                            const nextSummary = nextFiles.length
+                              ? buildUploadSummary(nextFiles, createUploadLinks(nextFiles), new Map())
+                              : null;
+                            setUploadSummary(nextSummary);
+                            setColumnMapping((prev) => {
+                              if (nextFiles.length === 0) return {};
+                              const next = { ...prev };
+                              delete next[file.fileName];
+                              return next;
+                            });
+                            setFileColumns((prev) => {
+                              if (nextFiles.length === 0) return {};
+                              const next = { ...prev };
+                              delete next[file.fileName];
+                              return next;
+                            });
+                            if (nextFiles.length === 0) setFlowStage("idle");
+                          }}
+                          aria-label={`Remove ${file.fileName}`}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setFlowStage("idle")}
+                      className="text-sm font-semibold text-[var(--accent)] underline"
+                    >
+                      Go back
+                    </button>
+                    <button
+                      type="button"
+                      onClick={proceedToMapping}
+                      disabled={isSubmitting}
+                      className="rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[var(--accent-contrast)] shadow-sm transition hover:bg-[var(--accent-hover)] disabled:cursor-not-allowed disabled:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+                    >
+                      VERIFY EMAILS
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+
+              {flowStage === "popup2" && uploadSummary ? (
+                <div className="space-y-3 rounded-xl bg-white p-5 shadow-lg ring-1 ring-slate-200">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-base font-extrabold text-slate-900">Assign Email Column</h3>
+                    <span className="text-sm font-semibold text-slate-600">
+                      {formatNumber(uploadSummary.totalEmails)} emails detected
+                    </span>
+                  </div>
+                  <div className="space-y-2">
+                    {uploadSummary.files.map((file) => (
+                      <div key={file.fileName} className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2">
+                        <span className="text-sm font-semibold text-slate-700">{file.fileName}</span>
+                        <select
+                          value={columnMapping[file.fileName] ?? ""}
+                          onChange={(event) =>
+                            setColumnMapping((prev) => ({ ...prev, [file.fileName]: event.target.value }))
+                          }
+                          className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-sm font-semibold text-slate-700 focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--ring)]"
+                        >
+                          <option value="">Select email column</option>
+                          {(fileColumns[file.fileName]
+                            ? buildColumnOptions(fileColumns[file.fileName], firstRowHasLabels)
+                            : []
+                          ).map((option) => (
+                            <option key={`${file.fileName}-${option.value}`} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={firstRowHasLabels}
+                        onChange={(event) => setFirstRowHasLabels(event.target.checked)}
+                      />
+                      First row has column names
+                    </label>
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={removeDuplicates}
+                        disabled
+                        aria-disabled="true"
+                        className="cursor-not-allowed opacity-70"
+                      />
+                      Remove duplicate emails
+                    </label>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setFlowStage("popup1")}
+                      className="text-sm font-semibold text-[var(--accent)] underline"
+                    >
+                      Go back
+                    </button>
+                    <button
+                      type="button"
+                      onClick={proceedToSummary}
+                      disabled={isSubmitting}
+                      className="rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[var(--accent-contrast)] shadow-sm transition hover:bg-[var(--accent-hover)] disabled:cursor-not-allowed disabled:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+                    >
+                      {isSubmitting ? "Submitting..." : "PROCEED"}
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+
+              {showSummaryState ? (
+                <div className="space-y-3 rounded-2xl bg-white p-5 shadow-md ring-1 ring-slate-100">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <h3 className="text-base font-extrabold text-slate-900">Verification Summary</h3>
+                      <p className="text-sm font-semibold text-slate-600">{uploadSummary.uploadDate}</p>
+                    </div>
                     <button
                       type="button"
                       onClick={() => void refreshLatestUploads()}
@@ -1030,102 +960,42 @@ export default function VerifyPage() {
                       {latestUploadRefreshing ? "Refreshing..." : "Refresh status"}
                     </button>
                   </div>
-                </div>
-                {latestUploadError ? (
-                  <div className="rounded-md bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700" role="alert">
-                    {latestUploadError}
-                  </div>
-                ) : null}
-
-                <div className="grid gap-4 lg:grid-cols-2">
-                  <div className="overflow-hidden rounded-xl border border-slate-200">
-                    <div className="grid grid-cols-5 bg-slate-50 px-3 py-2 text-xs font-extrabold uppercase tracking-wide text-slate-700">
-                      <span>File name</span>
-                      <span className="text-center">Total</span>
-                      <span className="text-center">Valid</span>
-                      <span className="text-center">Invalid</span>
-                      <span className="text-right">Action</span>
+                  {latestUploadError ? (
+                    <div className="rounded-md bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700" role="alert">
+                      {latestUploadError}
                     </div>
-                    <div className="divide-y divide-slate-100">
-                      {uploadSummary?.files.map((file, index) => (
-                        <div
-                          key={`${file.taskId ?? "pending"}-${file.fileName}-${index}`}
-                          className="grid grid-cols-5 items-center px-3 py-2 text-sm font-semibold text-slate-800"
-                        >
-                          <span className="truncate" title={file.fileName}>
-                            {file.fileName}
-                          </span>
-                          <span className="text-center text-slate-700">{formatNumber(file.totalEmails)}</span>
-                          <span className="text-center text-emerald-600">{formatNumber(file.valid)}</span>
-                          <span className="text-center text-rose-600">{formatNumber(file.invalid)}</span>
-                          <span className="flex justify-end">
-                            {file.status === "download" && file.taskId ? (
-                              <button
-                                type="button"
-                                onClick={() => void handleDownload(file)}
-                                disabled={activeDownload === file.taskId}
-                                className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700 transition hover:bg-emerald-200 disabled:cursor-not-allowed disabled:opacity-70"
+                  ) : null}
+
+                  <div className="rounded-xl border border-slate-200 bg-white p-4">
+                    <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                      {summaryBars.map((bar) => (
+                        <div key={bar.key} className="flex flex-col items-center gap-2">
+                          <div className="h-40 w-full rounded-full bg-slate-100 px-1 py-1">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <BarChart
+                                data={[{ value: bar.numericValue }]}
+                                margin={{ top: 0, right: 0, left: 0, bottom: 0 }}
                               >
-                                {activeDownload === file.taskId ? "Downloading..." : "Download"}
-                              </button>
-                            ) : (
-                              <span className="inline-flex items-center rounded-full bg-slate-200 px-3 py-1 text-xs font-bold text-slate-600">
-                                Pending
-                              </span>
-                            )}
-                          </span>
+                                <Bar dataKey="value" fill={bar.color} radius={[999, 999, 999, 999]} />
+                              </BarChart>
+                            </ResponsiveContainer>
+                          </div>
+                          <span className="text-xs font-bold text-slate-600">{bar.label}</span>
+                          <span className="text-xs font-semibold text-slate-500">{formatNumber(bar.value)}</span>
                         </div>
                       ))}
                     </div>
-                  </div>
-
-                  <div className="grid gap-2 rounded-xl border border-slate-200 bg-white p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xs font-bold uppercase tracking-wide text-slate-700">Valid Emails</p>
-                        <p className="text-3xl font-extrabold text-slate-900">
-                          {validPercent === null ? "—" : `${validPercent}%`}
-                        </p>
-                        <p
-                          className="mt-1 text-xs font-semibold text-slate-500"
-                          title={latestUploadLabel ?? undefined}
-                        >
-                          {latestUploadLabel ?? "—"}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="h-64">
-                      <ResponsiveContainer width="100%" height={256}>
-                        <RePieChart margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-                          <Pie
-                            data={validationSlices}
-                            dataKey="value"
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={70}
-                            outerRadius={100}
-                            paddingAngle={2}
-                          >
-                            {validationSlices.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={entry.color} />
-                            ))}
-                          </Pie>
-                          <Tooltip
-                            cursor={{ fill: "transparent" }}
-                            contentStyle={{
-                              borderRadius: 12,
-                              border: "1px solid var(--border)",
-                              boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
-                            }}
-                          />
-                        </RePieChart>
-                      </ResponsiveContainer>
+                    <div className="mt-4 flex items-center gap-2">
+                      <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Status</span>
+                      <span className={`rounded-full px-3 py-1 text-xs font-bold ${summaryStatusClass}`}>
+                        {summaryStatusLabel}
+                      </span>
                     </div>
                   </div>
                 </div>
-              </div>
-            ) : null}
-          </div>
+              ) : null}
+            </div>
+          ) : null}
         </div>
 
         {toast ? (

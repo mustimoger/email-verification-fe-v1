@@ -19,6 +19,27 @@
     - [x] Step 4d — Tests: run backend usage route tests and frontend API usage utils tests.
       Explanation: Ran `pytest backend/tests/test_usage_summary_route.py backend/tests/test_usage_purpose_route.py` and `tsx tests/api-usage-utils.test.ts` (with the Python venv active); all tests passed (warnings from pyiceberg/pydantic noted).
 
+- [ ] Verify page UI tweaks — update `/verify` warnings, summary display, and layout.
+  Explanation: Track the requested `/verify` updates for the manual download warning, removal of the post-upload Verification Summary, and layout safety adjustments.
+  - [x] Step 1 — Add a warning note to the “Add Emails To Verify” card about manual result availability.
+    Explanation: Added an amber callout note under the card guidance text warning that manual verification results must be downloaded immediately because they won't be available later, matching the requested messaging without changing layout structure.
+  - [x] Step 2 — Remove the “Verification Summary” card/table shown after a file upload.
+    Explanation: Removed the post-upload Verification Summary UI (table + chart) and the supporting summary-only state/handlers (summary flow stage, refresh/download logic, and related imports) so uploaded files no longer render a summary card.
+  - [x] Step 3 — Adjust layout spacing so removal does not disrupt the page structure.
+    Explanation: Collapsed the empty secondary column by rendering it only when upload popups are active and keeping the upload card full-width otherwise, preventing blank grid rows after removing the summary.
+  - [x] Step 4 — Restore the Verification Summary card with refresh-driven live status for uploads.
+    Explanation: Restored the summary card with a refresh button and upload-date header, plus aggregate status messaging; removed the file table per request while keeping live refresh via `/tasks` to update completion status.
+  - [x] Step 5 — Replace the summary pie chart with a fixed 4‑bar vertical chart (valid/invalid/catch‑all/disposable).
+    Explanation: Replaced the pie chart with four fixed vertical bars using the Overview validation colors (valid/invalid/catch‑all/disposable), showing all bars even when counts are missing and logging unavailable counts.
+  - [x] Step 6 — Tests/verification for the `/verify` adjustments.
+    Explanation: Ran frontend verify-related tests (`tsx tests/verify-mapping.test.ts`, `tests/verify-idempotency.test.ts`, `tests/file-columns.test.ts`) with the Python venv active and env loaded from `.env.local`; all passed.
+  - [x] Step 7 — Swap the summary chart to Recharts TinyBarChart with fixed 4 bars.
+    Explanation: Replaced the CSS bars with four Recharts TinyBarCharts (one per status) so the summary uses the library while keeping the same status colors and always rendering all categories.
+  - [x] Step 8 — Show Verification Summary only after a user uploads a file.
+    Explanation: Removed the auto-hydration of latest uploads on page load and gated refresh to the current session summary so the card appears only after an upload.
+  - [x] Step 9 — Tests/verification for the Recharts summary updates.
+    Explanation: Re-ran `tsx tests/verify-mapping.test.ts`, `tests/verify-idempotency.test.ts`, and `tests/file-columns.test.ts` with the Python venv active and `.env.local` loaded; all passed.
+
 - [x] Baseline setup — Next.js 14 (app router) with TypeScript, Tailwind, ESLint, npm, and alias `@/*`; React Compiler disabled. Clean base to layer dashboard features.
 - [x] Layout shell + theming — Built shared sidebar/topbar shell per Figma: responsive drawer, notifications/profile, Nunito Sans, gradient surface. Sidebar uses `public/logo.png` (BoltRoute) image logo (matches `Screenshot_1.png`), not text. Avatar uses `public/profile-image.png` with fallback initials. Purpose: consistent chrome to reuse across pages.
 - [x] Remove notifications icon from dashboard header — Bell icon is not needed; header should only show the profile menu.
