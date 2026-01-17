@@ -479,7 +479,7 @@ export default function OverviewPage() {
 
         <section className="mt-5 rounded-2xl bg-white p-5 shadow-md ring-1 ring-slate-100">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <h2 className="text-xl font-bold text-slate-900">Verification Tasks</h2>
+            <h2 className="text-xl font-bold text-slate-900">Verification History</h2>
             <div className="flex items-center gap-3">
               <button
                 type="button"
