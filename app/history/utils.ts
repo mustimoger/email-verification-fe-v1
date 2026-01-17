@@ -3,6 +3,8 @@
 import { Task, TaskDetailResponse, TaskEmailJob, TaskMetrics } from "../lib/api-client";
 import { EXTERNAL_DATA_UNAVAILABLE } from "../lib/messages";
 
+export { EXTERNAL_DATA_UNAVAILABLE };
+
 export type HistoryAction = "download" | "status";
 export type HistoryStatusTone = "completed" | "processing" | "failed" | "unknown";
 

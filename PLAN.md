@@ -73,6 +73,8 @@
   Explanation: Pending. Defer refinements until after MVP is stable in main.
 - [x] Step 8 — Dark mode profile menu polish (pill overflow + label cleanup).
   Explanation: Removed the dynamic status text from the Dark Mode menu item and tightened the theme toggle pill sizing/gap so “System” fits cleanly without overflow while preserving the menu layout.
+- [x] Step 9 — Move theme control to a header icon toggle (remove dropdown theme UI).
+  Explanation: Added the MoonStar header toggle (light/dark only), removed the profile dropdown “Dark Mode” entry and System/Light/Dark pills, and re-exported `EXTERNAL_DATA_UNAVAILABLE` from `app/history/utils.ts` to keep tests aligned. Re-ran frontend tests (`npm run test:overview`, `npm run test:history`, `npm run test:auth-guard`, `npm run test:account-purchases`) with the Python venv active.
 - [ ] Remaining pages — Verify, History, Integrations, API, Pricing, Account need to be built using the shared shell once Figma node details are provided. Use first-principles MVPs, no placeholders.
 - [ ] API integration — Wire UI to FastAPI email verification backend once endpoint schemas/contracts are known. Replace mock data with typed fetch layer + error handling/logging; avoid hardcoded fallbacks.
 - [x] External-API-first refactor plan doc — create `refactor.md` with a step-by-step transition plan to move dashboard data sourcing from Supabase to the external API (only keep Supabase for data the external API cannot provide).

@@ -69,18 +69,7 @@ type ProfileMenuItem = {
 
 const profileMenu: ProfileMenuItem[] = [
   { key: "account", label: "Manage Account", icon: UserCog },
-  { key: "dark-mode", label: "Dark Mode", icon: MoonStar },
   { key: "logout", label: "Log out", icon: LogOut },
-];
-
-const themeOptions: Array<{
-  key: "system" | "light" | "dark";
-  label: string;
-  value: "system" | "light" | "dark";
-}> = [
-  { key: "system", label: "System", value: "system" },
-  { key: "light", label: "Light", value: "light" },
-  { key: "dark", label: "Dark", value: "dark" },
 ];
 
 function Avatar({ name, src }: { name: string; src?: string }) {
@@ -163,7 +152,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { signOut, session, loading, supabase } = useAuth();
-  const { theme, resolvedTheme, setTheme } = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
   const [isNavOpen, setIsNavOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement | null>(null);
@@ -334,6 +323,26 @@ export function DashboardShell({ children }: { children: ReactNode }) {
           </button>
 
           <div className="ml-auto flex items-center gap-4">
+            <button
+              type="button"
+              onClick={() =>
+                setTheme(resolvedTheme === "dark" ? "light" : "dark")
+              }
+              aria-pressed={resolvedTheme === "dark"}
+              aria-label={
+                resolvedTheme === "dark"
+                  ? "Switch to light mode"
+                  : "Switch to dark mode"
+              }
+              className={[
+                "flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border)] transition",
+                resolvedTheme === "dark"
+                  ? "bg-[var(--accent)] text-[var(--accent-contrast)]"
+                  : "text-[var(--text-secondary)] hover:bg-[var(--surface-soft)] hover:text-[var(--text-primary)]",
+              ].join(" ")}
+            >
+              <MoonStar className="h-5 w-5" />
+            </button>
             <div className="relative" ref={profileRef}>
               <button
                 type="button"
@@ -375,7 +384,6 @@ export function DashboardShell({ children }: { children: ReactNode }) {
                   {profileMenu.map((item) => {
                     const Icon = item.icon;
                     const isLogout = item.key === "logout";
-                    const isTheme = item.key === "dark-mode";
                     return (
                       <button
                         key={item.key}
@@ -403,28 +411,6 @@ export function DashboardShell({ children }: { children: ReactNode }) {
                       </button>
                     );
                   })}
-                  <div className="px-4 pb-4">
-                    <div className="mt-1 grid grid-cols-3 gap-1">
-                      {themeOptions.map((option) => {
-                        const selected = theme === option.value;
-                        return (
-                          <button
-                            key={option.key}
-                            type="button"
-                            onClick={() => setTheme(option.value)}
-                            className={[
-                              "rounded-full px-1.5 py-1 text-[11px] font-semibold leading-4 whitespace-nowrap transition",
-                              selected
-                                ? "bg-[var(--accent)] text-[var(--accent-contrast)]"
-                                : "bg-[var(--surface-soft)] text-[var(--text-secondary)] hover:bg-[var(--surface-strong)]",
-                            ].join(" ")}
-                          >
-                            {option.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
                 </div>
               ) : null}
             </div>
