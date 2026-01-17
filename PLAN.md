@@ -18,8 +18,8 @@
     Explanation: With the Python venv active, ran `npx tsx tests/oauth-providers.test.ts`, `npx tsx tests/oauth-signin.test.ts`, and `npx tsx tests/verify-idempotency.test.ts`; all passed.
   - [x] Step 8 — Fix password recovery session handling so reset links remain valid.
     Explanation: Added recovery-flow detection in `app/components/auth-provider.tsx` (URL type + auth event) and skipped the confirmed-email enforcement during recovery sessions so the password reset link can establish a session and complete the update.
-  - [ ] Step 9 — Prevent reset page from showing “invalid/expired” after a successful password update.
-    Explanation: Ensure the reset page only flags missing recovery sessions when no successful update occurred, so the success notice isn’t overridden after sign-out.
+  - [x] Step 9 — Prevent reset page from showing “invalid/expired” after a successful password update.
+    Explanation: Added a `resetComplete` guard in `app/reset-password/page.tsx` so the missing-session warning isn’t triggered after a successful password update/sign-out, preserving the success notice.
 
 - [ ] Sign-in v2 page (Figma) — add separate `/signin-v2` page without touching existing signin/signup.
   Explanation: Implement a standalone sign-in UI that matches the provided Figma design, with no backend wiring, and keep `/signin` + `/signup` unchanged.
@@ -59,6 +59,17 @@
     Explanation: Added a v2 OAuth button variant with dedicated styling and label formatting, plus a Google icon mapping, so the button renders with solid text and full-width dark styling.
   - [ ] Step 18 — Re-run OAuth/auth UI tests after v2 button changes.
     Explanation: Re-run the OAuth provider/sign-in tests and auth-guard checks with the Python venv active to confirm the label/icon updates didn’t regress behavior.
+
+- [ ] Signin/signup hero benefits card — add overlay card in left panel with Phosphor icons.
+  Explanation: Add the features list card to the hero image area on `/signin` and `/signup` using the provided copy, with rounded/transparent black styling and icons.
+  - [x] Step 1 — Add benefits content + reusable card component (Phosphor icons).
+    Explanation: Added `app/components/auth-benefits-card.tsx` with a shared benefits list and Phosphor icon mapping so both auth pages can reuse the same card markup without duplicating copy or icon selection.
+  - [ ] Step 2 — Embed the card in the left hero panel on `/signin` and `/signup` with responsive positioning.
+    Explanation: Overlay the card centered on the hero image and ensure the layout holds up across breakpoints.
+  - [ ] Step 3 — Tests + verification (unit + integration).
+    Explanation: Run relevant auth UI tests with the Python venv active and verify the layout visually since there’s no dedicated UI test harness.
+  - [ ] Step 4 — Commit + push.
+    Explanation: Commit the UI update and push to GitHub after tests are verified.
 
 - [ ] Crisp chat integration (MVP).
   Explanation: Add the Crisp loader in the HTML head using `NEXT_PUBLIC_CRISP_WEBSITE_ID`, log clear warnings when missing, and verify with unit + integration tests.
