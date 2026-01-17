@@ -33,6 +33,8 @@ type DerivedCounts = {
   catchAll: number;
 };
 
+type LabelSource = "task" | "detail";
+
 function coerceCount(value: unknown): number | null {
   if (typeof value === "number" && Number.isFinite(value)) {
     return Math.trunc(value);
@@ -44,6 +46,51 @@ function coerceCount(value: unknown): number | null {
     return Number.isFinite(parsed) ? Math.trunc(parsed) : null;
   }
   return null;
+}
+
+function normalizeText(value?: string | null): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function formatRedactedApiKey(value: string): string {
+  const trimmed = value.trim();
+  if (trimmed.length <= 6) return trimmed;
+  return `${trimmed.slice(0, 3)}...${trimmed.slice(-3)}`;
+}
+
+function resolveApiKeyLabel(apiKeyPreview?: string | null, apiKey?: string | null): string | null {
+  const preview = normalizeText(apiKeyPreview);
+  if (preview) return preview;
+  const keyValue = normalizeText(apiKey);
+  if (!keyValue) return null;
+  return formatRedactedApiKey(keyValue);
+}
+
+function resolveTaskLabel({
+  taskId,
+  fileName,
+  apiKeyPreview,
+  apiKey,
+  source,
+}: {
+  taskId: string;
+  fileName?: string | null;
+  apiKeyPreview?: string | null;
+  apiKey?: string | null;
+  source: LabelSource;
+}): { label: string; fileName?: string } {
+  const resolvedFileName = normalizeText(fileName);
+  if (resolvedFileName) {
+    return { label: resolvedFileName, fileName: resolvedFileName };
+  }
+  const apiKeyLabel = resolveApiKeyLabel(apiKeyPreview, apiKey);
+  if (apiKeyLabel) {
+    return { label: apiKeyLabel };
+  }
+  console.info("history.task_label.unavailable", { task_id: taskId, source });
+  return { label: EXTERNAL_DATA_UNAVAILABLE };
 }
 
 export function deriveCountsFromMetrics(metrics?: TaskMetrics | null): DerivedCounts | null {
@@ -180,6 +227,7 @@ export function deriveCounts(detail: TaskDetailResponse): { total: number; valid
 
 export function mapDetailToHistoryRow(detail: TaskDetailResponse): HistoryRow | null {
   if (!detail.id && !detail.jobs?.length) return null;
+  const resolvedId = detail.id ?? fallbackId();
   const counts = deriveCountsFromMetrics(detail.metrics) ?? deriveCounts(detail);
   const jobs = detail.jobs ?? [];
   const hasPending =
@@ -192,11 +240,18 @@ export function mapDetailToHistoryRow(detail: TaskDetailResponse): HistoryRow | 
   const statusRaw = (normalizedStatus ?? "").toLowerCase();
   const pendingFromJobStatus = hasPendingFromJobStatus(jobStatus);
   const statusInfo = deriveStatusInfo(statusRaw, hasPending || pendingFromJobStatus, counts.total > 0);
+  const { label, fileName } = resolveTaskLabel({
+    taskId: resolvedId,
+    fileName: detail.file_name,
+    apiKeyPreview: detail.api_key_preview,
+    apiKey: detail.api_key,
+    source: "detail",
+  });
   return {
-    id: detail.id ?? fallbackId(),
+    id: resolvedId,
     date: formatHistoryDate(detail.created_at),
-    label: "Manual verification",
-    fileName: undefined,
+    label,
+    fileName,
     total: counts.total,
     valid: counts.valid,
     invalid: counts.invalid,
@@ -223,16 +278,19 @@ export function mapTaskToHistoryRow(task: Task): HistoryRow | null {
   const statusRaw = (normalizedStatus ?? "").toLowerCase();
   const hasPending = (statusRaw ? PENDING_STATES.has(statusRaw) : false) || hasPendingFromJobStatus(jobStatus);
   const statusInfo = deriveStatusInfo(statusRaw, hasPending, total > 0);
-  const fileName = typeof task.file_name === "string" && task.file_name.trim().length > 0 ? task.file_name : null;
-  if (!fileName) {
-    console.info("history.file_name.unavailable", { task_id: task.id });
-  }
+  const { label, fileName } = resolveTaskLabel({
+    taskId: task.id,
+    fileName: task.file_name,
+    apiKeyPreview: task.api_key_preview,
+    apiKey: task.api_key,
+    source: "task",
+  });
   const action: HistoryAction = fileName && statusInfo.tone === "completed" ? "download" : "status";
   return {
     id: task.id,
     date: formatHistoryDate(task.created_at),
-    label: fileName ?? EXTERNAL_DATA_UNAVAILABLE,
-    fileName: fileName ?? undefined,
+    label,
+    fileName,
     total,
     valid,
     invalid,

@@ -1,0 +1,208 @@
+"use client";
+
+import Image from "next/image";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { FormEvent, useState } from "react";
+import { Poppins, Roboto } from "next/font/google";
+
+import { useAuth } from "../components/auth-provider";
+import { OAuthButtons } from "../components/oauth-buttons";
+
+const poppins = Poppins({
+  subsets: ["latin"],
+  weight: ["600"],
+  display: "swap",
+});
+
+const roboto = Roboto({
+  subsets: ["latin"],
+  weight: ["400", "500", "700"],
+  display: "swap",
+});
+
+const sfProFamily =
+  "SF Pro Display, SF Pro Text, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+
+export default function SignUpV2Page() {
+  const { signUp } = useAuth();
+  const router = useRouter();
+
+  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [acceptTerms, setAcceptTerms] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (loading) return;
+    if (!acceptTerms) {
+      setError("Please accept terms and conditions to continue.");
+      return;
+    }
+    if (!email || !password) {
+      setError("Email and password are required.");
+      return;
+    }
+    setError(null);
+    setLoading(true);
+    const { error: signUpError } = await signUp({ email, password, username, displayName: username });
+    if (signUpError) {
+      setError(signUpError);
+      setLoading(false);
+      return;
+    }
+    router.push("/overview");
+  };
+
+  return (
+    <main className="min-h-screen bg-white">
+      <div className="flex min-h-screen w-full flex-col bg-white lg:flex-row">
+        <div className="relative min-h-[260px] w-full sm:min-h-[360px] lg:min-h-screen lg:flex-1">
+          <Image
+            src="/signin-v2/hero.png"
+            alt=""
+            fill
+            priority
+            className="object-cover"
+            sizes="(min-width: 1024px) 65vw, 100vw"
+          />
+        </div>
+
+        <div className={`${roboto.className} flex w-full flex-col justify-between px-6 py-8 sm:px-10 sm:py-12 lg:w-[456px]`}>
+          <div className="flex flex-col gap-12">
+            <div className="flex items-center justify-center">
+              <Image src="/logo.png" alt="Boltroute" width={218} height={39} className="h-8 w-auto" priority />
+            </div>
+
+            <form className="flex flex-col gap-6" onSubmit={handleSubmit}>
+              <h1 className={`${poppins.className} text-[20px] font-semibold leading-[28px] text-[#1a1a1a]`}>
+                Create your account
+              </h1>
+
+              <div className="flex flex-col gap-5">
+                <label className="flex flex-col gap-2">
+                  <span
+                    className="text-[11px] leading-[12px] tracking-[0.3px] text-[#333]"
+                    style={{ fontFamily: sfProFamily }}
+                  >
+                    Email address
+                  </span>
+                  <input
+                    type="email"
+                    name="email"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    placeholder="Email address"
+                    className="h-12 w-full rounded-[6px] border-[0.5px] border-[#e5e5e5] bg-[#f2f2f2] px-4 text-[15px] text-[#1a1a1a] placeholder:text-[#808080] focus:outline-none focus:ring-2 focus:ring-[#007aff]/20"
+                    required
+                  />
+                </label>
+
+                <label className="flex flex-col gap-2">
+                  <span
+                    className="text-[11px] leading-[12px] tracking-[0.3px] text-[#333]"
+                    style={{ fontFamily: sfProFamily }}
+                  >
+                    Username
+                  </span>
+                  <input
+                    type="text"
+                    name="username"
+                    value={username}
+                    onChange={(event) => setUsername(event.target.value)}
+                    placeholder="Username"
+                    className="h-12 w-full rounded-[6px] border-[0.5px] border-[#e5e5e5] bg-[#f2f2f2] px-4 text-[15px] text-[#1a1a1a] placeholder:text-[#808080] focus:outline-none focus:ring-2 focus:ring-[#007aff]/20"
+                  />
+                </label>
+
+                <label className="flex flex-col gap-2">
+                  <span
+                    className="text-[11px] leading-[12px] tracking-[0.3px] text-[#333]"
+                    style={{ fontFamily: sfProFamily }}
+                  >
+                    Password
+                  </span>
+                  <div className="relative">
+                    <input
+                      type="password"
+                      name="password"
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                      placeholder="Enter password"
+                      className="h-12 w-full rounded-[6px] border-[0.5px] border-[#e5e5e5] bg-[#f2f2f2] px-4 pr-12 text-[15px] text-[#1a1a1a] placeholder:text-[#808080] focus:outline-none focus:ring-2 focus:ring-[#007aff]/20"
+                      required
+                    />
+                    <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2">
+                      <img src="/signin-v2/eye.svg" alt="" width={16} height={16} aria-hidden="true" />
+                    </span>
+                  </div>
+                </label>
+
+                <div className="flex flex-col gap-2">
+                  <label className="flex items-center gap-3 text-[12px] leading-[20px] tracking-[0.3px] text-[#1a1a1a]">
+                    <input
+                      type="checkbox"
+                      checked={acceptTerms}
+                      onChange={(event) => setAcceptTerms(event.target.checked)}
+                      className="h-5 w-5 rounded border border-[#e5e5e5]"
+                    />
+                    <span style={{ fontFamily: sfProFamily }}>I accept terms and conditions</span>
+                  </label>
+                  <p
+                    className="text-[11px] leading-[16px] tracking-[0.2px] text-[#808080]"
+                    style={{ fontFamily: sfProFamily }}
+                  >
+                    By using BoltRoute, you agree to our{" "}
+                    <Link href="/privacy-policy" className="text-[#007aff]">
+                      Privacy Policy
+                    </Link>{" "}
+                    and{" "}
+                    <Link href="/terms-of-service" className="text-[#007aff]">
+                      Terms of Service
+                    </Link>
+                    .
+                  </p>
+                </div>
+
+                {error ? (
+                  <div className="text-[12px] leading-[18px] text-[#ef4444]" style={{ fontFamily: sfProFamily }}>
+                    {error}
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="flex flex-col gap-6">
+              <button
+                type="submit"
+                disabled={loading}
+                className="h-10 w-full rounded-[6px] bg-[#007aff] text-[15px] font-bold leading-[20px] tracking-[0.3px] text-white disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {loading ? "Signing Up..." : "Sign up"}
+              </button>
+
+              <div className="h-[0.5px] w-full bg-[#e5e5e5]" />
+
+                <div className="flex flex-col gap-4">
+                  <OAuthButtons mode="signup" onError={setError} variant="v2" fontFamily={sfProFamily} />
+                </div>
+              </div>
+            </form>
+        </div>
+
+        <div
+            className="mt-8 flex items-center justify-center gap-2 text-[12px] leading-[20px] tracking-[0.3px]"
+            style={{ fontFamily: sfProFamily }}
+          >
+            <span className="text-[#1a1a1a]">Already have an account?</span>
+            <Link href="/signin-v2" className="text-[#007aff]">
+              Sign in
+            </Link>
+          </div>
+        </div>
+      </div>
+    </main>
+  );
+}

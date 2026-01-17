@@ -84,6 +84,8 @@ class TaskResponse(BaseModel):
 class Task(BaseModel):
     id: Optional[str] = None
     user_id: Optional[str] = None
+    api_key_id: Optional[str] = None
+    api_key_preview: Optional[str] = None
     webhook_url: Optional[str] = None
     status: Optional[str] = None
     email_count: Optional[int] = None
@@ -113,6 +115,9 @@ class TaskEmailJob(BaseModel):
 class TaskDetailResponse(BaseModel):
     id: Optional[str] = None
     user_id: Optional[str] = None
+    api_key_id: Optional[str] = None
+    api_key_preview: Optional[str] = None
+    file_name: Optional[str] = None
     created_at: Optional[str] = None
     started_at: Optional[str] = None
     finished_at: Optional[str] = None

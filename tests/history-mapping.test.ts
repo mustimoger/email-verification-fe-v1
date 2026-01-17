@@ -46,6 +46,7 @@ run("mapDetailToHistoryRow maps completed task to status label with formatted da
   const detail: TaskDetailResponse = {
     id: "t2",
     created_at: "2024-02-01T00:00:00Z",
+    api_key_preview: "uG5...N23",
     jobs: [
       { status: "exists" },
       { status: "catchall" },
@@ -55,7 +56,7 @@ run("mapDetailToHistoryRow maps completed task to status label with formatted da
   const row = mapDetailToHistoryRow(detail);
   assert(row, "row should not be null");
   assert.strictEqual(row?.id, "t2");
-  assert.strictEqual(row?.label, "Manual verification");
+  assert.strictEqual(row?.label, "uG5...N23");
   assert.strictEqual(row?.action, "status");
   assert.strictEqual(row?.statusTone, "completed");
   assert.strictEqual(row?.statusLabel, "Completed");
@@ -109,6 +110,23 @@ run("mapTaskToHistoryRow uses counts/status without detail fetch", () => {
   assert.strictEqual(row?.label, "upload.csv");
 });
 
+run("mapTaskToHistoryRow uses api key preview when file name is absent", () => {
+  const task: Task = {
+    id: "t4b",
+    created_at: "2024-03-03T00:00:00Z",
+    status: "processing",
+    valid_count: 2,
+    invalid_count: 1,
+    catchall_count: 0,
+    api_key_preview: "uG5...N23",
+  };
+  const row = mapTaskToHistoryRow(task);
+  assert(row, "row should not be null");
+  assert.strictEqual(row?.label, "uG5...N23");
+  assert.strictEqual(row?.fileName, undefined);
+  assert.strictEqual(row?.action, "status");
+});
+
 run("mapTaskToHistoryRow exposes download action for completed file tasks", () => {
   const task: Task = {
     id: "t5",
@@ -125,6 +143,21 @@ run("mapTaskToHistoryRow exposes download action for completed file tasks", () =
   assert.strictEqual(row?.action, "download");
   assert.strictEqual(row?.statusTone, "completed");
   assert.strictEqual(row?.statusLabel, "Completed");
+});
+
+run("mapTaskToHistoryRow redacts full api key when preview is missing", () => {
+  const task: Task = {
+    id: "t5b",
+    created_at: "2024-03-04T00:00:00Z",
+    status: "completed",
+    valid_count: 1,
+    invalid_count: 0,
+    catchall_count: 0,
+    api_key: "uG5abcN23",
+  };
+  const row = mapTaskToHistoryRow(task);
+  assert(row, "row should not be null");
+  assert.strictEqual(row?.label, "uG5...N23");
 });
 
 run("mapTaskToHistoryRow maps external metrics and missing file name to unavailable label", () => {

@@ -1,5 +1,61 @@
 # Plan (carry forward)
 
+- [ ] Signin/signup UX checks — update footer links and verify auth controls.
+  Explanation: Ensure `/signin` and `/signup` have correct cross-links and working forgot/remember/password-visibility behaviors without regressions.
+  - [x] Step 1 — Audit current `/signin` + `/signup` implementations.
+    Explanation: Reviewed `app/signin-v2/page.tsx` and `app/signup-v2/page.tsx` (the active `/signin` + `/signup` renderers) and found bottom links still point to `/signup-v2`/`/signin-v2`, the “Forgot password?” control has no handler, the “Remember me” toggle only logs a message, and the password eye icon is static.
+  - [ ] Step 2 — Update footer cross-links on `/signin` and `/signup`.
+    Explanation: Point the bottom links to the correct routes for the current auth flow.
+  - [ ] Step 3 — Implement “Forgot password?” reset email request on `/signin`.
+    Explanation: Wire the button to Supabase password recovery and show success/error feedback based on the entered email.
+  - [ ] Step 4 — Add `/reset-password` page using the signin/signup v2 layout.
+    Explanation: Provide a minimal reset form that sets the new password after the recovery session, matching the existing auth visual design.
+  - [ ] Step 5 — Verify/fix “Remember me” behavior on `/signin`.
+    Explanation: Keep the behavior minimal (no session complexity) and ensure the control has a real effect.
+  - [ ] Step 6 — Verify/fix password visibility eye toggle on `/signin` + `/signup`.
+    Explanation: Ensure the icon toggles input type reliably and matches visual state.
+  - [ ] Step 7 — Tests + verification (unit + integration).
+    Explanation: Run/update relevant auth UI tests with the Python venv active to validate the changes.
+
+- [ ] Sign-in v2 page (Figma) — add separate `/signin-v2` page without touching existing signin/signup.
+  Explanation: Implement a standalone sign-in UI that matches the provided Figma design, with no backend wiring, and keep `/signin` + `/signup` unchanged.
+  - [x] Step 1 — Capture the Figma layout/styles/assets via the Figma MCP.
+    Explanation: Retrieved the design context, node hierarchy, assets, and a screenshot for the `Sign-In-Form-Desktop-Layout-1440x900` frame so the UI can be implemented to match the source of truth.
+  - [x] Step 2 — Build the MVP `/signin-v2` page UI (static only) with required assets/styles.
+    Explanation: Added a new `app/signin-v2/page.tsx` route that mirrors the Figma layout (hero image + right-side form panel), imported Poppins/Roboto via `next/font`, styled inputs/buttons/switch to match the design, and downloaded the hero/Google/eye assets into `public/signin-v2` while reusing the existing logo.
+  - [x] Step 3 — Tests + verification (unit + integration) for the new page.
+    Explanation: Ran `npm run test:auth-guard` with the Python venv active to ensure auth-related UI helpers still pass; no failures.
+  - [x] Step 4 — Make `/signin-v2` full-screen (remove card framing) per feedback.
+    Explanation: Removed the max-width card wrapper, outer padding, and rounded container so the hero + form panel fill the full viewport like the Figma design.
+  - [x] Step 5 — Center the logo and fix the Google icon rendering.
+    Explanation: Centered the logo in the right panel header and corrected the SVG icon assets by renaming them to `.svg` and referencing them with `<img>` tags so they render properly.
+  - [x] Step 6 — Adapt `/signin-v2` links/copy for the new `/signup-v2` route.
+    Explanation: Updated the v2 sign-in footer link to point to `/signup-v2` so the new v2 flow stays consistent without changing existing auth pages.
+  - [x] Step 7 — Create `/signup-v2` using the same layout with signup-specific copy.
+    Explanation: Added `app/signup-v2/page.tsx` by reusing the v2 layout and assets, swapping the heading/button/link copy and including the signup-specific fields (email, username, password, terms checkbox) plus Google signup action.
+  - [ ] Step 8 — Tests + verification for `/signup-v2` changes.
+    Explanation: Run the relevant frontend tests with the Python venv active to ensure the new route doesn’t regress auth UI helpers.
+  - [x] Step 9 — Add privacy/terms consent sentence under the checkbox.
+    Explanation: Added the consent sentence below the terms checkbox with subtle styling and linked Privacy Policy/Terms of Service routes.
+  - [x] Step 10 — Port original `/signin` functionality into the v2 design.
+    Explanation: Wired the v2 sign-in form to the existing auth logic (state, validation, error handling, remember toggle, OAuth) and kept the layout styling aligned to the Figma design.
+  - [x] Step 11 — Port original `/signup` functionality into the v2 design.
+    Explanation: Wired the v2 signup form to the existing auth logic (state, validation, terms acceptance, error handling, OAuth) and kept styling aligned to the v2 design.
+  - [x] Step 12 — Replace `/signin` and `/signup` routes with the v2 implementations.
+    Explanation: Updated `/signin` and `/signup` to render the v2 pages so the default auth routes now use the new design without duplicating logic.
+  - [x] Step 13 — Tests + verification for the route replacements.
+    Explanation: Ran `npm run test:auth-guard` with the Python venv active to validate auth helpers after swapping the routes.
+  - [ ] Step 14 — Commit + push the v2 route replacement.
+    Explanation: Commit the v2 route changes and push to GitHub after tests are verified.
+  - [x] Step 15 — Fix v2 client directive parsing errors.
+    Explanation: Corrected the `use client` directive strings in the v2 pages so Next can parse the files without syntax errors.
+  - [x] Step 16 — Fix v2 OAuth button styling to match Figma.
+    Explanation: Removed the extra OR divider text, applied v2-specific styling overrides to the OAuth button for full-width dark styling, and updated the Google label copy to match the Figma button text.
+  - [x] Step 17 — Fix v2 OAuth button hover/text visibility issues.
+    Explanation: Added a v2 OAuth button variant with dedicated styling and label formatting, plus a Google icon mapping, so the button renders with solid text and full-width dark styling.
+  - [ ] Step 18 — Re-run OAuth/auth UI tests after v2 button changes.
+    Explanation: Re-run the OAuth provider/sign-in tests and auth-guard checks with the Python venv active to confirm the label/icon updates didn’t regress behavior.
+
 - [ ] Crisp chat integration (MVP).
   Explanation: Add the Crisp loader in the HTML head using `NEXT_PUBLIC_CRISP_WEBSITE_ID`, log clear warnings when missing, and verify with unit + integration tests.
   - [x] Step 1 — Add MVP plan entry and configuration notes.
@@ -27,6 +83,34 @@
       Explanation: The API Usage chart now renders the exact missing-data message when per-key charts are selected or when external metrics are unavailable; totals use the same message only when totals are missing, while still showing numeric totals when present. Layout and styling were preserved.
     - [x] Step 4d — Tests: run backend usage route tests and frontend API usage utils tests.
       Explanation: Ran `pytest backend/tests/test_usage_summary_route.py backend/tests/test_usage_purpose_route.py` and `tsx tests/api-usage-utils.test.ts` (with the Python venv active); all tests passed (warnings from pyiceberg/pydantic noted).
+
+- [ ] Auth providers (Supabase) — add Google OAuth entry points to signin/signup.
+  Explanation: Provide a visible Google auth option in the UI, backed by Supabase OAuth, with configuration-driven provider enablement and clear logging when missing.
+  - [x] Step 1 — Audit current auth UI/provider usage.
+    Explanation: Reviewed `app/signin/page.tsx`, `app/signup/page.tsx`, and `app/components/auth-provider.tsx`; no OAuth provider list or `signInWithOAuth` helper exists, so the UI cannot render a Google option yet.
+  - [x] Step 2 — Add OAuth provider config + Google button to signin/signup.
+    Explanation: Added an env-driven provider helper (`NEXT_PUBLIC_OAUTH_PROVIDERS`) with logging for missing/unknown providers, wired `signInWithOAuth` in `AuthProvider` (optional `NEXT_PUBLIC_OAUTH_REDIRECT_URL`), and rendered OAuth buttons on `/signin` and `/signup` that surface errors through existing page state.
+  - [x] Step 3 — Tests (unit + integration) for provider parsing and OAuth trigger.
+    Explanation: Added `tests/oauth-providers.test.ts` and `tests/oauth-signin.test.ts` covering provider parsing, labels, and OAuth trigger arguments/redirect handling; ran both with `npx tsx` (venv active).
+  - [x] Step 4 — Verify locally and document required env vars for production.
+    Explanation: Verified provider parsing picks up `NEXT_PUBLIC_OAUTH_PROVIDERS=google`, then ran a local dev server with that env and confirmed `/signin` and `/signup` HTML renders the “Continue with Google” button. Added an environment variables section to `README.md` documenting required auth + optional OAuth settings.
+  - [x] Step 5 — Swap OAuth button UI to Google’s GSI material button markup/styles.
+    Explanation: Replaced the OAuth button markup with the provided GSI HTML/CSS (including the Google SVG icon) and updated labels to “Sign in with Google”/“Sign up with Google”. Updated oauth provider tests and re-ran `npx tsx tests/oauth-providers.test.ts` + `tests/oauth-signin.test.ts`.
+
+- [ ] WordPress homepage popup verification plugin — fix external API signature mismatch.
+  Explanation: Investigate the BoltRoute WordPress plugin (`/home/codex/br-lp-popup/boltroute-form-clone`) so homepage email verification requests authenticate cleanly against the external API.
+  - [x] Step 1 — Audit auth/token generation against the external API spec.
+    Explanation: Reviewed `boltroute-form-clone.php`, `external_api_authentication.md`, and `scripts/test-external-verify.sh`; identified that auto secret decoding can mis-handle base64 secrets of length 24/32 by treating them as raw bytes, leading to signature mismatches.
+  - [x] Step 2 — Fix auth token generation to align with latest external API expectations.
+    Explanation: Updated the WordPress plugin to include the `body_hash` in the HMAC payload per the latest external API docs, compute the hash from the exact JSON body sent, and reuse that body for signing + request dispatch. Also refreshed the local auth doc and test script to match the new payload format.
+  - [ ] Step 3 — Verification (unit + integration) for the plugin auth flow.
+    Explanation: Re-ran `scripts/test-external-verify.sh` after normalizing `.env` line endings; external API returned a 200 response payload for `test@example.com`, confirming the new body-hash signature format works end-to-end.
+  - [ ] Step 4 — Diagnose WordPress-to-external API 502/timeout on live site.
+    Explanation: Pending — gather Cloudways connectivity evidence, add optional request diagnostics (timeout config and error logging), and verify whether the timeout is network-level vs API latency.
+    - [x] Step 4a — Add server-side debug logging for external verify requests (no secrets).
+      Explanation: Added debug logging helpers gated by `BOLT_EXT_API_DEBUG` (or `WP_DEBUG`) with optional full-body logging via `BOLT_EXT_API_DEBUG_BODY`. Logs now capture request IDs, masked email hints, resolved URL/path, body hash/length, response timing, status, and WP error details without logging auth headers or secrets.
+    - [ ] Step 4b — Re-test from the live site and capture logs for a failing request.
+      Explanation: Captured `[BRFC]` logs from `debug.log`; requests reach `https://email-verification.islamsaka.com/api/v1/external/verify` and consistently time out at ~20,010ms with `http_request_failed` (no bytes received). Confirms upstream/network latency from the WordPress host, not signature/auth. External API dev reports a database issue on their side and is investigating.
 
 - [ ] Verify page UI tweaks — update `/verify` warnings, summary display, and layout.
   Explanation: Track the requested `/verify` updates for the manual download warning, removal of the post-upload Verification Summary, and layout safety adjustments.
@@ -428,6 +512,10 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
 - [x] Pull Figma specs via MCP and capture screenshot (node `65:5`). Design: shared shell/footer, table listing history rows with columns DATE, FILENAME/TOTAL, VALID, INVALID, CATCH-ALL, ACTION (Download/Pending pills), pagination note “Showing 1-09 of 78”.
 - [x] Implement History page UI per Figma using shared shell; align nav highlight, spacing, and pills per design. Use typed sample data; wire to backend later.  
   Explanation: Added `/history` with table layout (Date, Filename/Total, Valid, Invalid, Catch-all, Action) using shared shell/footer. Status pills for Download/Pending mirror design. Uses typed sample rows and formatting helpers; ready for backend data swap.
+- [x] History table Task/Total column — show `{filename}/total` for upload rows and `{redacted api key}/total` for API key usage rows.
+  Explanation: Updated History row mapping to label file uploads by filename and API-key tasks by redacted key preview (with a safe redaction fallback), logging when neither is available; added type support for key preview fields, passthrough in the external client model, and tests for file, key-preview, and full-key redaction cases so newcomers can trace the Task/Total behavior.
+- [x] History Task/Total fallback — when external data is missing, show `ext api data is not available` without a total suffix.
+  Explanation: Updated the History Task/Total cell to render only the unavailable message when the label is missing, avoiding a misleading `/total` suffix while keeping all other rows unchanged; re-ran the history mapping tests.
 - [x] History filtering/pagination — Added API key selector (includes dashboard key) to scope tasks per key; supports paginated fetch (`PAGE_SIZE=10`) with Load more, richer pending status detection, and count display.  
   Explanation: History now calls backend with `api_key_id`, shows integration labels in the selector, and maps pending/processing/started/queued to the Pending pill. Load-more uses offset pagination and honors total count when provided.
 - [x] History download action — Wire the Download pill to `/api/tasks/{id}/download` for file-based tasks with minimal error feedback.  

@@ -20,6 +20,17 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Environment variables
+
+Required:
+- `NEXT_PUBLIC_SUPABASE_URL` — Supabase project URL.
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` — Supabase anon key used by the browser client.
+- `NEXT_PUBLIC_API_BASE_URL` — Backend API base URL for the frontend.
+
+Optional (OAuth):
+- `NEXT_PUBLIC_OAUTH_PROVIDERS` — comma-separated providers to show on auth screens (e.g., include `google` to render the Google button).
+- `NEXT_PUBLIC_OAUTH_REDIRECT_URL` — override redirect target for OAuth sign-in if needed.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

@@ -4,9 +4,10 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState } from 
 
 import { ApiError, apiClient } from "../lib/api-client";
 import { setEmailConfirmationNotice } from "../lib/auth-notices";
-import type { Session, SupabaseClient, User } from "@supabase/supabase-js";
+import type { Provider, Session, SupabaseClient, User } from "@supabase/supabase-js";
 
 import { getSupabaseBrowserClient } from "../lib/supabase-browser";
+import { getOAuthRedirectUrl, runOAuthSignIn } from "../lib/oauth-providers";
 
 type AuthContextValue = {
   supabase: SupabaseClient;
@@ -15,6 +16,7 @@ type AuthContextValue = {
   loading: boolean;
   signIn: (params: { email: string; password: string }) => Promise<{ error: string | null }>;
   signUp: (params: { email: string; password: string; username?: string; displayName?: string }) => Promise<{ error: string | null }>;
+  signInWithOAuth: (provider: Provider) => Promise<{ error: string | null }>;
   signOut: () => Promise<{ error: string | null }>;
 };
 
@@ -158,6 +160,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (error) {
           console.error("auth.sign_up_failed", { message: error.message });
           return { error: error.message };
+        }
+        return { error: null };
+      },
+      signInWithOAuth: async (provider) => {
+        const redirectTo = getOAuthRedirectUrl();
+        const { error } = await runOAuthSignIn({ supabase, provider, redirectUrl: redirectTo });
+        if (error) {
+          console.error("auth.oauth_sign_in_failed", { message: error, provider });
+          return { error };
         }
         return { error: null };
       },

@@ -217,7 +217,14 @@ export default function HistoryPage() {
                   >
                     <span className="text-xs text-slate-700 md:text-sm">{row.date}</span>
                     <span className="text-xs text-slate-700 md:text-sm">
-                      {row.label} / <span className="font-extrabold text-slate-800">{formatNumber(row.total)}</span>
+                      {row.label === "ext api data is not available" ? (
+                        row.label
+                      ) : (
+                        <>
+                          {row.label} /{" "}
+                          <span className="font-extrabold text-slate-800">{formatNumber(row.total)}</span>
+                        </>
+                      )}
                     </span>
                     <span className="text-right text-xs text-slate-700 md:text-sm">{formatNumber(row.valid)}</span>
                     <span className="text-right text-xs text-slate-700 md:text-sm">{formatNumber(row.invalid)}</span>

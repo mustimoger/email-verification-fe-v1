@@ -71,6 +71,8 @@ export type Task = {
   id?: string;
   user_id?: string;
   api_key_id?: string;
+  api_key_preview?: string;
+  api_key?: string;
   webhook_url?: string;
   status?: string;
   email_count?: number;
@@ -117,6 +119,10 @@ export type TaskEmailJob = {
 export type TaskDetailResponse = {
   id?: string;
   user_id?: string;
+  api_key_id?: string;
+  api_key_preview?: string;
+  api_key?: string;
+  file_name?: string;
   created_at?: string;
   started_at?: string;
   finished_at?: string;
