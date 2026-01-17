@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import { Calendar, Copy, Eye, EyeOff } from "lucide-react";
 import { Line, LineChart as ReLineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
@@ -79,6 +80,7 @@ export default function ApiPage() {
   const [lastPlainKey, setLastPlainKey] = useState<string | null>(null);
   const [fullKeysById, setFullKeysById] = useState<Record<string, string>>({});
   const [revealedKeys, setRevealedKeys] = useState<Record<string, boolean>>({});
+  const [iconErrors, setIconErrors] = useState<Record<string, boolean>>({});
   const { session, loading: authLoading } = useAuth();
 
   const keyUsage = useMemo(
@@ -241,6 +243,16 @@ export default function ApiPage() {
     };
     void loadIntegrations();
   }, [session]);
+
+  useEffect(() => {
+    if (integrationOptions.length === 0) return;
+    const missingIcons = integrationOptions.filter((option) => !option.icon);
+    if (missingIcons.length > 0) {
+      console.warn("api.integrations.icon_missing", {
+        ids: missingIcons.map((option) => option.id),
+      });
+    }
+  }, [integrationOptions]);
 
   useEffect(() => {
     setKeyUsageKeys(null);
@@ -692,9 +704,24 @@ export default function ApiPage() {
                           />
                           <span className="text-sm font-extrabold text-slate-900">{option.label}</span>
                         </div>
-                        {option.icon ? (
-                          <span className="text-xs font-semibold text-slate-500">{option.icon}</span>
-                        ) : null}
+                        <span className="flex h-7 w-7 items-center justify-center">
+                          {option.icon && !iconErrors[option.id] ? (
+                            <Image
+                              src={option.icon}
+                              alt={`${option.label} logo`}
+                              width={28}
+                              height={28}
+                              className="h-7 w-7 object-contain"
+                              onError={() => {
+                                setIconErrors((prev) => ({ ...prev, [option.id]: true }));
+                                console.warn("api.integrations.icon_failed", {
+                                  id: option.id,
+                                  icon: option.icon,
+                                });
+                              }}
+                            />
+                          ) : null}
+                        </span>
                       </div>
                       <p className="text-sm font-semibold text-slate-600">{option.description}</p>
                     </label>

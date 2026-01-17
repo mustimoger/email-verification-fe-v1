@@ -81,6 +81,8 @@
   Explanation: Added horizontal grid gaps to the API Keys table header/body so the API key and Integration columns no longer visually collide, while keeping the existing layout and typography. Re-ran frontend tests (`npm run test:overview`, `npm run test:history`, `npm run test:auth-guard`, `npm run test:account-purchases`) with the Python venv active.
 - [x] Step 12 — API Keys icons: reduce eye/copy icon size.
   Explanation: Reduced the eye/copy icon sizes in the API key column while preserving button hit areas and alignment. Re-ran frontend tests (`npm run test:overview`, `npm run test:history`, `npm run test:auth-guard`, `npm run test:account-purchases`) with the Python venv active.
+- [x] Step 13 — API key modal: render integration logos instead of icon paths.
+  Explanation: Rendered `option.icon` with a small Next.js image in the Generate API Key modal, added logging for missing or failed icons, and kept the modal layout unchanged. Re-ran frontend tests (`npm run test:overview`, `npm run test:history`, `npm run test:auth-guard`, `npm run test:account-purchases`) with the Python venv active.
 - [ ] Remaining pages — Verify, History, Integrations, API, Pricing, Account need to be built using the shared shell once Figma node details are provided. Use first-principles MVPs, no placeholders.
 - [ ] API integration — Wire UI to FastAPI email verification backend once endpoint schemas/contracts are known. Replace mock data with typed fetch layer + error handling/logging; avoid hardcoded fallbacks.
 - [x] External-API-first refactor plan doc — create `refactor.md` with a step-by-step transition plan to move dashboard data sourcing from Supabase to the external API (only keep Supabase for data the external API cannot provide).
