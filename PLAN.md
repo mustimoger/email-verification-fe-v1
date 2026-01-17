@@ -18,6 +18,8 @@
     Explanation: With the Python venv active, ran `npx tsx tests/oauth-providers.test.ts`, `npx tsx tests/oauth-signin.test.ts`, and `npx tsx tests/verify-idempotency.test.ts`; all passed.
   - [x] Step 8 — Fix password recovery session handling so reset links remain valid.
     Explanation: Added recovery-flow detection in `app/components/auth-provider.tsx` (URL type + auth event) and skipped the confirmed-email enforcement during recovery sessions so the password reset link can establish a session and complete the update.
+  - [ ] Step 9 — Prevent reset page from showing “invalid/expired” after a successful password update.
+    Explanation: Ensure the reset page only flags missing recovery sessions when no successful update occurred, so the success notice isn’t overridden after sign-out.
 
 - [ ] Sign-in v2 page (Figma) — add separate `/signin-v2` page without touching existing signin/signup.
   Explanation: Implement a standalone sign-in UI that matches the provided Figma design, with no backend wiring, and keep `/signin` + `/signup` unchanged.
