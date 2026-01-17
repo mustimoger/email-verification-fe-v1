@@ -704,14 +704,14 @@ export default function ApiPage() {
                           />
                           <span className="text-sm font-extrabold text-slate-900">{option.label}</span>
                         </div>
-                        <span className="flex h-7 w-7 items-center justify-center">
+                        <span className="flex h-14 w-14 items-center justify-center">
                           {option.icon && !iconErrors[option.id] ? (
                             <Image
                               src={option.icon}
                               alt={`${option.label} logo`}
-                              width={28}
-                              height={28}
-                              className="h-7 w-7 object-contain"
+                              width={56}
+                              height={56}
+                              className="h-14 w-14 object-contain"
                               onError={() => {
                                 setIconErrors((prev) => ({ ...prev, [option.id]: true }));
                                 console.warn("api.integrations.icon_failed", {
