@@ -171,7 +171,6 @@ export default function ApiPage() {
     const fullKey = resolveFullKey(key);
     if (!fullKey) {
       console.warn("api.keys.copy_unavailable", { key_id: key.id });
-      setRevealedKeys((prev) => ({ ...prev, [key.id as string]: true }));
       return;
     }
     if (!navigator?.clipboard?.writeText) {
