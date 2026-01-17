@@ -8,6 +8,7 @@ import { Poppins, Roboto } from "next/font/google";
 
 import { useAuth } from "../components/auth-provider";
 import { readEmailConfirmationNotice } from "../lib/auth-notices";
+import { clearRememberedEmail, readRememberedEmail, setRememberedEmail } from "../lib/auth-remember";
 import { OAuthButtons } from "../components/oauth-buttons";
 
 const poppins = Poppins({
@@ -26,14 +27,17 @@ const sfProFamily =
   "SF Pro Display, SF Pro Text, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
 
 export default function SignInV2Page() {
-  const { signIn } = useAuth();
+  const { signIn, requestPasswordReset } = useAuth();
   const router = useRouter();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
     const notice = readEmailConfirmationNotice();
@@ -42,14 +46,56 @@ export default function SignInV2Page() {
     }
   }, []);
 
+  useEffect(() => {
+    const rememberedEmail = readRememberedEmail();
+    if (rememberedEmail) {
+      setEmail(rememberedEmail);
+      setRemember(true);
+    }
+  }, []);
+
+  const handleForgotPassword = async () => {
+    if (resetLoading) return;
+    if (!email) {
+      setNotice(null);
+      setError("Enter your email address to reset your password.");
+      return;
+    }
+    setError(null);
+    setNotice(null);
+    setResetLoading(true);
+    const { error: resetError } = await requestPasswordReset({ email });
+    if (resetError) {
+      setError(resetError);
+      setResetLoading(false);
+      return;
+    }
+    setNotice("Password reset email sent. Check your inbox for the next steps.");
+    setResetLoading(false);
+  };
+
+  const handleRememberChange = (checked: boolean) => {
+    setRemember(checked);
+    if (!checked) {
+      clearRememberedEmail();
+    }
+  };
+
+  const togglePasswordVisibility = () => {
+    setShowPassword((current) => !current);
+  };
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (loading) return;
+    if (resetLoading) return;
     if (!email || !password) {
+      setNotice(null);
       setError("Email and password are required.");
       return;
     }
     setError(null);
+    setNotice(null);
     setLoading(true);
     const { error: signInError } = await signIn({ email, password });
     if (signInError) {
@@ -58,7 +104,10 @@ export default function SignInV2Page() {
       return;
     }
     if (!remember) {
+      clearRememberedEmail();
       console.info("auth.remember_disabled");
+    } else {
+      setRememberedEmail(email);
     }
     router.push("/overview");
   };
@@ -116,7 +165,7 @@ export default function SignInV2Page() {
                   </span>
                   <div className="relative">
                     <input
-                      type="password"
+                      type={showPassword ? "text" : "password"}
                       name="password"
                       value={password}
                       onChange={(event) => setPassword(event.target.value)}
@@ -124,9 +173,14 @@ export default function SignInV2Page() {
                       className="h-12 w-full rounded-[6px] border-[0.5px] border-[#e5e5e5] bg-[#f2f2f2] px-4 pr-12 text-[15px] text-[#1a1a1a] placeholder:text-[#808080] focus:outline-none focus:ring-2 focus:ring-[#007aff]/20"
                       required
                     />
-                    <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2">
+                    <button
+                      type="button"
+                      onClick={togglePasswordVisibility}
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                      className="absolute right-3 top-1/2 -translate-y-1/2"
+                    >
                       <img src="/signin-v2/eye.svg" alt="" width={16} height={16} aria-hidden="true" />
-                    </span>
+                    </button>
                   </div>
                 </label>
 
@@ -137,7 +191,7 @@ export default function SignInV2Page() {
                         type="checkbox"
                         className="peer sr-only"
                         checked={remember}
-                        onChange={(event) => setRemember(event.target.checked)}
+                        onChange={(event) => handleRememberChange(event.target.checked)}
                       />
                       <span className="absolute inset-0 rounded-full border-[0.5px] border-[#e5e5e5] bg-[#f2f2f2]" />
                       <span className="absolute left-[2px] top-[2px] h-4 w-4 rounded-full bg-white shadow-[1px_1px_2px_rgba(51,51,51,0.3)] transition peer-checked:translate-x-5" />
@@ -146,12 +200,20 @@ export default function SignInV2Page() {
                   </label>
                   <button
                     type="button"
+                    onClick={handleForgotPassword}
+                    disabled={resetLoading}
                     className="text-[12px] leading-[20px] tracking-[0.3px] text-[#007aff]"
                     style={{ fontFamily: sfProFamily }}
                   >
-                    Forgot password?
+                    {resetLoading ? "Sending..." : "Forgot password?"}
                   </button>
                 </div>
+
+                {notice ? (
+                  <div className="text-[12px] leading-[18px] text-[#16a34a]" style={{ fontFamily: sfProFamily }}>
+                    {notice}
+                  </div>
+                ) : null}
 
                 {error ? (
                   <div className="text-[12px] leading-[18px] text-[#ef4444]" style={{ fontFamily: sfProFamily }}>
@@ -183,7 +245,7 @@ export default function SignInV2Page() {
             style={{ fontFamily: sfProFamily }}
           >
             <span className="text-[#1a1a1a]">Dont have an account?</span>
-            <Link href="/signup-v2" className="text-[#007aff]">
+            <Link href="/signup" className="text-[#007aff]">
               Sign up now
             </Link>
           </div>

@@ -4,18 +4,20 @@
   Explanation: Ensure `/signin` and `/signup` have correct cross-links and working forgot/remember/password-visibility behaviors without regressions.
   - [x] Step 1 — Audit current `/signin` + `/signup` implementations.
     Explanation: Reviewed `app/signin-v2/page.tsx` and `app/signup-v2/page.tsx` (the active `/signin` + `/signup` renderers) and found bottom links still point to `/signup-v2`/`/signin-v2`, the “Forgot password?” control has no handler, the “Remember me” toggle only logs a message, and the password eye icon is static.
-  - [ ] Step 2 — Update footer cross-links on `/signin` and `/signup`.
-    Explanation: Point the bottom links to the correct routes for the current auth flow.
-  - [ ] Step 3 — Implement “Forgot password?” reset email request on `/signin`.
-    Explanation: Wire the button to Supabase password recovery and show success/error feedback based on the entered email.
-  - [ ] Step 4 — Add `/reset-password` page using the signin/signup v2 layout.
-    Explanation: Provide a minimal reset form that sets the new password after the recovery session, matching the existing auth visual design.
-  - [ ] Step 5 — Verify/fix “Remember me” behavior on `/signin`.
-    Explanation: Keep the behavior minimal (no session complexity) and ensure the control has a real effect.
-  - [ ] Step 6 — Verify/fix password visibility eye toggle on `/signin` + `/signup`.
-    Explanation: Ensure the icon toggles input type reliably and matches visual state.
-  - [ ] Step 7 — Tests + verification (unit + integration).
-    Explanation: Run/update relevant auth UI tests with the Python venv active to validate the changes.
+  - [x] Step 2 — Update footer cross-links on `/signin` and `/signup`.
+    Explanation: Updated the v2 footer links in `app/signin-v2/page.tsx` and `app/signup-v2/page.tsx` to point at `/signup` and `/signin` so the active routes cross-link correctly.
+  - [x] Step 3 — Implement “Forgot password?” reset email request on `/signin`.
+    Explanation: Added a password reset request helper in `app/components/auth-provider.tsx` that calls Supabase recovery with a `/reset-password` redirect, wired the `/signin` button in `app/signin-v2/page.tsx` to send the email, and added clear success/error feedback and loading state handling.
+  - [x] Step 4 — Add `/reset-password` page using the signin/signup v2 layout.
+    Explanation: Added `app/reset-password/page.tsx` with the same v2 layout and styling, wired it to update the Supabase password via `updatePassword` in `app/components/auth-provider.tsx`, and included success/error feedback plus a sign-in link.
+  - [x] Step 5 — Verify/fix “Remember me” behavior on `/signin`.
+    Explanation: Implemented a minimal remember-email flow via `app/lib/auth-remember.ts` and wired `app/signin-v2/page.tsx` to preload stored email, store it on successful sign-in when enabled, and clear it when unchecked.
+  - [x] Step 6 — Verify/fix password visibility eye toggle on `/signin` + `/signup`.
+    Explanation: Added per-field visibility toggles in `app/signin-v2/page.tsx`, `app/signup-v2/page.tsx`, and `app/reset-password/page.tsx`, switching input types between `password` and `text` via clickable eye buttons with accessible labels.
+  - [x] Step 7 — Tests + verification (unit + integration).
+    Explanation: With the Python venv active, ran `npx tsx tests/oauth-providers.test.ts`, `npx tsx tests/oauth-signin.test.ts`, and `npx tsx tests/verify-idempotency.test.ts`; all passed.
+  - [ ] Step 8 — Fix password recovery session handling so reset links remain valid.
+    Explanation: Ensure the reset flow doesn’t sign out recovery sessions before the password update completes, and surface a clear error only when the recovery session is truly missing/expired.
 
 - [ ] Sign-in v2 page (Figma) — add separate `/signin-v2` page without touching existing signin/signup.
   Explanation: Implement a standalone sign-in UI that matches the provided Figma design, with no backend wiring, and keep `/signin` + `/signup` unchanged.

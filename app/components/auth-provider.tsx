@@ -16,6 +16,8 @@ type AuthContextValue = {
   loading: boolean;
   signIn: (params: { email: string; password: string }) => Promise<{ error: string | null }>;
   signUp: (params: { email: string; password: string; username?: string; displayName?: string }) => Promise<{ error: string | null }>;
+  requestPasswordReset: (params: { email: string; redirectTo?: string }) => Promise<{ error: string | null }>;
+  updatePassword: (params: { password: string }) => Promise<{ error: string | null }>;
   signInWithOAuth: (provider: Provider) => Promise<{ error: string | null }>;
   signOut: () => Promise<{ error: string | null }>;
 };
@@ -159,6 +161,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
         if (error) {
           console.error("auth.sign_up_failed", { message: error.message });
+          return { error: error.message };
+        }
+        return { error: null };
+      },
+      requestPasswordReset: async ({ email, redirectTo }) => {
+        const resolvedRedirect =
+          redirectTo ?? `${typeof window !== "undefined" ? window.location.origin : ""}/reset-password`;
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: resolvedRedirect,
+        });
+        if (error) {
+          console.error("auth.password_reset_failed", { message: error.message });
+          return { error: error.message };
+        }
+        return { error: null };
+      },
+      updatePassword: async ({ password }) => {
+        const { error } = await supabase.auth.updateUser({ password });
+        if (error) {
+          console.error("auth.password_update_failed", { message: error.message });
           return { error: error.message };
         }
         return { error: null };

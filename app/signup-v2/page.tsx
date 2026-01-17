@@ -31,6 +31,7 @@ export default function SignUpV2Page() {
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -55,6 +56,10 @@ export default function SignUpV2Page() {
       return;
     }
     router.push("/overview");
+  };
+
+  const togglePasswordVisibility = () => {
+    setShowPassword((current) => !current);
   };
 
   return (
@@ -127,7 +132,7 @@ export default function SignUpV2Page() {
                   </span>
                   <div className="relative">
                     <input
-                      type="password"
+                      type={showPassword ? "text" : "password"}
                       name="password"
                       value={password}
                       onChange={(event) => setPassword(event.target.value)}
@@ -135,9 +140,14 @@ export default function SignUpV2Page() {
                       className="h-12 w-full rounded-[6px] border-[0.5px] border-[#e5e5e5] bg-[#f2f2f2] px-4 pr-12 text-[15px] text-[#1a1a1a] placeholder:text-[#808080] focus:outline-none focus:ring-2 focus:ring-[#007aff]/20"
                       required
                     />
-                    <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2">
+                    <button
+                      type="button"
+                      onClick={togglePasswordVisibility}
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                      className="absolute right-3 top-1/2 -translate-y-1/2"
+                    >
                       <img src="/signin-v2/eye.svg" alt="" width={16} height={16} aria-hidden="true" />
-                    </span>
+                    </button>
                   </div>
                 </label>
 
@@ -197,7 +207,7 @@ export default function SignUpV2Page() {
             style={{ fontFamily: sfProFamily }}
           >
             <span className="text-[#1a1a1a]">Already have an account?</span>
-            <Link href="/signin-v2" className="text-[#007aff]">
+            <Link href="/signin" className="text-[#007aff]">
               Sign in
             </Link>
           </div>
