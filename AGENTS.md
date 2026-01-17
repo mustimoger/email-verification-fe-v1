@@ -10,7 +10,7 @@
 - Activate the Python virtual environment before running tests or scripts.
 - If a shell command fails with “failed in sandbox”, use the permission request tool (with `with_escalated_permissions`) before retrying.
 - If any coding file exceeds 600 lines warn me
-- You do not need to ask for confirmation ONLY for md file updates under root
+- Do not ask for confirmation for md file updates under root
 - When I ask for any CODE CHANGES, proceed as follows:
  -- Tell me what you plan to do first before starting code updates
  -- UPDATE the root-level plan/progress markdown files AFTER EACH COMPLETION, under each task in those files, explain what was done and why for newcomers

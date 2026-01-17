@@ -366,8 +366,8 @@ export default function OverviewPage() {
                 <PieChart className="h-6 w-6" />
               </div>
             </div>
-          <div className="mt-4 flex h-[260px] w-full items-center gap-6">
-            <div className="h-full flex-1 min-w-0">
+          <div className="mt-4 flex h-[260px] w-full flex-col gap-4">
+            <div className="flex-1 min-h-0">
               {validationHasData ? (
                 <ResponsiveContainer height="100%" width="100%">
                   <RePieChart>
@@ -401,22 +401,15 @@ export default function OverviewPage() {
                 </div>
               )}
             </div>
-            <div className="grid h-full w-44 grid-rows-4 gap-3">
+            <div className="grid grid-cols-2 gap-2">
               {validationPills.map((pill) => (
                 <div
                   key={pill.label}
-                  className="flex h-full items-center justify-between rounded-full border border-slate-200 bg-slate-50 px-4"
+                  className="flex items-center justify-between rounded-full px-3 py-1.5 text-[11px] font-semibold text-white shadow-sm"
+                  style={{ backgroundColor: pill.color }}
                 >
-                  <div className="flex min-w-0 items-center gap-2">
-                    <span
-                      className="h-2.5 w-2.5 shrink-0 rounded-full"
-                      style={{ backgroundColor: pill.color }}
-                    />
-                    <span className="text-xs font-semibold text-slate-600 whitespace-nowrap">
-                      {pill.label}
-                    </span>
-                  </div>
-                  <span className="ml-2 text-sm font-bold text-slate-900 tabular-nums">
+                  <span className="truncate">{pill.label}</span>
+                  <span className="ml-2 text-xs font-bold tabular-nums text-white/90">
                     {pill.value.toLocaleString()}
                   </span>
                 </div>
