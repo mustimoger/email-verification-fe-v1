@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Nunito_Sans } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
+import CrispChat from "./components/crisp-chat";
 import Providers from "./providers";
 import { themeInitScript } from "./lib/theme";
 
@@ -28,6 +29,7 @@ export default function RootLayout({
         <Script id="theme-init" strategy="beforeInteractive">
           {themeInitScript}
         </Script>
+        <CrispChat />
         <Providers>{children}</Providers>
       </body>
     </html>

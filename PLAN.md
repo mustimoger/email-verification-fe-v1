@@ -1,5 +1,14 @@
 # Plan (carry forward)
 
+- [ ] Crisp chat integration (MVP).
+  Explanation: Add the Crisp loader in the HTML head using `NEXT_PUBLIC_CRISP_WEBSITE_ID`, log clear warnings when missing, and verify with unit + integration tests.
+  - [x] Step 1 — Add MVP plan entry and configuration notes.
+    Explanation: Documented the Crisp integration steps and the required public env var so newcomers understand the minimal scope and how to enable it.
+  - [x] Step 2 — Wire Crisp script into the app layout via a small reusable component.
+    Explanation: Added `app/components/crisp-chat.tsx` + `app/lib/crisp.ts` to inject the Crisp loader into `document.head`, logging clear warnings when `NEXT_PUBLIC_CRISP_WEBSITE_ID` is missing or the head tag is unavailable; wired the component into `app/layout.tsx` so it runs globally without hardcoding the site ID.
+  - [x] Step 3 — Tests + verification (unit + integration).
+    Explanation: Added `tests/crisp-chat.test.ts` covering ID normalization, script injection behavior, and duplicate-guard logic, then ran `npx tsx tests/crisp-chat.test.ts` with the Python venv active to verify the MVP integration.
+
 - [ ] Current session execution order (requested) — implement in sequence and confirm before moving on.
   Explanation: Tracks the ordered backend wiring tasks for this session so progress is visible for handover.
   - [x] Step 1 — Confirm backend routes for `/api/credits/signup-bonus` and `/api/tasks/{id}/jobs` on the running dev server.
