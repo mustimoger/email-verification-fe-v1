@@ -816,3 +816,11 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
 ## Session handover
 - [x] Create `handover.md` with full context, decisions, and next steps for new pricing work.  
   Explanation: Added a comprehensive handover with finalized pricing rules, rounding model, Paddle MCP requirement, key files, current status, and ordered next steps so the next session can implement without confusion.
+
+## Pricing V2 MVP wiring (current session)
+- [x] Step 1 — Backend v2 pricing endpoints (`/api/billing/v2/quote`, `/api/billing/v2/transactions`) with tier selection + validation.
+  Explanation: Added `backend/app/services/pricing_v2.py` for config/tier loading, validation, and quote math; added `backend/app/api/billing_v2.py` for v2 quote + transaction creation, wired into `backend/app/main.py`, and covered the MVP behavior with `backend/tests/test_pricing_v2.py`.
+- [x] Step 2 — Whole-dollar rounding adjustment mechanism for v2 totals.
+  Explanation: Added rounding adjustments to `/api/billing/v2/transactions` by inserting a fee item for positive adjustments and a transaction-level flat discount for negative adjustments, with Paddle price lookups to resolve product IDs; added tests covering both paths.
+- [ ] Step 3 — `/pricing-v2` UI wiring to v2 endpoints + `PRICING_V2` flag.
+  Explanation: Keep the existing pricing UI intact while wiring a new route to the v2 quote/transaction API behind the feature flag.

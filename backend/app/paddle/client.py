@@ -24,8 +24,23 @@ class PaddleAPIError(Exception):
         self.details = details
 
 
+class TransactionUnitPrice(BaseModel):
+    amount: str
+    currency_code: str
+
+
+class TransactionPrice(BaseModel):
+    product_id: str
+    description: str
+    unit_price: TransactionUnitPrice
+    name: Optional[str] = None
+    billing_cycle: Optional[Dict[str, Any]] = None
+    tax_mode: Optional[str] = None
+
+
 class TransactionItem(BaseModel):
-    price_id: str
+    price_id: Optional[str] = None
+    price: Optional[TransactionPrice] = None
     quantity: int
 
 
@@ -34,6 +49,7 @@ class CreateTransactionRequest(BaseModel):
     address_id: Optional[str] = None
     items: list[TransactionItem]
     custom_data: Optional[Dict[str, Any]] = None
+    discount: Optional[Dict[str, Any]] = None
 
 
 class CreateTransactionResponse(BaseModel):
@@ -82,6 +98,7 @@ class PriceAmount(BaseModel):
 class PriceResponse(BaseModel):
     id: str
     unit_price: PriceAmount
+    product_id: Optional[str] = None
 
 
 class PaddleAPIClient:

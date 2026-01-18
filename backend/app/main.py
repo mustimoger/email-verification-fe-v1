@@ -10,6 +10,7 @@ from .api.usage import router as usage_router
 from .api.api_keys import router as api_keys_router
 from .api.overview import router as overview_router
 from .api.billing import router as billing_router
+from .api.billing_v2 import router as billing_v2_router
 from .api.integrations import router as integrations_router
 from .api.limits import router as limits_router
 from .api.account import router as account_router
@@ -51,6 +52,7 @@ def create_app() -> FastAPI:
     app.include_router(limits_router)
     app.include_router(overview_router)
     app.include_router(billing_router)
+    app.include_router(billing_v2_router)
     app.include_router(credits_router)
     app.include_router(debug_router)
     app.include_router(auth_router, prefix="/api")

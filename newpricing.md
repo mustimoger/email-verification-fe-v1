@@ -151,11 +151,13 @@ Status (v2): Completed — added `backend/scripts/sync_paddle_pricing_v2.py` to 
   - `list_tiers(mode, interval)` and `select_tier(quantity, mode, interval)` reading from v2 tables.
   - Validation for min/max, gaps, overlap; log and raise explicit errors.
 - Why: Centralizes pricing rules and keeps API handlers simple and consistent without touching v1 pricing logic.
+Status: Completed — added `backend/app/services/pricing_v2.py` to load v2 config/tiers, validate ranges/steps, and select tiers with explicit error logging.
 
 ### Step B2: Add pricing preview endpoint (v2)
 - What: Endpoint to return computed unit price and total for a quantity.
 - How: `POST /api/billing/v2/quote` with `{quantity, mode, interval}` -> `{tier, unit_amount, total_amount, currency}`.
 - Why: Frontend can show exact pricing from backend (no client-side guesswork) without touching current pricing routes.
+Status: Completed — added `/api/billing/v2/quote` in `backend/app/api/billing_v2.py` using v2 config/tiers and returning totals with rounding metadata for UI display.
 
 ### Step B3: Update transaction creation for quantity + mode (v2)
 - What: Allow checkout based on quantity + mode, not just a fixed price ID.
@@ -167,6 +169,7 @@ Status (v2): Completed — added `backend/scripts/sync_paddle_pricing_v2.py` to 
   - Create transaction with `items=[{price_id, quantity}]` plus rounding adjustment item.
   - Keep backwards compatibility with `price_id` for existing card plans.
 - Why: Supports slider-driven pricing without exposing pricing logic to the client while keeping the existing v1 checkout intact.
+Status: Completed — `/api/billing/v2/transactions` resolves tiers by quantity or price_id, validates ranges/step, and applies rounding fee/discount adjustments so Paddle totals match the rounded UI totals.
 
 ### Step B4: Webhook credit grants for tiers
 - What: Ensure credits are granted based on tier data, not hardcoded.
