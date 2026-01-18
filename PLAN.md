@@ -577,7 +577,7 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
 - [x] Pricing layout verification (responsive) done.  
   Explanation: Verified `/pricing` at 1366x768 (4-card row) and 390x844 (stacked cards, header/CTA/footer intact). Responsive behavior matches expectations; no layout regressions observed.
 - [x] New volume pricing + subscription slider plan captured in `newpricing.md`.  
-  Explanation: Expanded to include the full agreed pricing rules, rounding model, slider constraints, annual credit grant behavior, free trial credits, and verbatim source docs (`boltroute_pricing_FINAL.md`, `boltroute_pricing_config_FINAL.json`) so the next session can implement without ambiguity.
+  Explanation: Expanded to include the full agreed pricing rules, rounding model, slider constraints, annual credit grant behavior, free trial credits, and verbatim source docs (`boltroute_pricing_FINAL.md`, `boltroute_pricing_config_FINAL.json`) so the next session can implement without ambiguity. Added a required note to use Paddle MCP for all Paddle-related tasks.
 - [ ] Volume pricing tiers: create schema + seed data from `boltroute_pricing_config_FINAL.json`.  
   Explanation: Not started. Must add `billing_pricing_config` (min/max/step/rounding/bonus) plus `billing_pricing_tiers`, seeded from the JSON to avoid hardcoded rules and keep backend + UI parity. Rounding rule is nearest whole dollar (0.5 up).
 - [ ] Rounding adjustment mechanism for checkout totals.  

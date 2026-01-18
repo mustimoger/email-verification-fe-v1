@@ -10,6 +10,7 @@
 - Rounding: nearest whole dollar with 0.5 rounding up; UI never shows cents; checkout total must match UI exactly.
 - Tiers remain distinct even if unit price matches (2,000–5,000 and 5,001–10,000 stay separate).
 - Currency USD; tax inclusive; credits never expire.
+- IMPORTANT: Use Paddle MCP for all Paddle-related tasks (catalog, prices, simulations, verification).
 
 ## Rounding + Unit Model (UI + Checkout must match)
 - Use a price-per-1,000 credits model for Paddle items to avoid fractional cents.
