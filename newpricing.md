@@ -12,6 +12,14 @@
 - Currency USD; tax inclusive; credits never expire.
 - IMPORTANT: Use Paddle MCP for all Paddle-related tasks (catalog, prices, simulations, verification).
 
+## V2 Parallel Rollout Decisions (Recorded)
+- API: Use cleanly separated v2 endpoints under `/api/billing/v2/*` to avoid touching current pricing flow.
+- Supabase: Create dedicated v2 tables (`billing_pricing_config_v2`, `billing_pricing_tiers_v2`) so the existing pricing tables remain unchanged until cutover.
+- UI: Implement v2 pricing UI on a separate `/pricing-v2` route only.
+- Paddle: Create the new tiered catalog in Paddle sandbox (leave current catalog intact).
+- Feature flag: use `PRICING_V2` to control when the v2 flow is activated.
+Why: Enables a parallel build/verify/switch workflow without disrupting the current fixed-plan pricing.
+
 ## Rounding + Unit Model (UI + Checkout must match)
 - Use a price-per-1,000 credits model for Paddle items to avoid fractional cents.
 - Compute totals with Decimal math (no floats):
@@ -99,6 +107,8 @@ Use rounding rules to compute UI totals, but keep these anchor values for sanity
   - `free_trial_credits`, `rounding_rule`, `status`, `metadata` (jsonb),
   - timestamps.
 - Why: Avoids hardcoded values and keeps backend + UI aligned.
+Status: Completed — created `billing_pricing_config` with a unique active row and seeded it from the JSON source so all global pricing rules live in Supabase rather than code.
+V2 status: Completed — created `billing_pricing_config_v2` and seeded the v2 active row from the JSON source to keep v1 and v2 isolated.
 
 ### Step D1: Add tier table in Supabase
 - What: Create `billing_pricing_tiers` to store tier ranges and Paddle price IDs.
@@ -108,11 +118,15 @@ Use rounding rules to compute UI totals, but keep these anchor values for sanity
   - `paddle_price_id`, `credits_per_unit`, `status`, `sort_order`, `metadata` (jsonb),
   - timestamps + unique index on `(mode, interval, min_quantity, max_quantity)`.
 - Why: Centralizes pricing rules and keeps UI/backend logic consistent without hardcoding.
+Status: Completed — created the tiers table with constraints/indexes and ready slots for Paddle price IDs.
+V2 status: Completed — created `billing_pricing_tiers_v2` with the same constraints/indexes so v2 pricing can be populated independently.
 
 ### Step D2: Seed and validate tier data
 - What: Populate tiers with real business pricing and map to Paddle price IDs.
 - How: Use `boltroute_pricing_config_FINAL.json` as the seed source; validate ranges are non-overlapping and contiguous (or explicitly allow gaps with explicit errors).
 - Why: Prevents silent pricing errors and ensures predictable tier selection.
+Status: Completed (seed only) — inserted 33 rows (payg + monthly + annual) from the JSON source; Paddle price IDs remain null until catalog sync is run.
+V2 status: Completed (seed only) — inserted the same 33 rows into `billing_pricing_tiers_v2`; Paddle price IDs remain null until the v2 catalog sync is run.
 
 ## Paddle Catalog Plan
 ### Step P1: Create Paddle prices per tier
@@ -122,44 +136,47 @@ Use rounding rules to compute UI totals, but keep these anchor values for sanity
   - Create recurring price(s) for subscription intervals.
   - Add price metadata with `mode`, `interval`, `min_quantity`, `max_quantity`, `credits_per_unit`.
 - Why: Keeps Paddle amounts aligned with tier pricing and allows automated syncing.
+Status (v2 sandbox): Completed — created product `pro_01kf8ty1659c4dff5c5f0wdwy7` with 33 prices (payg + monthly + annual) and stored tier metadata in `custom_data`. Unit prices are cent-rounded (`unit_amount_cents`) from `unit_amount_raw` so Paddle can accept integer cents; rounding adjustments will reconcile totals to whole dollars.
 
 ### Step P2: Sync Paddle prices into Supabase
 - What: Extend `backend/scripts/sync_paddle_plans.py` or add a new script to sync tier prices.
 - How: Read Paddle price metadata and upsert into `billing_pricing_tiers`.
 - Why: Avoids manual drift between Paddle and Supabase.
+Status (v2): Completed — added `backend/scripts/sync_paddle_pricing_v2.py` to filter `custom_data.catalog == "pricing_v2"` and upsert Paddle price IDs into `billing_pricing_tiers_v2`; ran the sync against sandbox to populate `paddle_price_id` for all 33 tiers.
 
 ## Backend Plan (MVP)
-### Step B1: Add tier selection service
+### Step B1: Add tier selection service (v2)
 - What: Add a service to load tiers and pick the correct tier for a quantity.
 - How: Create `backend/app/services/pricing_tiers.py` with:
-  - `list_tiers(mode, interval)`, `select_tier(quantity, mode, interval)`.
+  - `list_tiers(mode, interval)` and `select_tier(quantity, mode, interval)` reading from v2 tables.
   - Validation for min/max, gaps, overlap; log and raise explicit errors.
-- Why: Centralizes pricing rules and keeps API handlers simple and consistent.
+- Why: Centralizes pricing rules and keeps API handlers simple and consistent without touching v1 pricing logic.
 
-### Step B2: Add pricing preview endpoint
+### Step B2: Add pricing preview endpoint (v2)
 - What: Endpoint to return computed unit price and total for a quantity.
-- How: `POST /api/billing/quote` with `{quantity, mode, interval}` -> `{tier, unit_amount, total_amount, currency}`.
-- Why: Frontend can show exact pricing from backend (no client-side guesswork).
+- How: `POST /api/billing/v2/quote` with `{quantity, mode, interval}` -> `{tier, unit_amount, total_amount, currency}`.
+- Why: Frontend can show exact pricing from backend (no client-side guesswork) without touching current pricing routes.
 
-### Step B3: Update transaction creation for quantity + mode
+### Step B3: Update transaction creation for quantity + mode (v2)
 - What: Allow checkout based on quantity + mode, not just a fixed price ID.
-- How: Extend `/api/billing/transactions` payload to accept `{quantity, mode, interval}`:
+- How: Extend `/api/billing/v2/transactions` payload to accept `{quantity, mode, interval}`:
   - Validate quantity vs min/max.
   - Enforce step=1,000 and max=10,000,000 (reject above max and return contact CTA signal).
   - Use tier selector to resolve `paddle_price_id`.
   - Apply rounding adjustment so checkout totals match UI.
   - Create transaction with `items=[{price_id, quantity}]` plus rounding adjustment item.
   - Keep backwards compatibility with `price_id` for existing card plans.
-- Why: Supports slider-driven pricing without exposing pricing logic to the client.
+- Why: Supports slider-driven pricing without exposing pricing logic to the client while keeping the existing v1 checkout intact.
 
 ### Step B4: Webhook credit grants for tiers
 - What: Ensure credits are granted based on tier data, not hardcoded.
 - How: When `transaction.completed`:
-  - Resolve each `price_id` to `credits_per_unit` via `billing_pricing_tiers`.
+  - Resolve each `price_id` to `credits_per_unit` via the v2 tiers table.
   - Grant `quantity * credits_per_unit`.
   - For annual subscriptions, multiply by 12 (slider quantity is monthly credits).
   - Log missing tier mappings explicitly and fail fast.
 - Why: Keeps credit grants accurate for both payg and subscriptions.
+V2 note: Lookup should check v2 tables first and fall back to v1 plan mapping so existing fixed-plan credits remain unchanged during parallel rollout.
 
 ### Step B4b: One-time free trial credit bonus
 - What: Apply the free trial credits once after verified signup.
@@ -170,32 +187,32 @@ Use rounding rules to compute UI totals, but keep these anchor values for sanity
 - What: Tests for tier selection, quote, and checkout validation.
 - How:
   - Unit tests for range boundaries, min/max, and overlap detection.
-  - Integration tests for `/api/billing/quote` and `/api/billing/transactions`.
+  - Integration tests for `/api/billing/v2/quote` and `/api/billing/v2/transactions`.
 - Why: Prevents regressions around pricing math and tier resolution.
 
 ## Frontend Plan (MVP)
 ### Step F1: Expand billing API client
 - What: Add types + methods for quote and new transaction payload.
 - How: Update `app/lib/api-client.ts` with:
-  - `getPricingConfig` or `getQuote` (new endpoint).
-  - `createTransaction` to support `{quantity, mode, interval}`.
+  - `getPricingConfigV2` and `getQuoteV2` (v2 endpoints).
+  - `createTransactionV2` to support `{quantity, mode, interval}`.
 - Why: Keeps frontend typed and aligned with backend payloads.
 
 ### Step F2: New pricing UI layout
 - What: Replace static cards with a slider-based pricing module.
-- How: In `app/pricing/page.tsx`:
+- How: In `app/pricing-v2/page.tsx`:
   - Add toggle tabs: payg vs subscription.
   - Add numeric input + slider bound to min/max/step from backend config.
-  - Show unit price and total (from `/api/billing/quote`).
+  - Show unit price and total (from `/api/billing/v2/quote`).
   - Keep existing Paddle checkout flow.
 - Why: Matches the requested UX while staying data-driven and secure.
 
-### Step F3: Checkout flow per mode
+### Step F3: Checkout flow per mode (v2)
 - What: Trigger correct checkout for payg or subscription.
 - How:
-  - Payg: call `/api/billing/transactions` with `{quantity, mode:"payg", interval:"one_time"}`.
-  - Subscription: call `/api/billing/transactions` with `{quantity, mode:"subscription", interval:"month|year"}`.
-- Why: Same UI, different backend pricing resolution.
+  - Payg: call `/api/billing/v2/transactions` with `{quantity, mode:"payg", interval:"one_time"}`.
+  - Subscription: call `/api/billing/v2/transactions` with `{quantity, mode:"subscription", interval:"month|year"}`.
+- Why: Same UI, different backend pricing resolution while leaving v1 untouched.
 
 ### Step F4: UI validation + error handling
 - What: Enforce min/max and show clear errors.
@@ -208,7 +225,7 @@ Use rounding rules to compute UI totals, but keep these anchor values for sanity
 - Why: Confirms slider behavior and checkout gating.
 
 ## MVP Completion Checklist
-- Supabase tiers table created and populated with real pricing.
+- Supabase v2 tiers table created and populated with real pricing.
 - Paddle prices created for each tier + interval.
 - Quote endpoint returns correct totals.
 - Checkout uses tier selection and completes successfully.

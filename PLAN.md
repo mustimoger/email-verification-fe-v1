@@ -578,18 +578,22 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
   Explanation: Verified `/pricing` at 1366x768 (4-card row) and 390x844 (stacked cards, header/CTA/footer intact). Responsive behavior matches expectations; no layout regressions observed.
 - [x] New volume pricing + subscription slider plan captured in `newpricing.md`.  
   Explanation: Expanded to include the full agreed pricing rules, rounding model, slider constraints, annual credit grant behavior, free trial credits, and verbatim source docs (`boltroute_pricing_FINAL.md`, `boltroute_pricing_config_FINAL.json`) so the next session can implement without ambiguity. Added a required note to use Paddle MCP for all Paddle-related tasks.
-- [ ] Volume pricing tiers: create schema + seed data from `boltroute_pricing_config_FINAL.json`.  
-  Explanation: Not started. Must add `billing_pricing_config` (min/max/step/rounding/bonus) plus `billing_pricing_tiers`, seeded from the JSON to avoid hardcoded rules and keep backend + UI parity. Rounding rule is nearest whole dollar (0.5 up).
+- [x] Volume pricing tiers: create schema + seed data from `boltroute_pricing_config_FINAL.json`.  
+  Explanation: Applied a Supabase migration to create `billing_pricing_config` and `billing_pricing_tiers` with constraints/indexes, seeded one active config row (min/max/step/rounding/free trial) plus 33 tier rows (payg + monthly + annual). Unit amounts are stored per 1,000 credits as Decimal-safe values with metadata linking back to the pricing version so backend/UI can read from data instead of hardcoded rules. This is the v1 baseline and remains untouched for now.
+- [x] V2 pricing isolation: create `billing_pricing_config_v2` + `billing_pricing_tiers_v2` and seed from the JSON source.  
+  Explanation: Added v2 config/tiers tables with constraints/indexes and seeded the active config row plus 33 tier rows from the JSON source, keeping the v1 catalog untouched while v2 is validated.
 - [ ] Rounding adjustment mechanism for checkout totals.  
   Explanation: Not started. Need a Paddle-compatible approach (discount/fee line item or custom price) so the charged total equals whole-dollar display totals.
-- [ ] Paddle catalog: create tiered prices (payg + monthly + annual) and sync to Supabase.  
-  Explanation: Not started. Each tier/interval needs a Paddle price ID stored in Supabase to drive checkout.
-- [ ] Backend: tier selection + quote endpoint + transaction update for quantity/mode/interval.  
-  Explanation: Not started. Backend must enforce min/max/step (1,000), apply whole-dollar rounding (0.5 up), and return a contact CTA when above max.
+- [x] Paddle catalog (v2 sandbox): create tiered prices (payg + monthly + annual).  
+  Explanation: Created new product `pro_01kf8ty1659c4dff5c5f0wdwy7` in Paddle sandbox with 33 tiered prices (payg + monthly + annual). Each price includes tier metadata in `custom_data` and a cent-rounded `unit_amount_cents` derived from the raw unit price so Paddle can accept integer cents; rounding adjustments will reconcile to whole-dollar totals later.
+- [x] Paddle catalog (v2 sandbox): sync price IDs into `billing_pricing_tiers_v2`.  
+  Explanation: Added `backend/scripts/sync_paddle_pricing_v2.py` (filters `custom_data.catalog == "pricing_v2"`) and ran it against the sandbox to upsert `paddle_price_id` for all 33 v2 tiers, keeping v1 untouched.
+- [ ] Backend (v2): tier selection + quote endpoint + transaction update for quantity/mode/interval.  
+  Explanation: Not started. Backend must enforce min/max/step (1,000), apply whole-dollar rounding (0.5 up), and return a contact CTA when above max using the v2 endpoints/tables.
 - [ ] Backend: webhook credit grants for tiered pricing + one-time free trial bonus.  
   Explanation: Not started. Credit grants must map `price_id` to tier credits, grant annual credits upfront (quantity × 12), and add free trial credits once per verified user (stacks with signup bonus if enabled).
-- [ ] Frontend: slider pricing UI with PAYG/subscription toggle and contact CTA above max.  
-  Explanation: Not started. UI must use the backend quote for totals and keep checkout totals aligned with display.
+- [ ] Frontend (v2): slider pricing UI on `/pricing-v2` with PAYG/subscription toggle and contact CTA above max.  
+  Explanation: Not started. UI must use the v2 backend quote for totals and keep checkout totals aligned with display; the existing `/pricing` remains unchanged.
 - [ ] Tests: pricing tier selection, quote/checkout validation, and slider UI states.  
   Explanation: Not started. MVP needs unit + integration coverage to avoid pricing regressions.
 
@@ -808,3 +812,7 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
     Explanation: `/api` now lets users switch between per‑key totals (from `/api-keys`) and per‑purpose totals (from `/metrics/api-usage`) using the same card layout; the chart area shows verified totals when time-series data isn’t provided.
   - Step 3 (verification): run backend tests; note staging deploy + verification are pending if not possible in this environment.
   Explanation: External API now exposes purpose-level metrics with date filters but no per-key breakdown; we need to integrate it for non-dashboard usage or ingest tasks per key to satisfy per-key charts.
+
+## Session handover
+- [x] Create `handover.md` with full context, decisions, and next steps for new pricing work.  
+  Explanation: Added a comprehensive handover with finalized pricing rules, rounding model, Paddle MCP requirement, key files, current status, and ordered next steps so the next session can implement without confusion.
