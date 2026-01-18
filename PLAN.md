@@ -576,6 +576,22 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
   Explanation: Pricing UI now renders all plans sorted by `custom_data.sort_order`, including the display-only Custom Pricing card with “Contact Us” label and feature list. CTA clicks log intent without triggering checkout, keeping behavior neutral until you decide next steps.
 - [x] Pricing layout verification (responsive) done.  
   Explanation: Verified `/pricing` at 1366x768 (4-card row) and 390x844 (stacked cards, header/CTA/footer intact). Responsive behavior matches expectations; no layout regressions observed.
+- [x] New volume pricing + subscription slider plan captured in `newpricing.md`.  
+  Explanation: Expanded to include the full agreed pricing rules, rounding model, slider constraints, annual credit grant behavior, free trial credits, and verbatim source docs (`boltroute_pricing_FINAL.md`, `boltroute_pricing_config_FINAL.json`) so the next session can implement without ambiguity.
+- [ ] Volume pricing tiers: create schema + seed data from `boltroute_pricing_config_FINAL.json`.  
+  Explanation: Not started. Must add `billing_pricing_config` (min/max/step/rounding/bonus) plus `billing_pricing_tiers`, seeded from the JSON to avoid hardcoded rules and keep backend + UI parity. Rounding rule is nearest whole dollar (0.5 up).
+- [ ] Rounding adjustment mechanism for checkout totals.  
+  Explanation: Not started. Need a Paddle-compatible approach (discount/fee line item or custom price) so the charged total equals whole-dollar display totals.
+- [ ] Paddle catalog: create tiered prices (payg + monthly + annual) and sync to Supabase.  
+  Explanation: Not started. Each tier/interval needs a Paddle price ID stored in Supabase to drive checkout.
+- [ ] Backend: tier selection + quote endpoint + transaction update for quantity/mode/interval.  
+  Explanation: Not started. Backend must enforce min/max/step (1,000), apply whole-dollar rounding (0.5 up), and return a contact CTA when above max.
+- [ ] Backend: webhook credit grants for tiered pricing + one-time free trial bonus.  
+  Explanation: Not started. Credit grants must map `price_id` to tier credits, grant annual credits upfront (quantity × 12), and add free trial credits once per verified user (stacks with signup bonus if enabled).
+- [ ] Frontend: slider pricing UI with PAYG/subscription toggle and contact CTA above max.  
+  Explanation: Not started. UI must use the backend quote for totals and keep checkout totals aligned with display.
+- [ ] Tests: pricing tier selection, quote/checkout validation, and slider UI states.  
+  Explanation: Not started. MVP needs unit + integration coverage to avoid pricing regressions.
 
 ## Account page
 - [x] Implemented Account page per Figma: profile card with avatar, edit link, username/email/password fields, and Update button; purchase history table with invoice download pills; total credits summary card. Uses typed data and shared shell/footer; backend wiring TBD.
