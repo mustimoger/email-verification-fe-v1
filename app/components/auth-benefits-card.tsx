@@ -31,17 +31,17 @@ type AuthBenefitsCardProps = {
 export function AuthBenefitsCard({ className }: AuthBenefitsCardProps) {
   return (
     <div
-      className={`rounded-2xl bg-black/50 px-6 py-6 text-white shadow-[0_16px_40px_rgba(0,0,0,0.35)]${
+      className={`rounded-2xl bg-black/35 px-6 py-6 text-white shadow-[0_16px_40px_rgba(0,0,0,0.28)]${
         className ? ` ${className}` : ""
       }`}
     >
       <ul className="flex flex-col gap-4">
         {BENEFITS.map(({ id, label, Icon }) => (
-          <li key={id} className="flex items-center gap-4">
-            <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white/95 shadow-[0_6px_14px_rgba(0,0,0,0.2)]">
-              <Icon size={20} weight="regular" className="text-[#0f172a]" aria-hidden="true" />
+          <li key={id} className="flex items-center gap-3">
+            <span className="flex h-6 w-6 items-center justify-center">
+              <Icon size={20} weight="bold" className="text-white/85" aria-hidden="true" />
             </span>
-            <span className="text-[14px] leading-[20px] text-white/90">{label}</span>
+            <span className="text-[14px] leading-[20px] text-white/95">{label}</span>
           </li>
         ))}
       </ul>

@@ -10,6 +10,7 @@ import { useAuth } from "../components/auth-provider";
 import { readEmailConfirmationNotice } from "../lib/auth-notices";
 import { clearRememberedEmail, readRememberedEmail, setRememberedEmail } from "../lib/auth-remember";
 import { OAuthButtons } from "../components/oauth-buttons";
+import { AuthBenefitsCard } from "../components/auth-benefits-card";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -124,6 +125,9 @@ export default function SignInV2Page() {
             className="object-cover"
             sizes="(min-width: 1024px) 65vw, 100vw"
           />
+          <div className="absolute inset-0 hidden items-center justify-center px-6 py-8 lg:flex">
+            <AuthBenefitsCard className="w-full max-w-[360px]" />
+          </div>
         </div>
 
         <div className={`${roboto.className} flex w-full flex-col justify-between px-6 py-8 sm:px-10 sm:py-12 lg:w-[456px]`}>

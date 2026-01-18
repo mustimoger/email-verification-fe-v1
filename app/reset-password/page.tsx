@@ -30,15 +30,16 @@ export default function ResetPasswordPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [resetComplete, setResetComplete] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!authLoading && !session) {
+    if (!authLoading && !session && !resetComplete) {
       console.warn("auth.reset_password_missing_session");
       setError("Reset link is invalid or expired. Request a new email to continue.");
     }
-  }, [authLoading, session]);
+  }, [authLoading, resetComplete, session]);
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -72,6 +73,7 @@ export default function ResetPasswordPage() {
       console.warn("auth.reset_password_signout_failed", { message: signOutError });
     }
     setNotice("Password updated successfully. Please sign in with your new password.");
+    setResetComplete(true);
     setSaving(false);
     setPassword("");
     setConfirmPassword("");

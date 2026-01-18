@@ -64,8 +64,12 @@
   Explanation: Add the features list card to the hero image area on `/signin` and `/signup` using the provided copy, with rounded/transparent black styling and icons.
   - [x] Step 1 — Add benefits content + reusable card component (Phosphor icons).
     Explanation: Added `app/components/auth-benefits-card.tsx` with a shared benefits list and Phosphor icon mapping so both auth pages can reuse the same card markup without duplicating copy or icon selection.
-  - [ ] Step 2 — Embed the card in the left hero panel on `/signin` and `/signup` with responsive positioning.
-    Explanation: Overlay the card centered on the hero image and ensure the layout holds up across breakpoints.
+  - [x] Step 2 — Embed the card in the left hero panel on `/signin` and `/signup` with responsive positioning.
+    Explanation: Added centered overlays in `app/signin-v2/page.tsx` and `app/signup-v2/page.tsx` so the benefits card sits in the hero image area on desktop without crowding smaller breakpoints.
+  - [x] Step 2b — Improve benefits card contrast (icon visibility + lighter background).
+    Explanation: Reduced the card overlay opacity and strengthened icon contrast (bolder glyphs, brighter icon circles, subtle ring) so the icons read clearly against the hero image while the background remains more visible.
+  - [x] Step 2c — Remove icon circles and retune icon colors for light/dark mode.
+    Explanation: Removed the circular icon backgrounds and switched to bold, brighter glyphs so the icons remain legible against the translucent card in both light and dark themes.
   - [ ] Step 3 — Tests + verification (unit + integration).
     Explanation: Run relevant auth UI tests with the Python venv active and verify the layout visually since there’s no dedicated UI test harness.
   - [ ] Step 4 — Commit + push.
