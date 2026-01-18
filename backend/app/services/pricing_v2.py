@@ -23,6 +23,7 @@ class PricingConfigV2:
     min_volume: int
     max_volume: int
     step_size: int
+    free_trial_credits: Optional[int]
     rounding_rule: Optional[str]
     metadata: Dict[str, Any]
 
@@ -62,11 +63,22 @@ def get_pricing_config_v2(status: str = "active") -> PricingConfigV2:
         logger.error("pricing_v2.config_not_unique", extra={"status": status, "count": len(rows)})
     row = rows[0]
     try:
+        free_trial_raw = row.get("free_trial_credits")
+        free_trial_credits: Optional[int] = None
+        if free_trial_raw is not None:
+            try:
+                free_trial_credits = int(free_trial_raw)
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(
+                    "pricing_v2.config_free_trial_invalid",
+                    extra={"value": free_trial_raw, "error": str(exc)},
+                )
         config = PricingConfigV2(
             currency=str(row.get("currency") or ""),
             min_volume=int(row.get("min_volume")),
             max_volume=int(row.get("max_volume")),
             step_size=int(row.get("step_size")),
+            free_trial_credits=free_trial_credits,
             rounding_rule=row.get("rounding_rule"),
             metadata=row.get("metadata") if isinstance(row.get("metadata"), dict) else {},
         )

@@ -348,6 +348,54 @@ export type PlansResponse = {
   plans: Plan[];
 };
 
+export type PricingModeV2 = "payg" | "subscription";
+export type PricingIntervalV2 = "one_time" | "month" | "year";
+
+export type PricingConfigV2 = {
+  currency: string;
+  min_volume: number;
+  max_volume: number;
+  step_size: number;
+  free_trial_credits?: number | null;
+  rounding_rule?: string | null;
+  metadata?: Record<string, unknown>;
+};
+
+export type PricingConfigV2Response = {
+  status: string;
+  checkout_enabled: boolean;
+  checkout_script?: string | null;
+  client_side_token?: string | null;
+  seller_id?: string | null;
+  pricing: PricingConfigV2;
+};
+
+export type PricingTierV2 = {
+  mode: PricingModeV2;
+  interval: PricingIntervalV2;
+  min_quantity: number;
+  max_quantity?: number | null;
+  unit_amount: string;
+  currency: string;
+  credits_per_unit: number;
+  paddle_price_id: string;
+};
+
+export type PricingQuoteV2Response = {
+  quantity: number;
+  units: number;
+  mode: PricingModeV2;
+  interval: PricingIntervalV2;
+  currency: string;
+  unit_amount: string;
+  raw_total: string;
+  rounded_total: string;
+  paddle_total: string;
+  rounding_adjustment: string;
+  rounding_adjustment_cents: number;
+  tier: PricingTierV2;
+};
+
 export type CreateTransactionResponse = {
   id: string;
   status?: string;
@@ -629,4 +677,14 @@ export const billingApi = {
   listPlans: () => request<PlansResponse>("/billing/plans", { method: "GET" }),
   createTransaction: (payload: { price_id: string; quantity?: number; custom_data?: Record<string, unknown> }) =>
     request<CreateTransactionResponse>("/billing/transactions", { method: "POST", body: payload }),
+  getPricingConfigV2: () => request<PricingConfigV2Response>("/billing/v2/config", { method: "GET" }),
+  getQuoteV2: (payload: { quantity: number; mode: PricingModeV2; interval: PricingIntervalV2 }) =>
+    request<PricingQuoteV2Response>("/billing/v2/quote", { method: "POST", body: payload }),
+  createTransactionV2: (payload: {
+    quantity: number;
+    mode: PricingModeV2;
+    interval: PricingIntervalV2;
+    price_id?: string;
+    custom_data?: Record<string, unknown>;
+  }) => request<CreateTransactionResponse>("/billing/v2/transactions", { method: "POST", body: payload }),
 };

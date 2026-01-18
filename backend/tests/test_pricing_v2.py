@@ -25,6 +25,7 @@ def pricing_config():
         min_volume=2000,
         max_volume=10000000,
         step_size=1000,
+        free_trial_credits=None,
         rounding_rule="half_up",
         metadata={},
     )
@@ -211,3 +212,33 @@ def test_transaction_adds_fee_item_for_positive_adjustment(monkeypatch, pricing_
     fee_item = payload["items"][1]
     assert fee_item["price"]["product_id"] == "pro_test"
     assert fee_item["price"]["unit_price"]["amount"] == "40"
+
+
+def test_config_endpoint_returns_checkout_metadata(monkeypatch, pricing_config):
+    class StubEnv:
+        checkout_script = "https://example.com/checkout.js"
+
+    class StubConfig:
+        status = "sandbox"
+        checkout_enabled = True
+        client_side_token = "token_123"
+        seller_id = "seller_123"
+        active_environment = StubEnv()
+
+    def fake_user():
+        return AuthContext(user_id="user-1", claims={}, token="t")
+
+    monkeypatch.setattr(billing_v2_module, "get_pricing_config_v2", lambda: pricing_config)
+    monkeypatch.setattr(billing_v2_module, "get_paddle_config", lambda: StubConfig())
+
+    app = _build_app(fake_user)
+    client = TestClient(app)
+
+    resp = client.get("/api/billing/v2/config")
+    assert resp.status_code == 200, resp.text
+    payload = resp.json()
+    assert payload["status"] == "sandbox"
+    assert payload["checkout_enabled"] is True
+    assert payload["checkout_script"] == "https://example.com/checkout.js"
+    assert payload["client_side_token"] == "token_123"
+    assert payload["pricing"]["min_volume"] == pricing_config.min_volume

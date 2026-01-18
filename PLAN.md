@@ -103,6 +103,13 @@
     - [x] Step 4d — Tests: run backend usage route tests and frontend API usage utils tests.
       Explanation: Ran `pytest backend/tests/test_usage_summary_route.py backend/tests/test_usage_purpose_route.py` and `tsx tests/api-usage-utils.test.ts` (with the Python venv active); all tests passed (warnings from pyiceberg/pydantic noted).
 
+- [ ] Pricing V2 rollout (parallel) — enable flag and smoke-test `/pricing-v2` + checkout.
+  Explanation: Turn on the v2 feature flag locally and validate the new pricing route and checkout flow without impacting v1.
+  - [ ] Step 1 — Enable `PRICING_V2=true` in the local environment.
+    Explanation: Set the feature flag so `/pricing-v2` renders, documenting where it’s configured and avoiding hardcoded fallbacks.
+  - [ ] Step 2 — Smoke-test `/pricing-v2` UI + v2 checkout flow (sandbox).
+    Explanation: Validate `/api/billing/v2/config` + `/api/billing/v2/quote` calls from the UI and confirm the checkout session is created with the expected rounded totals.
+
 - [ ] Auth providers (Supabase) — add Google OAuth entry points to signin/signup.
   Explanation: Provide a visible Google auth option in the UI, backed by Supabase OAuth, with configuration-driven provider enablement and clear logging when missing.
   - [x] Step 1 — Audit current auth UI/provider usage.
@@ -822,5 +829,15 @@ Notes for continuity: Python venv `.venv` exists (ignored). `node_modules` prese
   Explanation: Added `backend/app/services/pricing_v2.py` for config/tier loading, validation, and quote math; added `backend/app/api/billing_v2.py` for v2 quote + transaction creation, wired into `backend/app/main.py`, and covered the MVP behavior with `backend/tests/test_pricing_v2.py`.
 - [x] Step 2 — Whole-dollar rounding adjustment mechanism for v2 totals.
   Explanation: Added rounding adjustments to `/api/billing/v2/transactions` by inserting a fee item for positive adjustments and a transaction-level flat discount for negative adjustments, with Paddle price lookups to resolve product IDs; added tests covering both paths.
-- [ ] Step 3 — `/pricing-v2` UI wiring to v2 endpoints + `PRICING_V2` flag.
-  Explanation: Keep the existing pricing UI intact while wiring a new route to the v2 quote/transaction API behind the feature flag.
+- [x] Step 3 — `/pricing-v2` UI wiring to v2 endpoints + `PRICING_V2` flag.
+  Explanation: Added a new `/pricing-v2` route gated by `PRICING_V2`, wired it to v2 config/quote/transaction endpoints, and preserved the existing `/pricing` flow unchanged.
+  - [x] Step 3a — Add v2 pricing config + checkout metadata endpoint and API client types.
+    Explanation: Added `GET /api/billing/v2/config` to return pricing config + checkout metadata, extended `PricingConfigV2` to include free-trial credits, and added v2 config/quote/transaction types + client methods in `app/lib/api-client.ts` so the UI can stay data-driven.
+  - [x] Step 3b — Build `/pricing-v2` layout from `boltroute_pricing_page.jsx` with light background + dark mode support.
+    Explanation: Ported the provided JSX into `app/pricing-v2` components, swapped the dark-only styling for light surfaces with dark-mode variables, and moved large sections into reusable components to keep files under 600 lines.
+  - [x] Step 3c — Wire slider/input + CTA to v2 quote/transaction endpoints with feature-flag gating.
+    Explanation: Connected the slider + plan toggle to `/api/billing/v2/quote`, computed savings vs PAYG without hardcoded discounts, and wired checkout to `/api/billing/v2/transactions` with contact handling for above-max quantities.
+  - [x] Step 3d — Tests + verification for pricing-v2 UI utilities and request flow.
+    Explanation: Added `tests/pricing-v2-utils.test.ts` plus a backend config endpoint test and ran `pytest backend/tests/test_pricing_v2.py` + `npx tsx tests/pricing-v2-utils.test.ts` with the venv active.
+- [ ] Step 4 — Confirm volume table data source for `/pricing-v2`.
+  Explanation: Validate that `billing_pricing_config_v2.metadata.display_prices.payg` is populated; if not, decide whether to compute volume table entries from tiers or add a dedicated tiers endpoint so the UI stays fully data-driven.

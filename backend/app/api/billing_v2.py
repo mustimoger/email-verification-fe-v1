@@ -13,6 +13,7 @@ from ..paddle.client import (
     TransactionUnitPrice,
     get_paddle_client,
 )
+from ..paddle.config import get_paddle_config
 from ..services.pricing_v2 import (
     PricingValidationError,
     compute_pricing_totals_v2,
@@ -30,6 +31,25 @@ router = APIRouter(prefix="/api/billing/v2", tags=["billing_v2"])
 
 VALID_MODES = {"payg", "subscription"}
 VALID_INTERVALS = {"one_time", "month", "year"}
+
+
+class PricingConfigResponse(BaseModel):
+    currency: str
+    min_volume: int
+    max_volume: int
+    step_size: int
+    free_trial_credits: Optional[int] = None
+    rounding_rule: Optional[str] = None
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+
+class PricingConfigEnvelope(BaseModel):
+    status: str
+    checkout_enabled: bool
+    checkout_script: Optional[str] = None
+    client_side_token: Optional[str] = None
+    seller_id: Optional[str] = None
+    pricing: PricingConfigResponse
 
 
 class PricingTierResponse(BaseModel):
@@ -104,6 +124,33 @@ class PricingTransactionRequest(BaseModel):
 class PricingTransactionResponse(BaseModel):
     id: str
     status: Optional[str] = None
+
+
+@router.get("/config", response_model=PricingConfigEnvelope)
+async def config_pricing_v2(user: AuthContext = Depends(get_current_user)) -> PricingConfigEnvelope:
+    try:
+        config = get_pricing_config_v2()
+        paddle_config = get_paddle_config()
+        env = paddle_config.active_environment
+    except Exception as exc:  # noqa: BLE001
+        logger.error("pricing_v2.config_failed", extra={"error": str(exc), "user_id": user.user_id})
+        raise HTTPException(status_code=500, detail="Pricing configuration unavailable") from exc
+    return PricingConfigEnvelope(
+        status=paddle_config.status,
+        checkout_enabled=paddle_config.checkout_enabled,
+        checkout_script=env.checkout_script,
+        client_side_token=paddle_config.client_side_token,
+        seller_id=paddle_config.seller_id,
+        pricing=PricingConfigResponse(
+            currency=config.currency,
+            min_volume=config.min_volume,
+            max_volume=config.max_volume,
+            step_size=config.step_size,
+            free_trial_credits=config.free_trial_credits,
+            rounding_rule=config.rounding_rule,
+            metadata=config.metadata,
+        ),
+    )
 
 
 def _validate_mode_interval(mode: str, interval: str) -> None:
