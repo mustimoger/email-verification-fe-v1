@@ -95,7 +95,7 @@ function SectionCard({
 }) {
   return (
     <div
-      className={`rounded-[24px] border border-[var(--overview-border)] bg-[var(--overview-card)] p-6 shadow-[var(--overview-shadow)] sm:p-8 ${transitionClass ?? ""} ${className ?? ""}`}
+      className={`rounded-[24px] border border-[var(--overview-border)] bg-[var(--overview-card-muted)] p-6 sm:p-8 ${transitionClass ?? ""} ${className ?? ""}`}
       style={{ transition: `all 0.7s cubic-bezier(0.16, 1, 0.3, 1) ${delay}` }}
     >
       {children}
@@ -109,6 +109,10 @@ export function OverviewHero({ transitionClass }: { transitionClass?: string }) 
       className={`relative overflow-hidden rounded-[28px] border border-[var(--overview-border)] bg-[var(--overview-card-strong)] px-6 py-10 shadow-[var(--overview-shadow-strong)] sm:px-10 ${transitionClass ?? ""}`}
       style={{ transition: "all 0.7s cubic-bezier(0.16, 1, 0.3, 1)" }}
     >
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute -top-48 left-1/2 h-[420px] w-[720px] -translate-x-1/2 rounded-full bg-[radial-gradient(circle_at_center,_rgba(249,168,37,0.25)_0%,_transparent_70%)]" />
+        <div className="absolute right-[-120px] top-[120px] h-[320px] w-[320px] rounded-full bg-[radial-gradient(circle_at_center,_rgba(249,168,37,0.12)_0%,_transparent_70%)]" />
+      </div>
       <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
         <div className="max-w-2xl">
           <div className="inline-flex items-center gap-2 rounded-full border border-[var(--overview-border)] bg-[var(--overview-accent-soft)] px-4 py-2 text-xs font-semibold tracking-[0.2em] text-[var(--overview-accent)]">
@@ -171,7 +175,7 @@ export function StatsGrid({
         return (
           <div
             key={stat.title}
-            className="rounded-2xl border border-[var(--overview-border)] bg-[var(--overview-card)] p-5 shadow-[var(--overview-shadow)]"
+            className="rounded-2xl border border-[var(--overview-border)] bg-[var(--overview-card)] p-5"
           >
             <div className="flex items-start gap-4">
               <div className="min-w-0 flex-1">

@@ -4,7 +4,7 @@
   --overview-accent-soft: rgba(249, 168, 37, 0.14);
   --overview-accent-soft-strong: rgba(249, 168, 37, 0.22);
   --overview-card: rgba(255, 255, 255, 0.92);
-  --overview-card-strong: rgba(255, 255, 255, 0.92);
+  --overview-card-strong: rgba(255, 255, 255, 0.98);
   --overview-card-muted: rgba(248, 250, 252, 0.9);
   --overview-border: rgba(148, 163, 184, 0.25);
   --overview-shadow: 0 24px 60px rgba(15, 23, 42, 0.08);
@@ -14,8 +14,8 @@
 
 :global([data-theme="dark"]) .root {
   --overview-card: rgba(15, 23, 42, 0.78);
-  --overview-card-strong: rgba(15, 23, 42, 0.78);
-  --overview-card-muted: rgba(15, 23, 42, 0.6);
+  --overview-card-strong: rgba(15, 23, 42, 0.92);
+  --overview-card-muted: rgba(15, 23, 42, 0.64);
   --overview-border: rgba(148, 163, 184, 0.2);
   --overview-shadow: 0 28px 70px rgba(4, 10, 24, 0.45);
   --overview-shadow-strong: 0 28px 70px rgba(4, 10, 24, 0.45);
