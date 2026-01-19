@@ -175,18 +175,6 @@ export function ResultsCard({ transitionClass }: { transitionClass?: string }) {
         <h3 className="text-xl font-semibold text-[var(--text-primary)]">Live results</h3>
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">Waiting</span>
-          <button
-            type="button"
-            className="rounded-xl border border-[var(--verify-border)] bg-white/70 px-3 py-2 text-xs font-semibold text-[var(--text-secondary)]"
-          >
-            Refresh status
-          </button>
-          <button
-            type="button"
-            className="rounded-xl border border-[var(--verify-border)] bg-white/70 px-3 py-2 text-xs font-semibold text-[var(--text-secondary)]"
-          >
-            Export results
-          </button>
         </div>
       </div>
       <p className="mt-2 text-sm text-[var(--text-muted)]">
@@ -205,6 +193,20 @@ export function ResultsCard({ transitionClass }: { transitionClass?: string }) {
             <span className="text-xs font-semibold text-[var(--text-muted)]">—</span>
           </div>
         ))}
+      </div>
+      <div className="mt-6 flex flex-wrap justify-end gap-2">
+        <button
+          type="button"
+          className="rounded-xl border border-[var(--verify-border)] bg-white/70 px-3 py-2 text-xs font-semibold text-[var(--text-secondary)]"
+        >
+          Refresh status
+        </button>
+        <button
+          type="button"
+          className="rounded-xl border border-[var(--verify-border)] bg-white/70 px-3 py-2 text-xs font-semibold text-[var(--text-secondary)]"
+        >
+          Export results
+        </button>
       </div>
     </div>
   );

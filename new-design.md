@@ -206,6 +206,15 @@ What was done and why:
 Notes:
 - Backend API is not running locally, so data sections show missing-data states; layout and responsive behavior are still validated.
 
+### D4c1: `/verify-v2` results controls placement
+- What: Move the Live results actions to the bottom of the card.
+- How: Relocate the “Refresh status” and “Export results” buttons to the card footer using pricing-style button treatments.
+- Why: Mirrors the existing `/verify` interaction flow without breaking the new visual system.
+Status: Completed — moved the Live results actions into the card footer as requested.
+What was done and why:
+- Removed the header actions and added a footer action row aligned to the bottom right of the Live results card.
+- Preserved the pricing-v2 button treatments to keep the visual system consistent.
+
 ### D4d: `/verify-v2` functional migration (after design approval)
 - What: Copy `/verify` functionality into `/verify-v2` once the design is signed off.
 - How: Reuse existing logic and APIs from `/verify` without introducing new backend code.
