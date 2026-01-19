@@ -51,6 +51,7 @@ Example response:
   "id": "550e8400-e29b-41d4-a716-446655440000",
   "user_id": "550e8400-e29b-41d4-a716-446655440000",
   "webhook_url": "https://example.com/webhook",
+  "source": "frontend",
   "created_at": "2025-01-01T12:00:00Z",
   "email_count": 2,
   "domain_count": 1
@@ -62,6 +63,7 @@ Response fields:
 - `id`: task UUID.
 - `user_id`: derived from auth (may be null for dev keys).
 - `webhook_url`: webhook URL stored for the task.
+- `source`: indicates task origin (`frontend` or `api_key`).
 - `created_at`: task creation timestamp.
 - `email_count`: total emails submitted.
 - `domain_count`: number of unique domains queued.
@@ -69,12 +71,13 @@ Response fields:
 Errors:
 
 - `400` invalid payload (invalid emails, webhook URL, or >10,000 emails).
+- `401` unauthorized.
 - `429` rate limited.
 - `500` internal error.
 
 ## GET /api/v1/tasks
 
-Purpose: list tasks with optional filters.
+Purpose: list tasks with optional filters, including file-backed status.
 
 Auth: required.
 
@@ -85,6 +88,7 @@ Query parameters:
 - `limit` (int, default 10, max 100)
 - `offset` (int, default 0)
 - `user_id` (UUID, admin only)
+- `is_file_backed` (bool, optional, `true` or `false`)
 - `created_after` (RFC3339 timestamp)
 - `created_before` (RFC3339 timestamp)
 
@@ -92,7 +96,7 @@ Example request:
 
 ```bash
 curl -X GET \
-  'https://api.example.com/api/v1/tasks?limit=10&offset=0' \
+  'https://api.example.com/api/v1/tasks?limit=10&offset=0&is_file_backed=true' \
   -H 'Authorization: Bearer <api_key_or_jwt>'
 ```
 
@@ -109,6 +113,17 @@ Example response:
       "id": "550e8400-e29b-41d4-a716-446655440000",
       "user_id": "550e8400-e29b-41d4-a716-446655440000",
       "webhook_url": "https://example.com/webhook",
+      "is_file_backed": true,
+      "file": {
+        "upload_id": "550e8400-e29b-41d4-a716-446655440111",
+        "task_id": "550e8400-e29b-41d4-a716-446655440000",
+        "filename": "emails.csv",
+        "email_count": 123,
+        "status": "completed",
+        "created_at": "2025-01-01T12:00:00Z",
+        "updated_at": "2025-01-01T12:05:00Z"
+      },
+      "source": "frontend",
       "created_at": "2025-01-01T12:00:00Z",
       "updated_at": "2025-01-01T12:05:00Z",
       "metrics": {
@@ -144,11 +159,20 @@ Example response:
 Response fields:
 
 - `tasks`: array of task summaries (see fields below).
+- `source`: optional overall task source when all tasks share the same origin (`frontend` or `api_key`).
 - `count`, `limit`, `offset`: pagination metadata.
 
 Task summary fields:
 
-- `id`, `user_id`, `webhook_url`, `created_at`, `updated_at`.
+- `id`, `user_id`, `webhook_url`, `source`, `created_at`, `updated_at`.
+- `is_file_backed`: indicates whether the task originated from a file upload.
+- `file`: batch upload metadata (present only when `is_file_backed` is true, otherwise omitted or null).
+- `file.upload_id`: UUID of the batch upload.
+- `file.task_id`: UUID of the associated task.
+- `file.filename`: original filename of the uploaded file.
+- `file.email_count`: number of emails in the uploaded file.
+- `file.status`: upload processing status (`processing`, `completed`, `failed`).
+- `file.created_at`, `file.updated_at`: upload timestamps.
 - `metrics`: aggregated task metrics (see TaskMetrics fields).
 
 Errors:
@@ -187,6 +211,17 @@ Example response:
   "id": "550e8400-e29b-41d4-a716-446655440000",
   "user_id": "550e8400-e29b-41d4-a716-446655440000",
   "webhook_url": "https://example.com/webhook",
+  "is_file_backed": true,
+  "file": {
+    "upload_id": "550e8400-e29b-41d4-a716-446655440111",
+    "task_id": "550e8400-e29b-41d4-a716-446655440000",
+    "filename": "emails.csv",
+    "email_count": 123,
+    "status": "completed",
+    "created_at": "2025-01-01T12:00:00Z",
+    "updated_at": "2025-01-01T12:05:00Z"
+  },
+  "source": "frontend",
   "created_at": "2025-01-01T12:00:00Z",
   "updated_at": "2025-01-01T12:05:00Z",
   "started_at": null,
@@ -222,6 +257,7 @@ Errors:
 - `401` unauthorized.
 - `403` forbidden (non-admin accessing another user).
 - `404` task not found.
+- `429` rate limited.
 - `500` internal error.
 
 ## GET /api/v1/tasks/{id}/series
@@ -258,6 +294,7 @@ Example response:
 ```json
 {
   "task_id": "550e8400-e29b-41d4-a716-446655440000",
+  "source": "frontend",
   "series": [
     {
       "date": "2025-01-01",
@@ -285,6 +322,12 @@ Example response:
   ]
 }
 ```
+
+Response fields:
+
+- `task_id`: task UUID.
+- `source`: task origin (`frontend` or `api_key`).
+- `series`: list of daily metrics points.
 
 Errors:
 
@@ -346,7 +389,7 @@ Example response:
         "has_reverse_dns": true,
         "domain_name": "example.com",
         "host_name": "mx.example.com",
-        "server_type": "smtp",
+        "server_type": "Unknown",
         "is_catchall": false,
         "validated_at": "2025-01-01T12:04:59Z",
         "unknown_reason": null,
@@ -362,11 +405,17 @@ Example response:
 }
 ```
 
+Email fields:
+
+- `id`, `email`, `status`, `is_role_based`.
+- `is_disposable`, `has_mx_records`, `has_reverse_dns`.
+- `domain_name`, `host_name`, `server_type`, `is_catchall`.
+- `validated_at`, `unknown_reason`, `needs_physical_verify`.
+
 Errors:
 
 - `400` invalid ID or pagination parameters.
 - `401` unauthorized.
-- `403` forbidden.
 - `404` task not found.
 - `500` internal error.
 
@@ -378,6 +427,7 @@ Auth: required. Non-admins can only access their own tasks.
 
 Query parameters:
 
+- `task_id` (UUID, optional): overrides the task ID from the path.
 - `format` (string, optional): `csv`, `txt`, or `xlsx` (default `csv`).
 
 Example request:

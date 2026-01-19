@@ -3,7 +3,7 @@
 ## Overview
 - Source: `services/go/app/cmd/controllers/proxy_controller.go`
 - Base path: `/api/v1`
-- Auth: Composite (API key or Supabase JWT)
+- Auth: API key (see `ApiKeyAuth`)
 - Access: admin-only (access control).
 
 Supported values:
@@ -11,6 +11,7 @@ Supported values:
 - `service_types`: `syntax-validator`, `domain-validator`, `smtp-validator`, `inbox-validator`
 - `status`: `active`, `inactive`, `unavailable`
 - `protocol`: create/update currently enforce `socks5` only; bulk import accepts `http`, `https`, or `socks5`.
+- `fields`: comma-separated list of response fields (see per-endpoint notes).
 
 ## POST /api/v1/proxies
 Purpose: create a proxy.
@@ -26,6 +27,8 @@ Body:
   "port": 1080,
   "username": "user",
   "password": "pass",
+  "ssh_private_key": "",
+  "ssh_passphrase": "",
   "connection_type": "ipv4",
   "service_types": ["domain-validator"],
   "skip_connectivity_test": false,
@@ -81,6 +84,8 @@ Example response:
 
 Errors:
 - `400` validation errors.
+- `409` duplicate host/port.
+- `429` rate limit exceeded.
 - `500` internal error.
 
 ## GET /api/v1/proxies
@@ -93,6 +98,19 @@ Query parameters:
 - `offset` (int, default 0)
 - `status` (optional)
 - `protocol` (optional)
+- `name` (optional)
+- `host` (optional)
+- `service_type` (optional; must be one of supported service types)
+- `min_success_rate` (optional, float 0.0-1.0)
+- `max_response_time` (optional, int milliseconds)
+- `min_weight` (optional, float)
+- `fields` (optional, comma-separated list of response fields)
+
+Notes on `fields`:
+- If omitted, returns full `ProxyListResponse` (with `total`, `limit`, `offset`).
+- If one field is requested, returns a flat array of that field (no pagination metadata).
+- If multiple fields are requested, returns an array of objects with only those fields (no pagination metadata).
+- `password`, `ssh_private_key`, and `ssh_passphrase` are not allowed when using `fields`.
 
 ### Response
 Status: `200 OK`
@@ -131,6 +149,11 @@ Example response:
 }
 ```
 
+Errors:
+- `400` validation errors.
+- `429` rate limit exceeded.
+- `500` internal error.
+
 ## GET /api/v1/proxies/{id}
 Purpose: fetch a proxy by ID.
 
@@ -141,9 +164,20 @@ Status: `200 OK`
 
 Example response: same as single proxy above.
 
+Query parameters:
+- `fields` (optional, comma-separated list of response fields)
+
+Notes on `fields`:
+- If omitted, returns full proxy object.
+- If one field is requested, returns a single primitive value.
+- If multiple fields are requested, returns an object with only those fields.
+- `password`, `ssh_private_key`, and `ssh_passphrase` are not allowed when using `fields`.
+
 Errors:
 - `400` invalid UUID.
 - `404` not found.
+- `429` rate limit exceeded.
+- `500` internal error.
 
 ## PUT /api/v1/proxies/{id}
 Purpose: update a proxy.
@@ -160,6 +194,13 @@ Status: `200 OK`
 
 Example response: updated proxy object.
 
+Errors:
+- `400` validation errors (including failed connectivity test).
+- `404` not found.
+- `409` duplicate host/port.
+- `429` rate limit exceeded.
+- `500` internal error.
+
 ## DELETE /api/v1/proxies/{id}
 Purpose: delete a proxy by ID.
 
@@ -167,6 +208,12 @@ Auth: required. Admin-only.
 
 ### Response
 Status: `204 No Content`
+
+Errors:
+- `400` validation errors.
+- `404` not found.
+- `429` rate limit exceeded.
+- `500` internal error.
 
 ## POST /api/v1/proxies/bulk
 Purpose: create multiple proxies in one request.
@@ -184,14 +231,28 @@ Body:
       "port": 1080,
       "username": "user",
       "password": "pass",
-      "connection_type": "ipv4"
+      "ssh_private_key": "",
+      "ssh_passphrase": "",
+      "skip_connectivity_test": false,
+      "rate_limit_per_min": 60,
+      "daily_rate_limit": 1000,
+      "connection_type": "ipv4",
+      "service_types": ["domain-validator"]
     }
   ]
 }
 ```
 
 ### Response
-Status: `201 Created` or `206 Partial Content`
+Status: `201 Created`
+
+Notes:
+- Per-proxy validation failures are counted in `failed` and omitted from `proxies`.
+
+Errors:
+- `400` validation errors.
+- `429` rate limit exceeded.
+- `500` internal error.
 
 Example response:
 ```json
@@ -215,6 +276,11 @@ Body:
 
 ### Response
 Status: `204 No Content`
+
+Errors:
+- `400` validation errors.
+- `429` rate limit exceeded.
+- `500` internal error.
 
 ## POST /api/v1/proxies/bulk/import
 Purpose: import proxies from a text file.
@@ -241,6 +307,11 @@ curl -X POST \
 
 ### Response
 Status: `201 Created` or `206 Partial Content`
+
+Errors:
+- `400` validation errors (including no proxies imported).
+- `429` rate limit exceeded.
+- `500` internal error.
 
 Example response:
 ```json

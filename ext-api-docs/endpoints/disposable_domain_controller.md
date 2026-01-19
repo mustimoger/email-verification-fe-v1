@@ -3,7 +3,7 @@
 ## Overview
 - Source: `services/go/app/cmd/controllers/disposable_domain_controller.go`
 - Base path: `/api/v1`
-- Auth: Composite (API key or Supabase JWT)
+- Auth: API key
 - Access: admin-only (access control).
 
 ## GET /api/v1/disposable_domains
@@ -76,7 +76,7 @@ Example response:
 ```
 
 Errors:
-- `400` invalid UUID.
+- `400` missing/invalid UUID.
 - `404` not found.
 - `429` rate limited.
 - `500` internal error.
@@ -91,6 +91,9 @@ Body:
 { "domain": "mailinator.com" }
 ```
 
+Notes:
+- `domain` must be a valid fully-qualified domain name (FQDN), length 1-253.
+
 Example request:
 ```bash
 curl -X POST \
@@ -101,7 +104,7 @@ curl -X POST \
 ```
 
 ### Response
-Status: `200 OK`
+Status: `201 Created`
 
 Example response:
 ```json
@@ -114,7 +117,7 @@ Example response:
 ```
 
 Errors:
-- `400` invalid domain format.
+- `400` invalid payload or domain format.
 - `409` domain already exists.
 - `429` rate limited.
 - `500` internal error.
@@ -131,6 +134,9 @@ Body:
 ```json
 { "domain": "mailinator.com" }
 ```
+
+Notes:
+- `domain` must be a valid fully-qualified domain name (FQDN), length 1-253.
 
 Example request:
 ```bash
@@ -155,9 +161,10 @@ Example response:
 ```
 
 Errors:
-- `400` invalid UUID or domain.
+- `400` missing/invalid UUID, invalid payload, or domain format.
 - `404` not found.
 - `409` domain already exists.
+- `429` rate limited.
 - `500` internal error.
 
 ## DELETE /api/v1/disposable_domains/{id}
@@ -179,12 +186,13 @@ curl -X DELETE \
 Status: `204 No Content`
 
 Errors:
-- `400` invalid UUID.
+- `400` missing/invalid UUID.
 - `404` not found.
+- `429` rate limited.
 - `500` internal error.
 
 ## POST /api/v1/disposable_domains/bulk
-Purpose: create multiple disposable domains in one request. Partial success returns `207`.
+Purpose: create multiple disposable domains in one request (max 100). Partial success returns `207`.
 
 Auth: required. Admin-only.
 
@@ -197,6 +205,10 @@ Body:
   ]
 }
 ```
+
+Notes:
+- `domains` length max 100.
+- Each `domain` must be a valid FQDN, length 1-253.
 
 Example request:
 ```bash
@@ -226,11 +238,12 @@ Example response:
 ```
 
 Errors:
-- `400` invalid payload.
+- `400` invalid payload or exceeds limit; if none created, returns 400 with error details.
+- `429` rate limited.
 - `500` internal error.
 
 ## DELETE /api/v1/disposable_domains/bulk
-Purpose: delete multiple disposable domains by IDs. Partial success returns `207`.
+Purpose: delete multiple disposable domains by IDs (max 100). Partial success returns `207`.
 
 Auth: required. Admin-only.
 
@@ -238,6 +251,10 @@ Body:
 ```json
 { "ids": ["550e8400-e29b-41d4-a716-446655440000"] }
 ```
+
+Notes:
+- `ids` length max 100.
+- Invalid UUIDs are reported in `errors`; valid UUIDs that are not found are skipped.
 
 Example request:
 ```bash
@@ -260,5 +277,6 @@ Example response:
 ```
 
 Errors:
-- `400` invalid payload.
+- `400` invalid payload or exceeds limit; if none deleted, returns 400 with error details.
+- `429` rate limited.
 - `500` internal error.

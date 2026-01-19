@@ -3,7 +3,7 @@
 ## Overview
 - Source: `services/go/app/cmd/controllers/metrics_controller.go`
 - Base path: `/api/v1`
-- Auth: Composite (API key or Supabase JWT)
+- Auth: API key (ApiKeyAuth)
 - Access: user-scoped; admins can query other users via `user_id`.
 
 ## GET /api/v1/metrics/verifications
@@ -13,8 +13,11 @@ Auth: required.
 
 Query parameters:
 - `user_id` (UUID, admin only)
-- `from` (RFC3339, optional): filter series from this date
-- `to` (RFC3339, optional): filter series up to this date
+- `from` (RFC3339, optional): filter metrics from this date
+- `to` (RFC3339, optional): filter metrics up to this date
+
+Notes:
+- Series data is only included when both `from` and `to` are provided.
 
 Example request:
 ```bash
@@ -68,62 +71,7 @@ Example response:
 ```
 
 Errors:
-- `400` invalid `user_id` or date params.
+- `400` invalid `user_id` or date params, or missing `user_id` for admin requests without an authenticated user.
 - `401` unauthorized.
 - `500` internal error.
 
-## GET /api/v1/metrics/api-usage
-Purpose: return API key usage metrics for a user.
-
-Auth: required.
-
-Query parameters:
-- `user_id` (UUID, admin only)
-- `from` (RFC3339, optional)
-- `to` (RFC3339, optional)
-
-Example request:
-```bash
-curl -X GET \
-  'https://api.example.com/api/v1/metrics/api-usage?from=2025-01-01T00:00:00Z&to=2025-01-07T00:00:00Z' \
-  -H 'Authorization: Bearer <api_key_or_jwt>'
-```
-
-### Response
-Status: `200 OK`
-
-Example response:
-```json
-{
-  "user_id": "550e8400-e29b-41d4-a716-446655440000",
-  "total_api_keys": 3,
-  "api_keys_by_purpose": {
-    "zapier": 1,
-    "n8n": 1,
-    "google sheets": 0,
-    "custom": 1
-  },
-  "total_requests": 1234,
-  "requests_by_purpose": {
-    "zapier": 900,
-    "n8n": 200,
-    "google sheets": 0,
-    "custom": 134
-  },
-  "last_used_at": "2025-01-07T12:00:00Z",
-  "series": [
-    {
-      "date": "2025-01-01",
-      "total_api_keys": 3,
-      "api_keys_by_purpose": { "zapier": 1, "n8n": 1, "google sheets": 0, "custom": 1 },
-      "total_requests": 200,
-      "requests_by_purpose": { "zapier": 140, "n8n": 30, "google sheets": 0, "custom": 30 }
-    }
-  ]
-}
-```
-
-Errors:
-- `400` invalid `user_id` or date params.
-- `401` unauthorized.
-- `500` internal error.

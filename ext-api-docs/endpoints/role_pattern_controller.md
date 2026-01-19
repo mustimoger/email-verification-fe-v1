@@ -3,7 +3,7 @@
 ## Overview
 - Source: `services/go/app/cmd/controllers/role_pattern_controller.go`
 - Base path: `/api/v1`
-- Auth: Composite (API key or Supabase JWT)
+- Auth: API key (Swagger: `ApiKeyAuth`).
 - Access: admin-only (access control).
 
 Role patterns are used to detect role-based emails (e.g., admin@, support@).
@@ -52,6 +52,7 @@ Example response:
 
 Errors:
 - `400` validation errors.
+- `429` rate limit exceeded.
 - `500` internal error.
 
 ## GET /api/v1/role_patterns
@@ -124,7 +125,8 @@ Example response:
 
 Errors:
 - `400` invalid UUID.
-- `404` not found.
+- `404` not found (if repository returns not-found).
+- `429` rate limit exceeded.
 
 ## PUT /api/v1/role_patterns/{id}
 Purpose: update a role pattern by ID.
@@ -159,6 +161,11 @@ Example response:
 }
 ```
 
+Errors:
+- `400` validation errors or invalid UUID.
+- `404` not found (if repository returns not-found).
+- `429` rate limit exceeded.
+
 ## DELETE /api/v1/role_patterns/{id}
 Purpose: delete a role pattern by ID.
 
@@ -166,6 +173,11 @@ Auth: required. Admin-only.
 
 ### Response
 Status: `204 No Content`
+
+Errors:
+- `400` invalid UUID.
+- `404` not found (if repository returns not-found).
+- `429` rate limit exceeded.
 
 ## POST /api/v1/role_patterns/bulk
 Purpose: create multiple role patterns in one request.
@@ -203,6 +215,9 @@ Example response:
   "errors": []
 }
 ```
+
+Partial success:
+- Status: `207 Multi-Status` when some patterns fail.
 
 ## PUT /api/v1/role_patterns/bulk
 Purpose: update multiple role patterns in one request.
@@ -247,6 +262,9 @@ Example response:
 }
 ```
 
+Partial success:
+- Status: `207 Multi-Status` when some updates fail.
+
 ## DELETE /api/v1/role_patterns/bulk
 Purpose: delete multiple role patterns by ID.
 
@@ -262,6 +280,9 @@ Status: `200 OK`
 ```json
 { "deleted_count": 1, "errors": [] }
 ```
+
+Partial success:
+- Status: `207 Multi-Status` when some deletes fail.
 
 ## POST /api/v1/role_patterns/refresh_cache
 Purpose: refresh the role-based detector cache.
@@ -282,11 +303,15 @@ Example response:
 ```json
 {
   "success": true,
-  "message": "Cache refreshed",
+  "message": "Role pattern cache refreshed successfully",
   "refreshed_at": "2025-01-01T12:00:00Z",
   "pattern_count": 120
 }
 ```
+
+Errors:
+- `429` rate limit exceeded.
+- `500` internal error.
 
 ## GET /api/v1/role_patterns/status
 Purpose: get role-based detector status.
@@ -305,3 +330,7 @@ Example response:
   "pattern_count": 120
 }
 ```
+
+Errors:
+- `429` rate limit exceeded.
+- `500` internal error.

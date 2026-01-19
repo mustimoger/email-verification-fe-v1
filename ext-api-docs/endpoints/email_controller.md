@@ -29,7 +29,7 @@ curl -X POST \
 ```
 
 ### Response
-Status: `200 OK`
+Status: `200 OK` (or `408 Request Timeout` with partial results)
 
 Example response:
 ```json
@@ -69,6 +69,8 @@ Response fields:
 
 Errors:
 - `400` invalid body or email syntax.
+- `401` unauthorized (missing/invalid auth).
+- `403` forbidden (admin-only access).
 - `408` verification timed out.
 - `429` rate limited.
 - `500` internal error.
@@ -127,6 +129,8 @@ Response fields:
 - `offset`: page offset used.
 
 Errors:
+- `401` unauthorized (missing/invalid auth).
+- `403` forbidden (admin-only access).
 - `429` rate limited.
 - `500` internal error.
 
@@ -177,6 +181,8 @@ Example response:
 
 Errors:
 - `400` invalid UUID or invalid email address.
+- `401` unauthorized (missing/invalid auth).
+- `403` forbidden (admin-only access).
 - `404` email not found.
 - `429` rate limited.
 - `500` internal error.

@@ -3,8 +3,9 @@
 ## Overview
 - Source: `services/go/app/cmd/controllers/streaming_controller.go`
 - Base path: `/api/v1`
-- Auth: Composite (API key or Supabase JWT)
+- Auth: Composite (API key or Supabase JWT) via middleware/routes
 - Availability: endpoints are registered only when `Server.StreamingEnabled` is true.
+- Timeout: `Server.StreamingTimeout` (defaults to 30s when unset)
 
 ## GET /api/v1/verify/stream (WebSocket)
 Purpose: stream real-time verification progress over WebSocket.
@@ -51,7 +52,7 @@ Event fields:
 - `duration_ms`: elapsed milliseconds since verification started.
 
 Errors:
-- If the initial message is invalid or email fails validation, the server sends a `verification_failed` event and closes the connection.
+- If the initial message is invalid JSON or email fails validation, the server sends a `verification_failed` event and closes the connection.
 - Timeouts produce a `verification_failed` event with `metadata.timeout=true`.
 
 ## GET /api/v1/verify/stream/sse

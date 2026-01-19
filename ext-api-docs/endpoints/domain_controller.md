@@ -3,7 +3,7 @@
 ## Overview
 - Source: `services/go/app/cmd/controllers/domain_controller.go`
 - Base path: `/api/v1`
-- Auth: Composite (API key or Supabase JWT)
+- Auth: ApiKeyAuth (API key or Supabase JWT)
 - Access: admin-only (access control).
 
 ## GET /api/v1/domains
@@ -115,7 +115,7 @@ Example response:
 ```
 
 Errors:
-- `400` invalid UUID or domain name.
+- `400` identifier is required (defensive; empty path).
 - `404` domain not found.
 - `429` rate limited.
 - `500` internal error.

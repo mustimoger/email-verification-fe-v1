@@ -44,6 +44,8 @@ Body options:
 Notes:
 - If `emails` length < 10, the endpoint performs real-time verification and returns an array of results.
 - If `emails` length >= 10, a task is created and queued.
+- If both `email` and `emails` are provided, `email` takes precedence.
+- If any email in `emails` is invalid, the request is rejected with `400` (no per-item error list).
 
 Example request:
 ```bash
@@ -96,9 +98,20 @@ Example response:
 ```json
 {
   "id": "550e8400-e29b-41d4-a716-446655440000",
+  "source": "api_key",
   "email_count": 100,
   "domain_count": 20,
   "status": "processing"
+}
+```
+
+If all emails are skipped/cached, the response is:
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "source": "api_key",
+  "email_count": 100,
+  "status": "completed"
 }
 ```
 
@@ -115,5 +128,10 @@ Response: same as `/api/v1/tasks/batch/upload` (202 Accepted with upload_id).
 Errors:
 - `400` invalid body, invalid email format, or too many emails.
 - `401` invalid/missing authentication header.
+- `408` verification timed out (single email).
 - `503` auth service unavailable (e.g., nonce store required but Redis unavailable).
 - `500` internal error.
+
+Additional auth error cases:
+- `401` invalid header format or invalid signature.
+- `500` nonce store error or encryption key not configured.

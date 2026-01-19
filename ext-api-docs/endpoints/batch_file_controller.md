@@ -23,9 +23,10 @@ Form fields:
 - `column` (optional): alias for `email_column`.
 
 Notes:
-- Allowed formats and max file size are enforced by server config.
+- Allowed formats and max file size are enforced by server config. Supported extensions: `.txt`, `.csv`, `.xlsx`.
 - `email_column` is not supported for `.txt` files.
 - `user_id` is not allowed in the form body.
+- Maximum of 10,000 emails per file.
 
 Example request:
 ```bash
@@ -48,7 +49,7 @@ Example response:
   "filename": "emails.csv",
   "email_count": 123,
   "status": "processing",
-  "message": "File uploaded and processing started",
+  "message": "File uploaded successfully and is being processed",
   "uploaded_at": "2025-01-01T12:00:00Z"
 }
 ```
@@ -63,7 +64,7 @@ Response fields:
 - `uploaded_at`: timestamp of the upload.
 
 Errors:
-- `400` file missing, invalid file, invalid webhook URL, or validation failures.
+- `400` file missing, unsupported file format, invalid file, invalid webhook URL, invalid `email_column`, no valid emails, email limit exceeded, or validation failures.
 - `401` unauthorized.
 - `500` internal error.
 

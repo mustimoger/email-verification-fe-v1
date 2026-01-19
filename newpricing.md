@@ -268,7 +268,25 @@ Status: Completed (partial) — added v2 mode to the e2e simulation script and r
 - What: Run v2 e2e simulation for `subscription` + `year` to validate the annual credit multiplier path.
 - How: Use the v2 simulation script with `--mode subscription --interval year` and a valid quantity (e.g., 2,000).
 - Why: Confirms the 12x credit grant multiplier for annual tiers is functioning in real webhook processing.
-Status: Pending — not run yet.
+Status: Completed — ran the v2 simulation (`subscription` + `year`, quantity 2,000) against `ngrok2-all`; simulation succeeded (`paddle_simulation_e2e.success`) and a purchase credit grant was written for the annual tier path, confirming the 12x multiplier wiring end-to-end. Backend still logs `pricing_v2.rounding_description_missing` for rounding metadata; flow is unaffected but metadata should be added later to remove the warning.
+
+### Step T5: Add rounding metadata fields (v2 config)
+- What: Populate `billing_pricing_config_v2.metadata` with rounding descriptions and discount code prefix to eliminate missing‑metadata warnings.
+- How: Update the active v2 pricing config row to set `rounding_fee_description`, `rounding_discount_description`, and `rounding_discount_code_prefix`.
+- Why: Keeps checkout line items and rounding discount codes deterministic and removes `pricing_v2.rounding_description_missing` / `pricing_v2.discount_prefix_missing` warnings.
+Status: Completed — updated the active v2 config metadata to include `rounding_fee_description` and `rounding_discount_description` (both set to “Rounding adjustment”) plus `rounding_discount_code_prefix` set to `ROUNDING`, so checkout can label rounding line items and generate deterministic discount codes without warning.
+
+### Step T6: Re-run v2 simulation to validate rounding metadata
+- What: Re-run the v2 Paddle simulation after metadata updates to confirm warning logs are cleared.
+- How: Use `backend/scripts/paddle_simulation_e2e.py` with `--pricing-version v2` and a valid `--mode/--interval`, then inspect logs for missing rounding metadata warnings.
+- Why: Ensures the config update fully resolves the rounding metadata warnings in real webhook flows.
+Status: Completed — reran the v2 simulation (`subscription` + `year`, quantity 2,000) and the run succeeded without `pricing_v2.rounding_description_missing` or `pricing_v2.discount_prefix_missing` warnings, confirming the metadata update resolved the warnings.
+
+### Step T7: Support operator pricing explainer
+- What: Provide a step-by-step, non-technical explanation of the v2 pricing flow for support operators.
+- How: Create a root-level `how-pricing-works.md` that explains the tier selection, subscription discounts, annual multiplier, rounding behavior, and common customer questions.
+- Why: Enables support to answer pricing questions consistently without needing to read code or configs.
+Status: Completed — added `how-pricing-works.md` with a step-by-step support-facing explanation, common Q&A, and a quick reference table so non-technical operators can answer pricing questions consistently.
 
 ## MVP Completion Checklist
 - Supabase v2 tiers table created and populated with real pricing.
