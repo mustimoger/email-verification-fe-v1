@@ -176,6 +176,21 @@ What was done and why:
 - Restyled manual entry, live results, bulk upload, and workflow guidance sections using pricing-v2 card specs and typography.
 - Kept all actions UI-only (no backend wiring) per instructions; functional migration remains explicitly deferred to D4d.
 
+### D4b1: `/verify-v2` refresh controls alignment
+- What: Add refresh actions for manual and upload result updates without disrupting the new visual system.
+- How: Integrate refresh buttons into the results header and upload summary state, matching pricing-v2 button styling.
+- Why: Maintains parity with the existing `/verify` workflow while keeping the new design cohesive.
+Status: Completed — added pricing-style refresh/export controls to the live results header.
+What was done and why:
+- Moved “Refresh status” and “Export results” into the results header to mirror the old `/verify` workflow while keeping the pricing-v2 visual language.
+- Kept the controls as UI-only buttons (no wiring) to respect the current design-only phase.
+
+### D4b2: `/verify-v2` bulk upload summary swap
+- What: Show the upload summary chart inside the pre-flight checklist card after a successful file upload.
+- How: Convert the right-hand pre-flight card into a two-state panel (pre-flight vs summary) so the chart occupies the same surface once results exist.
+- Why: Keeps the user’s context focused on one area and mirrors the current `/verify` flow without cluttering the page.
+Status: Pending — requires confirmation on summary preview behavior while the page remains UI-only.
+
 ### D4c: `/verify-v2` responsive QA
 - What: Ensure the new `/verify-v2` layout is readable and touch-friendly on mobile.
 - How: Review small breakpoints and adjust grids, spacing, and overflows; confirm no clipped shadows.

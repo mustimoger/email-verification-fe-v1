@@ -171,9 +171,23 @@ export function ResultsCard({ transitionClass }: { transitionClass?: string }) {
       className={`rounded-2xl border border-[var(--verify-border)] bg-[var(--verify-card-strong)] p-6 shadow-[var(--verify-shadow)] ${transitionClass ?? ""}`}
       style={{ transition: "all 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.1s" }}
     >
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h3 className="text-xl font-semibold text-[var(--text-primary)]">Live results</h3>
-        <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">Waiting</span>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">Waiting</span>
+          <button
+            type="button"
+            className="rounded-xl border border-[var(--verify-border)] bg-white/70 px-3 py-2 text-xs font-semibold text-[var(--text-secondary)]"
+          >
+            Refresh status
+          </button>
+          <button
+            type="button"
+            className="rounded-xl border border-[var(--verify-border)] bg-white/70 px-3 py-2 text-xs font-semibold text-[var(--text-secondary)]"
+          >
+            Export results
+          </button>
+        </div>
       </div>
       <p className="mt-2 text-sm text-[var(--text-muted)]">
         Results appear here once verification begins.
@@ -191,20 +205,6 @@ export function ResultsCard({ transitionClass }: { transitionClass?: string }) {
             <span className="text-xs font-semibold text-[var(--text-muted)]">—</span>
           </div>
         ))}
-      </div>
-      <div className="mt-5 flex flex-wrap gap-2">
-        <button
-          type="button"
-          className="rounded-xl border border-[var(--verify-border)] bg-white/70 px-4 py-2 text-xs font-semibold text-[var(--text-secondary)]"
-        >
-          Export results
-        </button>
-        <button
-          type="button"
-          className="rounded-xl border border-[var(--verify-border)] bg-white/70 px-4 py-2 text-xs font-semibold text-[var(--text-secondary)]"
-        >
-          Refresh status
-        </button>
       </div>
     </div>
   );
