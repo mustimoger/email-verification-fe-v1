@@ -305,6 +305,8 @@ export type OverviewResponse = {
     valid_count?: number | null;
     invalid_count?: number | null;
     catchall_count?: number | null;
+    role_based_count?: number | null;
+    disposable_count?: number | null;
     job_status?: Record<string, number> | null;
     integration?: string | null;
     created_at?: string | null;
@@ -314,6 +316,7 @@ export type OverviewResponse = {
     valid?: number | null;
     invalid?: number | null;
     catchall?: number | null;
+    role_based?: number | null;
     disposable?: number | null;
   } | null;
   current_plan?: {

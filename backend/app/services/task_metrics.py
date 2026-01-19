@@ -16,7 +16,9 @@ def _coerce_int(value: object) -> Optional[int]:
         return None
 
 
-def counts_from_metrics(metrics: Optional[TaskMetrics | Dict[str, object]]) -> Optional[Dict[str, int]]:
+def counts_from_metrics(
+    metrics: Optional[TaskMetrics | Dict[str, object]],
+) -> Optional[Dict[str, int]]:
     if not metrics:
         return None
     status_counts = metrics.get("verification_status") if isinstance(metrics, dict) else metrics.verification_status
@@ -26,9 +28,17 @@ def counts_from_metrics(metrics: Optional[TaskMetrics | Dict[str, object]]) -> O
     valid = _coerce_int(status_counts.get("exists")) or 0
     catchall = _coerce_int(status_counts.get("catchall")) or 0
     invalid = 0
+    role_based = 0
+    disposable = 0
     unknown_statuses: list[str] = []
     for key, raw in status_counts.items():
         if key in ("exists", "catchall"):
+            continue
+        if key == "role_based":
+            role_based += _coerce_int(raw) or 0
+            continue
+        if key == "disposable_domain_emails":
+            disposable += _coerce_int(raw) or 0
             continue
         count = _coerce_int(raw)
         if count is None:
@@ -40,7 +50,13 @@ def counts_from_metrics(metrics: Optional[TaskMetrics | Dict[str, object]]) -> O
     if unknown_statuses:
         logger.warning("tasks.metrics.unknown_statuses", extra={"statuses": unknown_statuses})
 
-    return {"valid": valid, "catchall": catchall, "invalid": invalid}
+    return {
+        "valid": valid,
+        "catchall": catchall,
+        "invalid": invalid,
+        "role_based": role_based,
+        "disposable": disposable,
+    }
 
 
 def email_count_from_metrics(metrics: Optional[TaskMetrics | Dict[str, object]]) -> Optional[int]:

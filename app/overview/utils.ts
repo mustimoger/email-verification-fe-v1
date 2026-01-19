@@ -40,13 +40,17 @@ export function aggregateValidationCounts(tasks: OverviewResponse["recent_tasks"
   let valid = 0;
   let invalid = 0;
   let catchAll = 0;
+  let roleBased = 0;
+  let disposable = 0;
   for (const task of tasks ?? []) {
     valid += task.valid_count ?? 0;
     invalid += task.invalid_count ?? 0;
     catchAll += task.catchall_count ?? 0;
+    roleBased += task.role_based_count ?? 0;
+    disposable += task.disposable_count ?? 0;
   }
-  const total = valid + invalid + catchAll;
-  return { valid, invalid, catchAll, total };
+  const total = valid + invalid + catchAll + roleBased + disposable;
+  return { valid, invalid, catchAll, roleBased, disposable, total };
 }
 
 export function buildIntegrationLabelMap(options: IntegrationOption[] | undefined): Map<string, string> {

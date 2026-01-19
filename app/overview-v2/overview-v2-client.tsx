@@ -140,7 +140,7 @@ export default function OverviewV2Client() {
         total: totals.total ?? 0,
       };
     }
-    return { ...aggregateValidationCounts(overview?.recent_tasks), disposable: 0 };
+    return aggregateValidationCounts(overview?.recent_tasks);
   }, [overview]);
 
   const stats: Stat[] = useMemo(() => {

@@ -116,11 +116,60 @@ Status: Completed — increased section horizontal padding so the hero shadow bl
 What was done and why:
 - Updated the `/overview-v2` section padding to `lg:px-8` so the 60px blur radius has space to fade before the main container edge.
 
+### D2h: `/overview-v2` functional parity audit
+- What: Verify `/overview-v2` preserves all backend wiring from `/overview`.
+- How: Compare data-loading, API calls, task pagination, and status breakdown logic between `app/overview/page.tsx` and the `/overview-v2` client/sections.
+- Why: Ensures the redesigned page remains fully functional before any route swap.
+Status: Completed — confirmed `/overview-v2` mirrors `/overview` backend wiring end-to-end.
+What was done and why:
+- Verified `/overview-v2` still calls `getOverview`, `listIntegrations`, and `listTasks`, including paging/refresh behavior and error handling.
+- Confirmed task mapping, integration label resolution, and status popover breakdown reuse the same helpers from `app/overview/utils.ts`.
+- Checked charts, totals, and plan details use the same data sources; no backend gaps found (differences are UI-only copy adjustments).
+
+### D2i: Cross-check Overview endpoints against updated external API docs
+- What: Validate the `/overview` backend wiring against the latest `/ext-api-docs` before any route swap.
+- How: Review `backend/app/api/overview.py` + `backend/app/clients/external.py` and compare with `/ext-api-docs/endpoints/metrics_controller.md`, `/ext-api-docs/endpoints/task_controller.md`, and `/ext-api-docs/endpoints/credit_transaction_controller.md`.
+- Why: External API capabilities changed; ensure the overview pipeline still matches the documented contracts.
+Status: Completed — current wiring aligns with metrics + tasks docs, with noted data gaps.
+What was done and why:
+- Confirmed `ExternalAPIClient.get_verification_metrics()` targets `GET /api/v1/metrics/verifications` (docs match) and the response fields used in `OverviewResponse` are present.
+- Confirmed `ExternalAPIClient.list_tasks()` aligns with `GET /api/v1/tasks` (limit/offset pagination) and `Task.metrics.verification_status` is used to build counts when per-task totals are missing.
+- Noted that `verification_status` now includes `role_based` and `disposable_domain_emails`; current `counts_from_metrics` logs these as unknown and folds them into `invalid` totals, so overview rollups may skew unless we map them explicitly.
+- Noted docs for `GET /api/v1/metrics/verifications` only include `series` when `from` and `to` are provided; overview currently calls without dates, so usage series can be empty by design.
+- Noted `GET /api/v1/credits/balance` exists but `overview.credits_remaining` is intentionally left `null` (credit wiring not yet hooked to the external endpoint).
+
+### D2j: Wire `credits_remaining` from external `/credits/balance`
+- What: Populate overview credit balance using the external credits endpoint.
+- How: Add a `get_credit_balance` call to the external client and use it in `backend/app/api/overview.py` with safe error handling.
+- Why: Aligns overview credits with the updated external API contract.
+Status: Completed — overview now pulls credits from the external balance endpoint with graceful fallback.
+What was done and why:
+- Added `CreditBalanceResponse` + `ExternalAPIClient.get_credit_balance()` to call `GET /api/v1/credits/balance`.
+- Wired `/api/overview` to fetch the balance and log/report errors without breaking the rest of the payload.
+- Updated `backend/tests/test_overview.py` to cover credit success and error cases.
+Tests:
+- `source .venv/bin/activate && pytest backend/tests/test_overview.py`
+
+### D2k: Map `role_based` + `disposable_domain_emails` separately
+- What: Avoid counting `role_based` and `disposable_domain_emails` under invalid totals.
+- How: Extend task + overview metric mapping to expose these fields separately while keeping existing valid/invalid/catchall totals intact.
+- Why: External API now returns these statuses; rolling them into invalid skews the overview.
+Status: Completed — overview metrics now isolate `role_based` and `disposable` instead of folding them into invalid totals.
+What was done and why:
+- Updated `counts_from_metrics` to track `role_based` and `disposable_domain_emails` separately, excluding them from invalid sums.
+- Extended `VerificationTotals` and task mapping to surface `role_based`/`disposable` counts and include them when calculating totals.
+- Updated overview fallback aggregation to include the new counts when metrics are unavailable.
+Tests:
+- `source .venv/bin/activate && pytest backend/tests/test_tasks_metrics_mapping.py backend/tests/test_overview.py`
+
 ### D3: Replace `/overview` with `/overview-v2`
 - What: Swap the new design into the `/overview` route and connect existing data logic.
 - How: Move or copy the UI into `/overview`, reusing the current data logic without new backend work. `/overview-v2` can be removed once `/overview` is updated.
 - Why: Delivers the upgraded design without altering backend behavior.
-Status: Pending.
+Status: Completed — `/overview` now renders the v2 dashboard UI.
+What was done and why:
+- Replaced `app/overview/page.tsx` with a wrapper that renders `OverviewV2Client`, keeping all existing data wiring intact.
+- Left `/overview-v2` route in place for rollback/QA; can be removed later once fully validated.
 
 ### D4: Rollout to remaining pages
 - What: Align the rest of the dashboard pages to the new shared visual standard.
@@ -233,15 +282,77 @@ What was done and why:
 
 #### D4d2: Wire bulk upload flow in `/verify-v2`
 - What: Connect file selection, column mapping, upload submission, summary metrics, and refresh actions.
-- How: Reuse existing upload helpers from `/verify` utilities; render mapping/summary panels inside the existing `/verify-v2` layout without changing its structure.
+- How: Reuse existing upload helpers from `/verify` utilities; render mapping/summary panels inside the existing `/verify-v2` layout without changing its structure, including a bar chart in the inline right-hand panel.
 - Why: Enables bulk verification while keeping the design consistent with the pricing-v2 visual system.
-Status: Pending — bulk upload remains UI-only and still needs file selection, mapping, upload submission, and summary wiring.
+Status: Completed — bulk upload wiring is now functional in `/verify-v2` and the right-hand summary panel renders live charts.
+What was done and why:
+- Wired selection, mapping, upload submission, and summary refresh in `/verify-v2` using the same helpers and API calls as `/verify`.
+- Rendered the mapping panel inline and the bar chart summary inside the right-hand panel so the flow stays within the existing layout and visual system.
+- Preserved pricing-v2 styling tokens while adding only the functional UI needed for the bulk upload MVP.
+
+#### D4d2a: Audit existing `/verify` bulk upload logic for reuse
+- What: Identify the exact helpers, API calls, and state shape used in `/verify` bulk upload so we can mirror them in `/verify-v2`.
+- How: Review `app/verify` bulk upload code paths and the shared utilities (`app/verify/utils.ts`, `app/verify/file-columns.ts`, `app/lib/api-client.ts`).
+- Why: Ensures we reuse proven logic and keep the MVP wiring minimal and consistent.
+Status: Completed — reviewed `/verify` bulk upload flow and confirmed the helper + API surface to reuse in `/verify-v2`.
+What was done and why:
+- Identified the core upload state used by `/verify`: `files`, `fileColumns`, `uploadSummary`, `columnMapping`, `firstRowHasLabels`, `fileError`, `fileNotice`, `latestUploadError`, `latestUploadRefreshing`, plus a drag/drop handler and file input ref.
+- Confirmed upload helper usage: `readFileColumnInfo` + `buildColumnOptions` from `app/verify/file-columns.ts`, and `buildUploadSummary`, `createUploadLinks`, `mapUploadResultsToLinks`, `buildTaskUploadsSummary` from `app/verify/utils.ts`.
+- Confirmed API calls and sequence: `apiClient.uploadTaskFiles` for submission, `apiClient.getTask` for per-file details, and `apiClient.listTasks` for refresh; these align with the existing external API contract.
+- Noted the existing bar chart data shape in `/verify` (`summaryBars` with `var(--chart-*)` colors) to reuse in the inline right-hand summary panel for `/verify-v2`.
+
+#### D4d2b: Wire bulk upload state + actions in `/verify-v2`
+- What: Add upload state handling (file selection, column mapping, submit upload, polling/refresh) to the `/verify-v2` client.
+- How: Reuse `/verify` helpers and API client methods without altering the `/verify-v2` layout.
+- Why: Provides the core bulk upload workflow for paid users with minimal surface changes.
+Status: Completed — added the bulk upload state machine and API wiring to `/verify-v2` without touching the UI.
+What was done and why:
+- Added upload state (file selection, mapping, summary, error/notice, refresh) to `app/verify-v2/verify-v2-client.tsx` so the MVP logic mirrors the proven `/verify` workflow.
+- Reused existing helpers (`readFileColumnInfo`, `buildUploadSummary`, `mapUploadResultsToLinks`, `buildTaskUploadsSummary`) and API calls (`uploadTaskFiles`, `getTask`, `listTasks`) to avoid reimplementing logic.
+- Implemented validation, logging, and retry handling for uploads, keeping the behavior consistent with `/verify` while leaving the `/verify-v2` layout untouched.
+
+#### D4d2c: Render bulk upload mapping + summary UI (with chart)
+- What: Connect the Upload section UI to the new upload state, including mapping panel and summary chart.
+- How: Render the inline mapping panel and summary counts/chart using the same charting library as `/verify`.
+- Why: Surfaces results for uploaded files while staying visually aligned with the pricing-v2 system.
+Status: Completed — `/verify-v2` now renders the inline mapping flow and the right-hand summary chart using live upload data.
+What was done and why:
+- Updated `app/verify-v2/verify-v2-sections.tsx` to render the file list, column mapping panel, and summary chart panel in the existing right-hand slot.
+- Hooked the upload UI to live state (errors, notices, refresh, and chart totals) so the bulk upload flow mirrors `/verify` without changing layout.
 
 #### D4d3: Functional QA + targeted tests for `/verify-v2`
 - What: Validate manual and bulk flows with targeted tests and a lightweight QA pass.
 - How: Re-run existing verification utility tests and spot-check `/verify-v2` manual + upload flows in the browser.
 - Why: Confirms the wiring works before any route swap or wider rollout.
-Status: Pending.
+Status: Completed — tests re-run and browser QA performed with refreshed auth token.
+What was done and why:
+- Re-ran `tests/verify-mapping.test.ts` to confirm status mapping and upload summary helpers remain correct after wiring changes.
+- Performed Playwright spot-check of manual and bulk upload flows; verified that manual results list populates, file selection shows the inline panel, mapping step opens, and the summary chart renders.
+Issues found:
+- Manual submit returned `500` from `/tasks` (UI shows “Internal Server Error”). Requires backend/external API health check.
+- Recharts emitted `width(-1)/height(-1)` warnings for the summary chart in the right-hand panel; addressed in D4d4.
+
+#### D4d4: Fix `/verify-v2` summary chart size warnings
+- What: Eliminate Recharts width/height -1 warnings in the inline right-hand summary panel.
+- How: Use the same explicit sizing/ResizeObserver approach used in `/overview-v2` before rendering the chart.
+- Why: Keeps console clean and avoids rendering issues on first paint.
+Status: Completed — added a ResizeObserver sizing guard before rendering the summary bar charts.
+What was done and why:
+- Replaced `ResponsiveContainer` with explicit chart dimensions computed from a ResizeObserver so Recharts only renders after the container has measurable size.
+- Ensured the inline summary panel keeps the same layout while removing the width/height -1 warnings.
+
+#### D4d5: Investigate `/tasks` 500 during manual submit
+- What: Identify why manual verification `/tasks` requests return 500 in local QA.
+- How: Check backend logs and external API health; confirm request payload matches updated `/ext-api-docs`.
+- Why: Manual verification should fail gracefully only on true upstream errors.
+Status: Completed — confirmed the external API is returning a 500 because the task publish queue is down.
+What was done and why:
+- Reviewed `backend/logs/uvicorn.log` and confirmed the backend forwarded the request to `POST /api/v1/tasks`, which returned `500 Internal Server Error` from the external API.
+- Reproduced the failure by calling the external API directly (same payload format as `/api/tasks`), which returned `{"error":"Failed to publish message to RabbitMQ"}`.
+- Verified other task endpoints (`GET /tasks`, `POST /tasks/batch/upload`) succeed with the same auth context, so the issue is isolated to task creation in the external service.
+Notes:
+- This is an upstream availability issue; no frontend payload mismatch was detected relative to `/ext-api-docs`.
+- Manual submit will continue to surface 500s until the external API task publisher is healthy.
 
 ### D5: Responsive and theme QA
 - What: Validate responsiveness and dark theme after styling updates.

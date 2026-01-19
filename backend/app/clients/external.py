@@ -163,6 +163,11 @@ class BatchFileUploadError(BaseModel):
     details: Optional[str] = None
 
 
+class CreditBalanceResponse(BaseModel):
+    user_id: Optional[str] = None
+    balance: Optional[int] = None
+
+
 class APIKeySummary(BaseModel):
     id: Optional[str] = None
     name: Optional[str] = None
@@ -378,6 +383,10 @@ class ExternalAPIClient:
         if not params:
             params = None
         return await self._get("/metrics/api-usage", APIUsageMetricsResponse, params=params)
+
+    async def get_credit_balance(self, user_id: Optional[str] = None) -> CreditBalanceResponse:
+        params = {"user_id": user_id} if user_id else None
+        return await self._get("/credits/balance", CreditBalanceResponse, params=params)
 
     async def get_verification_metrics(
         self,

@@ -32,6 +32,8 @@ class TaskItem(BaseModel):
     valid_count: Optional[int] = None
     invalid_count: Optional[int] = None
     catchall_count: Optional[int] = None
+    role_based_count: Optional[int] = None
+    disposable_count: Optional[int] = None
     job_status: Optional[Dict[str, int]] = None
     integration: Optional[str] = None
     created_at: Optional[str] = None
@@ -42,6 +44,8 @@ class VerificationTotals(BaseModel):
     valid: Optional[int] = None
     invalid: Optional[int] = None
     catchall: Optional[int] = None
+    role_based: Optional[int] = None
+    disposable: Optional[int] = None
 
 
 class CurrentPlan(BaseModel):
@@ -106,13 +110,12 @@ def _build_task_item(task: Task) -> Optional[TaskItem]:
     valid = coerce_int(task.valid_count)
     invalid = coerce_int(task.invalid_count)
     catchall = coerce_int(task.catchall_count)
+    role_based = counts.get("role_based") if counts else None
+    disposable = counts.get("disposable") if counts else None
     if counts:
-        if valid is None:
-            valid = counts.get("valid")
-        if invalid is None:
-            invalid = counts.get("invalid")
-        if catchall is None:
-            catchall = counts.get("catchall")
+        valid = counts.get("valid")
+        invalid = counts.get("invalid")
+        catchall = counts.get("catchall")
     job_status = _normalize_job_status(task.job_status) or _normalize_job_status(
         metrics.job_status if metrics else None
     )
@@ -121,7 +124,13 @@ def _build_task_item(task: Task) -> Optional[TaskItem]:
     if email_count is None:
         email_count = email_count_from_metrics(metrics)
     if email_count is None and counts:
-        total = sum(counts.values())
+        total = (
+            (counts.get("valid") or 0)
+            + (counts.get("invalid") or 0)
+            + (counts.get("catchall") or 0)
+            + (counts.get("role_based") or 0)
+            + (counts.get("disposable") or 0)
+        )
         if total > 0:
             email_count = total
     return TaskItem(
@@ -131,6 +140,8 @@ def _build_task_item(task: Task) -> Optional[TaskItem]:
         valid_count=valid,
         invalid_count=invalid,
         catchall_count=catchall,
+        role_based_count=role_based,
+        disposable_count=disposable,
         job_status=job_status,
         integration=task.integration,
         created_at=task.created_at,
@@ -154,13 +165,28 @@ def _build_verification_totals(metrics: VerificationMetricsResponse) -> Optional
     valid = counts["valid"] if counts else None
     invalid = counts["invalid"] if counts else None
     catchall = counts["catchall"] if counts else None
+    role_based = counts["role_based"] if counts else None
+    disposable = counts["disposable"] if counts else None
     if metrics.total_catchall is not None and (catchall is None or (catchall == 0 and metrics.total_catchall > 0)):
         catchall = metrics.total_catchall
+    if metrics.total_role_based is not None and (role_based is None or (role_based == 0 and metrics.total_role_based > 0)):
+        role_based = metrics.total_role_based
+    if metrics.total_disposable_domain_emails is not None and (
+        disposable is None or (disposable == 0 and metrics.total_disposable_domain_emails > 0)
+    ):
+        disposable = metrics.total_disposable_domain_emails
     if total is None and counts:
-        total = (valid or 0) + (invalid or 0) + (catchall or 0)
+        total = (valid or 0) + (invalid or 0) + (catchall or 0) + (role_based or 0) + (disposable or 0)
     if total is None and not counts:
         return None
-    return VerificationTotals(total=total, valid=valid, invalid=invalid, catchall=catchall)
+    return VerificationTotals(
+        total=total,
+        valid=valid,
+        invalid=invalid,
+        catchall=catchall,
+        role_based=role_based,
+        disposable=disposable,
+    )
 
 
 def _build_current_plan(user_id: str) -> Optional[CurrentPlan]:
@@ -230,8 +256,20 @@ async def get_overview(
 
     step = time.monotonic()
     credits = None
-    logger.info("overview.credits.unavailable", extra={"user_id": user.user_id})
-    timings["credits_ms"] = round((time.monotonic() - step) * 1000, 2)
+    try:
+        balance = await client.get_credit_balance()
+        credits = balance.balance
+        if credits is None:
+            logger.info("overview.credits.balance_missing", extra={"user_id": user.user_id})
+    except ExternalAPIError as exc:
+        logger.warning(
+            "overview.credits.unavailable",
+            extra={"user_id": user.user_id, "status_code": exc.status_code, "details": exc.details},
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.error("overview.credits.error", extra={"user_id": user.user_id, "error": str(exc)})
+    finally:
+        timings["credits_ms"] = round((time.monotonic() - step) * 1000, 2)
 
     usage_total: Optional[int] = None
     usage_series: List[UsagePoint] = []

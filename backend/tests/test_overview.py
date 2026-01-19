@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 from app.api import overview as overview_module
 from app.api.overview import router
 from app.clients.external import (
+    CreditBalanceResponse,
     ExternalAPIError,
     Task,
     TaskListResponse,
@@ -38,9 +39,9 @@ def test_overview_success(monkeypatch):
     monkeypatch.setattr(overview_module.supabase_client, "fetch_profile", lambda user_id: {"user_id": user_id, "email": "x@test.com"})
     monkeypatch.setattr(overview_module, "get_settings", lambda: _Settings(timeout_seconds=1.0))
     task_metrics = TaskMetrics(
-        total_email_addresses=10,
-        job_status={"completed": 10},
-        verification_status={"exists": 8, "not_exists": 2},
+        total_email_addresses=13,
+        job_status={"completed": 13},
+        verification_status={"exists": 8, "not_exists": 2, "role_based": 1, "disposable_domain_emails": 2},
     )
     task_list = TaskListResponse(
         tasks=[Task(id="task-1", created_at="2024-01-02T00:00:00Z", integration="dashboard", metrics=task_metrics)],
@@ -73,14 +74,25 @@ def test_overview_success(monkeypatch):
     class FakeClient:
         async def get_verification_metrics(self):
             return VerificationMetricsResponse(
-                verification_status={"exists": 6, "not_exists": 4},
-                total_verifications=12,
+                verification_status={
+                    "exists": 6,
+                    "not_exists": 4,
+                    "catchall": 2,
+                    "role_based": 1,
+                    "disposable_domain_emails": 1,
+                },
+                total_verifications=14,
                 total_catchall=2,
+                total_role_based=1,
+                total_disposable_domain_emails=1,
                 series=[
                     VerificationMetricsSeriesPoint(date="2024-01-01", total_verifications=5),
                     VerificationMetricsSeriesPoint(date="2024-01-02", total_verifications=7),
                 ],
             )
+
+        async def get_credit_balance(self):
+            return CreditBalanceResponse(user_id="user-ov", balance=500)
 
         async def list_tasks(self, limit=10, offset=0, user_id=None):
             return task_list
@@ -91,20 +103,24 @@ def test_overview_success(monkeypatch):
     assert resp.status_code == 200
     data = resp.json()
     assert data["profile"]["user_id"] == "user-ov"
-    assert data["credits_remaining"] is None
-    assert data["usage_total"] == 12
+    assert data["credits_remaining"] == 500
+    assert data["usage_total"] == 14
     assert len(data["usage_series"]) == 2
     assert data["task_counts"]["completed"] == 1
     assert len(data["recent_tasks"]) == 1
-    assert data["recent_tasks"][0]["email_count"] == 10
+    assert data["recent_tasks"][0]["email_count"] == 13
     assert data["recent_tasks"][0]["valid_count"] == 8
     assert data["recent_tasks"][0]["invalid_count"] == 2
     assert data["recent_tasks"][0]["catchall_count"] == 0
+    assert data["recent_tasks"][0]["role_based_count"] == 1
+    assert data["recent_tasks"][0]["disposable_count"] == 2
     assert data["recent_tasks"][0]["status"] == "completed"
-    assert data["verification_totals"]["total"] == 12
+    assert data["verification_totals"]["total"] == 14
     assert data["verification_totals"]["valid"] == 6
     assert data["verification_totals"]["invalid"] == 4
     assert data["verification_totals"]["catchall"] == 2
+    assert data["verification_totals"]["role_based"] == 1
+    assert data["verification_totals"]["disposable"] == 1
     assert data["current_plan"]["label"] == "Multiple items"
     assert data["current_plan"]["plan_names"] == ["Starter", "Pro"]
     assert data["current_plan"]["price_ids"] == ["price-1", "price-2"]
@@ -130,6 +146,9 @@ def test_overview_metrics_timeout_fallback(monkeypatch):
             await asyncio.sleep(0.05)
             return VerificationMetricsResponse(total_verifications=12)
 
+        async def get_credit_balance(self):
+            return CreditBalanceResponse(user_id="user-ov", balance=250)
+
         async def list_tasks(self, limit=10, offset=0, user_id=None):
             return TaskListResponse(tasks=[], count=0, limit=limit, offset=offset)
 
@@ -138,6 +157,7 @@ def test_overview_metrics_timeout_fallback(monkeypatch):
     resp = client.get("/api/overview")
     assert resp.status_code == 200
     data = resp.json()
+    assert data["credits_remaining"] == 250
     assert data["verification_totals"] is None
     assert data["usage_total"] is None
     assert data["usage_series"] == []
@@ -161,6 +181,9 @@ def test_overview_metrics_error_fallback(monkeypatch):
         async def get_verification_metrics(self):
             raise ExternalAPIError(status_code=503, message="down", details={"error": "down"})
 
+        async def get_credit_balance(self):
+            raise ExternalAPIError(status_code=503, message="credits down", details={"error": "down"})
+
         async def list_tasks(self, limit=10, offset=0, user_id=None):
             return TaskListResponse(tasks=[], count=0, limit=limit, offset=offset)
 
@@ -169,6 +192,7 @@ def test_overview_metrics_error_fallback(monkeypatch):
     resp = client.get("/api/overview")
     assert resp.status_code == 200
     data = resp.json()
+    assert data["credits_remaining"] is None
     assert data["verification_totals"] is None
     assert data["usage_total"] is None
     assert data["usage_series"] == []
