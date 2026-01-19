@@ -49,7 +49,7 @@ class CreateTransactionRequest(BaseModel):
     address_id: Optional[str] = None
     items: list[TransactionItem]
     custom_data: Optional[Dict[str, Any]] = None
-    discount: Optional[Dict[str, Any]] = None
+    discount_id: Optional[str] = None
 
 
 class CreateTransactionResponse(BaseModel):
@@ -197,6 +197,26 @@ class PaddleAPIClient:
             params["status"] = ",".join(status)
         response = await self._request("GET", "/prices", params=params or None)
         return self._parse_response_generic(response)  # returns dict with data/meta
+
+    async def list_discounts(
+        self,
+        code: Optional[str] = None,
+        status: Optional[list[str]] = None,
+        mode: Optional[str] = None,
+    ) -> dict:
+        params: Dict[str, Any] = {}
+        if code:
+            params["code"] = code
+        if status:
+            params["status"] = ",".join(status)
+        if mode:
+            params["mode"] = mode
+        response = await self._request("GET", "/discounts", params=params or None)
+        return self._parse_response_generic(response)  # returns dict with data/meta
+
+    async def create_discount(self, payload: Dict[str, Any]) -> dict:
+        response = await self._request("POST", "/discounts", json=payload)
+        return self._parse_response_generic(response)
 
     async def list_notification_settings(
         self,

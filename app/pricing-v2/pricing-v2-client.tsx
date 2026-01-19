@@ -474,7 +474,7 @@ export default function PricingV2Client() {
                   onClick={() => openSupportChat({ quantity: debouncedQuantity ?? undefined, plan: activePlan })}
                   className="rounded-lg border border-[var(--pricing-accent)] px-4 py-2 text-xs font-semibold text-[var(--pricing-accent)]"
                 >
-                  Contact Sales ->
+                  Contact Sales {"->"}
                 </button>
               </div>
             </div>

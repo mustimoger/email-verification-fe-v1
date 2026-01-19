@@ -95,6 +95,12 @@ def test_transaction_builds_items(monkeypatch, pricing_config, pricing_tier):
 
             return Obj()
 
+        async def get_price(self, price_id):
+            class Obj:
+                product_id = "pro_test"
+
+            return Obj()
+
     def fake_user():
         return AuthContext(user_id="user-1", claims={}, token="t")
 
@@ -111,16 +117,16 @@ def test_transaction_builds_items(monkeypatch, pricing_config, pricing_tier):
 
     resp = client.post(
         "/api/billing/v2/transactions",
-        json={"quantity": 2000, "mode": "subscription", "interval": "month"},
+        json={"quantity": 20000, "mode": "subscription", "interval": "month"},
     )
     assert resp.status_code == 200, resp.text
     payload = captured["payload"]
     assert payload["items"][0]["price_id"] == "pri_test"
-    assert payload["items"][0]["quantity"] == 2
+    assert payload["items"][0]["quantity"] == 20
     assert payload["custom_data"]["supabase_user_id"] == "user-1"
 
 
-def test_transaction_adds_discount_for_negative_adjustment(monkeypatch, pricing_config, pricing_tier):
+def test_transaction_applies_negative_adjustment_with_discount(monkeypatch, pricing_config, pricing_tier):
     captured = {}
 
     class FakeClient:
@@ -132,6 +138,12 @@ def test_transaction_adds_discount_for_negative_adjustment(monkeypatch, pricing_
                 status = "ready"
 
             return Obj()
+
+        async def list_discounts(self, code=None, status=None, mode=None):
+            return {"data": []}
+
+        async def create_discount(self, payload):
+            return {"data": {"id": "dsc_test"}}
 
     def fake_user():
         return AuthContext(user_id="user-1", claims={}, token="t")
@@ -153,8 +165,10 @@ def test_transaction_adds_discount_for_negative_adjustment(monkeypatch, pricing_
     )
     assert resp.status_code == 200, resp.text
     payload = captured["payload"]
-    assert payload["discount"]["amount"] == "50"
-    assert payload["discount"]["type"] == "flat"
+    assert len(payload["items"]) == 1
+    assert payload["items"][0]["price_id"] == "pri_test"
+    assert payload["items"][0]["quantity"] == 10
+    assert payload["discount_id"] == "dsc_test"
 
 
 def test_transaction_adds_fee_item_for_positive_adjustment(monkeypatch, pricing_config):

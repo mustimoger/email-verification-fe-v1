@@ -227,15 +227,6 @@ def _rounding_description(config_metadata: Dict[str, Any], adjustment_cents: int
     return "Rounding adjustment"
 
 
-def _build_rounding_discount(amount_cents: int, description: str) -> Dict[str, Any]:
-    return {
-        "description": description,
-        "type": "flat",
-        "amount": str(abs(amount_cents)),
-        "custom_data": {"reason": "rounding_adjustment"},
-    }
-
-
 def _build_rounding_fee_item(amount_cents: int, currency: str, product_id: str, description: str) -> TransactionItem:
     price = TransactionPrice(
         product_id=product_id,
@@ -243,6 +234,91 @@ def _build_rounding_fee_item(amount_cents: int, currency: str, product_id: str, 
         unit_price=TransactionUnitPrice(amount=str(amount_cents), currency_code=currency),
     )
     return TransactionItem(price=price, quantity=1)
+
+
+def _sanitize_discount_code_prefix(prefix: str) -> str:
+    return "".join(char for char in prefix if char.isalnum())
+
+
+def _build_rounding_discount_code(metadata: Dict[str, Any], currency: str, amount_cents: int) -> str:
+    prefix = metadata.get("rounding_discount_code_prefix")
+    if not isinstance(prefix, str) or not prefix.strip():
+        logger.warning("pricing_v2.discount_prefix_missing", extra={"currency": currency, "amount_cents": amount_cents})
+        prefix = "ROUNDING"
+    sanitized = _sanitize_discount_code_prefix(prefix)
+    if not sanitized:
+        logger.warning("pricing_v2.discount_prefix_invalid", extra={"prefix": prefix})
+        sanitized = "ROUNDING"
+    code = f"{sanitized}{currency.upper()}{amount_cents}"
+    if len(code) > 32:
+        logger.warning("pricing_v2.discount_code_trimmed", extra={"code": code, "length": len(code)})
+        code = code[:32]
+    return code
+
+
+def _extract_discount_id(payload: Any) -> Optional[str]:
+    if isinstance(payload, dict):
+        if isinstance(payload.get("id"), str):
+            return payload["id"]
+        data = payload.get("data")
+        if isinstance(data, dict) and isinstance(data.get("id"), str):
+            return data["id"]
+    return None
+
+
+def _extract_discount_id_from_list(payload: Any) -> Optional[str]:
+    if isinstance(payload, dict):
+        items = payload.get("data")
+        if isinstance(items, list) and items:
+            first = items[0]
+            if isinstance(first, dict) and isinstance(first.get("id"), str):
+                return first["id"]
+    return None
+
+
+async def _get_rounding_discount_id(
+    amount_cents: int,
+    currency: str,
+    description: str,
+    metadata: Dict[str, Any],
+) -> str:
+    if amount_cents <= 0:
+        raise PricingValidationError(
+            {"message": "Invalid discount amount", "code": "invalid_discount"},
+            status_code=500,
+        )
+    code = _build_rounding_discount_code(metadata, currency, amount_cents)
+    client = get_paddle_client()
+    discount_id: Optional[str] = None
+    try:
+        existing = await client.list_discounts(code=code, status=["active"], mode="custom")
+        discount_id = _extract_discount_id_from_list(existing)
+    except PaddleAPIError as exc:
+        logger.warning(
+            "pricing_v2.discount_lookup_failed",
+            extra={"code": code, "error": str(exc), "detail": exc.details},
+        )
+    if discount_id:
+        return discount_id
+    payload = {
+        "amount": str(amount_cents),
+        "currency_code": currency,
+        "description": description,
+        "enabled_for_checkout": False,
+        "mode": "custom",
+        "type": "flat",
+        "code": code,
+        "custom_data": {"reason": "rounding_adjustment", "amount_cents": amount_cents, "currency": currency},
+    }
+    response = await client.create_discount(payload)
+    discount_id = _extract_discount_id(response)
+    if not discount_id:
+        logger.error("pricing_v2.discount_create_missing_id", extra={"code": code, "payload": payload})
+        raise PricingValidationError(
+            {"message": "Unable to create rounding discount", "code": "discount_create_failed"},
+            status_code=500,
+        )
+    return discount_id
 
 
 @router.post("/transactions", response_model=PricingTransactionResponse)
@@ -274,7 +350,7 @@ async def create_transaction_v2(
 
     totals = compute_pricing_totals_v2(payload.quantity, tier)
     items = [TransactionItem(price_id=tier.paddle_price_id, quantity=totals.units)]
-    discount: Optional[Dict[str, Any]] = None
+    discount_id: Optional[str] = None
     if totals.rounding_adjustment_cents != 0:
         description = _rounding_description(config.metadata, totals.rounding_adjustment_cents)
         if totals.rounding_adjustment_cents > 0:
@@ -288,7 +364,12 @@ async def create_transaction_v2(
                 )
             )
         else:
-            discount = _build_rounding_discount(totals.rounding_adjustment_cents, description)
+            discount_id = await _get_rounding_discount_id(
+                abs(totals.rounding_adjustment_cents),
+                tier.currency,
+                description,
+                config.metadata,
+            )
     try:
         customer_id, address_id = await _resolve_customer_and_address(user)
         client = get_paddle_client()
@@ -298,7 +379,7 @@ async def create_transaction_v2(
                 address_id=address_id,
                 items=items,
                 custom_data={**(payload.custom_data or {}), "supabase_user_id": user.user_id},
-                discount=discount,
+                discount_id=discount_id,
             )
         )
     except PricingValidationError as exc:

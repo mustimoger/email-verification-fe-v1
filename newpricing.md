@@ -180,11 +180,13 @@ Status: Completed — `/api/billing/v2/transactions` resolves tiers by quantity 
   - Log missing tier mappings explicitly and fail fast.
 - Why: Keeps credit grants accurate for both payg and subscriptions.
 V2 note: Lookup should check v2 tables first and fall back to v1 plan mapping so existing fixed-plan credits remain unchanged during parallel rollout.
+Status: Not started — webhook logic still uses `billing_plans` only and does not check v2 tiers or apply annual multipliers.
 
 ### Step B4b: One-time free trial credit bonus
 - What: Apply the free trial credits once after verified signup.
 - How: After email-verified signup, check `credit_grants` for an existing trial entry; if none, add `free_trial_credits` from config.
 - Why: Ensures every verified user receives the one-time bonus, independent of purchases.
+Status: Not started — no v2-driven free-trial grant endpoint or auth-provider trigger yet.
 
 ### Step B5: Backend tests (unit + integration)
 - What: Tests for tier selection, quote, and checkout validation.
@@ -192,6 +194,7 @@ V2 note: Lookup should check v2 tables first and fall back to v1 plan mapping so
   - Unit tests for range boundaries, min/max, and overlap detection.
   - Integration tests for `/api/billing/v2/quote` and `/api/billing/v2/transactions`.
 - Why: Prevents regressions around pricing math and tier resolution.
+Status: In progress — v2 quote/transaction tests exist; still need webhook credit-grant and free-trial tests plus full test run.
 
 ## Frontend Plan (MVP)
 ### Step F1: Expand billing API client
@@ -200,6 +203,7 @@ V2 note: Lookup should check v2 tables first and fall back to v1 plan mapping so
   - `getPricingConfigV2` and `getQuoteV2` (v2 endpoints).
   - `createTransactionV2` to support `{quantity, mode, interval}`.
 - Why: Keeps frontend typed and aligned with backend payloads.
+Status: Completed — v2 types and billing client methods added to `app/lib/api-client.ts`.
 
 ### Step F2: New pricing UI layout
 - What: Replace static cards with a slider-based pricing module.
@@ -209,6 +213,7 @@ V2 note: Lookup should check v2 tables first and fall back to v1 plan mapping so
   - Show unit price and total (from `/api/billing/v2/quote`).
   - Keep existing Paddle checkout flow.
 - Why: Matches the requested UX while staying data-driven and secure.
+Status: Completed — slider UI, plan toggles, and pricing summary are implemented in `app/pricing-v2/pricing-v2-client.tsx`.
 
 ### Step F3: Checkout flow per mode (v2)
 - What: Trigger correct checkout for payg or subscription.
@@ -216,16 +221,26 @@ V2 note: Lookup should check v2 tables first and fall back to v1 plan mapping so
   - Payg: call `/api/billing/v2/transactions` with `{quantity, mode:"payg", interval:"one_time"}`.
   - Subscription: call `/api/billing/v2/transactions` with `{quantity, mode:"subscription", interval:"month|year"}`.
 - Why: Same UI, different backend pricing resolution while leaving v1 untouched.
+Status: Completed — checkout handler calls `billingApi.createTransactionV2` with mode/interval.
 
 ### Step F4: UI validation + error handling
 - What: Enforce min/max and show clear errors.
 - How: Disable checkout when quantity invalid; surface server errors in the pricing card.
 - Why: Avoids silent failures and supports real-world edge cases.
+Status: Completed — validation state drives disabled checkout and shows error messaging.
 
 ### Step F5: Frontend tests
 - What: Slider math and UI state tests.
 - How: Unit tests for pricing helpers + minimal UI tests for disabled/ready states.
 - Why: Confirms slider behavior and checkout gating.
+Status: In progress — utility tests added in `tests/pricing-v2-utils.test.ts`, UI smoke tests still pending.
+
+## Testing & Validation
+### Step T1: UI smoke test `/pricing-v2`
+- What: Verify pricing UI renders, slider updates, and checkout opens with v2 transaction.
+- How: Use Playwright with a valid Supabase session; confirm no console errors.
+- Why: Ensures end-to-end v2 flow works in the browser.
+Status: Blocked — current Supabase refresh token rejected (`refresh_token_not_found`); need valid session or credentials.
 
 ## MVP Completion Checklist
 - Supabase v2 tiers table created and populated with real pricing.
