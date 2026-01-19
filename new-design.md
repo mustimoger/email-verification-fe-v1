@@ -126,14 +126,67 @@ Status: Pending.
 - What: Align the rest of the dashboard pages to the new shared visual standard.
 - How: Apply the same surface tokens and components to each page, without layout changes.
 - Why: Achieves consistency while preserving existing UX patterns.
-Status: Pending.
+Status: In progress — starting with `/verify` as `/verify-v2` to validate the design system on a complex workflow page.
 Pages to update:
-- Verify
+- Verify (in progress via `/verify-v2`)
 - History
 - Integrations
 - API
 - Pricing (v1)
 - Account
+
+### D4a: `/verify-v2` visual audit + delta checklist
+- What: Compare `/verify` vs `/pricing-v2` and document deltas before redesign.
+- How: Use Playwright to capture the current `/verify` UI and note gaps in surfaces, typography, spacing, accents, and motion against the design-principles blueprint.
+- Why: Ensures the redesign is targeted and traceable instead of guesswork.
+Status: Completed — attempted Playwright session seeding, but the stored refresh token is invalid; completed the audit by code inspection against `design-principles.md` so work can proceed.
+What was done and why:
+- Attempted to load `/pricing-v2` and `/verify` in Playwright using `.auth-session.json`; Supabase rejected the refresh token, so authenticated pages redirected to `/signin`.
+- Performed a source-level audit of `app/verify/page.tsx` against the pricing-v2 blueprint to document precise surface/typography deltas.
+Key deltas found:
+- `/verify` uses direct slate/white utility colors (`bg-white`, `text-slate-*`, `ring-slate-*`) instead of page-scoped tokens from `/pricing-v2`.
+- No hero card or page-level accent glows; `/verify` begins with utility cards, missing the pricing-style top narrative.
+- Card surfaces use `rounded-2xl` + `shadow-md` + `ring` rather than the 28/24/16/12px radius system and `--pricing-shadow`.
+- Sections lack the layered card hierarchy (`pricing-card`, `pricing-card-muted`, `pricing-card-strong`) and consistent border token (`--pricing-border`).
+- CTA and action buttons use flat `--cta` fills instead of the pricing gradient + glow spec.
+- Alerts and helper badges rely on ad-hoc amber/rose/sky colors instead of the standardized status tokens.
+- Typography is heavier (`font-extrabold`, `text-lg`) and not aligned with pricing’s `text-3xl/5xl`, uppercase label chips, and muted body rhythm.
+- Motion polish (fade-in transitions, hover glows) is largely absent.
+
+### D4a1: Playwright-authenticated capture (verify vs pricing-v2)
+- What: Re-run Playwright visual capture now that auth tokens have been refreshed in `key-value-pair.txt`.
+- How: Seed localStorage with the provided key/value, then capture `/verify` and `/pricing-v2` for a visual reference pass.
+- Why: Confirms the deltas in a live render instead of relying solely on code inspection.
+Status: Completed — Playwright captured `/verify` and `/pricing-v2` with authenticated localStorage seeded.
+What was done and why:
+- Seeded `sb-zobtogrjplslxicgpfxc-auth-token` from `key-value-pair.txt`, then captured `/verify` and `/pricing-v2`.
+- Stored screenshots in `artifacts/verify-auth.png` and `artifacts/pricing-v2-auth.png` for visual reference.
+Notes:
+- Backend API (`localhost:8001`) was not running, so data-driven sections show missing-data states; layout/surface styling is still usable for visual comparison.
+
+### D4b: `/verify-v2` UI-only redesign
+- What: Create a new `/verify-v2` route that matches `/pricing-v2` visual polish without touching `/verify`.
+- How: Build the page layout with pricing-v2 surface tokens, hero card, and section cards; do not change backend logic yet.
+- Why: Allows visual iteration on the verification workflow before functional migration.
+Status: Pending.
+Planned substeps:
+- Create `app/verify-v2` route and client component shell inside `DashboardShell`.
+- Add page-scoped CSS tokens matching the pricing-v2 palette and surface hierarchy.
+- Build a hero card aligned to `/pricing-v2`, adapted to verification workflow messaging.
+- Restyle manual input, results, and file upload sections with pricing-v2 card specs.
+- Add a secondary “workflow” section (steps or helper cards) using muted section cards.
+
+### D4c: `/verify-v2` responsive QA
+- What: Ensure the new `/verify-v2` layout is readable and touch-friendly on mobile.
+- How: Review small breakpoints and adjust grids, spacing, and overflows; confirm no clipped shadows.
+- Why: The redesign must remain mobile-friendly before any functional migration.
+Status: Pending.
+
+### D4d: `/verify-v2` functional migration (after design approval)
+- What: Copy `/verify` functionality into `/verify-v2` once the design is signed off.
+- How: Reuse existing logic and APIs from `/verify` without introducing new backend code.
+- Why: Keeps the new UI production-ready while avoiding premature backend changes.
+Status: Pending — blocked on final UI approval.
 
 ### D5: Responsive and theme QA
 - What: Validate responsiveness and dark theme after styling updates.
