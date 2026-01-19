@@ -168,13 +168,13 @@ Notes:
 - What: Create a new `/verify-v2` route that matches `/pricing-v2` visual polish without touching `/verify`.
 - How: Build the page layout with pricing-v2 surface tokens, hero card, and section cards; do not change backend logic yet.
 - Why: Allows visual iteration on the verification workflow before functional migration.
-Status: Pending.
-Planned substeps:
-- Create `app/verify-v2` route and client component shell inside `DashboardShell`.
-- Add page-scoped CSS tokens matching the pricing-v2 palette and surface hierarchy.
-- Build a hero card aligned to `/pricing-v2`, adapted to verification workflow messaging.
-- Restyle manual input, results, and file upload sections with pricing-v2 card specs.
-- Add a secondary “workflow” section (steps or helper cards) using muted section cards.
+Status: Completed — delivered a UI-only `/verify-v2` page using the pricing-v2 visual system.
+What was done and why:
+- Added `app/verify-v2/page.tsx`, `app/verify-v2/verify-v2-client.tsx`, and `app/verify-v2/verify-v2-sections.tsx` to keep `/verify` untouched while the new design is reviewed.
+- Introduced `app/verify-v2/verify-v2.module.css` with page-scoped tokens matching the pricing-v2 palette, borders, and shadows.
+- Built a pricing-style hero card with verification-specific messaging and highlight chips.
+- Restyled manual entry, live results, bulk upload, and workflow guidance sections using pricing-v2 card specs and typography.
+- Kept all actions UI-only (no backend wiring) per instructions; functional migration remains explicitly deferred to D4d.
 
 ### D4c: `/verify-v2` responsive QA
 - What: Ensure the new `/verify-v2` layout is readable and touch-friendly on mobile.
