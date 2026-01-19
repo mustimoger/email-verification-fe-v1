@@ -24,6 +24,9 @@
 .DS_Store
 *.pem
 /*.png
+key-value-pair.txt
+.qa/
+artifacts/
 
 # debug
 npm-debug.log*

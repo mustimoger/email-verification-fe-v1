@@ -1,3 +1,5 @@
+Last updated: 2026-01-19
+
 Active plan and progress tracking live in:
 - `new-design.md` (dashboard redesign + `/verify-v2` functional migration)
 - `newpricing.md` (pricing v2 rollout)

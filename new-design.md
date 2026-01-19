@@ -354,11 +354,126 @@ Notes:
 - This is an upstream availability issue; no frontend payload mismatch was detected relative to `/ext-api-docs`.
 - Manual submit will continue to surface 500s until the external API task publisher is healthy.
 
+### D4e: `/verify-v2` parity audit + external API cross-check
+- What: Confirm `/verify-v2` preserves the `/verify` backend wiring and matches updated external API contracts.
+- How: Compare `/verify` and `/verify-v2` client logic, and cross-check `/ext-api-docs/endpoints/task_controller.md` + `batch_file_controller.md`.
+- Why: Ensures the redesign is production-ready before swapping routes.
+Status: Completed — `/verify-v2` matches `/verify` functionality and current external API docs.
+What was done and why:
+- Verified `/verify-v2` reuses the same helpers (`app/verify/utils.ts`, `app/verify/file-columns.ts`) and API calls (`createTask`, `getTaskJobs`, `uploadTaskFiles`, `listTasks`, `getTask`) as `/verify`.
+- Confirmed upload metadata mapping uses column letters which the backend normalizes to 1-based indices, aligning with `email_column` requirements in the batch upload docs.
+- Cross-checked manual task creation and job polling against the updated task endpoints; no payload or response mismatches found.
+
+### D4f: Swap `/verify` to `/verify-v2`
+- What: Replace the `/verify` route with the redesigned `/verify-v2` client.
+- How: Point `app/verify/page.tsx` to `VerifyV2Client` and keep `/verify-v2` for rollback/QA.
+- Why: Delivers the updated UI while preserving the existing backend wiring.
+Status: Completed — `/verify` now renders the `/verify-v2` client.
+What was done and why:
+- Replaced `app/verify/page.tsx` with a lightweight wrapper that renders `VerifyV2Client` to preserve existing functionality while swapping in the new UI.
+- Left `/verify-v2` route intact for rollback/QA after the swap.
+
+### D4g: Swap dashboard left sidebar to the new design
+- What: Update the shared dashboard sidebar to the new left nav design.
+- How: Apply the new visual system to the sidebar in `DashboardShell` without changing route structure or navigation behavior.
+- Why: Aligns all dashboard pages to the approved sidebar design since they reuse the shared shell.
+Status: Pending — design spec/source for the new sidebar is needed before implementation.
+Not yet implemented:
+- Awaiting the new left sidebar design reference (Figma/node or file source) to translate the layout, colors, and spacing.
+
+#### D4g1: Review `dashboard-shell2.tsx` and map deltas
+- What: Compare the new sidebar implementation with the current `DashboardShell`.
+- How: Identify structural/layout changes, required state (collapse/expand), and asset dependencies.
+- Why: Ensures we reuse existing nav items and behaviors while swapping only the design.
+Status: Completed — reviewed the uploaded sidebar component and captured the deltas to implement.
+What was done and why:
+- Reviewed `app/components/dashboard-shell2.tsx` to capture the new layout, collapsed behavior, and asset usage before editing the shared shell.
+- Noted it expects `bolt.png` for the collapsed logo and a collapse toggle in the header.
+- Identified differences to reconcile: new file hardcodes `/dashboard` and `/api-keys` routes and inline SVG icons; we must retain existing nav items/links and lucide icons from `DashboardShell`.
+- Noted styling is light-theme specific (white/gray + orange); we need to map these to theme tokens so dark mode remains correct.
+
+#### D4g2: Apply the new sidebar design in `DashboardShell`
+- What: Replace the existing sidebar markup/styles with the new design.
+- How: Integrate the new layout into `app/components/dashboard-shell.tsx` while keeping nav items, routes, and auth behavior unchanged; add collapsed state support and use `public/bolt.png` for the collapsed logo.
+- Why: Delivers the new sidebar design across all dashboard pages without functional regressions.
+Status: Completed — swapped the sidebar layout to the new design while preserving nav behavior.
+What was done and why:
+- Reworked `app/components/dashboard-shell.tsx` to use the new sidebar structure (header logo swap, collapse toggle, nav styling, and bottom user section) while keeping all existing routes and auth behaviors intact.
+- Added a persistent collapse state (localStorage-backed) and wired the collapsed logo to `public/bolt.png` for the compact view.
+- Mapped sidebar colors to new theme tokens in `app/globals.css` so light/dark modes remain consistent with the new layout.
+- Kept credits banner optional and backed by the existing `/account/credits` endpoint to avoid hardcoded values.
+
+#### D4g3: Sidebar QA (desktop/mobile + collapse states)
+- What: Validate the new sidebar layout and interactions.
+- How: Spot-check desktop and mobile, verify collapse/expand behavior and active link styling in light/dark themes.
+- Why: Prevents regressions in navigation and responsive layout after the swap.
+Status: Completed — captured desktop/mobile + light/dark with collapsed and expanded states.
+What was done and why:
+- Seeded the refreshed auth session and captured the sidebar in desktop expanded/collapsed states for light and dark themes.
+- Captured mobile sidebar overlay for light and dark themes to confirm responsive navigation layout.
+Artifacts:
+- `artifacts/qa-sidebar-desktop-light-expanded.png`
+- `artifacts/qa-sidebar-desktop-light-collapsed.png`
+- `artifacts/qa-sidebar-desktop-dark-expanded.png`
+- `artifacts/qa-sidebar-desktop-dark-collapsed.png`
+- `artifacts/qa-sidebar-mobile-light-open.png`
+- `artifacts/qa-sidebar-mobile-dark-open.png`
+Console notes:
+- `409 Conflict` from `/api/credits/signup-bonus` with `auth.signup_bonus.failed` warning (“Signup bonus eligibility window elapsed”).
+- `auth.trial_bonus.result` logged as duplicate (credits already granted).
+- `qa.init_failed` warnings surfaced during QA when setting `data-theme` before `documentElement` was ready (QA script only).
+
 ### D5: Responsive and theme QA
 - What: Validate responsiveness and dark theme after styling updates.
 - How: Spot check key breakpoints and dark mode for each updated page.
 - Why: Prevents regressions in mobile and theme support.
+Status: Completed — QA run for `/overview` and `/verify-v2` in light/dark + desktop/mobile.
+What was done and why:
+- Captured desktop (1280×800) and mobile (375×812) renders in light and dark modes for `/overview` and `/verify-v2`.
+- Verified layouts remain readable and responsive across breakpoints; no clipping or overflow observed in screenshots.
+- Recorded console warnings/errors to flag backend/data issues surfaced during QA.
+Artifacts:
+- `artifacts/qa-overview-desktop-light.png`
+- `artifacts/qa-overview-mobile-light.png`
+- `artifacts/qa-overview-desktop-dark.png`
+- `artifacts/qa-overview-mobile-dark.png`
+- `artifacts/qa-verify-v2-desktop-light.png`
+- `artifacts/qa-verify-v2-mobile-light.png`
+- `artifacts/qa-verify-v2-desktop-dark.png`
+- `artifacts/qa-verify-v2-mobile-dark.png`
+Console notes:
+- `409 Conflict` from `/api/credits/signup-bonus` (duplicate/eligibility window) during page load.
+- `auth.signup_bonus.failed` warning logged with message “Signup bonus eligibility window elapsed”.
+Data notes:
+- Credits Remaining card still shows “Unavailable” with ext API unavailable helper text for this session.
+
+### D5a: Investigate signup bonus 409 warning
+- What: Confirm whether the `409 Conflict` from `/api/credits/signup-bonus` is expected on repeat sessions or needs suppression.
+- How: Review backend signup bonus logic and decide if the conflict should be downgraded to info or suppressed after first grant.
+- Why: Prevents noisy console errors during normal dashboard use.
 Status: Pending.
+
+### D5b: Confirm credits balance availability
+- What: Validate why `credits_remaining` renders as unavailable for the QA account.
+- How: Check `/api/overview` payload and external `/credits/balance` response for this user.
+- Why: Ensures overview displays credits once the external endpoint returns data.
+Status: Pending.
+
+### D5c: `/verify` QA after route swap
+- What: Capture light/dark + desktop/mobile renders for `/verify` after swapping to `/verify-v2`.
+- How: Use Playwright with localStorage auth to capture screenshots and check console logs.
+- Why: Confirms the new `/verify` route remains responsive and theme-correct after the swap.
+Status: Completed — `/verify` QA captures collected in light/dark and desktop/mobile.
+What was done and why:
+- Seeded auth localStorage and forced theme preferences to capture `/verify` across light/dark + desktop/mobile after the route swap.
+- Captured screenshots to validate responsive layout and theme styling remain intact.
+Artifacts:
+- `artifacts/qa-verify-desktop-light.png`
+- `artifacts/qa-verify-mobile-light.png`
+- `artifacts/qa-verify-desktop-dark.png`
+- `artifacts/qa-verify-mobile-dark.png`
+Console notes:
+- `409 Conflict` from `/api/credits/signup-bonus` with `auth.signup_bonus.failed` warning (“Signup bonus eligibility window elapsed”).
 
 ### D6: Documentation and handoff
 - What: Document the changes and any new tokens/components.
@@ -373,6 +488,26 @@ Status: Pending.
 Status: Completed — added a single source-of-truth `design-principles.md` with the full `/pricing-v2` card spec, colors, typography, shadows, gradients, and global theme tokens.
 What was done and why:
 - Captured every relevant token and class pattern from `/pricing-v2` plus the global theme palette so future work can replicate the visual system exactly without guesswork.
+
+### D7: Repo hygiene for QA auth artifacts
+- What: Remove tracked QA auth artifacts that contain session tokens.
+- How: Decide whether to delete `.auth-session.json` and `.playwright-visual-check.js`, and add ignore rules if needed.
+- Why: Prevents committing sensitive session credentials to the repo.
+Status: Pending — awaiting decision on removal/ignore policy.
+
+#### D7a: Ignore local QA artifacts
+- What: Update `.gitignore` to exclude local QA outputs and auth token files.
+- How: Add `key-value-pair.txt`, `.qa/`, and `artifacts/` to `.gitignore`.
+- Why: Keeps sensitive session data and local QA output out of git history.
+Status: Completed — `.gitignore` now excludes local QA outputs and auth token files.
+What was done and why:
+- Added `key-value-pair.txt`, `.qa/`, and `artifacts/` to `.gitignore` so sensitive tokens and QA artifacts do not get committed.
+
+#### D7b: Commit and push sidebar + QA updates
+- What: Commit current sidebar changes and plan updates, then push to GitHub.
+- How: Stage tracked changes and create a single commit message for the sidebar redesign + QA notes; push to `origin/main`.
+- Why: Keeps repo state synced with completed work as required.
+Status: Pending — blocked on D7a.
 
 ## Progress Notes
 - Created this plan to guide a non-disruptive visual alignment effort, with a minimal MVP and staged rollout to avoid layout changes.
