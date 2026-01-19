@@ -413,6 +413,8 @@ export type SignupBonusResponse = {
   credits_granted?: number | null;
 };
 
+export type TrialBonusResponse = SignupBonusResponse;
+
 const rawBase = process.env.NEXT_PUBLIC_API_BASE_URL;
 if (!rawBase) {
   throw new Error("NEXT_PUBLIC_API_BASE_URL is required for API client");
@@ -666,6 +668,11 @@ export const apiClient = {
     }),
   claimSignupBonus: () =>
     request<SignupBonusResponse>("/credits/signup-bonus", {
+      method: "POST",
+      suppressErrorLog: true,
+    }),
+  claimTrialBonus: () =>
+    request<TrialBonusResponse>("/credits/trial-bonus", {
       method: "POST",
       suppressErrorLog: true,
     }),

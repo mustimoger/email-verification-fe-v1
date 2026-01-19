@@ -31,6 +31,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const profileSyncRef = useRef<{ userId: string; email: string } | null>(null);
   const confirmationCheckRef = useRef<string | null>(null);
   const signupBonusAttemptedRef = useRef<string | null>(null);
+  const trialBonusAttemptedRef = useRef<string | null>(null);
   const recoverySessionRef = useRef(false);
 
   useEffect(() => {
@@ -80,6 +81,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!userId) {
         confirmationCheckRef.current = null;
         signupBonusAttemptedRef.current = null;
+        trialBonusAttemptedRef.current = null;
         return;
       }
       if (recoverySessionRef.current) {
@@ -101,20 +103,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.warn("auth.email_confirmation_check_failed", err);
         return;
       }
-      if (signupBonusAttemptedRef.current === userId) {
+      if (signupBonusAttemptedRef.current === userId && trialBonusAttemptedRef.current === userId) {
         return;
       }
-      try {
-        const bonus = await apiClient.claimSignupBonus();
-        signupBonusAttemptedRef.current = userId;
-        console.info("auth.signup_bonus.result", {
-          status: bonus.status,
-          creditsGranted: bonus.credits_granted ?? null,
-          source: "confirmed_session",
-        });
-      } catch (err) {
-        const message = err instanceof ApiError ? err.message : "Signup bonus request failed";
-        console.warn("auth.signup_bonus.failed", { message, source: "confirmed_session" });
+      if (signupBonusAttemptedRef.current !== userId) {
+        try {
+          const bonus = await apiClient.claimSignupBonus();
+          signupBonusAttemptedRef.current = userId;
+          console.info("auth.signup_bonus.result", {
+            status: bonus.status,
+            creditsGranted: bonus.credits_granted ?? null,
+            source: "confirmed_session",
+          });
+        } catch (err) {
+          const message = err instanceof ApiError ? err.message : "Signup bonus request failed";
+          console.warn("auth.signup_bonus.failed", { message, source: "confirmed_session" });
+        }
+      }
+      if (trialBonusAttemptedRef.current !== userId) {
+        try {
+          const bonus = await apiClient.claimTrialBonus();
+          trialBonusAttemptedRef.current = userId;
+          console.info("auth.trial_bonus.result", {
+            status: bonus.status,
+            creditsGranted: bonus.credits_granted ?? null,
+            source: "confirmed_session",
+          });
+        } catch (err) {
+          const message = err instanceof ApiError ? err.message : "Free trial request failed";
+          console.warn("auth.trial_bonus.failed", { message, source: "confirmed_session" });
+        }
       }
     };
     void ensureConfirmed();

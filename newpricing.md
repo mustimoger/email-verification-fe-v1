@@ -186,7 +186,11 @@ Status: Completed — webhook now resolves v2 tier price IDs first (including an
 - What: Apply the free trial credits once after verified signup.
 - How: After email-verified signup, check `credit_grants` for an existing trial entry; if none, add `free_trial_credits` from config.
 - Why: Ensures every verified user receives the one-time bonus, independent of purchases.
-Status: Not started — no v2-driven free-trial grant endpoint or auth-provider trigger yet.
+Planned substeps:
+- Add a `/api/credits/trial-bonus` endpoint that reads `billing_pricing_config_v2.free_trial_credits` and grants a one-time `credit_grants` entry with explicit logging on misconfiguration.
+- Call the trial bonus after confirmed sessions in `app/components/auth-provider.tsx`.
+- Add backend tests for applied/duplicate/unconfirmed/misconfigured cases.
+Status: Completed — added `/api/credits/trial-bonus` driven by v2 config, invoked after confirmed sessions in `app/components/auth-provider.tsx`, and covered with backend tests for apply/duplicate/unconfirmed/misconfigured flows.
 
 ### Step B5: Backend tests (unit + integration)
 - What: Tests for tier selection, quote, and checkout validation.
@@ -194,7 +198,7 @@ Status: Not started — no v2-driven free-trial grant endpoint or auth-provider 
   - Unit tests for range boundaries, min/max, and overlap detection.
   - Integration tests for `/api/billing/v2/quote` and `/api/billing/v2/transactions`.
 - Why: Prevents regressions around pricing math and tier resolution.
-Status: In progress — v2 quote/transaction tests exist and webhook credit‑grant tests now cover v2 annual multipliers and missing‑mapping errors; still need free‑trial tests plus a full suite run.
+Status: In progress — v2 quote/transaction tests exist, webhook credit‑grant tests cover v2 annual multipliers and missing‑mapping errors, and free‑trial tests were added; still need a full suite run and UI smoke tests.
 
 ## Frontend Plan (MVP)
 ### Step F1: Expand billing API client

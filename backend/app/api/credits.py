@@ -9,12 +9,18 @@ from ..core.auth import AuthContext, get_current_user_allow_unconfirmed
 from ..core.settings import get_settings
 from ..services import supabase_client
 from ..services.credit_grants import list_credit_grants, upsert_credit_grant
+from ..services.pricing_v2 import get_pricing_config_v2
 
 router = APIRouter(prefix="/api/credits", tags=["credits"])
 logger = logging.getLogger(__name__)
 
 
 class SignupBonusResponse(BaseModel):
+    status: str
+    credits_granted: Optional[int] = None
+
+
+class TrialBonusResponse(BaseModel):
     status: str
     credits_granted: Optional[int] = None
 
@@ -121,3 +127,66 @@ async def claim_signup_bonus(
 
     logger.info("credits.signup_bonus.granted", extra={"user_id": user.user_id, "credits": credits})
     return SignupBonusResponse(status="applied", credits_granted=credits)
+
+
+@router.post("/trial-bonus", response_model=TrialBonusResponse)
+async def claim_trial_bonus(
+    request: Request,
+    user: AuthContext = Depends(get_current_user_allow_unconfirmed),
+):
+    try:
+        config = get_pricing_config_v2()
+    except Exception as exc:  # noqa: BLE001
+        logger.error("credits.trial_bonus.config_load_failed", extra={"user_id": user.user_id, "error": str(exc)})
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Free trial credits not configured",
+        ) from exc
+
+    trial_credits = config.free_trial_credits
+    if trial_credits is None or trial_credits <= 0:
+        logger.warning(
+            "credits.trial_bonus.misconfigured",
+            extra={"user_id": user.user_id, "free_trial_credits": trial_credits},
+        )
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Free trial credits not configured",
+        )
+
+    try:
+        auth_user = supabase_client.fetch_auth_user(user.user_id)
+    except Exception as exc:  # noqa: BLE001
+        logger.error("credits.trial_bonus.auth_lookup_failed", extra={"user_id": user.user_id, "error": str(exc)})
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Free trial eligibility unavailable",
+        ) from exc
+
+    if not _is_email_confirmed(auth_user):
+        logger.info("credits.trial_bonus.email_unconfirmed", extra={"user_id": user.user_id})
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Email confirmation required")
+
+    existing = list_credit_grants(user_id=user.user_id, source="trial", limit=1, offset=0)
+    if existing:
+        credits_granted = existing[0].get("credits_granted") if isinstance(existing[0], dict) else None
+        logger.info("credits.trial_bonus.duplicate", extra={"user_id": user.user_id})
+        return TrialBonusResponse(status="duplicate", credits_granted=credits_granted)
+
+    raw_meta = {
+        "ip": request.client.host if request.client else None,
+        "user_agent": request.headers.get("user-agent"),
+    }
+    inserted = upsert_credit_grant(
+        user_id=user.user_id,
+        source="trial",
+        source_id=user.user_id,
+        credits_granted=trial_credits,
+        raw=raw_meta,
+    )
+    if not inserted:
+        logger.error("credits.trial_bonus.grant_failed", extra={"user_id": user.user_id})
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Free trial grant failed")
+
+    logger.info("credits.trial_bonus.granted", extra={"user_id": user.user_id, "credits": trial_credits})
+    return TrialBonusResponse(status="applied", credits_granted=trial_credits)
