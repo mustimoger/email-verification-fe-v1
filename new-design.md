@@ -221,6 +221,24 @@ What was done and why:
 - Why: Keeps the new UI production-ready while avoiding premature backend changes.
 Status: Pending — blocked on final UI approval.
 
+#### D4d1: Wire manual verification flow in `/verify-v2`
+- What: Connect manual email entry, limits validation, task creation, refresh/export actions, and state persistence.
+- How: Reuse `app/verify/utils.ts`, `app/verify/file-columns.ts`, and `app/lib/api-client.ts` with new `/verify-v2` state wiring; keep the `/verify-v2` UI intact while swapping placeholders for live data.
+- Why: Enables manual verification for paid users while preserving the `/verify-v2` design.
+Status: Pending.
+
+#### D4d2: Wire bulk upload flow in `/verify-v2`
+- What: Connect file selection, column mapping, upload submission, summary metrics, and refresh actions.
+- How: Reuse existing upload helpers from `/verify` utilities; render mapping/summary panels inside the existing `/verify-v2` layout without changing its structure.
+- Why: Enables bulk verification while keeping the design consistent with the pricing-v2 visual system.
+Status: Pending.
+
+#### D4d3: Functional QA + targeted tests for `/verify-v2`
+- What: Validate manual and bulk flows with targeted tests and a lightweight QA pass.
+- How: Re-run existing verification utility tests and spot-check `/verify-v2` manual + upload flows in the browser.
+- Why: Confirms the wiring works before any route swap or wider rollout.
+Status: Pending.
+
 ### D5: Responsive and theme QA
 - What: Validate responsiveness and dark theme after styling updates.
 - How: Spot check key breakpoints and dark mode for each updated page.
