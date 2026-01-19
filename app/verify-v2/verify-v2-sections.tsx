@@ -210,7 +210,72 @@ export function ResultsCard({ transitionClass }: { transitionClass?: string }) {
   );
 }
 
-export function UploadSection({ transitionClass }: { transitionClass?: string }) {
+export function UploadSection({
+  transitionClass,
+  showSummary = false,
+}: {
+  transitionClass?: string;
+  showSummary?: boolean;
+}) {
+  const summaryPanel = (
+    <div className="rounded-2xl border border-[var(--verify-border)] bg-[var(--verify-card-strong)] p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h3 className="text-base font-semibold text-[var(--text-primary)]">Upload summary</h3>
+          <p className="text-xs text-[var(--text-muted)]">This panel activates when uploads complete.</p>
+        </div>
+        <button
+          type="button"
+          className="rounded-xl border border-[var(--verify-border)] bg-white/70 px-3 py-2 text-xs font-semibold text-[var(--text-secondary)]"
+        >
+          Refresh status
+        </button>
+      </div>
+      <div className="mt-4 rounded-2xl border border-dashed border-[var(--verify-border)] bg-white/70 px-4 py-10 text-center text-xs text-[var(--text-muted)]">
+        Summary charts appear here after a successful upload.
+      </div>
+      <div className="mt-4 flex flex-wrap items-center gap-2 text-xs font-semibold text-[var(--text-muted)]">
+        <span className="rounded-full border border-[var(--verify-border)] bg-white/70 px-3 py-1">
+          Status breakdown
+        </span>
+        <span className="rounded-full border border-[var(--verify-border)] bg-white/70 px-3 py-1">
+          Completion time
+        </span>
+        <span className="rounded-full border border-[var(--verify-border)] bg-white/70 px-3 py-1">
+          Export ready
+        </span>
+      </div>
+    </div>
+  );
+
+  const preflightPanel = (
+    <div className="rounded-2xl border border-[var(--verify-border)] bg-[var(--verify-card-strong)] p-5">
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[var(--verify-accent-soft)] text-[var(--verify-accent)]">
+          <ShieldCheck className="h-5 w-5" />
+        </div>
+        <div>
+          <h3 className="text-base font-semibold text-[var(--text-primary)]">Pre-flight checklist</h3>
+          <p className="text-xs text-[var(--text-muted)]">Prepare your file for clean results.</p>
+        </div>
+      </div>
+      <div className="mt-4 space-y-3 text-sm text-[var(--text-secondary)]">
+        <div className="flex items-start gap-3 rounded-xl border border-[var(--verify-border)] bg-white/70 px-3 py-3">
+          <CheckCircle2 className="mt-0.5 h-4 w-4 text-[var(--verify-accent)]" />
+          Ensure each row has one email address.
+        </div>
+        <div className="flex items-start gap-3 rounded-xl border border-[var(--verify-border)] bg-white/70 px-3 py-3">
+          <CheckCircle2 className="mt-0.5 h-4 w-4 text-[var(--verify-accent)]" />
+          Label the email column to speed up mapping.
+        </div>
+        <div className="flex items-start gap-3 rounded-xl border border-[var(--verify-border)] bg-white/70 px-3 py-3">
+          <CheckCircle2 className="mt-0.5 h-4 w-4 text-[var(--verify-accent)]" />
+          Keep files under your plan upload limit.
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <SectionCard transitionClass={transitionClass} delay="0.15s">
       <div className="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
@@ -244,31 +309,7 @@ export function UploadSection({ transitionClass }: { transitionClass?: string })
             </span>
           </div>
         </div>
-        <div className="rounded-2xl border border-[var(--verify-border)] bg-[var(--verify-card-strong)] p-5">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[var(--verify-accent-soft)] text-[var(--verify-accent)]">
-              <ShieldCheck className="h-5 w-5" />
-            </div>
-            <div>
-              <h3 className="text-base font-semibold text-[var(--text-primary)]">Pre-flight checklist</h3>
-              <p className="text-xs text-[var(--text-muted)]">Prepare your file for clean results.</p>
-            </div>
-          </div>
-          <div className="mt-4 space-y-3 text-sm text-[var(--text-secondary)]">
-            <div className="flex items-start gap-3 rounded-xl border border-[var(--verify-border)] bg-white/70 px-3 py-3">
-              <CheckCircle2 className="mt-0.5 h-4 w-4 text-[var(--verify-accent)]" />
-              Ensure each row has one email address.
-            </div>
-            <div className="flex items-start gap-3 rounded-xl border border-[var(--verify-border)] bg-white/70 px-3 py-3">
-              <CheckCircle2 className="mt-0.5 h-4 w-4 text-[var(--verify-accent)]" />
-              Label the email column to speed up mapping.
-            </div>
-            <div className="flex items-start gap-3 rounded-xl border border-[var(--verify-border)] bg-white/70 px-3 py-3">
-              <CheckCircle2 className="mt-0.5 h-4 w-4 text-[var(--verify-accent)]" />
-              Keep files under your plan upload limit.
-            </div>
-          </div>
-        </div>
+        {showSummary ? summaryPanel : preflightPanel}
       </div>
     </SectionCard>
   );

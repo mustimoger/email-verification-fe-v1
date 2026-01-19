@@ -189,7 +189,11 @@ What was done and why:
 - What: Show the upload summary chart inside the pre-flight checklist card after a successful file upload.
 - How: Convert the right-hand pre-flight card into a two-state panel (pre-flight vs summary) so the chart occupies the same surface once results exist.
 - Why: Keeps the user’s context focused on one area and mirrors the current `/verify` flow without cluttering the page.
-Status: Pending — requires confirmation on summary preview behavior while the page remains UI-only.
+Status: Completed — added a two-state panel for pre-flight vs upload summary while keeping summary hidden until wiring.
+What was done and why:
+- Converted the right-hand card in the bulk upload section into a two-state panel with a future-ready summary layout.
+- Included a refresh action inside the summary state to match the existing `/verify` upload workflow.
+- Kept the summary state disabled by default (UI-only) per instruction; it will render once wiring supplies real upload results.
 
 ### D4c: `/verify-v2` responsive QA
 - What: Ensure the new `/verify-v2` layout is readable and touch-friendly on mobile.
