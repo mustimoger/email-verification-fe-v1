@@ -1,17 +1,24 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { DragEvent } from "react";
 
 import { useAuth } from "../components/auth-provider";
 import { DashboardShell } from "../components/dashboard-shell";
-import { apiClient, ApiError, type LimitsResponse, type TaskEmailJob } from "../lib/api-client";
+import { apiClient, ApiError, type LimitsResponse, type TaskDetailResponse, type TaskEmailJob } from "../lib/api-client";
+import { buildColumnOptions, FileColumnError, readFileColumnInfo, type FileColumnInfo } from "../verify/file-columns";
 import {
+  buildTaskUploadsSummary,
   buildManualExportCsv,
   buildManualResultsFromJobs,
+  buildUploadSummary,
+  createUploadLinks,
+  mapUploadResultsToLinks,
   mapVerifyFallbackResults,
   normalizeEmails,
   resolveApiErrorMessage,
   shouldHydrateManualState,
+  type UploadSummary,
   type VerificationResult,
 } from "../verify/utils";
 import styles from "./verify-v2.module.css";
@@ -43,14 +50,27 @@ export default function VerifyV2Client() {
   const [results, setResults] = useState<VerificationResult[]>([]);
   const [manualTaskId, setManualTaskId] = useState<string | null>(null);
   const [errors, setErrors] = useState<string | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
+  const [fileNotice, setFileNotice] = useState<string | null>(null);
   const [limits, setLimits] = useState<LimitsResponse | null>(null);
   const [limitsError, setLimitsError] = useState<string | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
+  const [fileColumns, setFileColumns] = useState<Record<string, FileColumnInfo>>({});
+  const [uploadSummary, setUploadSummary] = useState<UploadSummary | null>(null);
+  const [flowStage, setFlowStage] = useState<"idle" | "popup1" | "popup2" | "summary">("idle");
+  const [columnMapping, setColumnMapping] = useState<Record<string, string>>({});
+  const [firstRowHasLabels, setFirstRowHasLabels] = useState<boolean>(true);
+  const [removeDuplicates] = useState<boolean>(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [latestUploadError, setLatestUploadError] = useState<string | null>(null);
+  const [latestUploadRefreshing, setLatestUploadRefreshing] = useState(false);
   const [manualRefreshing, setManualRefreshing] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const manualStateHydratedRef = useRef(false);
+  const parseRef = useRef(0);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     setIsLoaded(true);
@@ -228,6 +248,27 @@ export default function VerifyV2Client() {
     }
   };
 
+  const fetchTaskDetailWithRetries = async (taskId: string) => {
+    for (let attempt = 1; attempt <= TASK_POLL_ATTEMPTS; attempt += 1) {
+      try {
+        const detail = await apiClient.getTask(taskId);
+        return detail;
+      } catch (err: unknown) {
+        if (err instanceof ApiError && err.status === 402) {
+          const message = resolveApiErrorMessage(err, "verify.task_detail_fetch");
+          console.warn("verify.task_detail_insufficient_credits", { taskId, attempt, error: message });
+          throw err;
+        }
+        const message = resolveApiErrorMessage(err, "verify.task_detail_fetch");
+        console.error("verify.task_detail_fetch_failed", { taskId, attempt, error: message });
+      }
+      if (attempt < TASK_POLL_ATTEMPTS) {
+        await wait(TASK_POLL_INTERVAL_MS);
+      }
+    }
+    return null;
+  };
+
   const handleExportDownload = async () => {
     if (exporting) return;
     setExportError(null);
@@ -266,6 +307,239 @@ export default function VerifyV2Client() {
       setExportError(message);
     } finally {
       setExporting(false);
+    }
+  };
+
+  const handleRemoveFile = (fileName: string) => {
+    const nextFiles = files.filter((file) => file.name !== fileName);
+    setFiles(nextFiles);
+    const nextSummary = nextFiles.length ? buildUploadSummary(nextFiles, createUploadLinks(nextFiles), new Map()) : null;
+    setUploadSummary(nextSummary);
+    setColumnMapping((prev) => {
+      if (nextFiles.length === 0) return {};
+      const next = { ...prev };
+      delete next[fileName];
+      return next;
+    });
+    setFileColumns((prev) => {
+      if (nextFiles.length === 0) return {};
+      const next = { ...prev };
+      delete next[fileName];
+      return next;
+    });
+    if (nextFiles.length === 0) setFlowStage("idle");
+  };
+
+  const handleBrowseFiles = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFilesSelected = async (fileList: FileList | null) => {
+    setFileNotice(null);
+    if (!fileList || fileList.length === 0) {
+      setFileError("No files selected.");
+      return;
+    }
+    if (!limits) {
+      setFileError(limitsError ?? "Unable to load upload limits. Please refresh.");
+      return;
+    }
+    const maxMb = Number(limits.upload_max_mb);
+    if (!Number.isFinite(maxMb) || maxMb <= 0) {
+      setFileError("Upload limits are unavailable. Please refresh.");
+      return;
+    }
+    const incoming = Array.from(fileList);
+    const fileNames = incoming.map((file) => file.name);
+    if (new Set(fileNames).size !== fileNames.length) {
+      setFileError("Duplicate file names detected. Please rename files before uploading.");
+      return;
+    }
+    const maxBytes = maxMb * 1024 * 1024;
+    const tooLarge = incoming.find((file) => file.size > maxBytes);
+    if (tooLarge) {
+      setFileError(`${tooLarge.name} exceeds the ${maxMb} MB limit.`);
+      return;
+    }
+    const parseId = parseRef.current + 1;
+    parseRef.current = parseId;
+    setFileError(null);
+    try {
+      const results = await Promise.all(incoming.map((file) => readFileColumnInfo(file)));
+      if (parseRef.current !== parseId) return;
+      const nextColumns = results.reduce<Record<string, FileColumnInfo>>((acc, info) => {
+        acc[info.fileName] = info;
+        return acc;
+      }, {});
+      setFileColumns(nextColumns);
+      setFiles(incoming);
+      const initialLinks = createUploadLinks(incoming);
+      const summary = buildUploadSummary(incoming, initialLinks, new Map());
+      setUploadSummary(summary);
+      setFlowStage("popup1");
+      setColumnMapping(Object.fromEntries(summary.files.map((file) => [file.fileName, ""])));
+      console.info("verify.file_columns.loaded", {
+        files: results.map((info) => ({ name: info.fileName, columns: info.columnCount })),
+      });
+      console.info("[verify/upload] files selected", {
+        count: incoming.length,
+        names: incoming.map((f) => f.name),
+        totalEmails: summary.totalEmails,
+      });
+    } catch (err: unknown) {
+      if (parseRef.current !== parseId) return;
+      const message =
+        err instanceof FileColumnError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : "Unable to read file columns.";
+      console.error("verify.file_columns.failed", {
+        error: message,
+        details: err instanceof FileColumnError ? err.details : undefined,
+      });
+      setFileError(message);
+      setFileNotice(null);
+      setFiles([]);
+      setFileColumns({});
+      setUploadSummary(null);
+      setFlowStage("idle");
+      setColumnMapping({});
+    }
+  };
+
+  const handleDrop = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    void handleFilesSelected(event.dataTransfer.files);
+  };
+
+  const returnToIdle = () => {
+    setFlowStage("idle");
+  };
+
+  const returnToFileList = () => {
+    if (!uploadSummary) return;
+    setFlowStage("popup1");
+  };
+
+  const proceedToMapping = () => {
+    if (!uploadSummary) return;
+    setFlowStage("popup2");
+  };
+
+  const proceedToSummary = async () => {
+    if (!uploadSummary) return;
+    setIsSubmitting(true);
+    setFileNotice(null);
+    try {
+      if (files.length === 0) {
+        setFileError("No file to upload.");
+        return;
+      }
+      const missingColumns = files.filter((file) => !columnMapping[file.name]);
+      if (missingColumns.length > 0) {
+        setFileError("Select the email column for every file before proceeding.");
+        return;
+      }
+      const invalidColumns = files.filter((file) => {
+        const mapping = columnMapping[file.name];
+        const info = fileColumns[file.name];
+        if (!mapping || !info) return true;
+        return !buildColumnOptions(info, firstRowHasLabels).some((option) => option.value === mapping);
+      });
+      if (invalidColumns.length > 0) {
+        setFileError("Email column selections are invalid. Please reselect and try again.");
+        return;
+      }
+      setFileError(null);
+      const startedAt = new Date().toISOString();
+      const metadata = files.map((file) => ({
+        file_name: file.name,
+        email_column: columnMapping[file.name],
+        first_row_has_labels: firstRowHasLabels,
+        remove_duplicates: removeDuplicates,
+      }));
+      const uploadResults = await apiClient.uploadTaskFiles(files, metadata);
+      const { links, unmatched, orphaned } = mapUploadResultsToLinks(files, uploadResults);
+      const detailsByTaskId = new Map<string, TaskDetailResponse>();
+      await Promise.all(
+        links.map(async (link) => {
+          if (!link.taskId) return;
+          try {
+            const detail = await fetchTaskDetailWithRetries(link.taskId);
+            if (detail) {
+              detailsByTaskId.set(link.taskId, detail);
+            }
+          } catch (err: unknown) {
+            const message = resolveApiErrorMessage(err, "verify.upload.detail");
+            if (err instanceof ApiError && err.status === 402) {
+              setFileError(message);
+              return;
+            }
+            console.error("verify.upload.detail_failed", { task_id: link.taskId, error: message });
+          }
+        }),
+      );
+      const summary = buildUploadSummary(files, links, detailsByTaskId, startedAt);
+      setFiles([]);
+      setFileColumns({});
+      setUploadSummary(summary);
+      setFlowStage("summary");
+      setColumnMapping({});
+      setLatestUploadError(null);
+      setToast("Upload submitted");
+      setFileNotice(null);
+      const pendingFiles = summary.files.filter((file) => file.taskId && file.status === "pending");
+      if (unmatched > 0) {
+        setFileError("Some uploads did not return a task id. Check History for updates.");
+      } else if (pendingFiles.length > 0) {
+        setFileNotice("Upload submitted. Processing is underway; check Overview or History for updates.");
+      }
+      if (unmatched > 0 || orphaned.length > 0) {
+        console.warn("verify.upload_mapping_incomplete", {
+          unmatched,
+          orphaned_count: orphaned.length,
+          orphaned_filenames: orphaned.map((entry) => entry.filename ?? "unknown"),
+        });
+      }
+      console.info("[verify/upload] uploaded", {
+        upload_ids: uploadResults.map((r) => r.upload_id),
+        files: files.map((f) => f.name),
+        task_ids: links.map((link) => link.taskId).filter(Boolean),
+        unmatched,
+      });
+    } catch (err: unknown) {
+      const message = resolveApiErrorMessage(err, "verify.upload.submit");
+      setFileError(message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const refreshLatestUploads = async () => {
+    if (!uploadSummary) return;
+    setLatestUploadError(null);
+    setLatestUploadRefreshing(true);
+    try {
+      const taskResponse = await apiClient.listTasks();
+      const tasks = taskResponse.tasks ?? [];
+      if (tasks.length === 0) {
+        setLatestUploadError("No recent uploads found. Upload a file to get started.");
+        return;
+      }
+      const summary = buildTaskUploadsSummary(tasks);
+      setUploadSummary(summary);
+      setFlowStage("summary");
+      console.info("verify.latest_tasks.refreshed", {
+        count: tasks.length,
+        latest_task_id: tasks[0]?.id,
+      });
+    } catch (err: unknown) {
+      const message = resolveApiErrorMessage(err, "verify.latest_tasks.refresh");
+      console.error("verify.latest_tasks.refresh_failed", { error: message });
+      setLatestUploadError(message);
+    } finally {
+      setLatestUploadRefreshing(false);
     }
   };
 
@@ -437,6 +711,53 @@ export default function VerifyV2Client() {
   const exportLabel = exporting ? "Downloading..." : "Export results";
   const statusLabel = !hasResults ? "Waiting" : statusSummary.hasPending ? "In progress" : "Completed";
 
+  const showSummaryState = flowStage === "summary" && uploadSummary;
+
+  const summaryStatus = useMemo(() => {
+    if (!uploadSummary || uploadSummary.files.length === 0) return null;
+    const allComplete = uploadSummary.files.every((file) => file.status === "download");
+    return allComplete ? "completed" : "processing";
+  }, [uploadSummary]);
+  const summaryStatusLabel = summaryStatus === "completed" ? "Completed" : "Processing";
+  const summaryStatusClass =
+    summaryStatus === "completed"
+      ? "bg-emerald-100 text-emerald-700"
+      : "bg-amber-100 text-amber-700";
+
+  const summaryBars = useMemo(() => {
+    const values = {
+      valid: uploadSummary?.aggregates.valid ?? null,
+      invalid: uploadSummary?.aggregates.invalid ?? null,
+      catchAll: uploadSummary?.aggregates.catchAll ?? null,
+      disposable: null,
+    };
+    const bars = [
+      { key: "valid", label: "Valid", value: values.valid, color: "var(--chart-valid)" },
+      { key: "invalid", label: "Invalid", value: values.invalid, color: "var(--chart-invalid)" },
+      { key: "catchAll", label: "Catch-all", value: values.catchAll, color: "var(--chart-catchall)" },
+      { key: "disposable", label: "Disposable", value: values.disposable, color: "var(--chart-processing)" },
+    ];
+    return bars.map((bar) => ({
+      ...bar,
+      numericValue: typeof bar.value === "number" ? bar.value : 0,
+    }));
+  }, [uploadSummary]);
+
+  useEffect(() => {
+    if (!uploadSummary) return;
+    const missing = {
+      valid: uploadSummary.aggregates.valid === null,
+      invalid: uploadSummary.aggregates.invalid === null,
+      catchAll: uploadSummary.aggregates.catchAll === null,
+    };
+    if (Object.values(missing).some(Boolean)) {
+      console.info("verify.upload.summary_counts_unavailable", {
+        missing,
+        task_ids: uploadSummary.files.map((file) => file.taskId).filter(Boolean),
+      });
+    }
+  }, [uploadSummary]);
+
   return (
     <DashboardShell>
       <section className={`${styles.root} flex flex-col gap-8`}>
@@ -467,7 +788,38 @@ export default function VerifyV2Client() {
             exportError={exportError}
           />
         </div>
-        <UploadSection transitionClass={transitionClass} />
+        <UploadSection
+          transitionClass={transitionClass}
+          flowStage={flowStage}
+          uploadSummary={uploadSummary}
+          fileInputRef={fileInputRef}
+          fileError={fileError}
+          fileNotice={fileNotice}
+          fileColumns={fileColumns}
+          columnMapping={columnMapping}
+          firstRowHasLabels={firstRowHasLabels}
+          removeDuplicates={removeDuplicates}
+          isSubmitting={isSubmitting}
+          latestUploadError={latestUploadError}
+          latestUploadRefreshing={latestUploadRefreshing}
+          summaryBars={summaryBars}
+          summaryStatusClass={summaryStatusClass}
+          summaryStatusLabel={summaryStatusLabel}
+          showSummary={Boolean(showSummaryState)}
+          onBrowseFiles={handleBrowseFiles}
+          onFilesSelected={(fileList) => void handleFilesSelected(fileList)}
+          onDrop={handleDrop}
+          onProceedToMapping={proceedToMapping}
+          onProceedToSummary={() => void proceedToSummary()}
+          onReturnToIdle={returnToIdle}
+          onReturnToFileList={returnToFileList}
+          onRemoveFile={handleRemoveFile}
+          onUpdateColumnMapping={(fileName, value) =>
+            setColumnMapping((prev) => ({ ...prev, [fileName]: value }))
+          }
+          onToggleFirstRow={setFirstRowHasLabels}
+          onRefreshSummary={() => void refreshLatestUploads()}
+        />
         <WorkflowSection transitionClass={transitionClass} />
       </section>
       {toast ? (

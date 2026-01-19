@@ -10,6 +10,9 @@
 
 ## Auth
 Most `/api/v1/*` endpoints use composite auth (API key or Supabase JWT). The only endpoint with custom auth is `/api/v1/external/verify`.
+Credit transaction endpoints (`/api/v1/credits/*`) require a bearer token (API key or Supabase JWT) via the `Authorization` header:
+- **Non-admin users:** Must not send `user_id`; the API resolves the user from the authenticated token. `user_id` on credit endpoints is rejected for non-admins.
+- **Admin users:** Can call all credit endpoints, including `POST /api/v1/credits/grant` and `POST /api/v1/credits/deduct`. If the admin token is not tied to a user UUID, `user_id` is required; otherwise it is optional for targeting another user.
 
 ### Composite auth (default for `/api/v1/*`)
 - **Order:** API key is checked first. If invalid and Supabase auth is enabled, JWT is checked next.

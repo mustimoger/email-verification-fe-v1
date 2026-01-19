@@ -1,16 +1,23 @@
+"use client";
+
 import Link from "next/link";
-import type { ReactNode } from "react";
+import type { DragEvent, ReactNode, RefObject } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   AlertCircle,
   CheckCircle2,
   FileText,
+  Info,
   ListChecks,
   ShieldCheck,
   Sparkles,
   UploadCloud,
+  X,
 } from "lucide-react";
+import { Bar, BarChart } from "recharts";
 
-import { formatNumber, type VerificationResult } from "../verify/utils";
+import { buildColumnOptions, type FileColumnInfo } from "../verify/file-columns";
+import { formatNumber, type UploadSummary, type VerificationResult } from "../verify/utils";
 
 const HERO_HIGHLIGHTS = [
   "Manual or bulk verification",
@@ -108,6 +115,91 @@ type ResultsCardProps = {
   exportError?: string | null;
   transitionClass?: string;
 };
+
+type UploadFlowStage = "idle" | "popup1" | "popup2" | "summary";
+
+type UploadSummaryBar = {
+  key: string;
+  label: string;
+  value: number | null;
+  color: string;
+  numericValue: number;
+};
+
+type UploadSectionProps = {
+  transitionClass?: string;
+  flowStage: UploadFlowStage;
+  uploadSummary: UploadSummary | null;
+  fileInputRef: RefObject<HTMLInputElement>;
+  fileError?: string | null;
+  fileNotice?: string | null;
+  fileColumns: Record<string, FileColumnInfo>;
+  columnMapping: Record<string, string>;
+  firstRowHasLabels: boolean;
+  removeDuplicates: boolean;
+  isSubmitting: boolean;
+  latestUploadError?: string | null;
+  latestUploadRefreshing: boolean;
+  summaryBars: UploadSummaryBar[];
+  summaryStatusLabel: string;
+  summaryStatusClass: string;
+  showSummary: boolean;
+  onBrowseFiles: () => void;
+  onFilesSelected: (fileList: FileList | null) => void;
+  onDrop: (event: DragEvent<HTMLDivElement>) => void;
+  onProceedToMapping: () => void;
+  onProceedToSummary: () => void;
+  onReturnToIdle: () => void;
+  onReturnToFileList: () => void;
+  onRemoveFile: (fileName: string) => void;
+  onUpdateColumnMapping: (fileName: string, value: string) => void;
+  onToggleFirstRow: (value: boolean) => void;
+  onRefreshSummary: () => void;
+};
+
+function useElementSize<T extends HTMLElement>() {
+  const ref = useRef<T | null>(null);
+  const [size, setSize] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    if (!ref.current) return;
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) return;
+      const { width, height } = entry.contentRect;
+      setSize({ width, height });
+    });
+    observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, []);
+
+  return { ref, size };
+}
+
+function SummaryBarChart({ bar }: { bar: UploadSummaryBar }) {
+  const { ref, size } = useElementSize<HTMLDivElement>();
+  const chartWidth = Math.max(0, size.width);
+  const chartHeight = Math.max(0, size.height);
+  const canRenderChart = chartWidth > 0 && chartHeight > 0;
+
+  return (
+    <div className="flex flex-col items-center gap-2">
+      <div ref={ref} className="h-32 w-full rounded-full bg-slate-100 px-1 py-1">
+        {canRenderChart ? (
+          <BarChart data={[{ value: bar.numericValue }]} width={chartWidth} height={chartHeight}>
+            <Bar dataKey="value" fill={bar.color} radius={[999, 999, 999, 999]} />
+          </BarChart>
+        ) : (
+          <div className="flex h-full items-center justify-center text-[10px] font-semibold text-[var(--text-muted)]">
+            Loading chart...
+          </div>
+        )}
+      </div>
+      <span className="text-xs font-bold text-[var(--text-secondary)]">{bar.label}</span>
+      <span className="text-xs font-semibold text-[var(--text-muted)]">{formatNumber(bar.value)}</span>
+    </div>
+  );
+}
 
 function SectionCard({
   children,
@@ -351,41 +443,193 @@ export function ResultsCard({
 
 export function UploadSection({
   transitionClass,
-  showSummary = false,
-}: {
-  transitionClass?: string;
-  showSummary?: boolean;
-}) {
-  const summaryPanel = (
+  flowStage,
+  uploadSummary,
+  fileInputRef,
+  fileError,
+  fileNotice,
+  fileColumns,
+  columnMapping,
+  firstRowHasLabels,
+  removeDuplicates,
+  isSubmitting,
+  latestUploadError,
+  latestUploadRefreshing,
+  summaryBars,
+  summaryStatusLabel,
+  summaryStatusClass,
+  showSummary,
+  onBrowseFiles,
+  onFilesSelected,
+  onDrop,
+  onProceedToMapping,
+  onProceedToSummary,
+  onReturnToIdle,
+  onReturnToFileList,
+  onRemoveFile,
+  onUpdateColumnMapping,
+  onToggleFirstRow,
+  onRefreshSummary,
+}: UploadSectionProps) {
+  const totalEmailsLabel = formatNumber(uploadSummary?.totalEmails);
+  const showFilesPanel = flowStage === "popup1" && uploadSummary;
+  const showMappingPanel = flowStage === "popup2" && uploadSummary;
+  const showSummaryPanel = showSummary && uploadSummary;
+
+  const summaryPanel = showSummaryPanel ? (
     <div className="rounded-2xl border border-[var(--verify-border)] bg-[var(--verify-card-strong)] p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h3 className="text-base font-semibold text-[var(--text-primary)]">Upload summary</h3>
-          <p className="text-xs text-[var(--text-muted)]">This panel activates when uploads complete.</p>
+          <p className="text-xs text-[var(--text-muted)]">{uploadSummary.uploadDate}</p>
         </div>
         <button
           type="button"
-          className="rounded-xl border border-[var(--verify-border)] bg-white/70 px-3 py-2 text-xs font-semibold text-[var(--text-secondary)]"
+          onClick={onRefreshSummary}
+          disabled={latestUploadRefreshing}
+          className="rounded-xl border border-[var(--verify-border)] bg-white/70 px-3 py-2 text-xs font-semibold text-[var(--text-secondary)] disabled:cursor-not-allowed disabled:opacity-70"
         >
-          Refresh status
+          {latestUploadRefreshing ? "Refreshing..." : "Refresh status"}
         </button>
       </div>
-      <div className="mt-4 rounded-2xl border border-dashed border-[var(--verify-border)] bg-white/70 px-4 py-10 text-center text-xs text-[var(--text-muted)]">
-        Summary charts appear here after a successful upload.
-      </div>
-      <div className="mt-4 flex flex-wrap items-center gap-2 text-xs font-semibold text-[var(--text-muted)]">
-        <span className="rounded-full border border-[var(--verify-border)] bg-white/70 px-3 py-1">
-          Status breakdown
-        </span>
-        <span className="rounded-full border border-[var(--verify-border)] bg-white/70 px-3 py-1">
-          Completion time
-        </span>
-        <span className="rounded-full border border-[var(--verify-border)] bg-white/70 px-3 py-1">
-          Export ready
-        </span>
+      {latestUploadError ? (
+        <div
+          className="mt-4 flex items-center gap-2 rounded-lg border border-rose-200/70 bg-rose-50/80 px-3 py-2 text-xs font-semibold text-rose-700"
+          role="alert"
+        >
+          <AlertCircle className="h-4 w-4" />
+          {latestUploadError}
+        </div>
+      ) : null}
+      <div className="mt-4 rounded-2xl border border-[var(--verify-border)] bg-white/70 p-4">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+          {summaryBars.map((bar) => (
+            <SummaryBarChart key={bar.key} bar={bar} />
+          ))}
+        </div>
+        <div className="mt-4 flex flex-wrap items-center gap-2 text-xs font-semibold text-[var(--text-muted)]">
+          <span className="rounded-full border border-[var(--verify-border)] bg-white/70 px-3 py-1">
+            Total: {totalEmailsLabel}
+          </span>
+          <span className={`rounded-full px-3 py-1 text-xs font-bold ${summaryStatusClass}`}>
+            {summaryStatusLabel}
+          </span>
+        </div>
       </div>
     </div>
-  );
+  ) : null;
+
+  const filesPanel = showFilesPanel ? (
+    <div className="rounded-2xl border border-[var(--verify-border)] bg-[var(--verify-card-strong)] p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h3 className="text-base font-semibold text-[var(--text-primary)]">Verify emails</h3>
+          <p className="text-xs text-[var(--text-muted)]">{totalEmailsLabel} emails detected</p>
+        </div>
+      </div>
+      <div className="mt-4 flex flex-wrap gap-2">
+        {uploadSummary.files.map((file) => (
+          <span
+            key={file.fileName}
+            className="inline-flex items-center gap-2 rounded-full border border-[var(--verify-border)] bg-white/70 px-3 py-1 text-xs font-semibold text-[var(--text-secondary)]"
+          >
+            {file.fileName}
+            <button
+              type="button"
+              className="text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
+              onClick={() => onRemoveFile(file.fileName)}
+              aria-label={`Remove ${file.fileName}`}
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </span>
+        ))}
+      </div>
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+        <button
+          type="button"
+          onClick={onReturnToIdle}
+          className="rounded-xl border border-[var(--verify-border)] bg-white/70 px-4 py-2 text-xs font-semibold text-[var(--text-secondary)]"
+        >
+          Go back
+        </button>
+        <button
+          type="button"
+          onClick={onProceedToMapping}
+          disabled={isSubmitting}
+          className="rounded-xl bg-[linear-gradient(135deg,var(--verify-accent)_0%,var(--verify-accent-strong)_100%)] px-4 py-2 text-xs font-semibold text-[var(--verify-cta-ink)] shadow-[0_16px_32px_rgba(249,168,37,0.3)] disabled:cursor-not-allowed disabled:opacity-70"
+        >
+          Verify emails
+        </button>
+      </div>
+    </div>
+  ) : null;
+
+  const mappingPanel = showMappingPanel ? (
+    <div className="rounded-2xl border border-[var(--verify-border)] bg-[var(--verify-card-strong)] p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h3 className="text-base font-semibold text-[var(--text-primary)]">Assign email column</h3>
+          <p className="text-xs text-[var(--text-muted)]">{totalEmailsLabel} emails detected</p>
+        </div>
+      </div>
+      <div className="mt-4 space-y-2">
+        {uploadSummary.files.map((file) => (
+          <div
+            key={file.fileName}
+            className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--verify-border)] bg-white/70 px-3 py-2"
+          >
+            <span className="text-xs font-semibold text-[var(--text-secondary)]">{file.fileName}</span>
+            <select
+              value={columnMapping[file.fileName] ?? ""}
+              onChange={(event) => onUpdateColumnMapping(file.fileName, event.target.value)}
+              className="rounded-lg border border-[var(--verify-border)] bg-white/80 px-3 py-1 text-xs font-semibold text-[var(--text-secondary)] focus:border-[var(--verify-accent)] focus:outline-none"
+            >
+              <option value="">Select email column</option>
+              {(fileColumns[file.fileName] ? buildColumnOptions(fileColumns[file.fileName], firstRowHasLabels) : []).map(
+                (option) => (
+                  <option key={`${file.fileName}-${option.value}`} value={option.value}>
+                    {option.label}
+                  </option>
+                ),
+              )}
+            </select>
+          </div>
+        ))}
+      </div>
+      <div className="mt-4 grid gap-3 text-xs font-semibold text-[var(--text-secondary)] sm:grid-cols-2">
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={firstRowHasLabels}
+            onChange={(event) => onToggleFirstRow(event.target.checked)}
+          />
+          First row has column names
+        </label>
+        <label className="flex items-center gap-2">
+          <input type="checkbox" checked={removeDuplicates} disabled aria-disabled="true" className="cursor-not-allowed opacity-70" />
+          Remove duplicate emails
+        </label>
+      </div>
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+        <button
+          type="button"
+          onClick={onReturnToFileList}
+          className="rounded-xl border border-[var(--verify-border)] bg-white/70 px-4 py-2 text-xs font-semibold text-[var(--text-secondary)]"
+        >
+          Go back
+        </button>
+        <button
+          type="button"
+          onClick={onProceedToSummary}
+          disabled={isSubmitting}
+          className="rounded-xl bg-[linear-gradient(135deg,var(--verify-accent)_0%,var(--verify-accent-strong)_100%)] px-4 py-2 text-xs font-semibold text-[var(--verify-cta-ink)] shadow-[0_16px_32px_rgba(249,168,37,0.3)] disabled:cursor-not-allowed disabled:opacity-70"
+        >
+          {isSubmitting ? "Submitting..." : "Proceed"}
+        </button>
+      </div>
+    </div>
+  ) : null;
 
   const preflightPanel = (
     <div className="rounded-2xl border border-[var(--verify-border)] bg-[var(--verify-card-strong)] p-5">
@@ -415,6 +659,8 @@ export function UploadSection({
     </div>
   );
 
+  const rightPanel = showSummaryPanel ? summaryPanel : showMappingPanel ? mappingPanel : showFilesPanel ? filesPanel : preflightPanel;
+
   return (
     <SectionCard transitionClass={transitionClass} delay="0.15s">
       <div className="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
@@ -423,7 +669,11 @@ export function UploadSection({
           <p className="mt-2 text-sm text-[var(--text-muted)]">
             Drop a CSV or spreadsheet to verify lists in minutes.
           </p>
-          <div className="mt-5 flex h-48 flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-[var(--verify-border)] bg-white/70 px-4 text-center">
+          <div
+            onDragOver={(event) => event.preventDefault()}
+            onDrop={onDrop}
+            className="mt-5 flex h-48 flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-[var(--verify-border)] bg-white/70 px-4 text-center"
+          >
             <UploadCloud className="h-8 w-8 text-[var(--text-muted)]" />
             <div>
               <p className="text-sm font-semibold text-[var(--text-secondary)]">Drag files here</p>
@@ -431,11 +681,40 @@ export function UploadSection({
             </div>
             <button
               type="button"
+              onClick={onBrowseFiles}
               className="rounded-xl border border-[var(--verify-border)] bg-white/70 px-4 py-2 text-xs font-semibold text-[var(--text-secondary)]"
             >
               Browse files
             </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv,.xlsx,.xls"
+              multiple
+              className="hidden"
+              onChange={(event) => onFilesSelected(event.target.files)}
+            />
           </div>
+          {fileError ? (
+            <div
+              className="mt-3 flex items-center gap-2 rounded-lg border border-rose-200/70 bg-rose-50/80 px-3 py-2 text-xs font-semibold text-rose-700"
+              role="alert"
+              aria-live="polite"
+            >
+              <AlertCircle className="h-4 w-4" />
+              {fileError}
+            </div>
+          ) : null}
+          {fileNotice && !fileError ? (
+            <div
+              className="mt-3 flex items-center gap-2 rounded-lg border border-sky-200/70 bg-sky-50/80 px-3 py-2 text-xs font-semibold text-sky-700"
+              role="status"
+              aria-live="polite"
+            >
+              <Info className="h-4 w-4" />
+              {fileNotice}
+            </div>
+          ) : null}
           <div className="mt-4 flex flex-wrap items-center gap-2 text-xs font-semibold text-[var(--text-muted)]">
             <span className="rounded-full border border-[var(--verify-border)] bg-white/70 px-3 py-1">
               Auto-detect headers
@@ -448,7 +727,7 @@ export function UploadSection({
             </span>
           </div>
         </div>
-        {showSummary ? summaryPanel : preflightPanel}
+        {rightPanel}
       </div>
     </SectionCard>
   );
