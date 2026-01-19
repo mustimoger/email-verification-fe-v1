@@ -109,10 +109,6 @@ export function OverviewHero({ transitionClass }: { transitionClass?: string }) 
       className={`relative overflow-hidden rounded-[28px] border border-[var(--overview-border)] bg-[var(--overview-card-strong)] px-6 py-10 shadow-[var(--overview-shadow-strong)] sm:px-10 ${transitionClass ?? ""}`}
       style={{ transition: "all 0.7s cubic-bezier(0.16, 1, 0.3, 1)" }}
     >
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute -left-24 -top-32 h-[320px] w-[320px] rounded-full bg-[radial-gradient(circle_at_center,_rgba(76,97,204,0.2)_0%,_transparent_70%)]" />
-        <div className="absolute -right-10 top-16 h-[220px] w-[220px] rounded-full bg-[radial-gradient(circle_at_center,_rgba(76,97,204,0.12)_0%,_transparent_70%)]" />
-      </div>
       <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
         <div className="max-w-2xl">
           <div className="inline-flex items-center gap-2 rounded-full border border-[var(--overview-border)] bg-[var(--overview-accent-soft)] px-4 py-2 text-xs font-semibold tracking-[0.2em] text-[var(--overview-accent)]">
@@ -132,7 +128,7 @@ export function OverviewHero({ transitionClass }: { transitionClass?: string }) 
           <div className="mt-6 flex flex-wrap gap-3">
             <Link
               href="/verify"
-              className="rounded-xl bg-[linear-gradient(135deg,var(--overview-accent)_0%,var(--overview-accent-strong)_100%)] px-6 py-3 text-sm font-semibold text-[var(--overview-cta-ink)] shadow-[0_16px_32px_rgba(76,97,204,0.25)]"
+              className="rounded-xl bg-[linear-gradient(135deg,var(--overview-accent)_0%,var(--overview-accent-strong)_100%)] px-6 py-3 text-sm font-semibold text-[var(--overview-cta-ink)] shadow-[0_16px_32px_rgba(249,168,37,0.3)]"
             >
               Start Verification
             </Link>
@@ -177,8 +173,8 @@ export function StatsGrid({
             key={stat.title}
             className="rounded-2xl border border-[var(--overview-border)] bg-[var(--overview-card)] p-5 shadow-[var(--overview-shadow)]"
           >
-            <div className="flex items-start justify-between gap-4">
-              <div>
+            <div className="flex items-start gap-4">
+              <div className="min-w-0 flex-1">
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">
                   {stat.title}
                 </p>
@@ -190,7 +186,7 @@ export function StatsGrid({
                   <p className="mt-2 text-xs font-semibold text-[var(--text-muted)]">Loading...</p>
                 ) : null}
               </div>
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--overview-accent-soft)] text-[var(--overview-accent)]">
+              <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-[var(--overview-accent-soft)] text-[var(--overview-accent)]">
                 <Icon className="h-6 w-6" />
               </div>
             </div>

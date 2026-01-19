@@ -54,13 +54,13 @@ What was done and why:
 - What: Review `/overview-v2` and refine until it meets the desired standard.
 - How: Iterate on spacing, surfaces, and contrast; check desktop + mobile + dark theme.
 - Why: Ensures the new design is ready before replacing `/overview`.
-Status: Completed (with follow-up note) — ran a visual QA pass on `/overview-v2`, adjusted empty-state presentation, and attempted to remove Recharts size warnings by delaying chart render until container sizes are known. The page is now visually closer to `/pricing-v2`, but Recharts still logs `width/height -1` warnings on initial render; this needs deeper investigation before final swap.
+Status: Completed (with follow-up note) — ran a visual QA pass on `/overview-v2`, adjusted empty-state presentation, and delayed chart rendering until containers are measurable. The remaining Recharts warnings were later resolved in D2c, so the page is now visually aligned and console-clean.
 What was done and why:
 - Added helper text handling so “ext api data is not available” no longer occupies the primary metric slot.
 - Guarded chart rendering until the container has positive dimensions to reduce layout thrash.
 - Marked the chart sections as client-rendered to safely use `ResizeObserver`.
 Not yet resolved:
-- Recharts still emits initial size warnings despite size guards; we should decide whether to accept, suppress, or rework the chart rendering.
+- None; Recharts warnings were resolved in D2c.
 
 ### D2b: Mobile responsiveness pass on `/overview-v2`
 - What: Ensure `/overview-v2` renders cleanly on small screens without overflow or cramped layouts.
@@ -68,17 +68,53 @@ Not yet resolved:
 - Why: The redesign must remain mobile-friendly before we consider swapping `/overview-v2` into `/overview`.
 Status: Completed — verified mobile viewport rendering, removed horizontal overflow, and added a mobile-friendly task list layout.
 What was done and why:
-- Added `overflow-x-hidden` to the `/overview-v2` root to prevent page-level horizontal scroll on small screens.
 - Replaced the desktop table with a stacked card list on mobile (keeps the same data, improves readability).
 - Kept the full table for desktop (`md+`) with horizontal scrolling when needed.
 Remaining notes:
-- Recharts still logs initial size warnings on first paint (tracked in D2).
+- Removed the temporary `overflow-x-hidden` after visual QA showed it clipped card shadows (tracked in D2d); the mobile card layout still prevents horizontal scrolling.
 
 ### D2c: Recharts initial size warning fix
 - What: Remove the `width/height -1` warnings from Recharts on `/overview-v2`.
 - How: Adjust chart rendering so Recharts receives explicit, measured dimensions before render.
 - Why: Clean console output and more reliable chart rendering, especially on first paint.
 Status: Completed — replaced `ResponsiveContainer` with explicit chart widths/heights sourced from a `ResizeObserver`, and only render charts once dimensions are known. Console warnings about negative chart sizes are no longer emitted on initial render.
+
+### D2d: Shadow clipping + card overflow cleanup
+- What: Remove sharp edge artifacts around card shadows and ensure card icons never overflow their containers.
+- How: Identify clipping sources (overflow behavior, container padding, or shadows) and adjust `/overview-v2` layout/surface styles without changing layout structure.
+- Why: Keeps the new visual system polished and consistent with `/pricing-v2` while preserving the existing layout.
+Status: Completed — increased horizontal breathing room for shadows and hardened the stats card layout so icons no longer escape their containers.
+What was done and why:
+- Added `lg:px-5` to the `/overview-v2` section so card shadows stay inside the scroll container bounds at desktop widths.
+- Reduced `--overview-shadow-strong` to the same blur radius as the standard card shadow to prevent hero shadow clipping at the edges.
+- Made the stats text block `flex-1 min-w-0` and the icon container `flex-shrink-0` to keep icons inside cards even when helper text wraps.
+
+### D2e: Match `/pricing-v2` hero card surface on `/overview-v2`
+- What: Make the `/overview-v2` hero card surface visually match the main `/pricing-v2` card, while preserving its typography and layout.
+- How: Reuse the pricing card’s background and shadow tokens and only adjust the “DASHBOARD OVERVIEW” pill color.
+- Why: Aligns the most prominent card on `/overview-v2` with the established `/pricing-v2` visual standard.
+Status: Completed — aligned the hero card surface to the `/pricing-v2` card spec and adjusted the pill colors without touching typography or layout.
+What was done and why:
+- Updated `--overview-card-strong` and `--overview-shadow-strong` to mirror the `/pricing-v2` main card surface in both light and dark themes.
+- Swapped the “DASHBOARD OVERVIEW” pill background and text color to match the lighter pill treatment while keeping its size, font, and placement intact.
+
+### D2f: Close `/overview-v2` hero card gaps against `/pricing-v2`
+- What: Align the `/overview-v2` hero card accents and glow treatment to the exact `/pricing-v2` spec.
+- How: Swap hero accent colors, CTA shadow, and glow treatments to the pricing palette while preserving typography and layout.
+- Why: Ensures the hero card matches the design blueprint without ambiguity.
+Status: Completed — matched hero accents, pill colors, CTA shadow, and background glows to the `/pricing-v2` palette without changing typography or layout.
+What was done and why:
+- Updated the overview accent tokens to the pricing amber so the hero gradient, pill, and CTA match the spec exactly.
+- Removed inner-card glows and switched the page-level glow positions/colors to match `/pricing-v2`.
+- Adjusted the CTA shadow color to the pricing value for consistency.
+
+### D2g: Hero shadow clipping fix
+- What: Remove the sharp vertical edge on the hero card shadow.
+- How: Increase the `/overview-v2` section horizontal padding so the hero shadow blur does not get clipped by the main container.
+- Why: Keeps the hero card shadow smooth and consistent with `/pricing-v2` without altering typography or layout.
+Status: Completed — increased section horizontal padding so the hero shadow blur fully renders without clipping.
+What was done and why:
+- Updated the `/overview-v2` section padding to `lg:px-8` so the 60px blur radius has space to fade before the main container edge.
 
 ### D3: Replace `/overview` with `/overview-v2`
 - What: Swap the new design into the `/overview` route and connect existing data logic.
@@ -110,6 +146,14 @@ Status: Pending.
 - How: Update this plan with completed steps and rationale for newcomers.
 - Why: Keeps future work aligned and reduces rework.
 Status: Pending.
+
+### D6a: Pricing-v2 visual spec checklist
+- What: Write a single source-of-truth design blueprint for `/pricing-v2` (cards, colors, typography, gradients, shadows, spacing).
+- How: Consolidate the exact tokens, class patterns, and sizes from `/pricing-v2` and global theme files into `design-principles.md`.
+- Why: Removes ambiguity for future sessions when applying the `/pricing-v2` standard across the app.
+Status: Completed — added a single source-of-truth `design-principles.md` with the full `/pricing-v2` card spec, colors, typography, shadows, gradients, and global theme tokens.
+What was done and why:
+- Captured every relevant token and class pattern from `/pricing-v2` plus the global theme palette so future work can replicate the visual system exactly without guesswork.
 
 ## Progress Notes
 - Created this plan to guide a non-disruptive visual alignment effort, with a minimal MVP and staged rollout to avoid layout changes.

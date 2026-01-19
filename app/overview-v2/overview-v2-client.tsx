@@ -309,12 +309,7 @@ export default function OverviewV2Client() {
   return (
     <DashboardShell>
       <RequireAuth>
-        <section className={`${styles.root} relative flex flex-col gap-8 pb-8`}>
-          <div className="pointer-events-none absolute inset-0 overflow-hidden">
-            <div className="absolute -top-48 right-1/3 h-[420px] w-[720px] rounded-full bg-[radial-gradient(circle_at_center,_rgba(76,97,204,0.18)_0%,_transparent_70%)]" />
-            <div className="absolute left-[-120px] top-[120px] h-[320px] w-[320px] rounded-full bg-[radial-gradient(circle_at_center,_rgba(76,97,204,0.12)_0%,_transparent_70%)]" />
-          </div>
-
+        <section className={`${styles.root} relative flex flex-col gap-8 pb-8 lg:px-8`}>
           <OverviewHero transitionClass={transitionClass} />
 
           <StatsGrid stats={stats} loading={!anyData} transitionClass={transitionClass} />
