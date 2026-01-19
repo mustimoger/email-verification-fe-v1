@@ -240,11 +240,35 @@ Status: Completed — validation state drives disabled checkout and shows error 
 Status: In progress — utility tests added in `tests/pricing-v2-utils.test.ts`, UI smoke tests still pending.
 
 ## Testing & Validation
+### Step T0: Verify v2 pricing config in Supabase
+- What: Confirm `billing_pricing_config_v2.free_trial_credits` and `metadata.display_prices.payg` are present and correct.
+- How: Query Supabase `billing_pricing_config_v2` active row; update if missing to avoid UI/bonus mismatches.
+- Why: UI volume table and trial bonus rely on these values; missing data would create silent pricing drift.
+Status: Completed — backfilled `metadata.display_prices` from `metadata.source_config.display_prices` in the active v2 config; volume pricing table can now render without the missing-data warning.
+
 ### Step T1: UI smoke test `/pricing-v2`
 - What: Verify pricing UI renders, slider updates, and checkout opens with v2 transaction.
 - How: Use Playwright with a valid Supabase session; confirm no console errors.
 - Why: Ensures end-to-end v2 flow works in the browser.
-Status: Blocked — current Supabase refresh token rejected (`refresh_token_not_found`); need valid session or credentials.
+Status: Completed — page renders with valid session, slider/quote calls succeed, volume pricing table renders, and clicking “Buy Credits” opens Paddle checkout (sandbox iframe) with a v2 transaction created. Rounding adjustment is visible in the order summary (subtotal $7.40, rounding discount -$0.40, due $7.00). Console shows expected signup bonus 409 (already claimed) and trial bonus duplicate; Paddle logs report-only CSP/NotSameOrigin warnings during iframe load.
+
+### Step T2: Paddle webhook e2e simulation (sandbox)
+- What: Send simulated Paddle events to the ngrok webhook URL and verify webhook processing end-to-end.
+- How: Use Paddle MCP to confirm the `ngrok2-all` notification setting is active, then run `backend/scripts/paddle_simulation_e2e.py` per `backend/scripts/README-e2e-paddle-test.md`.
+- Why: Validates credit grants and webhook handling in a reachable environment before relying on production webhooks.
+Status: Completed — `ngrok2-all` notification setting is active and the e2e simulation script succeeded (`paddle_simulation_e2e.success`), confirming a purchase credit grant was written. The webhook endpoint responds to GET with 405 (expected for POST-only) but is reachable.
+
+### Step T3: Paddle webhook e2e simulation (v2 tiers)
+- What: Create a v2 transaction (quantity + mode + interval) and simulate `transaction.completed` to verify v2 tier credit grants end-to-end.
+- How: Add a dedicated v2 simulation script that reuses backend v2 transaction logic, then run it against the `ngrok2-all` destination.
+- Why: Ensures v2 tier mappings (including annual multiplier) are exercised by a real webhook payload before production cutover.
+Status: Completed (partial) — added v2 mode to the e2e simulation script and ran it with `--pricing-version v2` (payg, 2,000 credits). Simulation succeeded and credit grant was written. Backend logs reported missing rounding metadata (`pricing_v2.rounding_description_missing`, `pricing_v2.discount_prefix_missing`) but did not block the flow. Annual subscription multiplier still needs a simulation run.
+
+### Step T4: V2 annual subscription simulation
+- What: Run v2 e2e simulation for `subscription` + `year` to validate the annual credit multiplier path.
+- How: Use the v2 simulation script with `--mode subscription --interval year` and a valid quantity (e.g., 2,000).
+- Why: Confirms the 12x credit grant multiplier for annual tiers is functioning in real webhook processing.
+Status: Pending — not run yet.
 
 ## MVP Completion Checklist
 - Supabase v2 tiers table created and populated with real pricing.

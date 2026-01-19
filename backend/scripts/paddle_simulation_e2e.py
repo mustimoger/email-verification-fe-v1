@@ -3,17 +3,27 @@ Run a simulation-based Paddle E2E verification flow.
 
 This script:
 1) Resolves a user by email.
-2) Resolves a plan by price_id or plan_key/plan_name.
-3) Creates a Paddle transaction through the backend route logic.
+2) Resolves a v1 plan (billing_plans) or a v2 tier (pricing_v2).
+3) Creates a Paddle transaction through backend route logic.
 4) Sends a Paddle webhook simulation to the configured notification setting.
 5) Polls Supabase to confirm purchase + credit grant.
 
-Usage:
+Usage (v1):
     source ../.venv/bin/activate
     PYTHONPATH=backend python backend/scripts/paddle_simulation_e2e.py \
         --user-email dmktadimiz@gmail.com \
         --plan-key enterprise \
         --notification-description ngrok2
+
+Usage (v2):
+    source ../.venv/bin/activate
+    PYTHONPATH=backend python backend/scripts/paddle_simulation_e2e.py \
+        --pricing-version v2 \
+        --user-email dmktadimiz@gmail.com \
+        --quantity 2000 \
+        --mode payg \
+        --interval one_time \
+        --notification-description ngrok2-all
 """
 
 from __future__ import annotations
@@ -26,6 +36,7 @@ import sys
 import time
 import uuid
 from datetime import datetime, timezone
+from decimal import Decimal, ROUND_HALF_UP
 from pathlib import Path
 from typing import Any, Dict, Optional
 from urllib.parse import parse_qs, urlparse
@@ -36,7 +47,12 @@ REPO_ROOT = BACKEND_ROOT.parent
 if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
-from app.api.billing import CheckoutRequest, create_transaction  # noqa: E402
+from app.api.billing import CheckoutRequest, _parse_int, create_transaction  # noqa: E402
+from app.api.billing_v2 import (  # noqa: E402
+    PricingTransactionRequest,
+    _validate_mode_interval,
+    create_transaction_v2,
+)
 from app.core.auth import AuthContext  # noqa: E402
 from app.paddle.client import PaddleAPIError, get_paddle_client  # noqa: E402
 from app.paddle.config import get_paddle_config  # noqa: E402
@@ -46,6 +62,16 @@ from app.services.billing_plans import (  # noqa: E402
     get_billing_plan_by_price_id,
 )
 from app.services.paddle_store import get_paddle_ids  # noqa: E402
+from app.services.pricing_v2 import (  # noqa: E402
+    PricingConfigV2,
+    PricingTierV2,
+    PricingValidationError,
+    compute_pricing_totals_v2,
+    get_pricing_config_v2,
+    get_pricing_tier_by_price_id_v2,
+    select_pricing_tier_v2,
+    validate_quantity_v2,
+)
 from app.services.supabase_client import (  # noqa: E402
     fetch_profile_by_email,
     get_supabase,
@@ -241,6 +267,48 @@ def _resolve_plan(
     raise RuntimeError("No matching billing plan found for the provided selectors")
 
 
+def _resolve_quantity(requested: Optional[int], default_value: int) -> int:
+    if requested is None:
+        return default_value
+    if requested <= 0:
+        raise RuntimeError("Quantity must be greater than zero")
+    return requested
+
+
+def _resolve_v2_tier(
+    price_id: Optional[str],
+    mode: Optional[str],
+    interval: Optional[str],
+    quantity: int,
+    config: PricingConfigV2,
+) -> tuple[PricingTierV2, str, str]:
+    if price_id:
+        tier = get_pricing_tier_by_price_id_v2(price_id)
+        if not tier:
+            raise RuntimeError(f"No v2 tier found for price_id {price_id}")
+        if mode and mode != tier.mode:
+            raise RuntimeError("Provided mode does not match price_id tier")
+        if interval and interval != tier.interval:
+            raise RuntimeError("Provided interval does not match price_id tier")
+        return tier, tier.mode, tier.interval
+    if not mode or not interval:
+        raise RuntimeError("For v2, provide --mode and --interval when --price-id is not supplied")
+    _validate_mode_interval(mode, interval)
+    tier = select_pricing_tier_v2(quantity, mode, interval, config)
+    return tier, mode, interval
+
+
+def _resolve_annual_multiplier(config: PricingConfigV2) -> int:
+    multiplier = _parse_int(config.metadata.get("annual_credit_multiplier"))
+    if multiplier is None or multiplier <= 0:
+        raise RuntimeError("Missing or invalid annual_credit_multiplier in pricing config metadata")
+    return multiplier
+
+
+def _decimal_to_cents(value: Decimal) -> int:
+    return int((value * Decimal(100)).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+
+
 def _build_transaction_payload(
     transaction_id: str,
     customer_id: Optional[str],
@@ -308,16 +376,14 @@ async def run_flow(args: argparse.Namespace) -> int:
     if not user_id:
         raise RuntimeError("Profile missing user_id")
 
-    plan = _resolve_plan(args.price_id, args.plan_key, args.plan_name, args.include_inactive)
-    plan_price_id = str(plan.get("paddle_price_id"))
-    if not plan_price_id:
-        raise RuntimeError("Resolved plan missing paddle_price_id")
-
-    quantity = args.quantity
-    credits_per_unit = int(plan.get("credits") or 0)
-    expected_credits = credits_per_unit * max(quantity, 1)
-    amount = plan.get("amount")
-    currency = plan.get("currency")
+    pricing_version = args.pricing_version
+    expected_credits: int
+    amount: Optional[int] = None
+    currency: Optional[str] = None
+    transaction_id: str
+    customer_id: Optional[str] = None
+    price_id: str
+    item_quantity: int
 
     notification_setting = await _find_notification_setting(description or "", args.notification_setting_id)
     _preflight_notification_setting(notification_setting)
@@ -329,29 +395,85 @@ async def run_flow(args: argparse.Namespace) -> int:
         claims={"email": profile.get("email") or args.user_email},
         token=f"e2e-{run_id}",
     )
-    checkout_payload = CheckoutRequest(
-        price_id=plan_price_id,
-        quantity=quantity,
-        custom_data={"e2e_run_id": run_id},
-    )
-    logger.info(
-        "paddle_simulation_e2e.transaction.start",
-        extra={"user_id": user_id, "price_id": plan_price_id, "quantity": quantity, "run_id": run_id},
-    )
-    transaction = await create_transaction(checkout_payload, user=auth_ctx)
-    transaction_id = transaction.id
-    customer_id = transaction.customer_id
+
+    if pricing_version == "v1":
+        plan = _resolve_plan(args.price_id, args.plan_key, args.plan_name, args.include_inactive)
+        plan_price_id = str(plan.get("paddle_price_id"))
+        if not plan_price_id:
+            raise RuntimeError("Resolved plan missing paddle_price_id")
+        quantity = _resolve_quantity(args.quantity, 1)
+        credits_per_unit = int(plan.get("credits") or 0)
+        expected_credits = credits_per_unit * max(quantity, 1)
+        amount = plan.get("amount")
+        currency = plan.get("currency")
+        checkout_payload = CheckoutRequest(
+            price_id=plan_price_id,
+            quantity=quantity,
+            custom_data={"e2e_run_id": run_id},
+        )
+        logger.info(
+            "paddle_simulation_e2e.transaction.start",
+            extra={"user_id": user_id, "price_id": plan_price_id, "quantity": quantity, "run_id": run_id},
+        )
+        transaction = await create_transaction(checkout_payload, user=auth_ctx)
+        transaction_id = transaction.id
+        customer_id = transaction.customer_id
+        price_id = plan_price_id
+        item_quantity = quantity
+    else:
+        config_v2 = get_pricing_config_v2()
+        quantity = _resolve_quantity(args.quantity, config_v2.min_volume)
+        validate_quantity_v2(quantity, config_v2)
+        tier, mode, interval = _resolve_v2_tier(
+            args.price_id,
+            args.mode,
+            args.interval,
+            quantity,
+            config_v2,
+        )
+        totals = compute_pricing_totals_v2(quantity, tier)
+        multiplier = 1
+        if tier.mode == "subscription" and tier.interval == "year":
+            multiplier = _resolve_annual_multiplier(config_v2)
+        expected_credits = tier.credits_per_unit * totals.units * multiplier
+        amount = _decimal_to_cents(totals.rounded_total)
+        currency = tier.currency
+        price_id = tier.paddle_price_id
+        item_quantity = totals.units
+        checkout_payload = PricingTransactionRequest(
+            quantity=quantity,
+            mode=mode,
+            interval=interval,
+            price_id=price_id,
+            custom_data={"e2e_run_id": run_id},
+        )
+        logger.info(
+            "paddle_simulation_e2e.transaction.start",
+            extra={
+                "user_id": user_id,
+                "price_id": price_id,
+                "quantity": quantity,
+                "units": totals.units,
+                "mode": mode,
+                "interval": interval,
+                "run_id": run_id,
+            },
+        )
+        transaction = await create_transaction_v2(checkout_payload, user=auth_ctx)
+        transaction_id = transaction.id
+
     if not customer_id:
         ids = get_paddle_ids(user_id)
         if ids:
             customer_id = ids[0]
+
     billed_at = datetime.now(timezone.utc).isoformat()
     webhook_payload = _build_transaction_payload(
         transaction_id=transaction_id,
         customer_id=customer_id,
         user_id=user_id,
-        price_id=plan_price_id,
-        quantity=quantity,
+        price_id=price_id,
+        quantity=item_quantity,
         amount=amount,
         currency=currency,
         billed_at=billed_at,
@@ -433,10 +555,31 @@ async def run_flow(args: argparse.Namespace) -> int:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Run Paddle simulation-based E2E flow.")
     parser.add_argument("--user-email", required=True, help="Supabase user email to map to a user_id.")
+    parser.add_argument(
+        "--pricing-version",
+        choices=["v1", "v2"],
+        default="v1",
+        help="Pricing flow to test: v1 (billing_plans) or v2 (pricing tiers).",
+    )
     parser.add_argument("--price-id", help="Paddle price id to purchase.")
     parser.add_argument("--plan-key", help="Plan key from billing_plans (e.g., enterprise).")
     parser.add_argument("--plan-name", help="Plan name from billing_plans.")
-    parser.add_argument("--quantity", type=int, default=1, help="Quantity to purchase.")
+    parser.add_argument(
+        "--mode",
+        choices=["payg", "subscription"],
+        help="v2 mode (required unless --price-id is provided).",
+    )
+    parser.add_argument(
+        "--interval",
+        choices=["one_time", "month", "year"],
+        help="v2 interval (required unless --price-id is provided).",
+    )
+    parser.add_argument(
+        "--quantity",
+        type=int,
+        default=None,
+        help="Quantity to purchase. v1 defaults to 1, v2 defaults to min_volume.",
+    )
     parser.add_argument(
         "--notification-description",
         default="ngrok2-all",
@@ -469,9 +612,13 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> int:
     parser = build_parser()
     args = parser.parse_args()
-    if not (args.price_id or args.plan_key or args.plan_name):
-        parser.error("One of --price-id, --plan-key, or --plan-name is required.")
-    if args.quantity <= 0:
+    if args.pricing_version == "v1":
+        if not (args.price_id or args.plan_key or args.plan_name):
+            parser.error("For v1, one of --price-id, --plan-key, or --plan-name is required.")
+    else:
+        if not args.price_id and (not args.mode or not args.interval):
+            parser.error("For v2, provide --price-id or both --mode and --interval.")
+    if args.quantity is not None and args.quantity <= 0:
         parser.error("--quantity must be greater than zero.")
     try:
         return asyncio.run(run_flow(args))
@@ -481,6 +628,9 @@ def main() -> int:
             exc.status_code,
             exc.details,
         )
+        return 1
+    except PricingValidationError as exc:
+        logger.error("paddle_simulation_e2e.validation_failed", extra={"detail": exc.detail})
         return 1
     except Exception as exc:  # noqa: BLE001
         logger.error("paddle_simulation_e2e.failed", extra={"error": str(exc)})

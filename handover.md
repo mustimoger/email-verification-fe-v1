@@ -4,63 +4,56 @@
 This repo is implementing the v2 pricing flow in parallel to existing billing. Work is tracked in `newpricing.md` (source of truth). The v2 flow uses `/api/billing/v2/*` endpoints and Supabase v2 pricing tables, while v1 billing remains intact. UI lives under `/pricing-v2` and is gated by `PRICING_V2=true`.
 
 ## What was completed in this session
-### Step B4: Webhook credit grants for tiers (v2)
-- Implemented v2 tier resolution in the Paddle webhook (`/api/billing/webhook`).
-- Webhook now:
-  - Resolves v2 tiers first via `billing_pricing_tiers_v2`.
-  - Applies annual subscription multiplier (credits_per_unit * quantity * 12 for yearly tiers).
-  - Falls back to v1 `billing_plans` mapping for non-v2 price IDs.
-  - Fails fast with explicit logs if any price ID lacks a mapping to prevent silent under‑granting.
-- New helper: `get_pricing_tiers_by_price_ids_v2` in `backend/app/services/pricing_v2.py`.
-- Tests added/updated in `backend/tests/test_billing.py` for:
-  - v2 annual multiplier.
-  - missing price mapping error path.
+### Step T0: Verify v2 pricing config in Supabase
+- Backfilled `billing_pricing_config_v2.metadata.display_prices` from `metadata.source_config.display_prices`.
+- This removed the `pricing_v2.display_prices_missing` warning and enabled the volume pricing table to render.
 
-### Step B4b: One-time free trial credit bonus
-- Added `POST /api/credits/trial-bonus` in `backend/app/api/credits.py`.
-- Endpoint uses `billing_pricing_config_v2.free_trial_credits`, requires verified email, and upserts a `credit_grants` row with source `trial`.
-- Added frontend trigger in `app/components/auth-provider.tsx` after confirmed sessions; it calls `apiClient.claimTrialBonus()`.
-- Added API client method in `app/lib/api-client.ts`.
-- Tests added in `backend/tests/test_trial_bonus.py` (apply/duplicate/unconfirmed/misconfigured).
+### Step T1: UI smoke test `/pricing-v2`
+- Injected a valid Supabase session, opened `/pricing-v2`, verified the slider + quote calls succeed.
+- Clicked "Buy Credits" and confirmed Paddle sandbox checkout opens (iframe overlay).
+- Rounding adjustment visible in checkout summary (subtotal $7.40, rounding discount -$0.40, due $7.00).
+
+### Step T2: Paddle webhook e2e simulation (v1)
+- Confirmed Paddle notification destination `ngrok2-all` is active and points to the ngrok URL.
+- Ran `backend/scripts/paddle_simulation_e2e.py` (v1) and confirmed `paddle_simulation_e2e.success` with a purchase credit grant written.
+
+### Step T3: Paddle webhook e2e simulation (v2 tiers)
+- Updated `backend/scripts/paddle_simulation_e2e.py` to support `--pricing-version v2` with mode/interval/quantity.
+- Updated `backend/scripts/README-e2e-paddle-test.md` with v2 usage.
+- Ran the v2 simulation for payg 2,000 credits; credit grant written successfully.
+- Backend logged warnings for missing rounding metadata (`pricing_v2.rounding_description_missing`, `pricing_v2.discount_prefix_missing`) but the flow succeeded.
 
 ### Plan/docs updates
-- `newpricing.md` updated with B4 and B4b completion, tests status, and blockers.
-- `PLAN.md` remains a pointer to `newpricing.md` (current source of truth).
-
-## Commits pushed
-- `a164a41` — pricing v2 webhook credit grants
-- `2f2f201` — pricing v2 free trial credits
+- `newpricing.md` updated for T0/T1/T2/T3 statuses and added T4 for annual subscription simulation.
+- `PLAN.md` still points to `newpricing.md`.
 
 ## Tests run
-- `source .venv/bin/activate && pytest backend/tests/test_billing.py backend/tests/test_pricing_v2.py`
-- `source .venv/bin/activate && pytest backend/tests/test_trial_bonus.py backend/tests/test_signup_bonus.py`
-
-Warnings observed: upstream `pyiceberg` deprecation warnings (no action taken).
-
-## Current status / remaining work
-- UI smoke test for `/pricing-v2` is still blocked by lack of a valid Supabase session. Need a valid session or credentials.
-- Full test suite (frontend + backend) has not been run.
-- Ensure `billing_pricing_config_v2.metadata.display_prices.payg` is populated (UI volume table uses it). If missing, decide whether to backfill via Supabase or compute from tiers.
-- Pricing v2 UI still requires a real session to verify checkout flow end-to-end.
+- `source .venv/bin/activate && PYTHONPATH=backend python backend/scripts/paddle_simulation_e2e.py --user-email dmktadimiz@gmail.com --plan-key enterprise --notification-description ngrok2-all`
+- `source .venv/bin/activate && PYTHONPATH=backend python backend/scripts/paddle_simulation_e2e.py --pricing-version v2 --user-email dmktadimiz@gmail.com --quantity 2000 --mode payg --interval one_time --notification-description ngrok2-all`
 
 ## Known warnings
-- `backend/app/api/billing.py` is 677 lines (>600).
-- `app/lib/api-client.ts` is 697 lines (>600).
+- `backend/app/api/billing.py` is >600 lines.
+- `app/lib/api-client.ts` is >600 lines.
+- `pricing_v2.rounding_description_missing` and `pricing_v2.discount_prefix_missing` warnings during v2 checkout/simulation.
+- Signup bonus 409 and trial bonus duplicate in frontend console for the test user (expected once claimed).
+
+## Environment notes
+- ngrok: `https://7f9a7449cd09.ngrok-free.app` -> `http://localhost:8001`.
+- Paddle notification destination `ngrok2-all` active, trafficSource=all, includes transaction completed events.
+- Backend running on `localhost:8001` (uvicorn); Next dev server on `localhost:3000` (if still running).
+
+## Current status / remaining work
+- T4: Run v2 annual subscription simulation to validate the 12x credit multiplier in webhook processing.
+- Optional: add rounding metadata fields in `billing_pricing_config_v2.metadata` (`rounding_fee_description`, `rounding_discount_description`, `rounding_discount_code_prefix`) to remove warnings.
+- Full test suite still not run (frontend + backend).
 
 ## Uncommitted/untracked
-- `last-chat.txt` is untracked (left as-is).
-
-## Next steps (suggested order)
-1. Use Supabase MCP to verify `billing_pricing_config_v2.free_trial_credits` and `metadata.display_prices.payg` are present and correct; update if missing.
-2. Obtain valid Supabase session or credentials to run the `/pricing-v2` UI smoke test (Playwright) and verify checkout.
-3. Run broader test suite (backend + frontend) if required.
-4. Address >600 line warnings if you plan to refactor (optional, not required for MVP).
+- `backend/scripts/paddle_simulation_e2e.py` (updated for v2 mode)
+- `backend/scripts/README-e2e-paddle-test.md` (v2 usage added)
+- `newpricing.md` (T0-T4 updates)
+- `key-value-pair.txt` (updated session token)
 
 ## Key files touched
-- `backend/app/api/billing.py` (v2 webhook credit grant logic)
-- `backend/app/services/pricing_v2.py` (v2 tier lookup helper)
-- `backend/app/api/credits.py` (trial bonus endpoint)
-- `app/components/auth-provider.tsx` (trial bonus trigger)
-- `app/lib/api-client.ts` (trial bonus API method)
-- `backend/tests/test_billing.py` and `backend/tests/test_trial_bonus.py`
+- `backend/scripts/paddle_simulation_e2e.py` (v2 simulation path)
+- `backend/scripts/README-e2e-paddle-test.md`
 - `newpricing.md`

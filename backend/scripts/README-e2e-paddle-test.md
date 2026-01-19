@@ -14,7 +14,9 @@ This lets you validate the end-to-end billing flow without manual checkouts.
 - ngrok forwards to `/api/billing/webhook`.
 - Paddle sandbox API keys are set in env and match `PADDLE_STATUS`.
 - The webhook secret in env matches the notification destination you will use.
-- The test user exists in Supabase `profiles` and the plan exists in `billing_plans`.
+- The test user exists in Supabase `profiles`.
+- For v1: the plan exists in `billing_plans`.
+- For v2: pricing tiers exist in `billing_pricing_tiers_v2` with `paddle_price_id` populated.
 
 ## Notification destination requirements
 The script uses the default description `ngrok2-all`. The target notification destination must:
@@ -28,7 +30,7 @@ If you create multiple destinations, pick the one you want with:
 ```
 
 ## How to run (sandbox)
-From repo root:
+From repo root (v1 default):
 ```bash
 source .venv/bin/activate
 PYTHONPATH=backend python backend/scripts/paddle_simulation_e2e.py \
@@ -37,23 +39,42 @@ PYTHONPATH=backend python backend/scripts/paddle_simulation_e2e.py \
 ```
 
 ### Supported selectors
-Exactly one of these is required:
+v1 (default) requires one of:
 - `--price-id` (Paddle price ID)
 - `--plan-key` (from `billing_plans.plan_key`)
 - `--plan-name` (from `billing_plans.plan_name`)
 
+v2 requires `--pricing-version v2` and either:
+- `--price-id` (Paddle price ID in `billing_pricing_tiers_v2`)
+- or both `--mode` and `--interval`
+
+Example (v2, pay-as-you-go):
+```bash
+source .venv/bin/activate
+PYTHONPATH=backend python backend/scripts/paddle_simulation_e2e.py \
+  --pricing-version v2 \
+  --user-email dmktadimiz@gmail.com \
+  --quantity 2000 \
+  --mode payg \
+  --interval one_time
+```
+
 Optional flags:
-- `--quantity` (defaults to 1)
+- `--pricing-version` (defaults to `v1`)
+- `--quantity` (v1 defaults to 1; v2 defaults to `min_volume`)
 - `--notification-description` (defaults to `ngrok2-all`)
 - `--notification-setting-id` (bypass description lookup)
 - `--timeout-seconds` (defaults to 90)
 - `--poll-interval-seconds` (defaults to 2)
 - `--include-inactive` (allow inactive plans)
+- `--mode` (v2 only: `payg` or `subscription`)
+- `--interval` (v2 only: `one_time`, `month`, or `year`)
 
 ## What success looks like
 - The script logs `paddle_simulation_e2e.success`.
 - A `credit_grants` row exists for the generated `transaction_id` (source=`purchase`).
-- `credits_granted` matches `plan_credits * quantity`.
+- v1: `credits_granted` matches `plan_credits * quantity`.
+- v2: `credits_granted` matches `tier.credits_per_unit * units`, with annual subscription multiplier applied.
 
 ## Common failures and fixes
 ### 1) “notification setting cannot be used for simulation traffic”
