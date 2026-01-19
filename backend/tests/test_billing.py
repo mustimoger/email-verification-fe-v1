@@ -1,4 +1,5 @@
 import json
+from decimal import Decimal
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -8,6 +9,7 @@ from app.api.billing import router as billing_router
 from app.core.auth import AuthContext
 from app.paddle.client import PaddleAPIError
 from app.paddle.config import get_paddle_config
+from app.services.pricing_v2 import PricingTierV2
 
 
 @pytest.fixture(autouse=True)
@@ -204,6 +206,7 @@ def test_webhook_grants_credits(monkeypatch):
         return True
 
     monkeypatch.setattr(billing_module, "verify_webhook", fake_verify_webhook)
+    monkeypatch.setattr(billing_module, "get_pricing_tiers_by_price_ids_v2", lambda price_ids: {})
     monkeypatch.setattr(billing_module, "record_billing_event", lambda **kwargs: fake_record_event(**kwargs))
     monkeypatch.setattr(billing_module, "upsert_credit_grant", fake_upsert_credit_grant)
     monkeypatch.setattr(
@@ -240,6 +243,93 @@ def test_webhook_grants_credits(monkeypatch):
     assert grant_call["source_id"] == "txn_1"
 
 
+def test_webhook_grants_v2_annual_multiplier(monkeypatch):
+    grant_call = {}
+
+    def fake_verify_webhook(raw_body, signature_header, remote_ip, headers=None):
+        return True
+
+    def fake_record_event(**kwargs):
+        grant_call["record"] = kwargs
+        return True
+
+    def fake_upsert_credit_grant(**kwargs):
+        grant_call.update(kwargs)
+        return True
+
+    tier = PricingTierV2(
+        mode="subscription",
+        interval="year",
+        min_quantity=2000,
+        max_quantity=10000,
+        unit_amount=Decimal("0.01"),
+        currency="USD",
+        credits_per_unit=1000,
+        paddle_price_id="pri_annual",
+        metadata={},
+        sort_order=1,
+    )
+
+    monkeypatch.setattr(billing_module, "verify_webhook", fake_verify_webhook)
+    monkeypatch.setattr(billing_module, "record_billing_event", fake_record_event)
+    monkeypatch.setattr(billing_module, "upsert_credit_grant", fake_upsert_credit_grant)
+    monkeypatch.setattr(billing_module, "get_pricing_tiers_by_price_ids_v2", lambda price_ids: {"pri_annual": tier})
+    monkeypatch.setattr(billing_module, "get_billing_plans_by_price_ids", lambda price_ids: [])
+
+    app = _build_app(monkeypatch, lambda: AuthContext(user_id="u", claims={}, token="t"))
+    client = TestClient(app)
+
+    payload = {
+        "event_id": "evt_annual",
+        "event_type": "transaction.completed",
+        "data": {
+            "transaction": {
+                "id": "txn_annual",
+                "items": [{"price_id": "pri_annual", "quantity": 2}],
+                "custom_data": {"supabase_user_id": "user-annual"},
+            }
+        },
+    }
+    resp = client.post("/api/billing/webhook", json=payload, headers={"Paddle-Signature": "ts=1;v1=valid"})
+    assert resp.status_code == 200, resp.text
+    assert grant_call["credits_granted"] == 24000
+    assert grant_call["user_id"] == "user-annual"
+
+
+def test_webhook_missing_price_mapping_returns_error(monkeypatch):
+    called = {"record": False}
+
+    def fake_verify_webhook(raw_body, signature_header, remote_ip, headers=None):
+        return True
+
+    def fake_record_event(**_kwargs):
+        called["record"] = True
+        return True
+
+    monkeypatch.setattr(billing_module, "verify_webhook", fake_verify_webhook)
+    monkeypatch.setattr(billing_module, "record_billing_event", fake_record_event)
+    monkeypatch.setattr(billing_module, "get_pricing_tiers_by_price_ids_v2", lambda price_ids: {})
+    monkeypatch.setattr(billing_module, "get_billing_plans_by_price_ids", lambda price_ids: [])
+
+    app = _build_app(monkeypatch, lambda: AuthContext(user_id="u", claims={}, token="t"))
+    client = TestClient(app)
+
+    payload = {
+        "event_id": "evt_missing",
+        "event_type": "transaction.completed",
+        "data": {
+            "transaction": {
+                "id": "txn_missing",
+                "items": [{"price_id": "pri_missing", "quantity": 1}],
+                "custom_data": {"supabase_user_id": "user-missing"},
+            }
+        },
+    }
+    resp = client.post("/api/billing/webhook", json=payload, headers={"Paddle-Signature": "ts=1;v1=valid"})
+    assert resp.status_code == 500
+    assert called["record"] is False
+
+
 def test_webhook_credit_grant_failure_deletes_event(monkeypatch):
     deleted = {}
 
@@ -257,6 +347,7 @@ def test_webhook_credit_grant_failure_deletes_event(monkeypatch):
         return True
 
     monkeypatch.setattr(billing_module, "verify_webhook", fake_verify_webhook)
+    monkeypatch.setattr(billing_module, "get_pricing_tiers_by_price_ids_v2", lambda price_ids: {})
     monkeypatch.setattr(billing_module, "record_billing_event", fake_record_event)
     monkeypatch.setattr(billing_module, "upsert_credit_grant", fake_upsert_credit_grant)
     monkeypatch.setattr(billing_module, "delete_billing_event", fake_delete_event)

@@ -132,6 +132,32 @@ def get_pricing_tier_by_price_id_v2(price_id: str, status: str = "active") -> Op
         return None
 
 
+def get_pricing_tiers_by_price_ids_v2(price_ids: List[str], status: str = "active") -> Dict[str, PricingTierV2]:
+    if not price_ids:
+        return {}
+    unique_ids = [str(price_id) for price_id in set(price_ids) if price_id]
+    if not unique_ids:
+        return {}
+    sb = get_supabase()
+    result = (
+        sb.table("billing_pricing_tiers_v2")
+        .select("*")
+        .eq("status", status)
+        .in_("paddle_price_id", unique_ids)
+        .execute()
+    )
+    rows = result.data or []
+    tiers: Dict[str, PricingTierV2] = {}
+    for row in rows:
+        try:
+            tier = _parse_tier_row(row)
+        except Exception as exc:  # noqa: BLE001
+            logger.error("pricing_v2.tier_by_price_ids_invalid", extra={"error": str(exc), "row": row})
+            continue
+        tiers[tier.paddle_price_id] = tier
+    return tiers
+
+
 def validate_quantity_v2(quantity: int, config: PricingConfigV2) -> None:
     if quantity < config.min_volume:
         raise PricingValidationError(

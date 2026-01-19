@@ -25,6 +25,7 @@ from ..services.billing_plans import (
     list_billing_plans,
 )
 from ..services.credit_grants import upsert_credit_grant
+from ..services.pricing_v2 import get_pricing_tiers_by_price_ids_v2
 from ..services import supabase_client
 from ..services.paddle_store import get_paddle_ids, get_user_id_by_customer_id, upsert_paddle_ids
 
@@ -476,21 +477,57 @@ async def paddle_webhook(request: Request):
             continue
         price_ids.append(price_id)
         line_items.append((price_id, quantity))
-    plan_rows = get_billing_plans_by_price_ids(price_ids)
+    v2_tiers = get_pricing_tiers_by_price_ids_v2(price_ids)
+    v1_price_ids = [price_id for price_id in price_ids if price_id not in v2_tiers]
+    plan_rows = get_billing_plans_by_price_ids(v1_price_ids) if v1_price_ids else []
     price_to_credits: Dict[str, int] = {}
     for row in plan_rows:
-        try:
-            credits_val = int(row.get("credits") or 0)
-        except Exception:
-            credits_val = 0
-        price_to_credits[str(row.get("paddle_price_id"))] = credits_val
+        credits_val = _parse_int(row.get("credits"))
+        price_id = row.get("paddle_price_id")
+        if not price_id:
+            continue
+        if credits_val is None or credits_val <= 0:
+            logger.warning(
+                "billing.webhook.plan_credits_invalid",
+                extra={"price_id": price_id, "credits": row.get("credits")},
+            )
+            continue
+        price_to_credits[str(price_id)] = credits_val
 
+    missing_price_ids: list[str] = []
     for price_id, quantity in line_items:
-        credits_per_unit = price_to_credits.get(price_id, 0)
         qty_int = _parse_int(quantity)
         if qty_int is None:
             qty_int = 1
-        total_credits += credits_per_unit * max(qty_int, 1)
+        qty_int = max(qty_int, 1)
+        v2_tier = v2_tiers.get(price_id)
+        if v2_tier:
+            credits_per_unit = v2_tier.credits_per_unit
+            if credits_per_unit <= 0:
+                missing_price_ids.append(price_id)
+                continue
+            multiplier = 12 if v2_tier.mode == "subscription" and v2_tier.interval == "year" else 1
+            total_credits += credits_per_unit * qty_int * multiplier
+            continue
+        credits_per_unit = price_to_credits.get(price_id)
+        if credits_per_unit is None:
+            missing_price_ids.append(price_id)
+            continue
+        total_credits += credits_per_unit * qty_int
+
+    if missing_price_ids:
+        logger.error(
+            "billing.webhook.price_mapping_missing",
+            extra={
+                "event_id": event_id,
+                "event_type": event_type,
+                "transaction_id": transaction_id,
+                "user_id": user_id,
+                "price_ids": price_ids,
+                "missing_price_ids": list(dict.fromkeys(missing_price_ids)),
+            },
+        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Pricing mapping unavailable")
 
     details = _first_value(transaction, "details")
     totals = _first_value(details, "totals")

@@ -180,7 +180,7 @@ Status: Completed — `/api/billing/v2/transactions` resolves tiers by quantity 
   - Log missing tier mappings explicitly and fail fast.
 - Why: Keeps credit grants accurate for both payg and subscriptions.
 V2 note: Lookup should check v2 tables first and fall back to v1 plan mapping so existing fixed-plan credits remain unchanged during parallel rollout.
-Status: Not started — webhook logic still uses `billing_plans` only and does not check v2 tiers or apply annual multipliers.
+Status: Completed — webhook now resolves v2 tier price IDs first (including annual ×12), falls back to v1 `billing_plans`, and fails fast with explicit logs if any price mapping is missing to prevent silent under‑granting.
 
 ### Step B4b: One-time free trial credit bonus
 - What: Apply the free trial credits once after verified signup.
@@ -194,7 +194,7 @@ Status: Not started — no v2-driven free-trial grant endpoint or auth-provider 
   - Unit tests for range boundaries, min/max, and overlap detection.
   - Integration tests for `/api/billing/v2/quote` and `/api/billing/v2/transactions`.
 - Why: Prevents regressions around pricing math and tier resolution.
-Status: In progress — v2 quote/transaction tests exist; still need webhook credit-grant and free-trial tests plus full test run.
+Status: In progress — v2 quote/transaction tests exist and webhook credit‑grant tests now cover v2 annual multipliers and missing‑mapping errors; still need free‑trial tests plus a full suite run.
 
 ## Frontend Plan (MVP)
 ### Step F1: Expand billing API client
