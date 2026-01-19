@@ -199,7 +199,12 @@ What was done and why:
 - What: Ensure the new `/verify-v2` layout is readable and touch-friendly on mobile.
 - How: Review small breakpoints and adjust grids, spacing, and overflows; confirm no clipped shadows.
 - Why: The redesign must remain mobile-friendly before any functional migration.
-Status: Pending.
+Status: Completed — captured mobile and desktop renders and confirmed layout integrity.
+What was done and why:
+- Captured `/verify-v2` at 375px and 1280px widths (see `artifacts/verify-v2-mobile.png` and `artifacts/verify-v2-desktop.png`).
+- Verified cards stack cleanly on mobile, button groups wrap without overflow, and shadows remain intact.
+Notes:
+- Backend API is not running locally, so data sections show missing-data states; layout and responsive behavior are still validated.
 
 ### D4d: `/verify-v2` functional migration (after design approval)
 - What: Copy `/verify` functionality into `/verify-v2` once the design is signed off.
