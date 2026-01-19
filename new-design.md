@@ -225,13 +225,17 @@ Status: Pending — blocked on final UI approval.
 - What: Connect manual email entry, limits validation, task creation, refresh/export actions, and state persistence.
 - How: Reuse `app/verify/utils.ts`, `app/verify/file-columns.ts`, and `app/lib/api-client.ts` with new `/verify-v2` state wiring; keep the `/verify-v2` UI intact while swapping placeholders for live data.
 - Why: Enables manual verification for paid users while preserving the `/verify-v2` design.
-Status: Pending.
+Status: Completed — manual verification wiring is live in `/verify-v2` without altering the new layout.
+What was done and why:
+- Added manual verification state management in `app/verify-v2/verify-v2-client.tsx` (limits load, task creation, refresh/export, persistence) to match existing `/verify` behavior while keeping `/verify-v2` UI intact.
+- Updated `app/verify-v2/verify-v2-sections.tsx` to render live status counts, results list, and action controls so the design stays consistent but functional.
+- Added status-mapping guardrails that log unexpected result statuses for debugging without blocking the user flow.
 
 #### D4d2: Wire bulk upload flow in `/verify-v2`
 - What: Connect file selection, column mapping, upload submission, summary metrics, and refresh actions.
 - How: Reuse existing upload helpers from `/verify` utilities; render mapping/summary panels inside the existing `/verify-v2` layout without changing its structure.
 - Why: Enables bulk verification while keeping the design consistent with the pricing-v2 visual system.
-Status: Pending.
+Status: Pending — bulk upload remains UI-only and still needs file selection, mapping, upload submission, and summary wiring.
 
 #### D4d3: Functional QA + targeted tests for `/verify-v2`
 - What: Validate manual and bulk flows with targeted tests and a lightweight QA pass.

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import {
+  AlertCircle,
   CheckCircle2,
   FileText,
   ListChecks,
@@ -8,6 +9,8 @@ import {
   Sparkles,
   UploadCloud,
 } from "lucide-react";
+
+import { formatNumber, type VerificationResult } from "../verify/utils";
 
 const HERO_HIGHLIGHTS = [
   "Manual or bulk verification",
@@ -39,12 +42,72 @@ const WORKFLOW_STEPS = [
   },
 ];
 
-const STATUS_PILLS = [
-  { label: "Valid", color: "bg-[var(--status-success)]" },
-  { label: "Invalid", color: "bg-[var(--status-danger)]" },
-  { label: "Catch-all", color: "bg-[var(--status-warning)]" },
-  { label: "Unknown", color: "bg-[var(--status-unknown)]" },
+export type ResultsStatusCounts = {
+  valid: number;
+  invalid: number;
+  catchAll: number;
+  unknown: number;
+  pending: number;
+};
+
+type ResultsStatusKey = keyof ResultsStatusCounts;
+
+const STATUS_PILLS: { key: ResultsStatusKey; label: string; color: string }[] = [
+  { key: "valid", label: "Valid", color: "bg-[var(--status-success)]" },
+  { key: "invalid", label: "Invalid", color: "bg-[var(--status-danger)]" },
+  { key: "catchAll", label: "Catch-all", color: "bg-[var(--status-warning)]" },
+  { key: "unknown", label: "Unknown", color: "bg-[var(--status-unknown)]" },
 ];
+
+const STATUS_LABELS: Record<ResultsStatusKey, string> = {
+  valid: "Valid",
+  invalid: "Invalid",
+  catchAll: "Catch-all",
+  unknown: "Unknown",
+  pending: "Pending",
+};
+
+const STATUS_TONES: Record<ResultsStatusKey, string> = {
+  valid: "text-[var(--status-success)]",
+  invalid: "text-[var(--status-danger)]",
+  catchAll: "text-[var(--status-warning)]",
+  unknown: "text-[var(--status-unknown)]",
+  pending: "text-[var(--text-muted)]",
+};
+
+const resolveStatusKey = (status?: string): ResultsStatusKey => {
+  const normalized = status ? status.toLowerCase().trim() : "";
+  if (!normalized) return "unknown";
+  if (normalized === "exists" || normalized === "valid") return "valid";
+  if (normalized === "not_exists" || normalized === "invalid" || normalized === "invalid_syntax") return "invalid";
+  if (normalized === "catchall" || normalized === "catch-all" || normalized === "catch_all") return "catchAll";
+  if (normalized === "unknown") return "unknown";
+  if (normalized === "pending") return "pending";
+  return "unknown";
+};
+
+type ManualVerificationCardProps = {
+  inputValue: string;
+  onInputChange: (value: string) => void;
+  onVerify: () => void;
+  onClear: () => void;
+  isSubmitting: boolean;
+  errorMessage?: string | null;
+  transitionClass?: string;
+};
+
+type ResultsCardProps = {
+  results: VerificationResult[];
+  statusCounts: ResultsStatusCounts;
+  statusLabel: string;
+  onRefresh: (() => void) | null;
+  isRefreshing: boolean;
+  onExport: () => void;
+  exportLabel: string;
+  exportDisabled: boolean;
+  exportError?: string | null;
+  transitionClass?: string;
+};
 
 function SectionCard({
   children,
@@ -123,7 +186,15 @@ export function VerifyHero({ transitionClass }: { transitionClass?: string }) {
   );
 }
 
-export function ManualVerificationCard({ transitionClass }: { transitionClass?: string }) {
+export function ManualVerificationCard({
+  transitionClass,
+  inputValue,
+  onInputChange,
+  onVerify,
+  onClear,
+  isSubmitting,
+  errorMessage,
+}: ManualVerificationCardProps) {
   return (
     <div
       className={`rounded-2xl border border-[var(--verify-border)] bg-[var(--verify-card-strong)] p-6 shadow-[var(--verify-shadow)] ${transitionClass ?? ""}`}
@@ -138,24 +209,38 @@ export function ManualVerificationCard({ transitionClass }: { transitionClass?: 
       <div className="mt-5 rounded-xl border border-[var(--verify-border)] bg-white/70 p-4">
         <textarea
           aria-label="Email list"
-          defaultValue=""
+          value={inputValue}
+          onChange={(event) => onInputChange(event.target.value)}
           rows={8}
           spellCheck={false}
           className="w-full resize-none bg-transparent text-sm text-[var(--text-secondary)] outline-none"
         />
       </div>
+      {errorMessage ? (
+        <div
+          className="mt-3 flex items-center gap-2 rounded-lg border border-rose-200/70 bg-rose-50/80 px-3 py-2 text-xs font-semibold text-rose-700"
+          role="alert"
+        >
+          <AlertCircle className="h-4 w-4" />
+          {errorMessage}
+        </div>
+      ) : null}
       <div className="mt-4 rounded-lg border border-[var(--verify-border)] bg-[var(--verify-accent-soft)] px-4 py-3 text-xs font-semibold text-[var(--verify-accent)]">
         Manual results stay available for this session. Export them right after completion.
       </div>
       <div className="mt-5 flex flex-wrap gap-3">
         <button
           type="button"
+          onClick={onVerify}
+          disabled={isSubmitting}
           className="rounded-xl bg-[linear-gradient(135deg,var(--verify-accent)_0%,var(--verify-accent-strong)_100%)] px-6 py-3 text-sm font-semibold text-[var(--verify-cta-ink)] shadow-[0_16px_32px_rgba(249,168,37,0.3)]"
         >
-          Verify emails
+          {isSubmitting ? "Verifying..." : "Verify emails"}
         </button>
         <button
           type="button"
+          onClick={onClear}
+          disabled={isSubmitting}
           className="rounded-xl border border-[var(--verify-border)] bg-white/70 px-6 py-3 text-sm font-semibold text-[var(--text-secondary)]"
         >
           Clear input
@@ -165,7 +250,19 @@ export function ManualVerificationCard({ transitionClass }: { transitionClass?: 
   );
 }
 
-export function ResultsCard({ transitionClass }: { transitionClass?: string }) {
+export function ResultsCard({
+  transitionClass,
+  results,
+  statusCounts,
+  statusLabel,
+  onRefresh,
+  isRefreshing,
+  onExport,
+  exportLabel,
+  exportDisabled,
+  exportError,
+}: ResultsCardProps) {
+  const hasResults = results.length > 0;
   return (
     <div
       className={`rounded-2xl border border-[var(--verify-border)] bg-[var(--verify-card-strong)] p-6 shadow-[var(--verify-shadow)] ${transitionClass ?? ""}`}
@@ -174,7 +271,9 @@ export function ResultsCard({ transitionClass }: { transitionClass?: string }) {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h3 className="text-xl font-semibold text-[var(--text-primary)]">Live results</h3>
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">Waiting</span>
+          <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">
+            {statusLabel}
+          </span>
         </div>
       </div>
       <p className="mt-2 text-sm text-[var(--text-muted)]">
@@ -190,22 +289,60 @@ export function ResultsCard({ transitionClass }: { transitionClass?: string }) {
               <span className={`h-2 w-2 rounded-full ${status.color}`} />
               <span className="font-semibold">{status.label}</span>
             </div>
-            <span className="text-xs font-semibold text-[var(--text-muted)]">—</span>
+            <span className="text-xs font-semibold text-[var(--text-muted)]">
+              {formatNumber(hasResults ? statusCounts[status.key] : null)}
+            </span>
           </div>
         ))}
       </div>
+      {exportError ? (
+        <div
+          className="mt-4 rounded-lg border border-rose-200/70 bg-rose-50/80 px-3 py-2 text-xs font-semibold text-rose-700"
+          role="alert"
+        >
+          {exportError}
+        </div>
+      ) : null}
+      <div className="mt-5 rounded-xl border border-[var(--verify-border)] bg-white/70 p-4">
+        {hasResults ? (
+          <div className="max-h-60 space-y-2 overflow-y-auto pr-1">
+            {results.map((item) => {
+              const statusKey = resolveStatusKey(item.status);
+              return (
+                <div
+                  key={item.email}
+                  className="flex items-center justify-between rounded-lg border border-[var(--verify-border)] bg-white/80 px-3 py-2 text-sm text-[var(--text-secondary)]"
+                >
+                  <span className="truncate pr-3 font-semibold">{item.email}</span>
+                  <span className={`text-xs font-semibold uppercase ${STATUS_TONES[statusKey]}`}>
+                    {STATUS_LABELS[statusKey]}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="text-sm text-[var(--text-muted)]">Results will appear here after verification.</p>
+        )}
+      </div>
       <div className="mt-6 flex flex-wrap justify-end gap-2">
+        {onRefresh ? (
+          <button
+            type="button"
+            onClick={onRefresh}
+            disabled={isRefreshing}
+            className="rounded-xl border border-[var(--verify-border)] bg-white/70 px-3 py-2 text-xs font-semibold text-[var(--text-secondary)]"
+          >
+            {isRefreshing ? "Refreshing..." : "Refresh status"}
+          </button>
+        ) : null}
         <button
           type="button"
-          className="rounded-xl border border-[var(--verify-border)] bg-white/70 px-3 py-2 text-xs font-semibold text-[var(--text-secondary)]"
+          onClick={onExport}
+          disabled={exportDisabled}
+          className="rounded-xl border border-[var(--verify-border)] bg-white/70 px-3 py-2 text-xs font-semibold text-[var(--text-secondary)] disabled:cursor-not-allowed disabled:opacity-70"
         >
-          Refresh status
-        </button>
-        <button
-          type="button"
-          className="rounded-xl border border-[var(--verify-border)] bg-white/70 px-3 py-2 text-xs font-semibold text-[var(--text-secondary)]"
-        >
-          Export results
+          {exportLabel}
         </button>
       </div>
     </div>
