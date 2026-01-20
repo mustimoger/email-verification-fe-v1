@@ -112,8 +112,45 @@ def test_get_credits(monkeypatch):
         return AuthContext(user_id="u-4", claims={}, token="t")
 
     app.dependency_overrides[account_module.get_current_user] = fake_user
+    app.dependency_overrides[account_module.get_user_external_client] = lambda: _FakeCreditsClient(credits=250)
+
+    client = TestClient(app)
+    resp = client.get("/api/account/credits")
+    assert resp.status_code == 200
+    assert resp.json()["credits_remaining"] == 250
+
+
+def test_get_credits_handles_external_error(monkeypatch):
+    app = _build_app()
+
+    def fake_user():
+        return AuthContext(user_id="u-7", claims={}, token="t")
+
+    app.dependency_overrides[account_module.get_current_user] = fake_user
+    app.dependency_overrides[account_module.get_user_external_client] = _fake_credits_client_error
 
     client = TestClient(app)
     resp = client.get("/api/account/credits")
     assert resp.status_code == 200
     assert resp.json()["credits_remaining"] is None
+
+
+class _FakeBalance:
+    def __init__(self, balance: int):
+        self.balance = balance
+
+
+class _FakeCreditsClient:
+    def __init__(self, credits: int):
+        self._credits = credits
+
+    async def get_credit_balance(self):
+        return _FakeBalance(self._credits)
+
+
+def _fake_credits_client_error():
+    class _ErrorClient:
+        async def get_credit_balance(self):
+            raise account_module.ExternalAPIError(status_code=503, message="down", details="unavailable")
+
+    return _ErrorClient()

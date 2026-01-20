@@ -9,6 +9,8 @@ from ..services import supabase_client
 from ..services.credit_grants import list_credit_grants
 from ..core.settings import get_settings
 from ..services.supabase_client import get_storage
+from ..clients.external import ExternalAPIClient, ExternalAPIError
+from .api_keys import get_user_external_client
 
 router = APIRouter(prefix="/api/account", tags=["account"])
 logger = logging.getLogger(__name__)
@@ -184,9 +186,23 @@ async def upload_avatar(
 
 
 @router.get("/credits", response_model=CreditsResponse)
-def get_credits(user: AuthContext = Depends(get_current_user)):
+async def get_credits(
+    user: AuthContext = Depends(get_current_user),
+    client: ExternalAPIClient = Depends(get_user_external_client),
+):
     credits = None
-    logger.info("account.credits.unavailable", extra={"user_id": user.user_id})
+    try:
+        balance = await client.get_credit_balance()
+        credits = balance.balance
+        if credits is None:
+            logger.info("account.credits.balance_missing", extra={"user_id": user.user_id})
+    except ExternalAPIError as exc:
+        logger.warning(
+            "account.credits.unavailable",
+            extra={"user_id": user.user_id, "status_code": exc.status_code, "details": exc.details},
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.error("account.credits.error", extra={"user_id": user.user_id, "error": str(exc)})
     return CreditsResponse(credits_remaining=credits)
 
 

@@ -708,7 +708,13 @@ Console notes:
 - What: Copy `/account` data wiring into `/account-v2` once the UI is approved, cross-checking updated external API docs.
 - How: Reuse the existing profile/credits/purchases logic and align with ext API contracts before swapping.
 - Why: Keeps the new UI production-ready while avoiding premature backend changes.
-Status: Pending.
+Status: Completed — `/account-v2` now reflects updated credits wiring and external API alignment.
+What was done and why:
+- Updated `/api/account/credits` to fetch `GET /api/v1/credits/balance` via the external API client (matches `ext-api-docs/endpoints/credit_transaction_controller.md`).
+- Kept profile and purchase history on Supabase/Paddle-backed endpoints since no external account/purchase endpoints exist in the ext API docs.
+- `/account-v2` already reused the same account endpoints, so no frontend wiring changes were required beyond the backend update.
+Tests:
+- `source .venv/bin/activate && pytest backend/tests/test_account.py`
 
 ### D5: Responsive and theme QA
 - What: Validate responsiveness and dark theme after styling updates.
