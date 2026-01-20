@@ -99,9 +99,7 @@ export default function ApiV2Client() {
   const chartUnavailable =
     usageLoaded &&
     !isLoadingUsage &&
-    (usageView === "per_key"
-      ? selectedKey !== "" || usageSummaryUnavailable
-      : purposeUsageUnavailable);
+    (usageView === "per_key" ? usageSummaryUnavailable : purposeUsageUnavailable);
   const totalDisplay = totalUnavailable ? EXTERNAL_DATA_UNAVAILABLE : totalUsageLabel;
 
   const resolveFullKey = (key: ApiKeySummary) => {

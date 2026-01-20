@@ -7,7 +7,13 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 
 from ..core.auth import AuthContext, get_current_user
-from ..clients.external import ExternalAPIClient, ExternalAPIError, APIUsageMetricsResponse, APIUsageMetricsSeriesPoint
+from ..clients.external import (
+    APIKeyUsageResponse,
+    APIUsageMetricsResponse,
+    APIUsageMetricsSeriesPoint,
+    ExternalAPIClient,
+    ExternalAPIError,
+)
 from .api_keys import get_user_external_client
 from ..services.date_range import normalize_range_value
 from ..services.verification_metrics import usage_series_from_metrics
@@ -59,11 +65,54 @@ async def get_usage_summary(
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="start must be before end")
 
     if api_key_id:
-        logger.info(
-            "usage.summary.api_key_unavailable",
-            extra={"user_id": user.user_id, "api_key_id": api_key_id, "from": start_value, "to": end_value},
-        )
-        return UsageSummaryResponse(source="unavailable", total=None, series=[], api_key_id=api_key_id)
+        try:
+            usage: APIKeyUsageResponse = await client.get_api_key_usage(
+                api_key_id=api_key_id,
+                start=start_value,
+                end=end_value,
+            )
+            series: List[UsageSummaryPoint] = []
+            dropped_points = 0
+            for point in usage.series or []:
+                if not point.date or point.usage_count is None:
+                    dropped_points += 1
+                    continue
+                series.append(UsageSummaryPoint(date=point.date, count=point.usage_count))
+            if dropped_points:
+                logger.info(
+                    "usage.summary.api_key.series_incomplete",
+                    extra={"user_id": user.user_id, "api_key_id": api_key_id, "dropped": dropped_points},
+                )
+            logger.info(
+                "usage.summary.api_key",
+                extra={
+                    "user_id": user.user_id,
+                    "api_key_id": api_key_id,
+                    "total": usage.usage_count,
+                    "series": len(series),
+                    "from": start_value,
+                    "to": end_value,
+                },
+            )
+            return UsageSummaryResponse(
+                source="external",
+                total=usage.usage_count,
+                series=series,
+                api_key_id=api_key_id,
+            )
+        except ExternalAPIError as exc:
+            level = logger.warning if exc.status_code in (401, 403, 404) else logger.error
+            level(
+                "usage.summary.api_key.external_failed",
+                extra={"user_id": user.user_id, "api_key_id": api_key_id, "status_code": exc.status_code},
+            )
+            return UsageSummaryResponse(source="unavailable", total=None, series=[], api_key_id=api_key_id)
+        except Exception as exc:  # noqa: BLE001
+            logger.error(
+                "usage.summary.api_key.external_error",
+                extra={"user_id": user.user_id, "api_key_id": api_key_id, "error": str(exc)},
+            )
+            return UsageSummaryResponse(source="unavailable", total=None, series=[], api_key_id=api_key_id)
 
     try:
         metrics = await client.get_verification_metrics(start=start_value, end=end_value)

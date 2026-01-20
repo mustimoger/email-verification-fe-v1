@@ -4,7 +4,12 @@ from fastapi.testclient import TestClient
 
 from app.api import usage as usage_module
 from app.api.usage import router as usage_router
-from app.clients.external import VerificationMetricsResponse, VerificationMetricsSeriesPoint
+from app.clients.external import (
+    APIKeyUsageResponse,
+    APIKeyUsageSeriesPoint,
+    VerificationMetricsResponse,
+    VerificationMetricsSeriesPoint,
+)
 from app.core.auth import AuthContext
 
 
@@ -58,15 +63,20 @@ def test_usage_summary_invalid_date(monkeypatch):
     assert resp.status_code == 400
 
 
-def test_usage_summary_api_key_unavailable(monkeypatch):
+def test_usage_summary_api_key_usage(monkeypatch):
     class FakeClient:
-        async def get_verification_metrics(self, user_id=None, start=None, end=None):
-            return VerificationMetricsResponse(user_id="user-usage", total_verifications=5)
+        async def get_api_key_usage(self, api_key_id, start=None, end=None):
+            return APIKeyUsageResponse(
+                id=api_key_id,
+                user_id="user-usage",
+                usage_count=12,
+                series=[APIKeyUsageSeriesPoint(date="2024-02-01", usage_count=4)],
+            )
 
     app = _build_app(monkeypatch, FakeClient())
     client = TestClient(app)
     resp = client.get("/api/usage/summary?api_key_id=key-1")
     assert resp.status_code == 200
     data = resp.json()
-    assert data["total"] is None
-    assert data["series"] == []
+    assert data["total"] == 12
+    assert data["series"] == [{"date": "2024-02-01", "count": 4}]

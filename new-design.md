@@ -630,7 +630,7 @@ What was done and why:
 - Kept `/api-v2` UI structure intact while swapping placeholders for live data and error states, so design review remains valid.
 External API cross-check:
 - `ext-api-docs/endpoints/api_key_controller.md` matches the backend proxy (`backend/app/api/api_keys.py`): frontend continues to send integration IDs; the backend maps them to external `purpose` values before calling `/api/v1/api-keys`.
-- Usage metrics in `ext-api-docs/endpoints/api_key_controller.md` align with `backend/app/api/usage.py` (`/api/usage/summary` + `/api/usage/purpose`), including the intentional `source=unavailable` response when filtering by `api_key_id`.
+- Usage metrics in `ext-api-docs/endpoints/api_key_controller.md` align with `backend/app/api/usage.py` (`/api/usage/summary` + `/api/usage/purpose`); per-key usage now calls `/api/v1/api-keys/{id}/usage` so the chart renders real series data.
 Tests:
 - Not run (no existing API page unit/integration tests).
 
@@ -638,9 +638,45 @@ Tests:
 - What: Replace the existing `/api` route with the new `/api-v2` UI.
 - How: Point `app/api/page.tsx` to the v2 client while keeping `/api-v2` available for rollback.
 - Why: Delivers the new API design across the dashboard without changing backend behavior.
-Status: Pending — not started.
+Status: Completed — `/api` now renders the `/api-v2` client with updated usage wiring aligned to ext API docs.
+What was done and why:
+- Replaced `app/api/page.tsx` with a wrapper that renders `ApiV2Client`, keeping `/api-v2` intact for rollback while swapping the UI.
+- Updated the external usage client to call `GET /api/v1/api-keys/usage` (per docs) and added `GET /api/v1/api-keys/{id}/usage` support for per-key charts in `backend/app/api/usage.py`.
+- Adjusted the API usage chart gating so selecting a key now uses external series data instead of showing `EXTERNAL_DATA_UNAVAILABLE`.
+Tests:
+- `source .venv/bin/activate && pytest backend/tests/test_usage_summary_route.py backend/tests/test_usage_purpose_route.py`
+- `source .venv/bin/activate && npm run test:history`
+- `source .venv/bin/activate && npm run test:overview`
+- `source .venv/bin/activate && npm run test:auth-guard`
+- `source .venv/bin/activate && npm run test:account-purchases`
 Not yet implemented:
-- Swap the route once `/api-v2` is design-approved and functionally wired.
+- None. `/api` QA captures collected in D5d.
+
+### D4w: `/account-v2` visual audit + delta checklist
+- What: Compare `/account` against `/pricing-v2` and document the deltas before redesign.
+- How: Use Playwright to capture `/account` and `/pricing-v2`, then log differences in surfaces, typography, spacing, accents, and motion.
+- Why: Ensures the redesign is targeted and traceable instead of guesswork.
+Status: Pending.
+
+### D4x: `/account-v2` UI-only redesign
+- What: Create a new `/account-v2` route that matches the `/pricing-v2` visual system (including a hero card similar to `/overview-v2`) without touching `/account`.
+- How: Apply pricing-v2 tokens, add an account-specific hero narrative, and restyle profile, security, purchase history, and credits sections while keeping the existing UX flow.
+- Why: Allows us to review the new design without disrupting the current account page.
+Status: Pending.
+Not yet implemented:
+- Backend wiring is intentionally deferred to D4z until the design is approved.
+
+### D4y: `/account-v2` responsive QA
+- What: Verify `/account-v2` across mobile and desktop breakpoints in light/dark themes.
+- How: Capture small and large viewport renders and adjust grids/overflow as needed.
+- Why: Ensures the redesign remains touch-friendly and consistent with the pricing-v2 system.
+Status: Pending.
+
+### D4z: `/account-v2` functional migration (after design approval)
+- What: Copy `/account` data wiring into `/account-v2` once the UI is approved, cross-checking updated external API docs.
+- How: Reuse the existing profile/credits/purchases logic and align with ext API contracts before swapping.
+- Why: Keeps the new UI production-ready while avoiding premature backend changes.
+Status: Pending.
 
 ### D5: Responsive and theme QA
 - What: Validate responsiveness and dark theme after styling updates.
@@ -694,13 +730,31 @@ Artifacts:
 Console notes:
 - `409 Conflict` from `/api/credits/signup-bonus` with `auth.signup_bonus.failed` warning (“Signup bonus eligibility window elapsed”).
 
+### D5d: `/api` QA after route swap
+- What: Capture light/dark + desktop/mobile renders for `/api` after swapping to `/api-v2`.
+- How: Use Playwright with localStorage auth to capture screenshots and note console errors.
+- Why: Confirms the swapped `/api` route remains responsive and theme-correct.
+Status: Completed — `/api` QA captures collected in light/dark and desktop/mobile.
+What was done and why:
+- Seeded auth localStorage and forced theme preferences to capture `/api` across light/dark + desktop/mobile after the route swap.
+- Captured screenshots to validate responsive layout and theme styling remain intact.
+Artifacts:
+- `artifacts/qa-api-desktop-light.png`
+- `artifacts/qa-api-desktop-dark.png`
+- `artifacts/qa-api-mobile-light.png`
+- `artifacts/qa-api-mobile-dark.png`
+Console notes:
+- `409 Conflict` from `/api/credits/signup-bonus` with `auth.signup_bonus.failed` warning (“Signup bonus eligibility window elapsed”).
+- `auth.trial_bonus.result` logged as duplicate (credits already granted).
+- `auth.profile_email_sync_failed` and `header.profile_load_failed` with `TypeError: Failed to fetch` (backend not reachable in QA session).
+
 ### D6: Documentation and handoff
 - What: Document the changes and any new tokens/components.
 - How: Update this plan with completed steps and rationale for newcomers.
 - Why: Keeps future work aligned and reduces rework.
-Status: Completed — added a refreshed handover with sidebar/QA details.
+Status: Updated — handoff notes now live in plan files (`newpricing.md`, `PLAN.md`) after `handover.md` was intentionally removed.
 What was done and why:
-- Created `handover.md` to capture the sidebar redesign, QA artifacts, console notes, and the remaining pending tasks so the next session can resume without gaps.
+- Captured pricing QA findings (annual pricing display mismatch) in `newpricing.md` and referenced them in `PLAN.md` so the next session can resume without relying on `handover.md`.
 
 ### D6a: Pricing-v2 visual spec checklist
 - What: Write a single source-of-truth design blueprint for `/pricing-v2` (cards, colors, typography, gradients, shadows, spacing).

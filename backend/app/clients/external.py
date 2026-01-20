@@ -204,6 +204,23 @@ class APIUsageMetricsResponse(BaseModel):
     user_id: Optional[str] = None
 
 
+class APIKeyUsageSeriesPoint(BaseModel):
+    date: Optional[str] = None
+    usage_count: Optional[int] = None
+
+
+class APIKeyUsageResponse(BaseModel):
+    created_at: Optional[str] = None
+    id: Optional[str] = None
+    is_active: Optional[bool] = None
+    last_used_at: Optional[str] = None
+    name: Optional[str] = None
+    purpose: Optional[str] = None
+    series: Optional[List[APIKeyUsageSeriesPoint]] = None
+    usage_count: Optional[int] = None
+    user_id: Optional[str] = None
+
+
 class VerificationMetricsSeriesPoint(BaseModel):
     date: Optional[str] = None
     total_verifications: Optional[int] = None
@@ -382,7 +399,22 @@ class ExternalAPIClient:
             params["to"] = end
         if not params:
             params = None
-        return await self._get("/metrics/api-usage", APIUsageMetricsResponse, params=params)
+        return await self._get("/api-keys/usage", APIUsageMetricsResponse, params=params)
+
+    async def get_api_key_usage(
+        self,
+        api_key_id: str,
+        start: Optional[str] = None,
+        end: Optional[str] = None,
+    ) -> APIKeyUsageResponse:
+        params: Dict[str, Any] = {}
+        if start:
+            params["from"] = start
+        if end:
+            params["to"] = end
+        if not params:
+            params = None
+        return await self._get(f"/api-keys/{api_key_id}/usage", APIKeyUsageResponse, params=params)
 
     async def get_credit_balance(self, user_id: Optional[str] = None) -> CreditBalanceResponse:
         params = {"user_id": user_id} if user_id else None

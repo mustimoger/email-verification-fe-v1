@@ -17,7 +17,7 @@
 - Supabase: Create dedicated v2 tables (`billing_pricing_config_v2`, `billing_pricing_tiers_v2`) so the existing pricing tables remain unchanged until cutover.
 - UI: Implement v2 pricing UI on a separate `/pricing-v2` route only.
 - Paddle: Create the new tiered catalog in Paddle sandbox (leave current catalog intact).
-- Feature flag: use `PRICING_V2` to control when the v2 flow is activated.
+- Feature flag: keep `PRICING_V2` in place but treat it as always `true` for the primary `/pricing` route unless explicitly rolling back.
 Why: Enables a parallel build/verify/switch workflow without disrupting the current fixed-plan pricing.
 
 ## Rounding + Unit Model (UI + Checkout must match)
@@ -239,6 +239,12 @@ Status: Completed — validation state drives disabled checkout and shows error 
 - Why: Confirms slider behavior and checkout gating.
 Status: In progress — utility tests added in `tests/pricing-v2-utils.test.ts`, UI smoke tests still pending.
 
+### Step F6: Swap `/pricing` and `/pricing-v2`
+- What: Promote the v2 pricing UI to the primary `/pricing` route and preserve access to the legacy pricing view.
+- How: Swap the route implementations so `/pricing` renders the v2 client and `/pricing-v2` renders the legacy pricing client (or keep `/pricing-v2` as a rollback alias if preferred).
+- Why: Completes the v2 pricing rollout while retaining a rollback path for support or QA.
+Status: Completed — `/pricing` now renders the v2 client behind `PRICING_V2`, and `/pricing-v2` serves the legacy pricing page so support still has the old flow without disrupting the v2 rollout.
+
 ## Testing & Validation
 ### Step T0: Verify v2 pricing config in Supabase
 - What: Confirm `billing_pricing_config_v2.free_trial_credits` and `metadata.display_prices.payg` are present and correct.
@@ -287,6 +293,18 @@ Status: Completed — reran the v2 simulation (`subscription` + `year`, quantity
 - How: Create a root-level `how-pricing-works.md` that explains the tier selection, subscription discounts, annual multiplier, rounding behavior, and common customer questions.
 - Why: Enables support to answer pricing questions consistently without needing to read code or configs.
 Status: Completed — added `how-pricing-works.md` with a step-by-step support-facing explanation, common Q&A, and a quick reference table so non-technical operators can answer pricing questions consistently.
+
+### Step T8: UI QA after `/pricing` swap
+- What: Validate the v2 pricing UI now that `/pricing` is the primary route.
+- How: Use Playwright with a seeded auth session to verify the hero, slider, volume table, and pricing summary in desktop + mobile.
+- Why: Confirms the swapped route matches the expected UX and data wiring.
+Status: Completed — `/pricing` loads v2 UI and updates correctly for payg/monthly, but annual pricing appears off by ~12x (see next step).
+
+### Step T9: Fix annual pricing display math
+- What: Correct the annual interval display so the monthly equivalent and annual total align with the v2 pricing rules.
+- How: Inspect `/api/billing/v2/quote` responses for `interval=year` and ensure the UI uses the correct basis when computing `displayTotal`, `annualTotal`, and savings badges.
+- Why: Prevents misleading annual pricing and discount messaging in the primary `/pricing` view.
+Status: Planned — annual summary currently shows $1/month and $6/year for 2,000 credits (expected ~$6/month, ~$72/year), and $3/month + $30/year for 10,000 (expected ~$30/month, ~$360/year).
 
 ## MVP Completion Checklist
 - Supabase v2 tiers table created and populated with real pricing.
