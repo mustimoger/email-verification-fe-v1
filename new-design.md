@@ -567,6 +567,65 @@ What was done and why:
 - Replaced `app/history/page.tsx` with a wrapper that renders `HistoryV2Client` to swap the new UI in without altering backend logic.
 - Kept `/history-v2` intact for rollback/QA.
 
+### D4r: `/api-v2` visual audit + delta checklist
+- What: Compare `/api` against `/pricing-v2` and document the deltas before redesign.
+- How: Use Playwright to capture `/api` and `/pricing-v2`, then log differences in surfaces, typography, spacing, accents, and motion.
+- Why: Ensures the redesign is targeted and traceable instead of guesswork.
+Status: Completed — Playwright captures collected and deltas documented for `/api` versus `/pricing-v2`.
+What was done and why:
+- Seeded auth localStorage and captured `/api` and `/pricing-v2` to compare the live UI against the pricing-v2 visual blueprint.
+- Logged surface, typography, spacing, accent, and motion deltas to keep the redesign targeted without changing the underlying UX.
+Artifacts:
+- `artifacts/api-auth.png`
+- `artifacts/pricing-v2-auth.png`
+Console notes:
+- `503 Service Unavailable` responses from `/overview`, `/account/profile`, `/account/credits`, `/tasks`, and `/integrations` (external API unavailable) during the session.
+Key deltas found:
+- `/api` opens directly on utility cards with no hero card, accent chip, or narrative header; `/pricing-v2` leads with a gradient hero card and layered glows.
+- Card surfaces in `/api` use `bg-white` + `shadow-sm` + default borders; `/pricing-v2` uses the pricing card hierarchy (`--pricing-card`, `--pricing-card-muted`, `--pricing-card-strong`) with the 28/24/16/12px radius map and `--pricing-border`.
+- Buttons in `/api` use the default accent fills (`Generate API Key`, `See Usage`) and standard outlines; `/pricing-v2` uses the amber gradient CTA with the pricing shadow spec.
+- Typography in `/api` stays at standard section headers (`text-lg/2xl`) and lacks the uppercase micro-labels, gradient accents, and hero headline scale used in `/pricing-v2`.
+- Page-level motion polish (entrance transitions, hover glows) is absent in `/api`.
+- Table header rows and filter controls use flat borders and white surfaces; `/pricing-v2` uses muted card surfaces and consistent border tokens across sections.
+
+### D4s: `/api-v2` UI-only redesign
+- What: Create a new `/api-v2` route that matches the `/pricing-v2` visual system without touching `/api`.
+- How: Apply pricing-v2 tokens, add an API-specific hero card, and restyle the existing API documentation sections while keeping the UX flow intact.
+- Why: Allows us to review the new design without disrupting the current API page.
+Status: Completed — `/api-v2` UI-only route added with pricing-v2 surfaces and hero layout.
+What was done and why:
+- Added `app/api-v2/page.tsx`, `app/api-v2/api-v2-client.tsx`, and `app/api-v2/api-v2-sections.tsx` to introduce the new route without touching `/api`.
+- Created `app/api-v2/api-v2.module.css` to apply pricing-v2 surface tokens, borders, and shadows scoped to the new page.
+- Built a pricing-style hero card with API-focused messaging and CTA anchors to the Keys/Usage sections.
+- Restyled the API Keys and API Usage blocks to the pricing-v2 card hierarchy while keeping the existing information architecture (table + usage controls).
+Not yet implemented:
+- Backend wiring for keys, usage charts, and key creation is intentionally deferred to D4u; the UI currently renders empty-state content for design review.
+
+### D4t: `/api-v2` responsive QA
+- What: Verify `/api-v2` across mobile and desktop breakpoints in light/dark themes.
+- How: Capture small and large viewport renders and adjust grids/overflow as needed.
+- Why: Ensures the redesign remains touch-friendly and consistent with the pricing-v2 system.
+Status: Pending — not started.
+Not yet implemented:
+- Capture `/api-v2` screenshots for desktop/mobile in light/dark themes.
+
+### D4u: `/api-v2` functional migration (after design approval)
+- What: Copy `/api` data wiring into `/api-v2` once the UI is approved.
+- How: Reuse existing API key management logic and cross-check against updated external API docs.
+- Why: Keeps the new UI production-ready while avoiding premature backend changes.
+Status: Pending — not started.
+Not yet implemented:
+- Wire API key generation, listing, and revoke flows into `/api-v2`.
+- Cross-check `/api` backend endpoints with `/ext-api-docs` for any updated payloads.
+
+### D4v: Swap `/api` to `/api-v2`
+- What: Replace the existing `/api` route with the new `/api-v2` UI.
+- How: Point `app/api/page.tsx` to the v2 client while keeping `/api-v2` available for rollback.
+- Why: Delivers the new API design across the dashboard without changing backend behavior.
+Status: Pending — not started.
+Not yet implemented:
+- Swap the route once `/api-v2` is design-approved and functionally wired.
+
 ### D5: Responsive and theme QA
 - What: Validate responsiveness and dark theme after styling updates.
 - How: Spot check key breakpoints and dark mode for each updated page.
