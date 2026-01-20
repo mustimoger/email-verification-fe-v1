@@ -59,7 +59,13 @@
 - How:
   - Identify the tables and validate ownership/source.
   - If not external-API owned, either add external endpoints or remove/replace the feature in the UI.
-- Status: Not started.
+- Status: Completed.
+- Done:
+  - Identified Supabase tables used by /overview via code inspection: `profiles`, `credit_grants`, `billing_plans`.
+  - Queried Supabase schema metadata to confirm these tables exist and are used for profile and billing plan/credit grant data.
+  - Verified in backend code that these tables are written by local services (profile sync + Paddle billing/webhook flows), not by the external API.
+- Result:
+  - These Supabase reads are NOT external-API owned. They must remain local unless new external endpoints (or external-owned tables) are introduced.
 
 ### Step 4 — Remove local overview aggregator route if unused
 - What: Deprecate `/api/overview` once the client no longer calls it.
@@ -82,8 +88,8 @@
   - Updated and ran `npm run test:overview` after refactoring overview mapping utilities.
 
 ## STAYED-LOCAL
-- Supabase profile data used by /overview, only if the external API is the writer for that table.
-- Current plan metadata derived from Supabase + billing mappings; no external endpoint documented.
+- Supabase profile data (`profiles`) is written by local auth/profile sync, not by the external API.
+- Current plan metadata derived from Supabase (`credit_grants`, `billing_plans`) and Paddle webhook flows; no external endpoint documented.
 - Integrations catalog (local config) because no external endpoint is documented.
 
 ## Progress updates
@@ -92,3 +98,4 @@
 - Completed Step 1a by introducing a configurable metrics date range so usage series can populate.
 - Completed Step 2 by routing tasks pagination/refresh directly to the external API.
 - Began Step 5 with updated overview mapping tests to cover the new client-side mappings.
+- Completed Step 3 by auditing Supabase reads for /overview and confirming they are local (non-external) writers.
