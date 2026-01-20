@@ -86,9 +86,12 @@
 - How:
   - Manual smoke checks for loading/error/empty states.
   - Add/adjust tests only if existing coverage is insufficient.
-- Status: In progress.
+- Status: In progress (blocked on environment config).
 - Done:
   - Updated and ran `npm run test:overview` after refactoring overview mapping utilities.
+  - Performed Playwright smoke check on `/overview` with injected Supabase session token.
+- Blocker:
+  - `NEXT_PUBLIC_EMAIL_API_BASE_URL` is not set in the running frontend environment, so external API calls fail and the UI shows “Unavailable”/empty states for credits, metrics, and tasks.
 
 ## STAYED-LOCAL
 - Supabase profile data (`profiles`) is written by local auth/profile sync, not by the external API.
@@ -103,3 +106,4 @@
 - Began Step 5 with updated overview mapping tests to cover the new client-side mappings.
 - Completed Step 3 by auditing Supabase reads for /overview and confirming they are local (non-external) writers.
 - Completed Step 4 by removing the unused local `/api/overview` route and its tests.
+- Ran Playwright smoke checks for `/overview` and documented the missing external API base URL as the current blocker.
