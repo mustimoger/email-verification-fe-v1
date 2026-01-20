@@ -1,4 +1,4 @@
-import { IntegrationOption, OverviewResponse, Task } from "../lib/api-client";
+import { IntegrationOption, Task, VerificationMetricsResponse } from "../lib/api-client";
 import { formatPurposeLabel } from "../api/utils";
 
 export type TaskStatus = "Completed" | "Running" | "Cancelled";
@@ -36,7 +36,27 @@ export function formatOverviewDate(value?: string | null): string {
   return date.toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" });
 }
 
-export function aggregateValidationCounts(tasks: OverviewResponse["recent_tasks"] | undefined) {
+export type ValidationTotals = {
+  valid: number;
+  invalid: number;
+  catchAll: number;
+  roleBased: number;
+  disposable: number;
+  total: number;
+};
+
+const coerceCount = (value: unknown) => {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return Math.trunc(value);
+  }
+  if (typeof value === "string" && value.trim().length > 0) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? Math.trunc(parsed) : null;
+  }
+  return null;
+};
+
+export function aggregateValidationCounts(tasks: Task[] | undefined): ValidationTotals {
   let valid = 0;
   let invalid = 0;
   let catchAll = 0;
@@ -46,11 +66,51 @@ export function aggregateValidationCounts(tasks: OverviewResponse["recent_tasks"
     valid += task.valid_count ?? 0;
     invalid += task.invalid_count ?? 0;
     catchAll += task.catchall_count ?? 0;
-    roleBased += task.role_based_count ?? 0;
-    disposable += task.disposable_count ?? 0;
+    const verificationStatus = task.metrics?.verification_status;
+    roleBased += verificationStatus?.role_based ?? 0;
+    disposable += verificationStatus?.disposable_domain_emails ?? 0;
   }
   const total = valid + invalid + catchAll + roleBased + disposable;
   return { valid, invalid, catchAll, roleBased, disposable, total };
+}
+
+export function buildVerificationTotalsFromMetrics(
+  metrics?: VerificationMetricsResponse | null,
+): ValidationTotals | null {
+  if (!metrics) return null;
+  const status = metrics.verification_status ?? {};
+  const valid = coerceCount(status.exists) ?? 0;
+  const invalid = coerceCount(status.not_exists) ?? 0;
+  const catchAll =
+    coerceCount(metrics.total_catchall) ??
+    coerceCount(status.catchall) ??
+    0;
+  const roleBased =
+    coerceCount(metrics.total_role_based) ??
+    coerceCount(status.role_based) ??
+    0;
+  const disposable =
+    coerceCount(metrics.total_disposable_domain_emails) ??
+    coerceCount(status.disposable_domain_emails) ??
+    0;
+  const total =
+    coerceCount(metrics.total_verifications) ??
+    valid + invalid + catchAll + roleBased + disposable;
+  return { valid, invalid, catchAll, roleBased, disposable, total };
+}
+
+export function buildUsageSeriesFromMetrics(metrics?: VerificationMetricsResponse | null) {
+  const series = metrics?.series ?? [];
+  return series
+    .map((point) => {
+      const date = point.date?.trim();
+      const count = coerceCount(point.total_verifications);
+      if (!date || count === null) {
+        return null;
+      }
+      return { date, count };
+    })
+    .filter((point): point is { date: string; count: number } => point !== null);
 }
 
 export function buildIntegrationLabelMap(options: IntegrationOption[] | undefined): Map<string, string> {
@@ -85,24 +145,6 @@ export function resolveTaskLabel(
   }
   console.warn("overview.task.integration_unmapped", { integration: value });
   return formatPurposeLabel(value);
-}
-
-export function mapOverviewTask(
-  task: OverviewResponse["recent_tasks"][number],
-  integrationLabels: Map<string, string>,
-): OverviewTask {
-  const status = normalizeOverviewStatus(task.status);
-  return {
-    id: task.task_id,
-    name: resolveTaskLabel(task.integration, integrationLabels),
-    emails: task.email_count ?? 0,
-    date: formatOverviewDate(task.created_at),
-    valid: task.valid_count ?? 0,
-    invalid: task.invalid_count ?? 0,
-    catchAll: task.catchall_count ?? 0,
-    status,
-    jobStatus: task.job_status ?? undefined,
-  };
 }
 
 export function mapTaskToOverviewTask(

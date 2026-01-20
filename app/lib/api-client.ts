@@ -284,6 +284,38 @@ export type UsagePurposeResponse = {
   user_id?: string;
 };
 
+export type ExternalCreditBalanceResponse = {
+  user_id?: string;
+  balance?: number | null;
+};
+
+export type VerificationMetricsSeriesPoint = {
+  date?: string;
+  total_verifications?: number;
+  total_tasks?: number;
+  unique_email_addresses?: number;
+  job_status?: Record<string, number>;
+  verification_status?: Record<string, number>;
+  total_catchall?: number;
+  total_role_based?: number;
+  total_disposable_domain_emails?: number;
+};
+
+export type VerificationMetricsResponse = {
+  job_status?: Record<string, number>;
+  last_verification_completed_at?: string;
+  last_verification_requested_at?: string;
+  total_catchall?: number;
+  total_disposable_domain_emails?: number;
+  total_role_based?: number;
+  total_tasks?: number;
+  total_verifications?: number;
+  unique_email_addresses?: number;
+  user_id?: string;
+  verification_status?: Record<string, number>;
+  series?: VerificationMetricsSeriesPoint[];
+};
+
 export type IntegrationOption = {
   id: string;
   label: string;
@@ -418,11 +450,16 @@ export type SignupBonusResponse = {
 
 export type TrialBonusResponse = SignupBonusResponse;
 
+const trimTrailingSlash = (value: string) => (value.endsWith("/") ? value.slice(0, -1) : value);
+
 const rawBase = process.env.NEXT_PUBLIC_API_BASE_URL;
 if (!rawBase) {
   throw new Error("NEXT_PUBLIC_API_BASE_URL is required for API client");
 }
-const API_BASE = rawBase.replace(/\/$/, "");
+const API_BASE = trimTrailingSlash(rawBase);
+
+const rawExternalBase = process.env.NEXT_PUBLIC_EMAIL_API_BASE_URL;
+const EXTERNAL_API_BASE = rawExternalBase ? trimTrailingSlash(rawExternalBase) : null;
 
 async function getAccessToken(): Promise<string | null> {
   if (typeof window === "undefined") return null;
@@ -500,6 +537,94 @@ async function request<T>(
     const message = typeof detail === "string" && detail.trim().length > 0 ? detail : res.statusText;
     if (!suppressErrorLog) {
       console.error("api.request_failed", { path, status: res.status, message, details: data });
+    }
+    if (suppressThrow) {
+      return data as T;
+    }
+    throw new ApiError(res.status, message, data);
+  }
+  return data as T;
+}
+
+const extractErrorMessage = (data: unknown, fallback: string) => {
+  if (!data || typeof data !== "object") return fallback;
+  const detail = (data as { detail?: unknown }).detail;
+  if (typeof detail === "string" && detail.trim().length > 0) {
+    return detail;
+  }
+  const errorMessage = (data as { error?: { message?: unknown } }).error?.message;
+  if (typeof errorMessage === "string" && errorMessage.trim().length > 0) {
+    return errorMessage;
+  }
+  return fallback;
+};
+
+const getExternalApiBase = () => {
+  if (!EXTERNAL_API_BASE) {
+    console.error("external_api_base_missing", { env: "NEXT_PUBLIC_EMAIL_API_BASE_URL" });
+    throw new ApiError(500, "External API base URL is not configured.");
+  }
+  return EXTERNAL_API_BASE;
+};
+
+async function externalRequest<T>(
+  path: string,
+  options: {
+    method?: HttpMethod;
+    body?: unknown;
+    headers?: Record<string, string>;
+    isForm?: boolean;
+    suppressErrorLog?: boolean;
+    suppressThrow?: boolean;
+  } = {},
+): Promise<T> {
+  const {
+    method = "GET",
+    body,
+    headers = {},
+    isForm = false,
+    suppressErrorLog = false,
+    suppressThrow = false,
+  } = options;
+  const url = `${getExternalApiBase()}${path}`;
+  const finalHeaders: Record<string, string> = { ...headers };
+  let payload: BodyInit | undefined;
+
+  if (body !== undefined && body !== null) {
+    if (isForm) {
+      payload = body as BodyInit;
+    } else {
+      finalHeaders["Content-Type"] = "application/json";
+      payload = JSON.stringify(body);
+    }
+  }
+
+  const token = await getAccessToken();
+  if (token) {
+    finalHeaders["Authorization"] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(url, {
+    method,
+    headers: finalHeaders,
+    body: payload,
+    credentials: "omit",
+  });
+
+  const text = await res.text();
+  let data: unknown = null;
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = text;
+    }
+  }
+
+  if (!res.ok) {
+    const message = extractErrorMessage(data, res.statusText);
+    if (!suppressErrorLog) {
+      console.error("external_api.request_failed", { path, status: res.status, message, details: data });
     }
     if (suppressThrow) {
       return data as T;
@@ -682,6 +807,23 @@ export const apiClient = {
 };
 
 export type ApiClient = typeof apiClient;
+
+export const externalApiClient = {
+  getCreditBalance: () => externalRequest<ExternalCreditBalanceResponse>("/credits/balance", { method: "GET" }),
+  getVerificationMetrics: (params?: { from?: string; to?: string }) => {
+    const search = new URLSearchParams();
+    if (params?.from) search.append("from", params.from);
+    if (params?.to) search.append("to", params.to);
+    const qs = search.toString();
+    return externalRequest<VerificationMetricsResponse>(`/metrics/verifications${qs ? `?${qs}` : ""}`, {
+      method: "GET",
+    });
+  },
+  listTasks: (limit = 10, offset = 0) => {
+    const params = new URLSearchParams({ limit: `${limit}`, offset: `${offset}` });
+    return externalRequest<TaskListResponse>(`/tasks?${params.toString()}`, { method: "GET" });
+  },
+};
 
 export const billingApi = {
   listPlans: () => request<PlansResponse>("/billing/plans", { method: "GET" }),

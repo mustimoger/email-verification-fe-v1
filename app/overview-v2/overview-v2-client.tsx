@@ -16,15 +16,19 @@ import { useAuth } from "../components/auth-provider";
 import {
   apiClient,
   ApiError,
+  billingApi,
+  externalApiClient,
   IntegrationOption,
-  OverviewResponse,
   TaskListResponse,
+  VerificationMetricsResponse,
 } from "../lib/api-client";
+import { APP_CONFIG } from "../lib/app-config";
 import { EXTERNAL_DATA_UNAVAILABLE } from "../lib/messages";
 import {
   aggregateValidationCounts,
+  buildUsageSeriesFromMetrics,
+  buildVerificationTotalsFromMetrics,
   buildIntegrationLabelMap,
-  mapOverviewTask,
   mapTaskToOverviewTask,
   type OverviewTask,
   type StatusBreakdown,
@@ -62,6 +66,13 @@ type StatusPopover = {
   summary: StatusBreakdown;
 };
 
+type PlanSummary = {
+  label: string | null;
+  planNames: string[];
+  purchasedAt?: string | null;
+  isMulti: boolean;
+};
+
 const TASKS_PAGE_SIZE = 10;
 
 const compareCreatedAtDesc = (left?: string | null, right?: string | null) => {
@@ -75,13 +86,16 @@ const compareCreatedAtDesc = (left?: string | null, right?: string | null) => {
 
 export default function OverviewV2Client() {
   const { session, loading: authLoading } = useAuth();
-  const [overview, setOverview] = useState<OverviewResponse | null>(null);
+  const [creditsBalance, setCreditsBalance] = useState<number | null>(null);
+  const [verificationMetrics, setVerificationMetrics] = useState<VerificationMetricsResponse | null>(null);
+  const [recentTasks, setRecentTasks] = useState<TaskListResponse["tasks"]>([]);
+  const [planSummary, setPlanSummary] = useState<PlanSummary | null>(null);
   const [integrationOptions, setIntegrationOptions] = useState<IntegrationOption[]>([]);
   const [tasksResponse, setTasksResponse] = useState<TaskListResponse | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [overviewLoading, setOverviewLoading] = useState(false);
+  const [overviewLoaded, setOverviewLoaded] = useState(false);
   const [tasksPaging, setTasksPaging] = useState(false);
   const [tasksRefreshing, setTasksRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [tasksError, setTasksError] = useState<string | null>(null);
   const [statusPopover, setStatusPopover] = useState<StatusPopover | null>(null);
   const [tasksPageIndex, setTasksPageIndex] = useState(0);
@@ -98,25 +112,57 @@ export default function OverviewV2Client() {
   }, []);
 
   useEffect(() => {
-    if (authLoading || !session) return;
-    const load = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const data = await apiClient.getOverview();
-        setOverview(data);
-      } catch (err: unknown) {
-        const message = err instanceof ApiError ? err.message : "Failed to load overview";
-        setError(message);
-      } finally {
-        setLoading(false);
+    if (authLoading || !session) {
+      setCreditsBalance(null);
+      setVerificationMetrics(null);
+      setRecentTasks([]);
+      setOverviewLoaded(false);
+      setOverviewLoading(false);
+      return;
+    }
+    const loadOverviewData = async () => {
+      setOverviewLoading(true);
+      setOverviewLoaded(false);
+      const rangeEnd = new Date();
+      const rangeStart = new Date(rangeEnd);
+      rangeStart.setMonth(rangeStart.getMonth() - APP_CONFIG.overviewUsageRangeMonths);
+      const [creditsResult, metricsResult, tasksResult] = await Promise.allSettled([
+        externalApiClient.getCreditBalance(),
+        externalApiClient.getVerificationMetrics({ from: rangeStart.toISOString(), to: rangeEnd.toISOString() }),
+        externalApiClient.listTasks(5, 0),
+      ]);
+      if (creditsResult.status === "fulfilled") {
+        setCreditsBalance(creditsResult.value.balance ?? null);
+      } else {
+        const message =
+          creditsResult.reason instanceof ApiError ? creditsResult.reason.message : "Failed to load credits";
+        console.warn("overview.credits.load_failed", { error: message });
       }
+      if (metricsResult.status === "fulfilled") {
+        setVerificationMetrics(metricsResult.value);
+      } else {
+        const message =
+          metricsResult.reason instanceof ApiError ? metricsResult.reason.message : "Failed to load metrics";
+        console.warn("overview.metrics.load_failed", { error: message });
+      }
+      if (tasksResult.status === "fulfilled") {
+        setRecentTasks(tasksResult.value.tasks ?? []);
+      } else {
+        const message =
+          tasksResult.reason instanceof ApiError ? tasksResult.reason.message : "Failed to load tasks";
+        console.warn("overview.recent_tasks.load_failed", { error: message });
+      }
+      setOverviewLoading(false);
+      setOverviewLoaded(true);
     };
-    void load();
+    void loadOverviewData();
   }, [authLoading, session]);
 
   useEffect(() => {
-    if (authLoading || !session) return;
+    if (authLoading || !session) {
+      setPlanSummary(null);
+      return;
+    }
     const loadIntegrations = async () => {
       try {
         const options = await apiClient.listIntegrations();
@@ -129,28 +175,80 @@ export default function OverviewV2Client() {
     void loadIntegrations();
   }, [authLoading, session]);
 
+  useEffect(() => {
+    if (authLoading || !session) return;
+    const loadPlan = async () => {
+      try {
+        const [purchases, plans] = await Promise.all([
+          apiClient.getPurchases(1, 0),
+          billingApi.listPlans(),
+        ]);
+        const latestPurchase = purchases.items?.[0];
+        const priceIds = Array.isArray(latestPurchase?.price_ids) ? latestPurchase?.price_ids ?? [] : [];
+        if (!latestPurchase || priceIds.length === 0) {
+          setPlanSummary(null);
+          return;
+        }
+        const priceNameMap = new Map<string, string>();
+        (plans.plans ?? []).forEach((plan) => {
+          const planName = plan.name?.trim();
+          if (!planName) return;
+          Object.values(plan.prices ?? {}).forEach((price) => {
+            const priceId = price.price_id?.trim();
+            if (!priceId) return;
+            priceNameMap.set(priceId, planName);
+          });
+        });
+        const planNames = priceIds
+          .map((priceId) => priceNameMap.get(priceId))
+          .filter((name): name is string => Boolean(name));
+        const isMulti = priceIds.length > 1;
+        const label = isMulti ? "Multiple items" : planNames[0] ?? null;
+        setPlanSummary({
+          label,
+          planNames,
+          purchasedAt: latestPurchase.purchased_at ?? null,
+          isMulti,
+        });
+      } catch (err: unknown) {
+        const message = err instanceof ApiError ? err.message : "Failed to load plan";
+        console.warn("overview.plan.load_failed", { error: message });
+        setPlanSummary(null);
+      }
+    };
+    void loadPlan();
+  }, [authLoading, session]);
+
   const validationTotals = useMemo(() => {
-    const totals = overview?.verification_totals;
-    if (totals) {
-      return {
-        valid: totals.valid ?? 0,
-        invalid: totals.invalid ?? 0,
-        catchAll: totals.catchall ?? 0,
-        disposable: totals.disposable ?? 0,
-        total: totals.total ?? 0,
-      };
+    const totals = buildVerificationTotalsFromMetrics(verificationMetrics);
+    if (totals) return totals;
+    if (recentTasks && recentTasks.length > 0) {
+      return aggregateValidationCounts(recentTasks);
     }
-    return aggregateValidationCounts(overview?.recent_tasks);
-  }, [overview]);
+    return null;
+  }, [recentTasks, verificationMetrics]);
+
+  const resolvedValidationTotals = useMemo(
+    () =>
+      validationTotals ?? {
+        valid: 0,
+        invalid: 0,
+        catchAll: 0,
+        roleBased: 0,
+        disposable: 0,
+        total: 0,
+      },
+    [validationTotals],
+  );
 
   const stats: Stat[] = useMemo(() => {
     const missingValueLabel = "Unavailable";
-    const credits = overview?.credits_remaining;
-    const creditsValue = credits === null || credits === undefined ? null : credits.toLocaleString();
-    const totalVerifications = overview?.usage_total ?? null;
-    const valid = overview?.verification_totals?.valid ?? null;
-    const invalid = overview?.verification_totals?.invalid ?? null;
-    const catchAll = overview?.verification_totals?.catchall ?? null;
+    const creditsValue =
+      creditsBalance === null || creditsBalance === undefined ? null : creditsBalance.toLocaleString();
+    const totalVerifications = validationTotals?.total ?? null;
+    const valid = validationTotals?.valid ?? null;
+    const invalid = validationTotals?.invalid ?? null;
+    const catchAll = validationTotals?.catchAll ?? null;
     return [
       {
         title: "Credits Remaining",
@@ -167,32 +265,31 @@ export default function OverviewV2Client() {
       { title: "Total Invalid", value: invalid !== null ? invalid.toLocaleString() : missingValueLabel, icon: CircleX },
       { title: "Total Catch-all", value: catchAll !== null ? catchAll.toLocaleString() : missingValueLabel, icon: MailQuestionMark },
     ];
-  }, [overview]);
+  }, [creditsBalance, validationTotals]);
 
   const validationData: ValidationSlice[] = useMemo(() => {
     const slices = [
-      { name: "Valid", value: validationTotals.valid, color: "var(--chart-valid)" },
-      { name: "Catch-all", value: validationTotals.catchAll, color: "var(--chart-catchall)" },
-      { name: "Invalid", value: validationTotals.invalid, color: "var(--chart-invalid)" },
+      { name: "Valid", value: resolvedValidationTotals.valid, color: "var(--chart-valid)" },
+      { name: "Catch-all", value: resolvedValidationTotals.catchAll, color: "var(--chart-catchall)" },
+      { name: "Invalid", value: resolvedValidationTotals.invalid, color: "var(--chart-invalid)" },
     ];
-    if (!overview) return slices;
     return slices.filter((slice) => slice.value > 0);
-  }, [overview, validationTotals]);
+  }, [resolvedValidationTotals]);
 
-  const validationHasData = validationTotals.total > 0;
+  const validationHasData = resolvedValidationTotals.total > 0;
   const validationPills = useMemo(
     () => [
-      { label: "Invalid", value: validationTotals.invalid, color: "var(--chart-invalid)" },
-      { label: "Valid", value: validationTotals.valid, color: "var(--chart-valid)" },
-      { label: "Catch-all", value: validationTotals.catchAll, color: "var(--chart-catchall)" },
-      { label: "Disposable", value: validationTotals.disposable ?? 0, color: "var(--chart-processing)" },
+      { label: "Invalid", value: resolvedValidationTotals.invalid, color: "var(--chart-invalid)" },
+      { label: "Valid", value: resolvedValidationTotals.valid, color: "var(--chart-valid)" },
+      { label: "Catch-all", value: resolvedValidationTotals.catchAll, color: "var(--chart-catchall)" },
+      { label: "Disposable", value: resolvedValidationTotals.disposable ?? 0, color: "var(--chart-processing)" },
     ],
-    [validationTotals],
+    [resolvedValidationTotals],
   );
 
   const usageData: UsagePoint[] = useMemo(
-    () => (overview?.usage_series ?? []).map((point) => ({ date: point.date, count: point.count })),
-    [overview],
+    () => buildUsageSeriesFromMetrics(verificationMetrics),
+    [verificationMetrics],
   );
 
   const integrationLabels = useMemo(
@@ -208,20 +305,20 @@ export default function OverviewV2Client() {
         .map((task) => mapTaskToOverviewTask(task, integrationLabels))
         .filter((task): task is OverviewTask => task !== null);
     }
-    if (!overview?.recent_tasks) return [];
-    return [...overview.recent_tasks]
+    if (!recentTasks || recentTasks.length === 0) return [];
+    return [...recentTasks]
       .sort((left, right) => compareCreatedAtDesc(left.created_at, right.created_at))
-      .map((task) => mapOverviewTask(task, integrationLabels));
-  }, [overview, integrationLabels, tasksResponse]);
+      .map((task) => mapTaskToOverviewTask(task, integrationLabels))
+      .filter((task): task is OverviewTask => task !== null);
+  }, [integrationLabels, recentTasks, tasksResponse]);
 
-  const anyData = overview !== null;
-  const tasksLoading = tasksPaging || tasksRefreshing || (loading && !tasksResponse);
-  const taskError = tasksError ?? (tasksResponse ? null : error);
-  const currentPlan = overview?.current_plan;
+  const tasksLoading = tasksPaging || tasksRefreshing;
+  const taskError = tasksError ?? null;
+  const currentPlan = planSummary;
   const missingPlanLabel = "Unavailable";
-  const planName = currentPlan?.label ?? (currentPlan?.plan_names?.[0] || missingPlanLabel);
+  const planName = currentPlan?.label ?? (currentPlan?.planNames?.[0] || missingPlanLabel);
   const purchaseDate =
-    currentPlan?.purchased_at ? new Date(currentPlan.purchased_at).toLocaleDateString() : missingPlanLabel;
+    currentPlan?.purchasedAt ? new Date(currentPlan.purchasedAt).toLocaleDateString() : missingPlanLabel;
 
   const fetchTasksPage = useCallback(
     async (pageIndex: number, options?: { refresh?: boolean; source?: "initial" | "page" | "refresh" }) => {
@@ -235,7 +332,10 @@ export default function OverviewV2Client() {
       setTasksError(null);
       try {
         const offset = pageIndex * TASKS_PAGE_SIZE;
-        const response = await apiClient.listTasks(TASKS_PAGE_SIZE, offset, undefined, options?.refresh);
+        if (options?.refresh) {
+          console.info("overview.tasks.refresh_requested", { page_index: pageIndex });
+        }
+        const response = await externalApiClient.listTasks(TASKS_PAGE_SIZE, offset);
         setTasksResponse(response);
         setTasksPageIndex(pageIndex);
       } catch (err: unknown) {
@@ -312,7 +412,7 @@ export default function OverviewV2Client() {
         <section className={`${styles.root} relative flex flex-col gap-8 pb-8 lg:px-8`}>
           <OverviewHero transitionClass={transitionClass} />
 
-          <StatsGrid stats={stats} loading={!anyData} transitionClass={transitionClass} />
+          <StatsGrid stats={stats} loading={!overviewLoaded || overviewLoading} transitionClass={transitionClass} />
 
           <div className={`grid gap-6 lg:grid-cols-[1.3fr_1.3fr_1fr] ${transitionClass}`}>
             <ValidationCard
@@ -325,7 +425,7 @@ export default function OverviewV2Client() {
             <PlanCard
               planName={planName}
               purchaseDate={purchaseDate}
-              planNames={currentPlan?.label === "Multiple items" ? currentPlan.plan_names ?? undefined : undefined}
+              planNames={currentPlan?.isMulti ? currentPlan.planNames : undefined}
             />
           </div>
 

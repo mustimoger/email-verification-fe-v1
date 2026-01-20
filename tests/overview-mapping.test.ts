@@ -4,12 +4,12 @@ import {
   aggregateValidationCounts,
   buildIntegrationLabelMap,
   formatOverviewDate,
-  mapOverviewTask,
+  mapTaskToOverviewTask,
   normalizeOverviewStatus,
   resolveTaskLabel,
   summarizeJobStatus,
 } from "../app/overview/utils";
-import { OverviewResponse } from "../app/lib/api-client";
+import { Task } from "../app/lib/api-client";
 
 function run(name: string, fn: () => void) {
   try {
@@ -37,9 +37,9 @@ run("formatOverviewDate handles invalid input", () => {
 });
 
 run("aggregateValidationCounts sums task counts", () => {
-  const tasks: OverviewResponse["recent_tasks"] = [
-    { task_id: "t1", valid_count: 2, invalid_count: 1, catchall_count: 0 },
-    { task_id: "t2", valid_count: 3, invalid_count: 2, catchall_count: 1 },
+  const tasks: Task[] = [
+    { id: "t1", valid_count: 2, invalid_count: 1, catchall_count: 0 },
+    { id: "t2", valid_count: 3, invalid_count: 2, catchall_count: 1 },
   ];
   const totals = aggregateValidationCounts(tasks);
   assert.strictEqual(totals.valid, 5);
@@ -48,12 +48,12 @@ run("aggregateValidationCounts sums task counts", () => {
   assert.strictEqual(totals.total, 9);
 });
 
-run("mapOverviewTask maps task fields safely", () => {
+run("mapTaskToOverviewTask maps task fields safely", () => {
   const labels = buildIntegrationLabelMap([
     { id: "zapier", label: "Zapier", description: "", icon: null, default_name: null },
   ]);
   const task = {
-    task_id: "t3",
+    id: "t3",
     status: "processing",
     email_count: 10,
     valid_count: 4,
@@ -62,15 +62,16 @@ run("mapOverviewTask maps task fields safely", () => {
     integration: "zapier",
     created_at: "2024-03-03T00:00:00Z",
   };
-  const mapped = mapOverviewTask(task, labels);
-  assert.strictEqual(mapped.id, "t3");
-  assert.strictEqual(mapped.name, "Zapier");
-  assert.strictEqual(mapped.emails, 10);
-  assert.strictEqual(mapped.valid, 4);
-  assert.strictEqual(mapped.invalid, 3);
-  assert.strictEqual(mapped.catchAll, 1);
-  assert.strictEqual(mapped.status, "Running");
-  assert.strictEqual(mapped.date, "Mar 03, 2024");
+  const mapped = mapTaskToOverviewTask(task, labels);
+  assert.ok(mapped);
+  assert.strictEqual(mapped?.id, "t3");
+  assert.strictEqual(mapped?.name, "Zapier");
+  assert.strictEqual(mapped?.emails, 10);
+  assert.strictEqual(mapped?.valid, 4);
+  assert.strictEqual(mapped?.invalid, 3);
+  assert.strictEqual(mapped?.catchAll, 1);
+  assert.strictEqual(mapped?.status, "Running");
+  assert.strictEqual(mapped?.date, "Mar 03, 2024");
 });
 
 run("resolveTaskLabel prioritizes dashboard and integration labels", () => {
