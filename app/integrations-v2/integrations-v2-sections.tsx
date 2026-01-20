@@ -76,13 +76,13 @@ export function IntegrationsHero({ transitionClass }: { transitionClass?: string
           <div className="mt-6 flex flex-wrap gap-3">
             <Link
               href="/api"
-              className="rounded-xl bg-[linear-gradient(135deg,var(--integrations-accent)_0%,var(--integrations-accent-strong)_100%)] px-6 py-3 text-sm font-semibold text-[var(--integrations-cta-ink)] shadow-[0_16px_32px_rgba(249,168,37,0.3)]"
+              className="rounded-xl bg-[linear-gradient(135deg,var(--integrations-accent)_0%,var(--integrations-accent-strong)_100%)] px-6 py-3 text-sm font-semibold text-[var(--integrations-cta-ink)] shadow-[0_16px_32px_rgba(249,168,37,0.3)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_36px_rgba(249,168,37,0.38)]"
             >
               Generate API key
             </Link>
             <Link
               href="/verify"
-              className="rounded-xl border border-[var(--integrations-border)] bg-white/70 px-6 py-3 text-sm font-semibold text-[var(--text-secondary)]"
+              className="rounded-xl border border-[var(--integrations-border)] bg-[var(--integrations-surface-contrast)] px-6 py-3 text-sm font-semibold text-[var(--text-secondary)] transition hover:-translate-y-0.5 hover:border-[var(--integrations-accent)] hover:bg-[var(--integrations-accent-soft)] hover:text-[var(--text-primary)]"
             >
               Start verifying
             </Link>
@@ -114,7 +114,7 @@ function IntegrationCard({
 }) {
   const description = option.description?.trim();
   return (
-    <div className="flex h-full flex-col rounded-2xl border border-[var(--integrations-border)] bg-white/70 p-6">
+    <div className="flex h-full flex-col rounded-2xl border border-[var(--integrations-border)] bg-[var(--integrations-surface-contrast)] p-6">
       <div className="relative h-16 w-full">
         {option.icon && !iconError ? (
           <Image
@@ -223,7 +223,7 @@ export function IntegrationsCatalog({
           </div>
         )}
       </div>
-      <div className="mt-6 rounded-2xl border border-[var(--integrations-border)] bg-white/70 px-4 py-3 text-sm font-semibold text-[var(--text-secondary)]">
+      <div className="mt-6 rounded-2xl border border-[var(--integrations-border)] bg-[var(--integrations-surface-contrast)] px-4 py-3 text-sm font-semibold text-[var(--text-secondary)]">
         Keys are universal; the integration choice simply tags usage so you can see consumption per platform on the API
         page.
       </div>
@@ -256,7 +256,7 @@ export function IntegrationsHighlights({ transitionClass }: { transitionClass?: 
             return (
               <div
                 key={item.label}
-                className="flex items-center justify-between rounded-2xl border border-[var(--integrations-border)] bg-white/70 px-4 py-3 text-sm font-semibold text-[var(--text-secondary)]"
+                className="flex items-center justify-between rounded-2xl border border-[var(--integrations-border)] bg-[var(--integrations-surface-contrast)] px-4 py-3 text-sm font-semibold text-[var(--text-secondary)]"
               >
                 <span>{item.label}</span>
                 <Icon className="h-4 w-4 text-[var(--integrations-accent)]" />
@@ -282,7 +282,7 @@ export function IntegrationsHighlights({ transitionClass }: { transitionClass?: 
           {STARTER_STEPS.map((item, index) => (
             <div
               key={item.step}
-              className="rounded-2xl border border-[var(--integrations-border)] bg-white/70 px-4 py-3"
+              className="rounded-2xl border border-[var(--integrations-border)] bg-[var(--integrations-surface-contrast)] px-4 py-3"
             >
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">
                 Step {index + 1}

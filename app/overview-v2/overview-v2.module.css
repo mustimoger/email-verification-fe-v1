@@ -9,6 +9,8 @@
   --overview-border: rgba(148, 163, 184, 0.25);
   --overview-shadow: 0 24px 60px rgba(15, 23, 42, 0.08);
   --overview-shadow-strong: 0 24px 60px rgba(15, 23, 42, 0.08);
+  --overview-surface-contrast: rgba(255, 255, 255, 0.7);
+  --overview-surface-contrast-strong: rgba(255, 255, 255, 0.7);
   --overview-cta-ink: #111827;
 }
 
@@ -19,5 +21,7 @@
   --overview-border: rgba(148, 163, 184, 0.2);
   --overview-shadow: 0 28px 70px rgba(4, 10, 24, 0.45);
   --overview-shadow-strong: 0 28px 70px rgba(4, 10, 24, 0.45);
+  --overview-surface-contrast: var(--surface-overlay);
+  --overview-surface-contrast-strong: var(--surface-overlay-strong);
   --overview-cta-ink: #0f1424;
 }

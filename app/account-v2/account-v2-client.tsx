@@ -274,7 +274,7 @@ export default function AccountV2Client() {
                   Keep your contact details up to date and refresh credentials when needed.
                 </p>
               </div>
-              <div className="flex items-center gap-4 rounded-2xl border border-[var(--account-border)] bg-white/70 px-4 py-3 text-sm font-semibold text-[var(--text-secondary)]">
+              <div className="flex items-center gap-4 rounded-2xl border border-[var(--account-border)] bg-[var(--account-surface-contrast)] px-4 py-3 text-sm font-semibold text-[var(--text-secondary)]">
                 <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">
                   Status
                 </span>
@@ -376,13 +376,13 @@ export default function AccountV2Client() {
                 type="button"
                 onClick={handleUpdate}
                 disabled={isUpdating}
-                className="rounded-xl bg-[linear-gradient(135deg,var(--account-accent)_0%,var(--account-accent-strong)_100%)] px-6 py-3 text-sm font-semibold text-[var(--account-cta-ink)] shadow-[0_16px_32px_rgba(249,168,37,0.3)] disabled:cursor-not-allowed disabled:opacity-70"
+                className="rounded-xl bg-[linear-gradient(135deg,var(--account-accent)_0%,var(--account-accent-strong)_100%)] px-6 py-3 text-sm font-semibold text-[var(--account-cta-ink)] shadow-[0_16px_32px_rgba(249,168,37,0.3)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_36px_rgba(249,168,37,0.38)] disabled:cursor-not-allowed disabled:opacity-70"
               >
                 {isUpdating ? "Updating..." : "Update profile"}
               </button>
               <button
                 type="button"
-                className="rounded-xl border border-[var(--account-border)] bg-white/70 px-6 py-3 text-sm font-semibold text-[var(--text-secondary)]"
+                className="rounded-xl border border-[var(--account-border)] bg-[var(--account-surface-contrast)] px-6 py-3 text-sm font-semibold text-[var(--text-secondary)] transition hover:-translate-y-0.5 hover:border-[var(--account-accent)] hover:bg-[var(--account-accent-soft)] hover:text-[var(--text-primary)]"
                 onClick={() => {
                   setCurrentPassword("");
                   setNewPassword("");
@@ -417,8 +417,8 @@ export default function AccountV2Client() {
                 </div>
               </div>
 
-              <div className="mt-6 overflow-hidden rounded-2xl border border-[var(--account-border)] bg-white/70">
-                <div className="hidden grid-cols-5 gap-3 bg-white/70 px-5 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)] md:grid">
+              <div className="mt-6 overflow-hidden rounded-2xl border border-[var(--account-border)] bg-[var(--account-surface-contrast)]">
+                <div className="hidden grid-cols-5 gap-3 bg-[var(--account-surface-contrast-strong)] px-5 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)] md:grid">
                   <span>Date</span>
                   <span>Checkout email</span>
                   <span>Purchase amount</span>
@@ -506,7 +506,7 @@ export default function AccountV2Client() {
                   </svg>
                 </div>
               </div>
-              <div className="mt-6 rounded-2xl border border-[var(--account-border)] bg-white/70 px-5 py-5">
+              <div className="mt-6 rounded-2xl border border-[var(--account-border)] bg-[var(--account-surface-contrast)] px-5 py-5">
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">
                   Total credits remaining
                 </p>

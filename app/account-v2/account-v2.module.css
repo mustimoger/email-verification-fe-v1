@@ -8,6 +8,8 @@
   --account-card-muted: rgba(248, 250, 252, 0.9);
   --account-border: rgba(148, 163, 184, 0.25);
   --account-shadow: 0 24px 60px rgba(15, 23, 42, 0.08);
+  --account-surface-contrast: rgba(255, 255, 255, 0.7);
+  --account-surface-contrast-strong: rgba(255, 255, 255, 0.7);
   --account-cta-ink: #111827;
 }
 
@@ -17,5 +19,7 @@
   --account-card-muted: rgba(15, 23, 42, 0.64);
   --account-border: rgba(148, 163, 184, 0.2);
   --account-shadow: 0 28px 70px rgba(4, 10, 24, 0.45);
+  --account-surface-contrast: var(--surface-overlay);
+  --account-surface-contrast-strong: var(--surface-overlay-strong);
   --account-cta-ink: #0f1424;
 }

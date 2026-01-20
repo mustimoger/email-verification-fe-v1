@@ -8,6 +8,8 @@
   --api-card-muted: rgba(248, 250, 252, 0.9);
   --api-border: rgba(148, 163, 184, 0.25);
   --api-shadow: 0 24px 60px rgba(15, 23, 42, 0.08);
+  --api-surface-contrast: rgba(255, 255, 255, 0.7);
+  --api-surface-contrast-strong: rgba(255, 255, 255, 0.7);
   --api-cta-ink: #111827;
 }
 
@@ -17,5 +19,7 @@
   --api-card-muted: rgba(15, 23, 42, 0.64);
   --api-border: rgba(148, 163, 184, 0.2);
   --api-shadow: 0 28px 70px rgba(4, 10, 24, 0.45);
+  --api-surface-contrast: var(--surface-overlay);
+  --api-surface-contrast-strong: var(--surface-overlay-strong);
   --api-cta-ink: #0f1424;
 }

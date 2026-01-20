@@ -69,7 +69,7 @@ export function VolumePricingSection({
                 className={`rounded-xl border px-4 py-4 text-center transition ${
                   isActive
                     ? "border-[var(--pricing-accent)] bg-[var(--pricing-accent-soft)]"
-                    : "border-[var(--pricing-border)] bg-white/70"
+                    : "border-[var(--pricing-border)] bg-[var(--pricing-surface-contrast)]"
                 }`}
               >
                 <div
@@ -134,7 +134,7 @@ export function ComparisonSection({
             <div className="border-t border-[var(--pricing-border)] px-4 py-3 text-sm text-[var(--text-secondary)]">
               {row.feature}
             </div>
-            <div className="border-t border-[var(--pricing-border)] bg-white/60 px-4 py-3 text-center text-sm font-semibold text-[var(--text-primary)]">
+            <div className="border-t border-[var(--pricing-border)] bg-[var(--pricing-surface-contrast-strong)] px-4 py-3 text-center text-sm font-semibold text-[var(--text-primary)]">
               {row.boltroute}
             </div>
             <div className="border-t border-[var(--pricing-border)] px-4 py-3 text-center text-sm text-[var(--text-muted)]">
@@ -158,7 +158,7 @@ export function FaqSection({ transitionClass }: { transitionClass?: string }) {
       </h2>
       <div className="mt-8 grid gap-4 lg:grid-cols-2">
         {FAQS.map((faq) => (
-          <div key={faq.q} className="rounded-2xl border border-[var(--pricing-border)] bg-white/70 p-6">
+          <div key={faq.q} className="rounded-2xl border border-[var(--pricing-border)] bg-[var(--pricing-surface-contrast)] p-6">
             <h3 className="text-sm font-semibold text-[var(--text-primary)]">{faq.q}</h3>
             <p className="mt-2 text-sm text-[var(--text-muted)]">{faq.a}</p>
           </div>
@@ -190,13 +190,13 @@ export function FinalCtaSection({
         <div className="mt-6 flex flex-wrap justify-center gap-4">
           <Link
             href="/signup"
-            className="rounded-xl bg-[linear-gradient(135deg,var(--pricing-accent)_0%,var(--pricing-accent-strong)_100%)] px-6 py-3 text-sm font-semibold text-[var(--pricing-cta-ink)] shadow-[0_16px_32px_rgba(249,168,37,0.3)]"
+            className="rounded-xl bg-[linear-gradient(135deg,var(--pricing-accent)_0%,var(--pricing-accent-strong)_100%)] px-6 py-3 text-sm font-semibold text-[var(--pricing-cta-ink)] shadow-[0_16px_32px_rgba(249,168,37,0.3)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_36px_rgba(249,168,37,0.38)]"
           >
             Start Free Trial
           </Link>
           <Link
             href="/api"
-            className="rounded-xl border border-[var(--pricing-border)] bg-white/60 px-6 py-3 text-sm font-semibold text-[var(--text-secondary)]"
+            className="rounded-xl border border-[var(--pricing-border)] bg-[var(--pricing-surface-contrast)] px-6 py-3 text-sm font-semibold text-[var(--text-secondary)] transition hover:-translate-y-0.5 hover:border-[var(--pricing-accent)] hover:bg-[var(--pricing-accent-soft)] hover:text-[var(--text-primary)]"
           >
             View Documentation
           </Link>

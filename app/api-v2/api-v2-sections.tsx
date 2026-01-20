@@ -105,13 +105,13 @@ export function ApiHero({ transitionClass }: { transitionClass?: string }) {
           <div className="mt-6 flex flex-wrap gap-3">
             <a
               href="#api-keys"
-              className="rounded-xl bg-[linear-gradient(135deg,var(--api-accent)_0%,var(--api-accent-strong)_100%)] px-6 py-3 text-sm font-semibold text-[var(--api-cta-ink)] shadow-[0_16px_32px_rgba(249,168,37,0.3)]"
+              className="rounded-xl bg-[linear-gradient(135deg,var(--api-accent)_0%,var(--api-accent-strong)_100%)] px-6 py-3 text-sm font-semibold text-[var(--api-cta-ink)] shadow-[0_16px_32px_rgba(249,168,37,0.3)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_36px_rgba(249,168,37,0.38)]"
             >
               Generate API key
             </a>
             <a
               href="#api-usage"
-              className="rounded-xl border border-[var(--api-border)] bg-white/70 px-6 py-3 text-sm font-semibold text-[var(--text-secondary)]"
+              className="rounded-xl border border-[var(--api-border)] bg-[var(--api-surface-contrast)] px-6 py-3 text-sm font-semibold text-[var(--text-secondary)] transition hover:-translate-y-0.5 hover:border-[var(--api-accent)] hover:bg-[var(--api-accent-soft)] hover:text-[var(--text-primary)]"
             >
               Review usage
             </a>
@@ -121,7 +121,7 @@ export function ApiHero({ transitionClass }: { transitionClass?: string }) {
           {HERO_HIGHLIGHTS.map((label) => (
             <div
               key={label}
-              className="rounded-2xl border border-[var(--api-border)] bg-[var(--api-card-muted)] px-4 py-4 text-sm font-semibold text-[var(--text-secondary)]"
+              className="rounded-2xl border border-[var(--api-border)] bg-[var(--api-surface-contrast)] px-4 py-4 text-sm font-semibold text-[var(--text-secondary)]"
             >
               {label}
             </div>
@@ -176,7 +176,7 @@ export function ApiKeysSection({
         <button
           type="button"
           onClick={onGenerate}
-          className="rounded-xl bg-[linear-gradient(135deg,var(--api-accent)_0%,var(--api-accent-strong)_100%)] px-5 py-2.5 text-sm font-semibold text-[var(--api-cta-ink)] shadow-[0_16px_32px_rgba(249,168,37,0.3)]"
+          className="rounded-xl bg-[linear-gradient(135deg,var(--api-accent)_0%,var(--api-accent-strong)_100%)] px-5 py-2.5 text-sm font-semibold text-[var(--api-cta-ink)] shadow-[0_16px_32px_rgba(249,168,37,0.3)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_36px_rgba(249,168,37,0.38)]"
         >
           Generate API key
         </button>
@@ -194,8 +194,8 @@ export function ApiKeysSection({
         </div>
       ) : null}
 
-      <div className="mt-6 overflow-hidden rounded-2xl border border-[var(--api-border)] bg-white/70">
-        <div className="grid min-w-[720px] grid-cols-5 gap-4 border-b border-[var(--api-border)] bg-white/80 px-5 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">
+      <div className="mt-6 overflow-hidden rounded-2xl border border-[var(--api-border)] bg-[var(--api-surface-contrast)]">
+        <div className="grid min-w-[720px] grid-cols-5 gap-4 border-b border-[var(--api-border)] bg-[var(--api-surface-contrast-strong)] px-5 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">
           <span>API key name</span>
           <span>API key</span>
           <span>Integration</span>
@@ -258,7 +258,7 @@ export function ApiKeysSection({
                       type="button"
                       onClick={() => onRevoke(key.id ?? "")}
                       disabled={!key.id}
-                      className="rounded-xl border border-[var(--api-border)] bg-white/80 px-3 py-1 text-xs font-semibold text-[var(--text-secondary)] disabled:cursor-not-allowed disabled:opacity-60"
+                      className="rounded-xl border border-[var(--api-border)] bg-[var(--api-surface-contrast-strong)] px-3 py-1 text-xs font-semibold text-[var(--text-secondary)] disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       Revoke
                     </button>
@@ -326,7 +326,7 @@ export function ApiUsageSection({
             Compare usage by key or purpose, then export the timeline for reporting.
           </p>
         </div>
-        <div className="rounded-2xl border border-[var(--api-border)] bg-white/70 px-4 py-3 text-sm font-semibold text-[var(--text-secondary)]">
+        <div className="rounded-2xl border border-[var(--api-border)] bg-[var(--api-surface-contrast)] px-4 py-3 text-sm font-semibold text-[var(--text-secondary)]">
           Total: {totalLabel}
         </div>
       </div>
@@ -413,20 +413,20 @@ export function ApiUsageSection({
           type="button"
           onClick={onLoadUsage}
           disabled={isLoadingUsage}
-          className="rounded-xl bg-[linear-gradient(135deg,var(--api-accent)_0%,var(--api-accent-strong)_100%)] px-5 py-2.5 text-sm font-semibold text-[var(--api-cta-ink)] shadow-[0_16px_32px_rgba(249,168,37,0.3)] disabled:cursor-not-allowed disabled:opacity-70"
+          className="rounded-xl bg-[linear-gradient(135deg,var(--api-accent)_0%,var(--api-accent-strong)_100%)] px-5 py-2.5 text-sm font-semibold text-[var(--api-cta-ink)] shadow-[0_16px_32px_rgba(249,168,37,0.3)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_36px_rgba(249,168,37,0.38)] disabled:cursor-not-allowed disabled:opacity-70"
         >
           {isLoadingUsage ? "Loading..." : "See usage"}
         </button>
         <button
           type="button"
           onClick={onDownload}
-          className="rounded-xl border border-[var(--api-border)] bg-white/80 px-5 py-2.5 text-sm font-semibold text-[var(--text-secondary)]"
+          className="rounded-xl border border-[var(--api-border)] bg-[var(--api-surface-contrast-strong)] px-5 py-2.5 text-sm font-semibold text-[var(--text-secondary)] transition hover:-translate-y-0.5 hover:border-[var(--api-accent)] hover:bg-[var(--api-accent-soft)] hover:text-[var(--text-primary)]"
         >
           Download
         </button>
       </div>
 
-      <div className="mt-6 h-72 w-full rounded-2xl border border-[var(--api-border)] bg-white/70 p-3">
+      <div className="mt-6 h-72 w-full rounded-2xl border border-[var(--api-border)] bg-[var(--api-surface-contrast)] p-3">
         {isLoadingUsage ? (
           <div className="flex h-full items-center justify-center text-sm font-semibold text-[var(--text-muted)]">
             Loading usage...

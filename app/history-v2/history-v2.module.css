@@ -8,6 +8,8 @@
   --history-card-muted: rgba(248, 250, 252, 0.9);
   --history-border: rgba(148, 163, 184, 0.25);
   --history-shadow: 0 24px 60px rgba(15, 23, 42, 0.08);
+  --history-surface-contrast: rgba(255, 255, 255, 0.7);
+  --history-surface-contrast-strong: rgba(255, 255, 255, 0.7);
   --history-cta-ink: #111827;
 }
 
@@ -17,5 +19,7 @@
   --history-card-muted: rgba(15, 23, 42, 0.64);
   --history-border: rgba(148, 163, 184, 0.2);
   --history-shadow: 0 28px 70px rgba(4, 10, 24, 0.45);
+  --history-surface-contrast: var(--surface-overlay);
+  --history-surface-contrast-strong: var(--surface-overlay-strong);
   --history-cta-ink: #0f1424;
 }

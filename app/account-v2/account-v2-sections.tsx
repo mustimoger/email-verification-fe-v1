@@ -38,14 +38,14 @@ export function AccountHero({ transitionClass }: { transitionClass?: string }) {
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <Link
-              href="#account-profile"
-              className="rounded-xl bg-[linear-gradient(135deg,var(--account-accent)_0%,var(--account-accent-strong)_100%)] px-6 py-3 text-sm font-semibold text-[var(--account-cta-ink)] shadow-[0_16px_32px_rgba(249,168,37,0.3)]"
+              href="/verify"
+              className="rounded-xl bg-[linear-gradient(135deg,var(--account-accent)_0%,var(--account-accent-strong)_100%)] px-6 py-3 text-sm font-semibold text-[var(--account-cta-ink)] shadow-[0_16px_32px_rgba(249,168,37,0.3)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_36px_rgba(249,168,37,0.38)]"
             >
-              Update profile
+              Verify emails
             </Link>
             <Link
               href="/pricing"
-              className="rounded-xl border border-[var(--account-border)] bg-white/70 px-6 py-3 text-sm font-semibold text-[var(--text-secondary)]"
+              className="rounded-xl border border-[var(--account-border)] bg-[var(--account-surface-contrast)] px-6 py-3 text-sm font-semibold text-[var(--text-secondary)] transition hover:-translate-y-0.5 hover:border-[var(--account-accent)] hover:bg-[var(--account-accent-soft)] hover:text-[var(--text-primary)]"
             >
               View pricing
             </Link>

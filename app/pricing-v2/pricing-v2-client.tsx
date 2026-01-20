@@ -353,9 +353,9 @@ export default function PricingV2Client() {
                   key={plan.key}
                   type="button"
                   onClick={() => setActivePlan(plan.key)}
-                  className={`relative flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition ${
+                  className={`relative flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition hover:-translate-y-0.5 ${
                     isActive
-                      ? "bg-[linear-gradient(135deg,var(--pricing-accent)_0%,var(--pricing-accent-strong)_100%)] text-[var(--pricing-cta-ink)]"
+                      ? "bg-[linear-gradient(135deg,var(--pricing-accent)_0%,var(--pricing-accent-strong)_100%)] text-[var(--pricing-cta-ink)] hover:shadow-[0_14px_28px_rgba(249,168,37,0.35)]"
                       : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                   }`}
                 >
@@ -472,7 +472,7 @@ export default function PricingV2Client() {
                 <button
                   type="button"
                   onClick={() => openSupportChat({ quantity: debouncedQuantity ?? undefined, plan: activePlan })}
-                  className="rounded-lg border border-[var(--pricing-accent)] px-4 py-2 text-xs font-semibold text-[var(--pricing-accent)]"
+                  className="rounded-lg border border-[var(--pricing-accent)] px-4 py-2 text-xs font-semibold text-[var(--pricing-accent)] transition hover:-translate-y-0.5 hover:bg-[var(--pricing-accent-soft)] hover:text-[var(--text-primary)]"
                 >
                   Contact Sales {"->"}
                 </button>
@@ -524,7 +524,7 @@ export default function PricingV2Client() {
                 type="button"
                 onClick={handleCheckout}
                 disabled={configLoading || quoteLoading || !checkoutEnabled || Boolean(pricingError) || !debouncedQuantity}
-                className="mt-6 w-full rounded-xl bg-[linear-gradient(135deg,var(--pricing-accent)_0%,var(--pricing-accent-strong)_100%)] px-6 py-4 text-base font-semibold text-[var(--pricing-cta-ink)] shadow-[0_16px_32px_rgba(249,168,37,0.3)] transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                className="mt-6 w-full rounded-xl bg-[linear-gradient(135deg,var(--pricing-accent)_0%,var(--pricing-accent-strong)_100%)] px-6 py-4 text-base font-semibold text-[var(--pricing-cta-ink)] shadow-[0_16px_32px_rgba(249,168,37,0.3)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_36px_rgba(249,168,37,0.38)] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {contactRequired ? "Contact Sales" : activePlan === "payg" ? "Buy Credits" : "Subscribe Now"}
               </button>

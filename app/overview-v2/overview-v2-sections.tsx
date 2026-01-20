@@ -132,13 +132,13 @@ export function OverviewHero({ transitionClass }: { transitionClass?: string }) 
           <div className="mt-6 flex flex-wrap gap-3">
             <Link
               href="/verify"
-              className="rounded-xl bg-[linear-gradient(135deg,var(--overview-accent)_0%,var(--overview-accent-strong)_100%)] px-6 py-3 text-sm font-semibold text-[var(--overview-cta-ink)] shadow-[0_16px_32px_rgba(249,168,37,0.3)]"
+              className="rounded-xl bg-[linear-gradient(135deg,var(--overview-accent)_0%,var(--overview-accent-strong)_100%)] px-6 py-3 text-sm font-semibold text-[var(--overview-cta-ink)] shadow-[0_16px_32px_rgba(249,168,37,0.3)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_36px_rgba(249,168,37,0.38)]"
             >
               Start Verification
             </Link>
             <Link
               href="/history"
-              className="rounded-xl border border-[var(--overview-border)] bg-white/70 px-6 py-3 text-sm font-semibold text-[var(--text-secondary)]"
+              className="rounded-xl border border-[var(--overview-border)] bg-[var(--overview-surface-contrast)] px-6 py-3 text-sm font-semibold text-[var(--text-secondary)] transition hover:-translate-y-0.5 hover:border-[var(--overview-accent)] hover:bg-[var(--overview-accent-soft)] hover:text-[var(--text-primary)]"
             >
               View History
             </Link>
@@ -442,7 +442,7 @@ export function TasksSection({
             type="button"
             onClick={onRefresh}
             disabled={loading}
-            className="rounded-xl border border-[var(--overview-border)] bg-white/70 px-4 py-2 text-sm font-semibold text-[var(--text-secondary)] shadow-sm transition hover:border-[var(--overview-accent)] hover:text-[var(--overview-accent)] disabled:cursor-not-allowed disabled:opacity-60"
+            className="rounded-xl border border-[var(--overview-border)] bg-[var(--overview-surface-contrast)] px-4 py-2 text-sm font-semibold text-[var(--text-secondary)] shadow-sm transition hover:border-[var(--overview-accent)] hover:text-[var(--overview-accent)] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {loading ? "Refreshing..." : "Refresh"}
           </button>
@@ -534,7 +534,7 @@ export function TasksSection({
 
       <div className="mt-4 hidden overflow-x-auto md:block">
         <div className="min-w-[860px] overflow-hidden rounded-2xl border border-[var(--overview-border)] bg-[var(--overview-card-muted)]">
-          <div className="grid grid-cols-[1.3fr_0.9fr_0.9fr_0.8fr_0.8fr_0.9fr_1.4fr] border-b border-[var(--overview-border)] bg-white/70 px-4 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">
+          <div className="grid grid-cols-[1.3fr_0.9fr_0.9fr_0.8fr_0.8fr_0.9fr_1.4fr] border-b border-[var(--overview-border)] bg-[var(--overview-surface-contrast-strong)] px-4 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">
             <span>Task</span>
             <span>Total</span>
             <span>Date</span>
@@ -618,7 +618,7 @@ export function TasksSection({
             type="button"
             onClick={onPrev}
             disabled={!canGoPrev}
-            className="rounded-xl border border-[var(--overview-border)] bg-white/70 px-3 py-1.5 text-sm font-semibold text-[var(--text-secondary)] shadow-sm transition hover:border-[var(--overview-accent)] hover:text-[var(--overview-accent)] disabled:cursor-not-allowed disabled:opacity-60"
+            className="rounded-xl border border-[var(--overview-border)] bg-[var(--overview-surface-contrast)] px-3 py-1.5 text-sm font-semibold text-[var(--text-secondary)] shadow-sm transition hover:border-[var(--overview-accent)] hover:text-[var(--overview-accent)] disabled:cursor-not-allowed disabled:opacity-60"
           >
             Prev
           </button>
@@ -626,7 +626,7 @@ export function TasksSection({
             type="button"
             onClick={onNext}
             disabled={!canGoNext}
-            className="rounded-xl border border-[var(--overview-border)] bg-white/70 px-3 py-1.5 text-sm font-semibold text-[var(--text-secondary)] shadow-sm transition hover:border-[var(--overview-accent)] hover:text-[var(--overview-accent)] disabled:cursor-not-allowed disabled:opacity-60"
+            className="rounded-xl border border-[var(--overview-border)] bg-[var(--overview-surface-contrast)] px-3 py-1.5 text-sm font-semibold text-[var(--text-secondary)] shadow-sm transition hover:border-[var(--overview-accent)] hover:text-[var(--overview-accent)] disabled:cursor-not-allowed disabled:opacity-60"
           >
             Next
           </button>

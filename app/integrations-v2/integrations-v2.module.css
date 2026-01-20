@@ -8,6 +8,8 @@
   --integrations-card-muted: rgba(248, 250, 252, 0.9);
   --integrations-border: rgba(148, 163, 184, 0.25);
   --integrations-shadow: 0 24px 60px rgba(15, 23, 42, 0.08);
+  --integrations-surface-contrast: rgba(255, 255, 255, 0.7);
+  --integrations-surface-contrast-strong: rgba(255, 255, 255, 0.7);
   --integrations-cta-ink: #111827;
 }
 
@@ -17,5 +19,7 @@
   --integrations-card-muted: rgba(15, 23, 42, 0.64);
   --integrations-border: rgba(148, 163, 184, 0.2);
   --integrations-shadow: 0 28px 70px rgba(4, 10, 24, 0.45);
+  --integrations-surface-contrast: var(--surface-overlay);
+  --integrations-surface-contrast-strong: var(--surface-overlay-strong);
   --integrations-cta-ink: #0f1424;
 }

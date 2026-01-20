@@ -207,10 +207,6 @@ export default function HistoryV2Client() {
     <DashboardShell>
       <RequireAuth>
         <section className={`${styles.root} relative flex flex-col gap-8 pb-8 lg:px-8`}>
-          <div className="pointer-events-none absolute inset-0 overflow-hidden">
-            <div className="absolute -top-48 left-1/2 h-[420px] w-[720px] -translate-x-1/2 rounded-full bg-[radial-gradient(circle_at_center,_rgba(249,168,37,0.25)_0%,_transparent_70%)]" />
-            <div className="absolute right-[-120px] top-[120px] h-[320px] w-[320px] rounded-full bg-[radial-gradient(circle_at_center,_rgba(249,168,37,0.12)_0%,_transparent_70%)]" />
-          </div>
           <HistoryHero transitionClass={transitionClass} />
           <HistoryHighlights transitionClass={transitionClass} summary={summary} loading={loading} />
           <HistoryTableSection

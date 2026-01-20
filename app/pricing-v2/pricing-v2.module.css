@@ -10,6 +10,8 @@
   --pricing-track: rgba(148, 163, 184, 0.3);
   --pricing-thumb: #ffffff;
   --pricing-shadow: 0 24px 60px rgba(15, 23, 42, 0.08);
+  --pricing-surface-contrast: rgba(255, 255, 255, 0.7);
+  --pricing-surface-contrast-strong: rgba(255, 255, 255, 0.7);
   --pricing-cta-ink: #111827;
 }
 
@@ -21,6 +23,8 @@
   --pricing-track: rgba(148, 163, 184, 0.2);
   --pricing-thumb: #0f1424;
   --pricing-shadow: 0 28px 70px rgba(4, 10, 24, 0.45);
+  --pricing-surface-contrast: var(--surface-overlay);
+  --pricing-surface-contrast-strong: var(--surface-overlay-strong);
   --pricing-cta-ink: #0f1424;
 }
 

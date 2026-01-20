@@ -251,13 +251,13 @@ export function VerifyHero({ transitionClass }: { transitionClass?: string }) {
           <div className="mt-6 flex flex-wrap gap-3">
             <button
               type="button"
-              className="rounded-xl bg-[linear-gradient(135deg,var(--verify-accent)_0%,var(--verify-accent-strong)_100%)] px-6 py-3 text-sm font-semibold text-[var(--verify-cta-ink)] shadow-[0_16px_32px_rgba(249,168,37,0.3)]"
+              className="rounded-xl bg-[linear-gradient(135deg,var(--verify-accent)_0%,var(--verify-accent-strong)_100%)] px-6 py-3 text-sm font-semibold text-[var(--verify-cta-ink)] shadow-[0_16px_32px_rgba(249,168,37,0.3)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_36px_rgba(249,168,37,0.38)]"
             >
               Start verification
             </button>
             <Link
               href="/history"
-              className="rounded-xl border border-[var(--verify-border)] bg-white/70 px-6 py-3 text-sm font-semibold text-[var(--text-secondary)]"
+              className="rounded-xl border border-[var(--verify-border)] bg-[var(--verify-surface-contrast)] px-6 py-3 text-sm font-semibold text-[var(--text-secondary)] transition hover:-translate-y-0.5 hover:border-[var(--verify-accent)] hover:bg-[var(--verify-accent-soft)] hover:text-[var(--text-primary)]"
             >
               View history
             </Link>
@@ -298,7 +298,7 @@ export function ManualVerificationCard({
           Paste one email per line to run a focused verification pass.
         </p>
       </div>
-      <div className="mt-5 rounded-xl border border-[var(--verify-border)] bg-white/70 p-4">
+      <div className="mt-5 rounded-xl border border-[var(--verify-border)] bg-[var(--verify-surface-contrast)] p-4">
         <textarea
           aria-label="Email list"
           value={inputValue}
@@ -325,7 +325,7 @@ export function ManualVerificationCard({
           type="button"
           onClick={onVerify}
           disabled={isSubmitting}
-          className="rounded-xl bg-[linear-gradient(135deg,var(--verify-accent)_0%,var(--verify-accent-strong)_100%)] px-6 py-3 text-sm font-semibold text-[var(--verify-cta-ink)] shadow-[0_16px_32px_rgba(249,168,37,0.3)]"
+          className="rounded-xl bg-[linear-gradient(135deg,var(--verify-accent)_0%,var(--verify-accent-strong)_100%)] px-6 py-3 text-sm font-semibold text-[var(--verify-cta-ink)] shadow-[0_16px_32px_rgba(249,168,37,0.3)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_36px_rgba(249,168,37,0.38)]"
         >
           {isSubmitting ? "Verifying..." : "Verify emails"}
         </button>
@@ -333,7 +333,7 @@ export function ManualVerificationCard({
           type="button"
           onClick={onClear}
           disabled={isSubmitting}
-          className="rounded-xl border border-[var(--verify-border)] bg-white/70 px-6 py-3 text-sm font-semibold text-[var(--text-secondary)]"
+          className="rounded-xl border border-[var(--verify-border)] bg-[var(--verify-surface-contrast)] px-6 py-3 text-sm font-semibold text-[var(--text-secondary)] transition hover:-translate-y-0.5 hover:border-[var(--verify-accent)] hover:bg-[var(--verify-accent-soft)] hover:text-[var(--text-primary)]"
         >
           Clear input
         </button>
@@ -375,7 +375,7 @@ export function ResultsCard({
         {STATUS_PILLS.map((status) => (
           <div
             key={status.label}
-            className="flex items-center justify-between rounded-xl border border-[var(--verify-border)] bg-white/70 px-4 py-3 text-sm text-[var(--text-secondary)]"
+            className="flex items-center justify-between rounded-xl border border-[var(--verify-border)] bg-[var(--verify-surface-contrast)] px-4 py-3 text-sm text-[var(--text-secondary)]"
           >
             <div className="flex items-center gap-3">
               <span className={`h-2 w-2 rounded-full ${status.color}`} />
@@ -395,7 +395,7 @@ export function ResultsCard({
           {exportError}
         </div>
       ) : null}
-      <div className="mt-5 rounded-xl border border-[var(--verify-border)] bg-white/70 p-4">
+      <div className="mt-5 rounded-xl border border-[var(--verify-border)] bg-[var(--verify-surface-contrast)] p-4">
         {hasResults ? (
           <div className="max-h-60 space-y-2 overflow-y-auto pr-1">
             {results.map((item) => {
@@ -403,7 +403,7 @@ export function ResultsCard({
               return (
                 <div
                   key={item.email}
-                  className="flex items-center justify-between rounded-lg border border-[var(--verify-border)] bg-white/80 px-3 py-2 text-sm text-[var(--text-secondary)]"
+                  className="flex items-center justify-between rounded-lg border border-[var(--verify-border)] bg-[var(--verify-surface-contrast-strong)] px-3 py-2 text-sm text-[var(--text-secondary)]"
                 >
                   <span className="truncate pr-3 font-semibold">{item.email}</span>
                   <span className={`text-xs font-semibold uppercase ${STATUS_TONES[statusKey]}`}>
@@ -432,7 +432,7 @@ export function ResultsCard({
           type="button"
           onClick={onExport}
           disabled={exportDisabled}
-          className="rounded-xl border border-[var(--verify-border)] bg-white/70 px-3 py-2 text-xs font-semibold text-[var(--text-secondary)] disabled:cursor-not-allowed disabled:opacity-70"
+          className="rounded-xl border border-[var(--verify-border)] bg-[var(--verify-surface-contrast)] px-3 py-2 text-xs font-semibold text-[var(--text-secondary)] disabled:cursor-not-allowed disabled:opacity-70"
         >
           {exportLabel}
         </button>
@@ -557,7 +557,7 @@ export function UploadSection({
           type="button"
           onClick={onProceedToMapping}
           disabled={isSubmitting}
-          className="rounded-xl bg-[linear-gradient(135deg,var(--verify-accent)_0%,var(--verify-accent-strong)_100%)] px-4 py-2 text-xs font-semibold text-[var(--verify-cta-ink)] shadow-[0_16px_32px_rgba(249,168,37,0.3)] disabled:cursor-not-allowed disabled:opacity-70"
+          className="rounded-xl bg-[linear-gradient(135deg,var(--verify-accent)_0%,var(--verify-accent-strong)_100%)] px-4 py-2 text-xs font-semibold text-[var(--verify-cta-ink)] shadow-[0_16px_32px_rgba(249,168,37,0.3)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_36px_rgba(249,168,37,0.38)] disabled:cursor-not-allowed disabled:opacity-70"
         >
           Verify emails
         </button>
@@ -643,15 +643,15 @@ export function UploadSection({
         </div>
       </div>
       <div className="mt-4 space-y-3 text-sm text-[var(--text-secondary)]">
-        <div className="flex items-start gap-3 rounded-xl border border-[var(--verify-border)] bg-white/70 px-3 py-3">
+        <div className="flex items-start gap-3 rounded-xl border border-[var(--verify-border)] bg-[var(--verify-surface-contrast)] px-3 py-3">
           <CheckCircle2 className="mt-0.5 h-4 w-4 text-[var(--verify-accent)]" />
           Ensure each row has one email address.
         </div>
-        <div className="flex items-start gap-3 rounded-xl border border-[var(--verify-border)] bg-white/70 px-3 py-3">
+        <div className="flex items-start gap-3 rounded-xl border border-[var(--verify-border)] bg-[var(--verify-surface-contrast)] px-3 py-3">
           <CheckCircle2 className="mt-0.5 h-4 w-4 text-[var(--verify-accent)]" />
           Label the email column to speed up mapping.
         </div>
-        <div className="flex items-start gap-3 rounded-xl border border-[var(--verify-border)] bg-white/70 px-3 py-3">
+        <div className="flex items-start gap-3 rounded-xl border border-[var(--verify-border)] bg-[var(--verify-surface-contrast)] px-3 py-3">
           <CheckCircle2 className="mt-0.5 h-4 w-4 text-[var(--verify-accent)]" />
           Keep files under your plan upload limit.
         </div>
@@ -672,7 +672,7 @@ export function UploadSection({
           <div
             onDragOver={(event) => event.preventDefault()}
             onDrop={onDrop}
-            className="mt-5 flex h-48 flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-[var(--verify-border)] bg-white/70 px-4 text-center"
+            className="mt-5 flex h-48 flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-[var(--verify-border)] bg-[var(--verify-surface-contrast)] px-4 text-center"
           >
             <UploadCloud className="h-8 w-8 text-[var(--text-muted)]" />
             <div>
@@ -682,7 +682,7 @@ export function UploadSection({
             <button
               type="button"
               onClick={onBrowseFiles}
-              className="rounded-xl border border-[var(--verify-border)] bg-white/70 px-4 py-2 text-xs font-semibold text-[var(--text-secondary)]"
+              className="rounded-xl border border-[var(--verify-border)] bg-[var(--verify-surface-contrast)] px-4 py-2 text-xs font-semibold text-[var(--text-secondary)]"
             >
               Browse files
             </button>
@@ -716,13 +716,13 @@ export function UploadSection({
             </div>
           ) : null}
           <div className="mt-4 flex flex-wrap items-center gap-2 text-xs font-semibold text-[var(--text-muted)]">
-            <span className="rounded-full border border-[var(--verify-border)] bg-white/70 px-3 py-1">
+            <span className="rounded-full border border-[var(--verify-border)] bg-[var(--verify-surface-contrast)] px-3 py-1">
               Auto-detect headers
             </span>
-            <span className="rounded-full border border-[var(--verify-border)] bg-white/70 px-3 py-1">
+            <span className="rounded-full border border-[var(--verify-border)] bg-[var(--verify-surface-contrast)] px-3 py-1">
               Duplicate removal
             </span>
-            <span className="rounded-full border border-[var(--verify-border)] bg-white/70 px-3 py-1">
+            <span className="rounded-full border border-[var(--verify-border)] bg-[var(--verify-surface-contrast)] px-3 py-1">
               Column mapping
             </span>
           </div>
@@ -748,7 +748,7 @@ export function WorkflowSection({ transitionClass }: { transitionClass?: string 
           return (
             <div
               key={step.title}
-              className="rounded-2xl border border-[var(--verify-border)] bg-white/70 p-5"
+              className="rounded-2xl border border-[var(--verify-border)] bg-[var(--verify-surface-contrast)] p-5"
             >
               <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[var(--verify-accent-soft)] text-[var(--verify-accent)]">
                 <Icon className="h-5 w-5" />

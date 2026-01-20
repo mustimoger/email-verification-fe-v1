@@ -62,7 +62,7 @@ function FilterChip({
       className={`rounded-full border px-4 py-2 text-xs font-semibold transition ${
         isActive
           ? "border-[var(--history-accent)] bg-[var(--history-accent-soft)] text-[var(--history-accent)]"
-          : "border-[var(--history-border)] bg-white/70 text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+          : "border-[var(--history-border)] bg-[var(--history-surface-contrast)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
       }`}
     >
       {label}
@@ -99,13 +99,13 @@ export function HistoryHero({ transitionClass }: { transitionClass?: string }) {
           <div className="mt-6 flex flex-wrap gap-3">
             <Link
               href="/verify"
-              className="rounded-xl bg-[linear-gradient(135deg,var(--history-accent)_0%,var(--history-accent-strong)_100%)] px-6 py-3 text-sm font-semibold text-[var(--history-cta-ink)] shadow-[0_16px_32px_rgba(249,168,37,0.3)]"
+              className="rounded-xl bg-[linear-gradient(135deg,var(--history-accent)_0%,var(--history-accent-strong)_100%)] px-6 py-3 text-sm font-semibold text-[var(--history-cta-ink)] shadow-[0_16px_32px_rgba(249,168,37,0.3)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_36px_rgba(249,168,37,0.38)]"
             >
               Start verification
             </Link>
             <Link
               href="/api"
-              className="rounded-xl border border-[var(--history-border)] bg-white/70 px-6 py-3 text-sm font-semibold text-[var(--text-secondary)]"
+              className="rounded-xl border border-[var(--history-border)] bg-[var(--history-surface-contrast)] px-6 py-3 text-sm font-semibold text-[var(--text-secondary)] transition hover:-translate-y-0.5 hover:border-[var(--history-accent)] hover:bg-[var(--history-accent-soft)] hover:text-[var(--text-primary)]"
             >
               View API
             </Link>
@@ -154,7 +154,7 @@ export function HistoryHighlights({
             <History className="h-6 w-6" />
           </div>
         </div>
-        <div className="mt-6 rounded-2xl border border-[var(--history-border)] bg-white/70 p-5">
+        <div className="mt-6 rounded-2xl border border-[var(--history-border)] bg-[var(--history-surface-contrast)] p-5">
           {loading && !hasHistory ? (
             <div>
               <p className="text-sm font-semibold text-[var(--text-primary)]">Loading history</p>
@@ -170,7 +170,7 @@ export function HistoryHighlights({
               ].map((item) => (
                 <div
                   key={item.label}
-                  className="rounded-xl border border-[var(--history-border)] bg-white/80 px-3 py-3"
+                  className="rounded-xl border border-[var(--history-border)] bg-[var(--history-surface-contrast-strong)] px-3 py-3"
                 >
                   <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">
                     {item.label}
@@ -208,7 +208,7 @@ export function HistoryHighlights({
           {["Downloadable exports", "Status-aware progress", "Audit-friendly summaries"].map((item) => (
             <div
               key={item}
-              className="flex items-center justify-between rounded-2xl border border-[var(--history-border)] bg-white/70 px-4 py-3 text-sm font-semibold text-[var(--text-secondary)]"
+              className="flex items-center justify-between rounded-2xl border border-[var(--history-border)] bg-[var(--history-surface-contrast)] px-4 py-3 text-sm font-semibold text-[var(--text-secondary)]"
             >
               <span>{item}</span>
               <ListChecks className="h-4 w-4 text-[var(--history-accent)]" />
@@ -275,7 +275,7 @@ export function HistoryTableSection({
           type="button"
           onClick={onRefresh}
           disabled={loading || loadingMore || refreshing}
-          className="rounded-xl border border-[var(--history-border)] bg-white/70 px-4 py-2 text-sm font-semibold text-[var(--text-secondary)] shadow-sm transition hover:text-[var(--text-primary)] disabled:cursor-not-allowed disabled:opacity-60"
+          className="rounded-xl border border-[var(--history-border)] bg-[var(--history-surface-contrast)] px-4 py-2 text-sm font-semibold text-[var(--text-secondary)] shadow-sm transition hover:text-[var(--text-primary)] disabled:cursor-not-allowed disabled:opacity-60"
         >
           {refreshing ? "Refreshing..." : "Refresh"}
         </button>
@@ -298,7 +298,7 @@ export function HistoryTableSection({
         </div>
       ) : null}
 
-      <div className="mt-6 overflow-hidden rounded-2xl border border-[var(--history-border)] bg-white/70">
+      <div className="mt-6 overflow-hidden rounded-2xl border border-[var(--history-border)] bg-[var(--history-surface-contrast)]">
         <div className="hidden grid-cols-6 gap-2 border-b border-[var(--history-border)] px-5 py-4 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)] md:grid">
           <span>Date</span>
           <span>Task</span>
@@ -441,7 +441,7 @@ export function HistoryTableSection({
             type="button"
             disabled={!canLoadMore}
             onClick={onLoadMore}
-            className="rounded-xl border border-[var(--history-border)] bg-white/70 px-4 py-2 text-sm font-semibold text-[var(--text-secondary)] shadow-sm transition hover:text-[var(--text-primary)] disabled:cursor-not-allowed disabled:opacity-60"
+            className="rounded-xl border border-[var(--history-border)] bg-[var(--history-surface-contrast)] px-4 py-2 text-sm font-semibold text-[var(--text-secondary)] shadow-sm transition hover:text-[var(--text-primary)] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {loadingMore ? "Loading..." : canLoadMore ? "Load more" : "All loaded"}
           </button>
