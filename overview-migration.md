@@ -74,7 +74,10 @@
 - How:
   - Remove or guard the route once the frontend no longer depends on it.
   - Ensure no other pages rely on it.
-- Status: Not started.
+- Status: Completed.
+- Done:
+  - Deleted `backend/app/api/overview.py` and removed its router from `backend/app/main.py`.
+  - Removed `/api/overview` tests (`backend/tests/test_overview.py`) and pruned the unused `getOverview` client and type.
 
 ### Step 5 — Validation and regression checks
 - What: Confirm /overview UI renders all cards, charts, and tasks with external API data.
@@ -99,3 +102,4 @@
 - Completed Step 2 by routing tasks pagination/refresh directly to the external API.
 - Began Step 5 with updated overview mapping tests to cover the new client-side mappings.
 - Completed Step 3 by auditing Supabase reads for /overview and confirming they are local (non-external) writers.
+- Completed Step 4 by removing the unused local `/api/overview` route and its tests.

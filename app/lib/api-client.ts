@@ -324,41 +324,6 @@ export type IntegrationOption = {
   default_name?: string | null;
 };
 
-export type OverviewResponse = {
-  profile: Profile;
-  credits_remaining: number | null;
-  usage_total: number | null;
-  usage_series: { date: string; count: number }[];
-  task_counts: Record<string, number>;
-  recent_tasks: {
-    task_id: string;
-    status?: string | null;
-    email_count?: number | null;
-    valid_count?: number | null;
-    invalid_count?: number | null;
-    catchall_count?: number | null;
-    role_based_count?: number | null;
-    disposable_count?: number | null;
-    job_status?: Record<string, number> | null;
-    integration?: string | null;
-    created_at?: string | null;
-  }[];
-  verification_totals?: {
-    total?: number | null;
-    valid?: number | null;
-    invalid?: number | null;
-    catchall?: number | null;
-    role_based?: number | null;
-    disposable?: number | null;
-  } | null;
-  current_plan?: {
-    label?: string | null;
-    plan_names: string[];
-    price_ids: string[];
-    purchased_at?: string | null;
-  } | null;
-};
-
 export type PlanPrice = {
   price_id: string;
   metadata?: Record<string, unknown>;
@@ -784,7 +749,6 @@ export const apiClient = {
     const qs = params.toString();
     return request<UsagePurposeResponse>(`/usage/purpose${qs ? `?${qs}` : ""}`, { method: "GET" });
   },
-  getOverview: () => request<OverviewResponse>("/overview", { method: "GET" }),
   listIntegrations: () => request<IntegrationOption[]>("/integrations", { method: "GET" }),
   getLimits: () => request<LimitsResponse>("/limits", { method: "GET" }),
   downloadTaskResults: (taskId: string, fallbackFileName: string) =>
