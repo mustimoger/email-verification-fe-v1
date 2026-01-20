@@ -92,6 +92,7 @@
   - Performed Playwright smoke check on `/overview` with injected Supabase session token.
 - Blocker:
   - `NEXT_PUBLIC_EMAIL_API_BASE_URL` is not set in the running frontend environment, so external API calls fail and the UI shows “Unavailable”/empty states for credits, metrics, and tasks.
+  - After adding the env var to `.env.local`, the running Next dev server still logs `external_api_base_missing`; restart the dev server to load the new value.
 
 ## STAYED-LOCAL
 - Supabase profile data (`profiles`) is written by local auth/profile sync, not by the external API.
