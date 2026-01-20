@@ -605,9 +605,11 @@ Not yet implemented:
 - What: Verify `/api-v2` across mobile and desktop breakpoints in light/dark themes.
 - How: Capture small and large viewport renders and adjust grids/overflow as needed.
 - Why: Ensures the redesign remains touch-friendly and consistent with the pricing-v2 system.
-Status: Pending — not started.
+Status: Blocked — auth session invalid in Playwright; redirected to `/signin`.
 Not yet implemented:
-- Capture `/api-v2` screenshots for desktop/mobile in light/dark themes.
+- Capture `/api-v2` screenshots for desktop/mobile in light/dark themes once a fresh auth localStorage token is available.
+Notes:
+- Playwright reports `AuthApiError: Invalid Refresh Token: Already Used` after seeding `sb-zobtogrjplslxicgpfxc-auth-token`, so `/api-v2` redirects to `/signin`.
 
 ### D4u: `/api-v2` functional migration (after design approval)
 - What: Copy `/api` data wiring into `/api-v2` once the UI is approved.
