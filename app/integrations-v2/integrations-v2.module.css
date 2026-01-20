@@ -1,0 +1,21 @@
+.root {
+  --integrations-accent: #f9a825;
+  --integrations-accent-strong: #f57c00;
+  --integrations-accent-soft: rgba(249, 168, 37, 0.14);
+  --integrations-accent-soft-strong: rgba(249, 168, 37, 0.22);
+  --integrations-card: rgba(255, 255, 255, 0.92);
+  --integrations-card-strong: rgba(255, 255, 255, 0.98);
+  --integrations-card-muted: rgba(248, 250, 252, 0.9);
+  --integrations-border: rgba(148, 163, 184, 0.25);
+  --integrations-shadow: 0 24px 60px rgba(15, 23, 42, 0.08);
+  --integrations-cta-ink: #111827;
+}
+
+:global([data-theme="dark"]) .root {
+  --integrations-card: rgba(15, 23, 42, 0.78);
+  --integrations-card-strong: rgba(15, 23, 42, 0.92);
+  --integrations-card-muted: rgba(15, 23, 42, 0.64);
+  --integrations-border: rgba(148, 163, 184, 0.2);
+  --integrations-shadow: 0 28px 70px rgba(4, 10, 24, 0.45);
+  --integrations-cta-ink: #0f1424;
+}

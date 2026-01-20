@@ -423,6 +423,150 @@ Console notes:
 - `auth.trial_bonus.result` logged as duplicate (credits already granted).
 - `qa.init_failed` warnings surfaced during QA when setting `data-theme` before `documentElement` was ready (QA script only).
 
+### D4h: `/history-v2` visual audit + delta checklist
+- What: Compare `/history` against `/pricing-v2` and document the deltas before redesign.
+- How: Use Playwright to capture `/history` and `/pricing-v2`, then log differences in surfaces, typography, spacing, accents, and motion.
+- Why: Ensures the redesign is targeted and traceable instead of guesswork.
+Status: Completed — Playwright captures collected and deltas documented for `/history` versus `/pricing-v2`.
+What was done and why:
+- Seeded auth localStorage and captured `/history` and `/pricing-v2` to compare the live UI against the pricing-v2 visual blueprint.
+- Logged surface, typography, spacing, accent, and motion deltas so the redesign can be applied without changing the underlying UX.
+Artifacts:
+- `artifacts/history-auth.png`
+- `artifacts/pricing-v2-auth.png`
+Key deltas found:
+- `/history` uses `bg-white` + `ring-slate-200` + `shadow-md` with `rounded-2xl`/`rounded-xl` cards; `/pricing-v2` uses the pricing card hierarchy (`--pricing-card`, `--pricing-card-muted`, `--pricing-card-strong`) with `--pricing-border` and 28/24/16/12px radius system.
+- `/history` lacks a hero card and page-level glow layers; `/pricing-v2` opens with a gradient hero, accent chip, and layered radial backgrounds.
+- `/history` relies on direct slate utility colors and basic button styles; `/pricing-v2` uses accent gradients, tokenized border colors, and CTA shadows.
+- `/history` table header/body use flat borders and no card layering; `/pricing-v2` uses muted card surfaces and consistent border tokens across sections.
+- `/history` has minimal motion polish; `/pricing-v2` uses entry transitions and hover emphasis for interactive elements.
+
+### D4i: `/history-v2` UI-only redesign
+- What: Create a new `/history-v2` route that matches the `/pricing-v2` visual system without touching `/history`.
+- How: Apply pricing-v2 tokens, add a history-specific hero card, and restyle the table/cards to the new surface hierarchy while keeping the current UX flow.
+- Why: Allows us to review the new design without disrupting the current history page.
+Status: Completed — shipped a UI-only `/history-v2` page with pricing-v2 surfaces and a history-specific hero layout.
+What was done and why:
+- Added `app/history-v2/page.tsx`, `app/history-v2/history-v2-client.tsx`, and `app/history-v2/history-v2-sections.tsx` to introduce the new route without touching `/history`.
+- Implemented pricing-v2 surface tokens via `app/history-v2/history-v2.module.css`, matching the shared accent palette and card hierarchy.
+- Built a hero card with history-focused messaging and CTAs, plus supporting highlight cards to match the `/pricing-v2` polish without altering UX flows.
+- Restyled the history table area with pricing-v2 card treatments and empty-state messaging (no data wiring yet per the UI-only requirement).
+Not yet implemented:
+- No backend wiring in `/history-v2` (tracked in D4k).
+
+### D4j: `/history-v2` responsive QA
+- What: Verify `/history-v2` across mobile and desktop breakpoints in light/dark themes.
+- How: Capture small and large viewport renders and adjust grids/overflow as needed.
+- Why: Ensures the redesign remains touch-friendly and consistent with the pricing-v2 system.
+Status: Completed — captured `/history-v2` in light/dark for desktop and mobile.
+What was done and why:
+- Seeded auth localStorage and captured `/history-v2` at 1280×800 and 375×812 in both light and dark themes to confirm responsive behavior and surface treatments.
+- Verified cards stack cleanly on mobile, CTAs wrap without overflow, and shadows/glows remain intact.
+Artifacts:
+- `artifacts/history-v2-desktop-light.png`
+- `artifacts/history-v2-desktop-dark.png`
+- `artifacts/history-v2-mobile-light.png`
+- `artifacts/history-v2-mobile-dark.png`
+Console notes:
+- `409 Conflict` from `/api/credits/signup-bonus` with `auth.signup_bonus.failed` warning (“Signup bonus eligibility window elapsed”).
+- `auth.trial_bonus.result` logged as duplicate (credits already granted).
+
+### D4k: `/history-v2` functional migration (after design approval)
+- What: Copy `/history` data wiring into `/history-v2` once the UI is approved.
+- How: Reuse `app/history/utils.ts` and `app/lib/api-client.ts` calls, then cross-check against the updated external API docs.
+- Why: Keeps the new UI production-ready while avoiding premature backend changes.
+Status: Completed — `/history-v2` now mirrors `/history` data wiring with updated UI surfaces.
+What was done and why:
+- Reused `apiClient.listTasks`, `apiClient.getTask`, and `apiClient.downloadTaskResults` in `app/history-v2/history-v2-client.tsx` so the new page preserves the existing backend flow without changing endpoints.
+- Kept the same history cache behavior (`HistoryCacheEntry`) and mapping helpers (`mapTaskToHistoryRow`, `mapDetailToHistoryRow`) for parity with `/history`.
+- Wired refresh, pagination, and download actions into the redesigned table and mobile card layouts to remove UI-only placeholders.
+- Added a lightweight client-side status filter (All/Completed/Processing/Failed) that filters loaded rows only; it does not alter backend queries.
+- Updated the snapshot/exports cards to render live counts when available and fall back to the empty-state message when no history is loaded.
+- Cross-checked external task docs (`ext-api-docs/endpoints/task_controller.md`) to confirm list/detail payloads still align with the mapping logic.
+Tests:
+- `npm run test:history`
+
+### D4l: `/integrations-v2` visual audit + delta checklist
+- What: Compare `/integrations` against `/pricing-v2` and document the deltas before redesign.
+- How: Use Playwright to capture `/integrations` and `/pricing-v2`, then log differences in surfaces, typography, spacing, accents, and motion.
+- Why: Ensures the redesign is targeted and traceable instead of guesswork.
+Status: Completed — Playwright captures collected and deltas documented for `/integrations` versus `/pricing-v2`.
+What was done and why:
+- Seeded auth localStorage and captured `/integrations` and `/pricing-v2` to compare the live UI against the pricing-v2 visual blueprint.
+- Logged surface, typography, spacing, accent, and motion deltas so the redesign can be applied without changing the underlying UX.
+Artifacts:
+- `artifacts/integrations-auth.png`
+- `artifacts/pricing-v2-auth.png`
+Console notes:
+- `409 Conflict` from `/api/credits/signup-bonus` with `auth.signup_bonus.failed` warning (“Signup bonus eligibility window elapsed”).
+- `auth.trial_bonus.result` logged as duplicate (credits already granted).
+Key deltas found:
+- `/integrations` uses plain `bg-white` + `border-slate-200` + `shadow-sm` with `rounded-2xl` cards; `/pricing-v2` uses the pricing surface hierarchy (`--pricing-card`, `--pricing-card-muted`, `--pricing-card-strong`) with `--pricing-border` and the 28/24/16/12px radius map.
+- `/integrations` has no hero card, accent chip, or page-level glow layers; `/pricing-v2` opens with a gradient hero, accent label, and layered radial backgrounds.
+- `/integrations` CTA uses the global `--accent` solid fill; `/pricing-v2` uses the pricing gradient CTA with the matching shadow spec.
+- Typography in `/integrations` sticks to small body copy and lacks the uppercase micro-labels, gradient heading accents, and structured headline scale used in `/pricing-v2`.
+- No motion polish in `/integrations`; `/pricing-v2` includes staggered entrance transitions and hover emphasis.
+
+### D4m: `/integrations-v2` UI-only redesign
+- What: Create a new `/integrations-v2` route that matches the `/pricing-v2` visual system without touching `/integrations`.
+- How: Apply pricing-v2 tokens, add an integrations-specific hero card, and restyle integration cards and CTA surfaces while keeping the existing UX flow.
+- Why: Allows us to review the new design without disrupting the current integrations page.
+Status: Completed — shipped a UI-only `/integrations-v2` page using the pricing-v2 visual system.
+What was done and why:
+- Added `app/integrations-v2/page.tsx`, `app/integrations-v2/integrations-v2-client.tsx`, and `app/integrations-v2/integrations-v2-sections.tsx` to introduce the new route without touching `/integrations`.
+- Introduced `app/integrations-v2/integrations-v2.module.css` to apply pricing-v2 surface tokens, borders, and shadows scoped to the new page.
+- Built a hero card (matching `/overview-v2`) with integrations-specific messaging, CTA links, and highlight chips.
+- Restyled the integration cards and usage notes with the pricing-v2 card hierarchy while preserving the existing integration options and API-link behavior.
+Not yet implemented:
+- No backend wiring changes in `/integrations-v2` (design review first).
+
+### D4n: `/integrations-v2` responsive QA
+- What: Verify `/integrations-v2` across mobile and desktop breakpoints in light/dark themes.
+- How: Capture small and large viewport renders and adjust grids/overflow as needed.
+- Why: Ensures the redesign remains touch-friendly and consistent with the pricing-v2 system.
+Status: Completed — captured `/integrations-v2` in light/dark for desktop and mobile.
+What was done and why:
+- Seeded auth localStorage and captured `/integrations-v2` at 1280×800 and 375×812 in both light and dark themes to validate responsive layout and theme styling.
+- Verified cards stack cleanly on mobile, CTAs wrap without overflow, and glow/shadow treatments remain intact.
+Artifacts:
+- `artifacts/qa-integrations-v2-desktop-light.png`
+- `artifacts/qa-integrations-v2-desktop-dark.png`
+- `artifacts/qa-integrations-v2-mobile-light.png`
+- `artifacts/qa-integrations-v2-mobile-dark.png`
+Console notes:
+- `409 Conflict` from `/api/credits/signup-bonus` with `auth.signup_bonus.failed` warning (“Signup bonus eligibility window elapsed”).
+- `auth.trial_bonus.result` logged as duplicate (credits already granted).
+
+### D4o: `/integrations-v2` functional migration (after design approval)
+- What: Copy `/integrations` data wiring into `/integrations-v2` once the UI is approved.
+- How: Reuse existing integration data/helpers and cross-check against updated external API docs.
+- Why: Keeps the new UI production-ready while avoiding premature backend changes.
+Status: Completed — `/integrations-v2` now pulls integration data from the backend config endpoint.
+What was done and why:
+- Wired `app/integrations-v2/integrations-v2-client.tsx` to call `apiClient.listIntegrations()` so the integrations list is no longer hardcoded in the UI.
+- Added loading, empty, and error states with clear logs for missing icons/descriptions to avoid silent failures.
+- Kept CTA links intact while switching the integration identifier to the backend-provided `id` for future-proofing.
+External API cross-check:
+- No external API endpoints for integrations in `ext-api-docs`; `/integrations` is served by the backend config (`backend/config/integrations.json`).
+
+### D4p: Swap `/integrations` to `/integrations-v2`
+- What: Replace the existing `/integrations` route with the new `/integrations-v2` UI.
+- How: Point `app/integrations/page.tsx` to the v2 client while keeping `/integrations-v2` available for rollback.
+- Why: Delivers the new integrations design across the dashboard without changing backend behavior.
+Status: Completed — `/integrations` now renders the `/integrations-v2` client.
+What was done and why:
+- Replaced `app/integrations/page.tsx` with a wrapper that renders `IntegrationsV2Client` to swap the new UI in without altering backend logic.
+- Kept `/integrations-v2` intact for rollback/QA.
+
+### D4q: Swap `/history` to `/history-v2`
+- What: Replace the existing `/history` route with the new `/history-v2` UI.
+- How: Point `app/history/page.tsx` to the v2 client while keeping `/history-v2` available for rollback.
+- Why: Delivers the new history design across the dashboard without changing backend behavior.
+Status: Completed — `/history` now renders the `/history-v2` client.
+What was done and why:
+- Replaced `app/history/page.tsx` with a wrapper that renders `HistoryV2Client` to swap the new UI in without altering backend logic.
+- Kept `/history-v2` intact for rollback/QA.
+
 ### D5: Responsive and theme QA
 - What: Validate responsiveness and dark theme after styling updates.
 - How: Spot check key breakpoints and dark mode for each updated page.
@@ -479,7 +623,9 @@ Console notes:
 - What: Document the changes and any new tokens/components.
 - How: Update this plan with completed steps and rationale for newcomers.
 - Why: Keeps future work aligned and reduces rework.
-Status: Pending.
+Status: Completed — added a refreshed handover with sidebar/QA details.
+What was done and why:
+- Created `handover.md` to capture the sidebar redesign, QA artifacts, console notes, and the remaining pending tasks so the next session can resume without gaps.
 
 ### D6a: Pricing-v2 visual spec checklist
 - What: Write a single source-of-truth design blueprint for `/pricing-v2` (cards, colors, typography, gradients, shadows, spacing).
@@ -493,7 +639,7 @@ What was done and why:
 - What: Remove tracked QA auth artifacts that contain session tokens.
 - How: Decide whether to delete `.auth-session.json` and `.playwright-visual-check.js`, and add ignore rules if needed.
 - Why: Prevents committing sensitive session credentials to the repo.
-Status: Pending — awaiting decision on removal/ignore policy.
+Status: Pending — decision needed on removing tracked auth files.
 
 #### D7a: Ignore local QA artifacts
 - What: Update `.gitignore` to exclude local QA outputs and auth token files.
@@ -507,7 +653,10 @@ What was done and why:
 - What: Commit current sidebar changes and plan updates, then push to GitHub.
 - How: Stage tracked changes and create a single commit message for the sidebar redesign + QA notes; push to `origin/main`.
 - Why: Keeps repo state synced with completed work as required.
-Status: Pending — blocked on D7a.
+Status: Completed — committed sidebar redesign and QA notes and pushed to `origin/main`.
+What was done and why:
+- Committed the sidebar layout swap, theme token additions, `.gitignore` updates, and plan updates in a single commit.
+- Pushed commit `69912ac` to `origin/main` to keep GitHub up to date.
 
 ## Progress Notes
 - Created this plan to guide a non-disruptive visual alignment effort, with a minimal MVP and staged rollout to avoid layout changes.
