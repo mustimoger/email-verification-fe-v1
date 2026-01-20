@@ -605,11 +605,19 @@ Not yet implemented:
 - What: Verify `/api-v2` across mobile and desktop breakpoints in light/dark themes.
 - How: Capture small and large viewport renders and adjust grids/overflow as needed.
 - Why: Ensures the redesign remains touch-friendly and consistent with the pricing-v2 system.
-Status: Blocked — auth session invalid in Playwright; redirected to `/signin`.
-Not yet implemented:
-- Capture `/api-v2` screenshots for desktop/mobile in light/dark themes once a fresh auth localStorage token is available.
-Notes:
-- Playwright reports `AuthApiError: Invalid Refresh Token: Already Used` after seeding `sb-zobtogrjplslxicgpfxc-auth-token`, so `/api-v2` redirects to `/signin`.
+Status: Completed — captured `/api-v2` in light/dark for desktop and mobile.
+What was done and why:
+- Seeded auth localStorage, captured `/api-v2` at 1280×800 and 375×812 in both light and dark themes to validate responsive layout and theme styling.
+- Verified the hero CTA stack, highlight tiles, and key/usage cards stack cleanly on mobile without overflow.
+Artifacts:
+- `artifacts/qa-api-v2-desktop-light.png`
+- `artifacts/qa-api-v2-desktop-dark.png`
+- `artifacts/qa-api-v2-mobile-light.png`
+- `artifacts/qa-api-v2-mobile-dark.png`
+Console notes:
+- `409 Conflict` from `/api/credits/signup-bonus` with `auth.signup_bonus.failed` warning (“Signup bonus eligibility window elapsed”).
+- `auth.trial_bonus.result` logged as duplicate (credits already granted).
+- Playwright init script warning: `Cannot read properties of null (reading 'setAttribute')` (QA script only, not app code).
 
 ### D4u: `/api-v2` functional migration (after design approval)
 - What: Copy `/api` data wiring into `/api-v2` once the UI is approved.
