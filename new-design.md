@@ -623,10 +623,16 @@ Console notes:
 - What: Copy `/api` data wiring into `/api-v2` once the UI is approved.
 - How: Reuse existing API key management logic and cross-check against updated external API docs.
 - Why: Keeps the new UI production-ready while avoiding premature backend changes.
-Status: Pending — not started.
-Not yet implemented:
-- Wire API key generation, listing, and revoke flows into `/api-v2`.
-- Cross-check `/api` backend endpoints with `/ext-api-docs` for any updated payloads.
+Status: Completed — `/api-v2` now reuses the `/api` data wiring end-to-end.
+What was done and why:
+- Wired API key listing, creation, reveal/copy, and revoke flows into `app/api-v2/api-v2-client.tsx` using the same `apiClient` calls as `/api` to preserve behavior.
+- Connected usage loading (per-key summary + per-purpose metrics) and chart rendering with the same `resolveDateRange`, `summarizeKeyUsage`, and `getUsageSummary` logic used on `/api`.
+- Kept `/api-v2` UI structure intact while swapping placeholders for live data and error states, so design review remains valid.
+External API cross-check:
+- `ext-api-docs/endpoints/api_key_controller.md` matches the backend proxy (`backend/app/api/api_keys.py`): frontend continues to send integration IDs; the backend maps them to external `purpose` values before calling `/api/v1/api-keys`.
+- Usage metrics in `ext-api-docs/endpoints/api_key_controller.md` align with `backend/app/api/usage.py` (`/api/usage/summary` + `/api/usage/purpose`), including the intentional `source=unavailable` response when filtering by `api_key_id`.
+Tests:
+- Not run (no existing API page unit/integration tests).
 
 ### D4v: Swap `/api` to `/api-v2`
 - What: Replace the existing `/api` route with the new `/api-v2` UI.
