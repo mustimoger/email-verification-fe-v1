@@ -676,15 +676,33 @@ Key deltas found:
 - What: Create a new `/account-v2` route that matches the `/pricing-v2` visual system (including a hero card similar to `/overview-v2`) without touching `/account`.
 - How: Apply pricing-v2 tokens, add an account-specific hero narrative, and restyle profile, security, purchase history, and credits sections while keeping the existing UX flow.
 - Why: Allows us to review the new design without disrupting the current account page.
-Status: Pending.
+Status: Completed — `/account-v2` added with pricing-v2 surfaces, hero narrative, and restructured sections.
+What was done and why:
+- Added `app/account-v2/page.tsx`, `app/account-v2/account-v2-client.tsx`, and `app/account-v2/account-v2-sections.tsx` to introduce the new route without touching `/account`.
+- Created `app/account-v2/account-v2.module.css` to apply pricing-v2 card tokens, borders, and shadows scoped to the new page.
+- Built a hero card mirroring `/overview-v2` with account-focused messaging, CTA anchors, and highlight tiles.
+- Restyled the profile/security form, purchase history, and credits cards to the pricing-v2 hierarchy, including a mobile-friendly purchase list.
+- Reused the existing account data logic (profile, credits, purchases, avatar update, password/email updates) without backend changes to keep the UI review realistic.
 Not yet implemented:
-- Backend wiring is intentionally deferred to D4z until the design is approved.
+- External API cross-check for account/credits/purchases wiring is still pending (tracked in D4z).
 
 ### D4y: `/account-v2` responsive QA
 - What: Verify `/account-v2` across mobile and desktop breakpoints in light/dark themes.
 - How: Capture small and large viewport renders and adjust grids/overflow as needed.
 - Why: Ensures the redesign remains touch-friendly and consistent with the pricing-v2 system.
-Status: Pending.
+Status: Completed — captured `/account-v2` in light/dark for desktop and mobile.
+What was done and why:
+- Seeded auth localStorage and forced theme preferences to capture `/account-v2` at 1280×800 and 375×812 in light and dark themes.
+- Verified hero CTA stack, profile form, purchase list, and credits card remain readable and responsive on mobile.
+Artifacts:
+- `artifacts/qa-account-v2-desktop-light.png`
+- `artifacts/qa-account-v2-desktop-dark.png`
+- `artifacts/qa-account-v2-mobile-light.png`
+- `artifacts/qa-account-v2-mobile-dark.png`
+Console notes:
+- `409 Conflict` from `/api/credits/signup-bonus` with `auth.signup_bonus.failed` warning (“Signup bonus eligibility window elapsed”).
+- `auth.trial_bonus.result` logged as duplicate (credits already granted).
+- Playwright init script warning: `Cannot read properties of null (reading 'setAttribute')` (QA script only, not app code).
 
 ### D4z: `/account-v2` functional migration (after design approval)
 - What: Copy `/account` data wiring into `/account-v2` once the UI is approved, cross-checking updated external API docs.
