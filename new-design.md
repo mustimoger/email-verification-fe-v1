@@ -656,7 +656,21 @@ Not yet implemented:
 - What: Compare `/account` against `/pricing-v2` and document the deltas before redesign.
 - How: Use Playwright to capture `/account` and `/pricing-v2`, then log differences in surfaces, typography, spacing, accents, and motion.
 - Why: Ensures the redesign is targeted and traceable instead of guesswork.
-Status: Pending.
+Status: Completed — Playwright captures collected and deltas documented for `/account` versus `/pricing-v2`.
+What was done and why:
+- Seeded auth localStorage and captured `/account` + `/pricing-v2` to compare live visuals against the pricing-v2 blueprint.
+- Logged surface, typography, spacing, accent, and motion deltas to keep the redesign targeted without changing UX structure.
+Artifacts:
+- `artifacts/qa-account-audit.png`
+- `artifacts/qa-pricing-v2-audit.png`
+Key deltas found:
+- `/account` opens with a standard white profile card; `/pricing-v2` leads with a hero card, accent label, and layered glow backgrounds.
+- Card surfaces in `/account` use `bg-white` + `shadow-md` + `ring-slate-200` with `rounded-2xl`; pricing uses the tokenized card hierarchy (`--pricing-card`, `--pricing-card-muted`, `--pricing-card-strong`) with the 28/24/16px radius map and `--pricing-border`.
+- `/account` inputs use `rounded-lg` + `bg-slate-50` + default borders; pricing uses `rounded-xl` inputs with `--pricing-border` and soft translucent fills.
+- Primary CTA on `/account` is a flat amber button; pricing uses the amber gradient CTA with the matching shadow spec.
+- Typography in `/account` relies on `text-sm` + `font-extrabold` headers and lacks the uppercase micro-labels and hero headline scale from `/pricing-v2`.
+- Tables in `/account` use flat slate headers and default dividers; pricing uses muted card surfaces, tokenized borders, and spacing hierarchy.
+- Motion polish (staggered entrance transitions, hover glows) is absent in `/account`.
 
 ### D4x: `/account-v2` UI-only redesign
 - What: Create a new `/account-v2` route that matches the `/pricing-v2` visual system (including a hero card similar to `/overview-v2`) without touching `/account`.
