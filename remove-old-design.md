@@ -115,6 +115,10 @@ Only remove routes/components that are confirmed unused, while preserving the ne
   - Manual QA (Playwright) with localStorage session injection:
     - Visited `/signin`, `/signup`, `/pricing`, `/overview`, `/verify`, `/history`, `/integrations`, `/api`, `/account`, `/reset-password`.
     - Observed expected auth-session console warnings (`signup_bonus` 409 conflicts, profile sync fetch failures) consistent with prior runs; no route failures after v2 removal.
+  - Made OAuth provider filtering type-safe so `formatV2Label` only receives a `string`.
+  - Guarded history cache access to avoid undefined reads during initial load.
+  - Installed `@types/papaparse` and aligned the upload section prop type to accept `RefObject<HTMLInputElement | null>`.
+  - `npm run build` now completes successfully.
 
 ## Open questions
 - None. Decisions provided:

@@ -19,11 +19,11 @@ export function OAuthButtons({ mode, onError, variant = "gsi", fontFamily }: OAu
 
   const providers = useMemo(() => {
     return getEnabledOAuthProviders()
-      .map((provider) => ({
-        provider,
-        label: getOAuthProviderLabel(provider, mode),
-      }))
-      .filter((item) => Boolean(item.label));
+      .map((provider) => {
+        const label = getOAuthProviderLabel(provider, mode);
+        return label ? { provider, label } : null;
+      })
+      .filter((item): item is { provider: Provider; label: string } => item !== null);
   }, [mode]);
 
   if (!providers.length) {

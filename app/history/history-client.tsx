@@ -123,7 +123,7 @@ export default function HistoryV2Client() {
   useEffect(() => {
     if (!session) return;
     const cached = cacheKey ? historyCache.get(cacheKey) : undefined;
-    if (shouldUseHistoryCache(cached, Boolean(session))) {
+    if (cached && shouldUseHistoryCache(cached, Boolean(session))) {
       setRows(cached.rows);
       setTotal(cached.total);
       setError(null);

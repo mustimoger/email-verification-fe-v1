@@ -130,7 +130,7 @@ type UploadSectionProps = {
   transitionClass?: string;
   flowStage: UploadFlowStage;
   uploadSummary: UploadSummary | null;
-  fileInputRef: RefObject<HTMLInputElement>;
+  fileInputRef: RefObject<HTMLInputElement | null>;
   fileError?: string | null;
   fileNotice?: string | null;
   fileColumns: Record<string, FileColumnInfo>;
