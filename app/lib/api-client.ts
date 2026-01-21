@@ -301,6 +301,22 @@ export type UsagePurposeResponse = {
   user_id?: string;
 };
 
+export type ApiKeyUsageSeriesPoint = {
+  date?: string;
+  usage_count?: number;
+};
+
+export type ApiKeyUsageResponse = {
+  id?: string;
+  name?: string;
+  created_at?: string;
+  is_active?: boolean;
+  last_used_at?: string;
+  purpose?: string;
+  usage_count?: number;
+  series?: ApiKeyUsageSeriesPoint[];
+};
+
 export type ExternalCreditBalanceResponse = {
   user_id?: string;
   balance?: number | null;
@@ -339,6 +355,7 @@ export type IntegrationOption = {
   description: string;
   icon?: string | null;
   default_name?: string | null;
+  external_purpose?: string | null;
 };
 
 export type PlanPrice = {
@@ -821,6 +838,34 @@ export const apiClient = {
 export type ApiClient = typeof apiClient;
 
 export const externalApiClient = {
+  listApiKeys: (start?: string, end?: string) => {
+    const params = new URLSearchParams();
+    if (start) params.append("from", start);
+    if (end) params.append("to", end);
+    const qs = params.toString();
+    return externalRequest<ListApiKeysResponse>(`/api-keys${qs ? `?${qs}` : ""}`, { method: "GET" });
+  },
+  createApiKey: (name: string, purpose: string) =>
+    externalRequest<CreateApiKeyResponse>("/api-keys", { method: "POST", body: { name, purpose } }),
+  revokeApiKey: (id: string) =>
+    externalRequest<RevokeApiKeyResponse>(`/api-keys/${encodeURIComponent(id)}`, { method: "DELETE" }),
+  getApiUsageMetrics: (start?: string, end?: string) => {
+    const params = new URLSearchParams();
+    if (start) params.append("from", start);
+    if (end) params.append("to", end);
+    const qs = params.toString();
+    return externalRequest<UsagePurposeResponse>(`/api-keys/usage${qs ? `?${qs}` : ""}`, { method: "GET" });
+  },
+  getApiKeyUsage: (apiKeyId: string, start?: string, end?: string) => {
+    const params = new URLSearchParams();
+    if (start) params.append("from", start);
+    if (end) params.append("to", end);
+    const qs = params.toString();
+    return externalRequest<ApiKeyUsageResponse>(
+      `/api-keys/${encodeURIComponent(apiKeyId)}/usage${qs ? `?${qs}` : ""}`,
+      { method: "GET" },
+    );
+  },
   getCreditBalance: () => externalRequest<ExternalCreditBalanceResponse>("/credits/balance", { method: "GET" }),
   getVerificationMetrics: (params?: { from?: string; to?: string }) => {
     const search = new URLSearchParams();

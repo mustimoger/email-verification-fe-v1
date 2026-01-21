@@ -7,6 +7,7 @@ type IntegrationCatalogRow = {
   description: string;
   icon_url: string | null;
   default_name: string | null;
+  external_purpose: string | null;
   sort_order: number | null;
   is_active: boolean | null;
 };
@@ -29,7 +30,7 @@ export async function listIntegrationsCatalogWithClient(
 ): Promise<IntegrationOption[]> {
   const { data, error } = await supabase
     .from("integrations_catalog")
-    .select("id,label,description,icon_url,default_name,sort_order,is_active")
+    .select("id,label,description,icon_url,default_name,external_purpose,sort_order,is_active")
     .eq("is_active", true)
     .order("sort_order", { ascending: true })
     .order("label", { ascending: true });
@@ -49,6 +50,7 @@ export async function listIntegrationsCatalogWithClient(
     description: row.description,
     icon: row.icon_url,
     default_name: row.default_name,
+    external_purpose: row.external_purpose,
   }));
 }
 

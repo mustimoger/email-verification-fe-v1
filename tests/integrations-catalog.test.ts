@@ -10,6 +10,7 @@ type QueryResult = {
     description: string;
     icon_url: string | null;
     default_name: string | null;
+    external_purpose: string | null;
     sort_order: number | null;
     is_active: boolean | null;
   }> | null;
@@ -84,6 +85,7 @@ async function main() {
         description: "Integrate Tool A.",
         icon_url: "/integrations/tool-a.png",
         default_name: "Tool A",
+        external_purpose: "tool-a",
         sort_order: 1,
         is_active: true,
       },
@@ -96,7 +98,7 @@ async function main() {
   assert.strictEqual(client.lastTable, "integrations_catalog");
   assert.strictEqual(
     client.query.calls.select,
-    "id,label,description,icon_url,default_name,sort_order,is_active",
+    "id,label,description,icon_url,default_name,external_purpose,sort_order,is_active",
   );
   assert.deepStrictEqual(client.query.calls.eq, [["is_active", true]]);
   assert.deepStrictEqual(client.query.calls.order, [
@@ -111,6 +113,7 @@ async function main() {
       description: "Integrate Tool A.",
       icon: "/integrations/tool-a.png",
       default_name: "Tool A",
+      external_purpose: "tool-a",
     });
   });
 

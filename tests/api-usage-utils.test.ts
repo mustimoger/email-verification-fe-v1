@@ -1,10 +1,14 @@
 import assert from "node:assert";
 
-import { ApiKeySummary, UsagePurposeResponse } from "../app/lib/api-client";
+import { ApiKeySummary, ApiKeyUsageResponse, UsagePurposeResponse } from "../app/lib/api-client";
 import {
+  buildUsageSummaryFromKeyUsage,
+  buildUsageSummaryFromMetrics,
   formatPurposeLabel,
   listPurposeOptions,
   mapPurposeSeries,
+  mapUsageSeriesFromKeyUsage,
+  mapUsageSeriesFromMetrics,
   resolveDateRange,
   summarizeKeyUsage,
   summarizePurposeUsage,
@@ -117,6 +121,62 @@ run("mapPurposeSeries maps selected purpose counts", () => {
 run("mapPurposeSeries skips points without dates", () => {
   const result = mapPurposeSeries([{ total_requests: 5 }, { date: "2024-02-01", total_requests: 2 }], "");
   assert.deepStrictEqual(result, [{ date: "2024-02-01", count: 2 }]);
+});
+
+run("mapUsageSeriesFromMetrics maps total_requests series", () => {
+  const metrics: UsagePurposeResponse = {
+    series: [
+      { date: "2024-02-01", total_requests: 4 },
+      { date: "2024-02-02", total_requests: 6 },
+    ],
+  };
+  const result = mapUsageSeriesFromMetrics(metrics);
+  assert.deepStrictEqual(result, [
+    { date: "2024-02-01", count: 4 },
+    { date: "2024-02-02", count: 6 },
+  ]);
+});
+
+run("mapUsageSeriesFromKeyUsage maps usage_count series", () => {
+  const usage: ApiKeyUsageResponse = {
+    series: [
+      { date: "2024-02-01", usage_count: 3 },
+      { date: "2024-02-02", usage_count: 8 },
+    ],
+  };
+  const result = mapUsageSeriesFromKeyUsage(usage);
+  assert.deepStrictEqual(result, [
+    { date: "2024-02-01", count: 3 },
+    { date: "2024-02-02", count: 8 },
+  ]);
+});
+
+run("buildUsageSummaryFromMetrics maps total and series", () => {
+  const metrics: UsagePurposeResponse = {
+    total_requests: 9,
+    series: [{ date: "2024-02-01", total_requests: 9 }],
+  };
+  const result = buildUsageSummaryFromMetrics(metrics, null);
+  assert.deepStrictEqual(result, {
+    source: "external",
+    total: 9,
+    series: [{ date: "2024-02-01", count: 9 }],
+    api_key_id: null,
+  });
+});
+
+run("buildUsageSummaryFromKeyUsage maps total and series", () => {
+  const usage: ApiKeyUsageResponse = {
+    usage_count: 5,
+    series: [{ date: "2024-02-01", usage_count: 5 }],
+  };
+  const result = buildUsageSummaryFromKeyUsage(usage, "k1");
+  assert.deepStrictEqual(result, {
+    source: "external",
+    total: 5,
+    series: [{ date: "2024-02-01", count: 5 }],
+    api_key_id: "k1",
+  });
 });
 
 run("resolveDateRange returns empty when no dates provided", () => {

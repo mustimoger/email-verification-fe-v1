@@ -6,9 +6,9 @@ import { DashboardShell } from "../components/dashboard-shell";
 import { RequireAuth } from "../components/protected";
 import { useAuth } from "../components/auth-provider";
 import {
-  apiClient,
   ApiError,
   ApiKeySummary,
+  externalApiClient,
   IntegrationOption,
   ListApiKeysResponse,
   UsagePurposeResponse,
@@ -17,6 +17,8 @@ import {
 import { EXTERNAL_DATA_UNAVAILABLE } from "../lib/messages";
 import { listIntegrationsCatalog } from "../lib/integrations-catalog";
 import {
+  buildUsageSummaryFromKeyUsage,
+  buildUsageSummaryFromMetrics,
   listPurposeOptions,
   mapPurposeSeries,
   resolveDateRange,
@@ -187,13 +189,13 @@ export default function ApiV2Client() {
   useEffect(() => {
     if (!session) return;
     const load = async () => {
-      setIsLoadingKeys(true);
-      setError(null);
-      try {
-        const response: ListApiKeysResponse = await apiClient.listApiKeys();
-        const list = (response.keys ?? []).filter((key) => !isDashboardKey(key));
-        setKeys(list);
-        syncKeyState(list);
+    setIsLoadingKeys(true);
+    setError(null);
+    try {
+      const response: ListApiKeysResponse = await externalApiClient.listApiKeys();
+      const list = (response.keys ?? []).filter((key) => !isDashboardKey(key));
+      setKeys(list);
+      syncKeyState(list);
         setSelectedKey("");
         setSelectedPurpose("");
         setKeyUsageKeys(null);
@@ -266,13 +268,13 @@ export default function ApiV2Client() {
     });
     try {
       if (usageView === "per_key") {
-        const response: ListApiKeysResponse = await apiClient.listApiKeys(false, rangeStart, rangeEnd);
+        const response: ListApiKeysResponse = await externalApiClient.listApiKeys(rangeStart, rangeEnd);
         const list = (response.keys ?? []).filter((key) => !isDashboardKey(key));
         setKeyUsageKeys(list);
         setPurposeUsage(null);
         console.debug("api.usage.per_key.loaded", { count: list.length });
       } else {
-        const response = await apiClient.getUsagePurpose(rangeStart, rangeEnd);
+        const response = await externalApiClient.getApiUsageMetrics(rangeStart, rangeEnd);
         setPurposeUsage(response);
         setKeyUsageKeys(null);
         console.debug("api.usage.per_purpose.loaded", {
@@ -282,7 +284,14 @@ export default function ApiV2Client() {
       }
       if (usageView === "per_key") {
         try {
-          const summary = await apiClient.getUsageSummary(rangeStart, rangeEnd, selectedKey || undefined);
+          let summary: UsageSummaryResponse;
+          if (selectedKey) {
+            const usage = await externalApiClient.getApiKeyUsage(selectedKey, rangeStart, rangeEnd);
+            summary = buildUsageSummaryFromKeyUsage(usage, selectedKey);
+          } else {
+            const metrics = await externalApiClient.getApiUsageMetrics(rangeStart, rangeEnd);
+            summary = buildUsageSummaryFromMetrics(metrics, null);
+          }
           setUsageSummary(summary);
           console.debug("api.usage.summary.loaded", {
             source: summary.source,
@@ -317,16 +326,23 @@ export default function ApiV2Client() {
       setError("Please choose an integration.");
       return;
     }
+    const selectedIntegration = integrationOptions.find((option) => option.id === selectedIntegrationId);
+    const externalPurpose = selectedIntegration?.external_purpose?.trim();
+    if (!externalPurpose) {
+      setError("Selected integration is missing an external purpose.");
+      console.warn("api.keys.missing_external_purpose", { integration_id: selectedIntegrationId });
+      return;
+    }
     const resolvedName = keyName.trim() || selectedIntegrationId;
     setCreating(true);
     setError(null);
     try {
-      const created = await apiClient.createApiKey(resolvedName, selectedIntegrationId);
+      const created = await externalApiClient.createApiKey(resolvedName, externalPurpose);
       setLastPlainKey(created.key || null);
       if (created.id && created.key) {
         setFullKeysById((prev) => ({ ...prev, [created.id as string]: created.key as string }));
       }
-      const refreshed = await apiClient.listApiKeys();
+      const refreshed = await externalApiClient.listApiKeys();
       const list = (refreshed.keys ?? []).filter((key) => !isDashboardKey(key));
       setKeys(list);
       syncKeyState(list);
@@ -354,8 +370,8 @@ export default function ApiV2Client() {
     }
     setError(null);
     try {
-      await apiClient.revokeApiKey(id);
-      const refreshed = await apiClient.listApiKeys();
+      await externalApiClient.revokeApiKey(id);
+      const refreshed = await externalApiClient.listApiKeys();
       const list = (refreshed.keys ?? []).filter((key) => !isDashboardKey(key));
       setKeys(list);
       syncKeyState(list);

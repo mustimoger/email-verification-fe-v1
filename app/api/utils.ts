@@ -1,4 +1,11 @@
-import { ApiKeySummary, UsagePurposeResponse, UsagePurposeSeriesPoint, UsageSummaryPoint } from "../lib/api-client";
+import {
+  ApiKeySummary,
+  ApiKeyUsageResponse,
+  UsagePurposeResponse,
+  UsagePurposeSeriesPoint,
+  UsageSummaryPoint,
+  UsageSummaryResponse,
+} from "../lib/api-client";
 
 export type UsageTotal = {
   total: number | null;
@@ -98,6 +105,66 @@ export function mapPurposeSeries(
       return { date, count };
     })
     .filter((point): point is UsageSummaryPoint => point !== null);
+}
+
+export function mapUsageSeriesFromMetrics(
+  metrics: UsagePurposeResponse | null | undefined,
+): UsageSummaryPoint[] {
+  if (!metrics?.series || metrics.series.length === 0) {
+    return [];
+  }
+  return metrics.series
+    .map((point) => {
+      const date = point.date;
+      if (!date) return null;
+      const count = isNumber(point.total_requests) ? point.total_requests : null;
+      if (!isNumber(count)) return null;
+      return { date, count };
+    })
+    .filter((point): point is UsageSummaryPoint => point !== null);
+}
+
+export function mapUsageSeriesFromKeyUsage(
+  usage: ApiKeyUsageResponse | null | undefined,
+): UsageSummaryPoint[] {
+  if (!usage?.series || usage.series.length === 0) {
+    return [];
+  }
+  return usage.series
+    .map((point) => {
+      const date = point.date;
+      if (!date) return null;
+      const count = isNumber(point.usage_count) ? point.usage_count : null;
+      if (!isNumber(count)) return null;
+      return { date, count };
+    })
+    .filter((point): point is UsageSummaryPoint => point !== null);
+}
+
+export function buildUsageSummaryFromMetrics(
+  metrics: UsagePurposeResponse | null | undefined,
+  apiKeyId?: string | null,
+): UsageSummaryResponse {
+  const total = isNumber(metrics?.total_requests) ? (metrics?.total_requests as number) : null;
+  return {
+    source: "external",
+    total,
+    series: mapUsageSeriesFromMetrics(metrics),
+    api_key_id: apiKeyId ?? null,
+  };
+}
+
+export function buildUsageSummaryFromKeyUsage(
+  usage: ApiKeyUsageResponse | null | undefined,
+  apiKeyId?: string | null,
+): UsageSummaryResponse {
+  const total = isNumber(usage?.usage_count) ? (usage?.usage_count as number) : null;
+  return {
+    source: "external",
+    total,
+    series: mapUsageSeriesFromKeyUsage(usage),
+    api_key_id: apiKeyId ?? null,
+  };
 }
 
 type DateParts = {
