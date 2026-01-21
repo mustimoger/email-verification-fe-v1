@@ -661,6 +661,37 @@ const downloadFile = async (path: string, fallbackFileName: string) => {
   return { blob, fileName: resolvedName };
 };
 
+const downloadExternalFile = async (path: string, fallbackFileName: string) => {
+  const url = `${getExternalApiBase()}${path}`;
+  const headers: Record<string, string> = {};
+  const token = await getAccessToken();
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  const res = await fetch(url, {
+    method: "GET",
+    headers,
+    credentials: "omit",
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    let data: unknown = null;
+    if (text) {
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = text;
+      }
+    }
+    const message = extractErrorMessage(data, res.statusText);
+    console.error("external_api.download_failed", { path, status: res.status, message, details: data });
+    throw new ApiError(res.status, message, data);
+  }
+  const blob = await res.blob();
+  const resolvedName = extractFilename(res.headers.get("content-disposition")) || fallbackFileName;
+  return { blob, fileName: resolvedName };
+};
+
 type VerifyEmailOptions = {
   requestId?: string;
   batchId?: string;
@@ -832,6 +863,8 @@ export const externalApiClient = {
       isForm: true,
     });
   },
+  downloadTaskResults: (taskId: string, fallbackFileName: string) =>
+    downloadExternalFile(`/tasks/${encodeURIComponent(taskId)}/download`, fallbackFileName),
 };
 
 export const billingApi = {

@@ -15,6 +15,7 @@ import {
   UsageSummaryResponse,
 } from "../lib/api-client";
 import { EXTERNAL_DATA_UNAVAILABLE } from "../lib/messages";
+import { listIntegrationsCatalog } from "../lib/integrations-catalog";
 import {
   listPurposeOptions,
   mapPurposeSeries,
@@ -213,7 +214,7 @@ export default function ApiV2Client() {
       setLoadingIntegrations(true);
       setError(null);
       try {
-        const options = await apiClient.listIntegrations();
+        const options = await listIntegrationsCatalog();
         setIntegrationOptions(options);
         if (options.length > 0) {
           setSelectedIntegrationId(options[0].id);

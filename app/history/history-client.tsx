@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { DashboardShell } from "../components/dashboard-shell";
 import { RequireAuth } from "../components/protected";
 import { useAuth } from "../components/auth-provider";
-import { apiClient, ApiError, TaskDetailResponse, TaskListResponse, Task } from "../lib/api-client";
+import { apiClient, externalApiClient, ApiError, TaskDetailResponse, TaskListResponse, Task } from "../lib/api-client";
 import {
   HistoryRow,
   mapDetailToHistoryRow,
@@ -63,10 +63,13 @@ export default function HistoryV2Client() {
       }
       setError(null);
       try {
-        const tasks: TaskListResponse = await apiClient.listTasks(PAGE_SIZE, offset, undefined, refresh);
+        if (refresh) {
+          console.info("history.refresh.external_list", { offset });
+        }
+        const tasks: TaskListResponse = await externalApiClient.listTasks(PAGE_SIZE, offset);
         const items = tasks.tasks ?? [];
         const rowsByIndex: Array<HistoryRow | null> = new Array(items.length).fill(null);
-        const detailRequests: Array<Promise<{ index: number; detail: TaskDetailResponse | null }>> = [];
+          const detailRequests: Array<Promise<{ index: number; detail: TaskDetailResponse | null }>> = [];
 
         items.forEach((task, index) => {
           const mapped = mapTaskToHistoryRow(task as Task);
@@ -74,8 +77,8 @@ export default function HistoryV2Client() {
             rowsByIndex[index] = mapped;
           } else if (task.id) {
             detailRequests.push(
-              apiClient
-                .getTask(task.id)
+              externalApiClient
+                .getTaskDetail(task.id)
                 .then((detail) => ({ index, detail }))
                 .catch(() => ({ index, detail: null })),
             );
@@ -154,7 +157,7 @@ export default function HistoryV2Client() {
     setDownloadError(null);
     setActiveDownload(row.id);
     try {
-      const { blob, fileName } = await apiClient.downloadTaskResults(row.id, row.fileName);
+      const { blob, fileName } = await externalApiClient.downloadTaskResults(row.id, row.fileName);
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = url;

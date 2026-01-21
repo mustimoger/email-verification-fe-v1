@@ -110,6 +110,23 @@ run("mapTaskToHistoryRow uses counts/status without detail fetch", () => {
   assert.strictEqual(row?.label, "upload.csv");
 });
 
+run("mapTaskToHistoryRow uses external file metadata when present", () => {
+  const task: Task = {
+    id: "t4a",
+    created_at: "2024-03-03T00:00:00Z",
+    status: "completed",
+    valid_count: 1,
+    invalid_count: 0,
+    catchall_count: 0,
+    file: { filename: "batch.csv" },
+  };
+  const row = mapTaskToHistoryRow(task);
+  assert(row, "row should not be null");
+  assert.strictEqual(row?.label, "batch.csv");
+  assert.strictEqual(row?.fileName, "batch.csv");
+  assert.strictEqual(row?.action, "download");
+});
+
 run("mapTaskToHistoryRow uses api key preview when file name is absent", () => {
   const task: Task = {
     id: "t4b",

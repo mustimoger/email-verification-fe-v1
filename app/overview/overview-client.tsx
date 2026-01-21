@@ -24,6 +24,7 @@ import {
 } from "../lib/api-client";
 import { APP_CONFIG } from "../lib/app-config";
 import { EXTERNAL_DATA_UNAVAILABLE } from "../lib/messages";
+import { listIntegrationsCatalog } from "../lib/integrations-catalog";
 import {
   aggregateValidationCounts,
   buildUsageSeriesFromMetrics,
@@ -165,7 +166,7 @@ export default function OverviewV2Client() {
     }
     const loadIntegrations = async () => {
       try {
-        const options = await apiClient.listIntegrations();
+        const options = await listIntegrationsCatalog();
         setIntegrationOptions(options);
       } catch (err: unknown) {
         const message = err instanceof ApiError ? err.message : "Failed to load integrations";

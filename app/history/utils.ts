@@ -242,7 +242,7 @@ export function mapDetailToHistoryRow(detail: TaskDetailResponse): HistoryRow | 
   const statusInfo = deriveStatusInfo(statusRaw, hasPending || pendingFromJobStatus, counts.total > 0);
   const { label, fileName } = resolveTaskLabel({
     taskId: resolvedId,
-    fileName: detail.file_name,
+    fileName: detail.file?.filename ?? detail.file_name,
     apiKeyPreview: detail.api_key_preview,
     apiKey: detail.api_key,
     source: "detail",
@@ -280,7 +280,7 @@ export function mapTaskToHistoryRow(task: Task): HistoryRow | null {
   const statusInfo = deriveStatusInfo(statusRaw, hasPending, total > 0);
   const { label, fileName } = resolveTaskLabel({
     taskId: task.id,
-    fileName: task.file_name,
+    fileName: task.file?.filename ?? task.file_name,
     apiKeyPreview: task.api_key_preview,
     apiKey: task.api_key,
     source: "task",

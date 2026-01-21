@@ -26,8 +26,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useAuth } from "./auth-provider";
 import { resolveAuthState } from "./auth-guard-utils";
-import { apiClient } from "../lib/api-client";
+import { apiClient, externalApiClient } from "../lib/api-client";
 import type { Profile } from "../lib/api-client";
+import { clearCachedCredits, readCachedCredits, writeCachedCredits } from "../lib/credits-cache";
 import { useTheme } from "./theme-provider";
 
 type NavItem = {
@@ -188,6 +189,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   const [profileEmail, setProfileEmail] = useState("");
   const [profileAvatar, setProfileAvatar] = useState<string | undefined>(undefined);
   const [creditsRemaining, setCreditsRemaining] = useState<number | null | undefined>(undefined);
+  const lastUserIdRef = useRef<string | null>(null);
   const authState = resolveAuthState({ loading, hasSession: Boolean(session) });
 
   useEffect(() => {
@@ -246,11 +248,26 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   useEffect(() => {
     const loadProfile = async () => {
       if (!session) {
+        if (lastUserIdRef.current) {
+          clearCachedCredits(lastUserIdRef.current);
+          lastUserIdRef.current = null;
+        }
         setProfileName("");
         setProfileEmail("");
         setProfileAvatar(undefined);
         setCreditsRemaining(undefined);
         return;
+      }
+      const userId = session.user?.id ?? null;
+      if (!userId) {
+        console.warn("header.credits_cache_missing_user");
+      } else if (lastUserIdRef.current && lastUserIdRef.current !== userId) {
+        clearCachedCredits(lastUserIdRef.current);
+      }
+      lastUserIdRef.current = userId;
+      const cachedCredits = userId ? readCachedCredits(userId) : null;
+      if (cachedCredits) {
+        setCreditsRemaining(cachedCredits.creditsRemaining);
       }
       const fallbackEmail = session.user?.email ?? "";
       const fallbackName = fallbackEmail ? fallbackEmail.split("@")[0] : "";
@@ -262,7 +279,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
       }
       const [profileResult, creditsResult] = await Promise.allSettled([
         apiClient.getProfile(),
-        apiClient.getCredits(),
+        externalApiClient.getCreditBalance(),
       ]);
       if (profileResult.status === "fulfilled") {
         const profile = profileResult.value;
@@ -279,11 +296,18 @@ export function DashboardShell({ children }: { children: ReactNode }) {
       if (creditsResult.status === "fulfilled") {
         const credits = creditsResult.value;
         const remaining =
-          typeof credits.credits_remaining === "number" ? credits.credits_remaining : null;
+          typeof credits.balance === "number" ? credits.balance : null;
         setCreditsRemaining(remaining);
+        if (typeof remaining === "number" && userId) {
+          writeCachedCredits(userId, remaining);
+        } else if (userId) {
+          clearCachedCredits(userId);
+        }
       } else {
         console.warn("header.credits_load_failed", creditsResult.reason);
-        setCreditsRemaining(undefined);
+        if (!cachedCredits) {
+          setCreditsRemaining(undefined);
+        }
       }
     };
     void loadProfile();
