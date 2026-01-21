@@ -58,6 +58,16 @@ export type TaskMetrics = {
   verification_status?: Record<string, number>;
 };
 
+export type TaskFileMetadata = {
+  upload_id?: string;
+  task_id?: string;
+  filename?: string;
+  email_count?: number;
+  status?: string;
+  created_at?: string;
+  updated_at?: string;
+};
+
 export type TaskResponse = {
   id?: string;
   email_count?: number;
@@ -75,6 +85,9 @@ export type Task = {
   api_key?: string;
   webhook_url?: string;
   status?: string;
+  source?: string;
+  is_file_backed?: boolean;
+  file?: TaskFileMetadata | null;
   email_count?: number;
   valid_count?: number;
   invalid_count?: number;
@@ -123,6 +136,9 @@ export type TaskDetailResponse = {
   api_key_preview?: string;
   api_key?: string;
   file_name?: string;
+  source?: string;
+  is_file_backed?: boolean;
+  file?: TaskFileMetadata | null;
   created_at?: string;
   started_at?: string;
   finished_at?: string;
@@ -152,6 +168,7 @@ export type BatchFileUploadResponse = {
   task_id?: string;
   upload_id?: string;
   uploaded_at?: string;
+  email_count?: number;
 };
 
 export type LatestUploadResponse = {
@@ -783,9 +800,37 @@ export const externalApiClient = {
       method: "GET",
     });
   },
-  listTasks: (limit = 10, offset = 0) => {
+  listTasks: (limit = 10, offset = 0, isFileBacked?: boolean) => {
     const params = new URLSearchParams({ limit: `${limit}`, offset: `${offset}` });
+    if (typeof isFileBacked === "boolean") {
+      params.append("is_file_backed", isFileBacked ? "true" : "false");
+    }
     return externalRequest<TaskListResponse>(`/tasks?${params.toString()}`, { method: "GET" });
+  },
+  createTask: (emails: string[], webhook_url?: string) =>
+    externalRequest<TaskResponse>("/tasks", { method: "POST", body: { emails, webhook_url } }),
+  getTaskJobs: (taskId: string, limit = 10, offset = 0) => {
+    const params = new URLSearchParams({ limit: `${limit}`, offset: `${offset}` });
+    return externalRequest<TaskJobsResponse>(`/tasks/${encodeURIComponent(taskId)}/jobs?${params.toString()}`, {
+      method: "GET",
+    });
+  },
+  getTaskDetail: (taskId: string) =>
+    externalRequest<TaskDetailResponse>(`/tasks/${encodeURIComponent(taskId)}`, { method: "GET" }),
+  uploadBatchFile: (file: File, options?: { webhookUrl?: string; emailColumn?: string }) => {
+    const form = new FormData();
+    form.append("file", file);
+    if (options?.webhookUrl) {
+      form.append("webhook_url", options.webhookUrl);
+    }
+    if (options?.emailColumn) {
+      form.append("email_column", options.emailColumn);
+    }
+    return externalRequest<BatchFileUploadResponse>("/tasks/batch/upload", {
+      method: "POST",
+      body: form,
+      isForm: true,
+    });
   },
 };
 

@@ -645,9 +645,14 @@ const buildTaskUploadRow = (task: Task, detail?: TaskDetailResponse | null): Fil
       null;
   }
   const fileCounts = countsFromDetail ?? countsFromMetrics ?? countsFromTask;
-  const rawFileName = typeof task.file_name === "string" ? task.file_name.trim() : "";
+  const fileNameFromFile = typeof task.file?.filename === "string" ? task.file.filename.trim() : "";
+  const fileNameFromTask = typeof task.file_name === "string" ? task.file_name.trim() : "";
+  const rawFileName = fileNameFromFile || fileNameFromTask;
   if (!rawFileName) {
-    console.info("verify.file_name.unavailable", { task_id: task.id });
+    console.info("verify.file_name.unavailable", {
+      task_id: task.id,
+      has_file_metadata: Boolean(task.file),
+    });
   }
   return {
     fileName: rawFileName || EXTERNAL_DATA_UNAVAILABLE,

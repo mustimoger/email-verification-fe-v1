@@ -5,8 +5,21 @@ import type { DragEvent } from "react";
 
 import { useAuth } from "../components/auth-provider";
 import { DashboardShell } from "../components/dashboard-shell";
-import { apiClient, ApiError, type LimitsResponse, type TaskDetailResponse, type TaskEmailJob } from "../lib/api-client";
-import { buildColumnOptions, FileColumnError, readFileColumnInfo, type FileColumnInfo } from "../verify/file-columns";
+import {
+  apiClient,
+  ApiError,
+  externalApiClient,
+  type LimitsResponse,
+  type TaskDetailResponse,
+  type TaskEmailJob,
+} from "../lib/api-client";
+import {
+  buildColumnOptions,
+  columnLettersToIndex,
+  FileColumnError,
+  readFileColumnInfo,
+  type FileColumnInfo,
+} from "../verify/file-columns";
 import {
   buildTaskUploadsSummary,
   buildManualExportCsv,
@@ -153,7 +166,7 @@ export default function VerifyV2Client() {
     const jobs: TaskEmailJob[] = [];
     let offset = 0;
     while (true) {
-      const response = await apiClient.getTaskJobs(taskId, pageSize, offset);
+      const response = await externalApiClient.getTaskJobs(taskId, pageSize, offset);
       const pageJobs = response.jobs ?? [];
       jobs.push(...pageJobs);
       if (resolvedExpected !== null && jobs.length >= resolvedExpected) {
@@ -251,7 +264,7 @@ export default function VerifyV2Client() {
   const fetchTaskDetailWithRetries = async (taskId: string) => {
     for (let attempt = 1; attempt <= TASK_POLL_ATTEMPTS; attempt += 1) {
       try {
-        const detail = await apiClient.getTask(taskId);
+        const detail = await externalApiClient.getTaskDetail(taskId);
         return detail;
       } catch (err: unknown) {
         if (err instanceof ApiError && err.status === 402) {
@@ -453,13 +466,47 @@ export default function VerifyV2Client() {
       }
       setFileError(null);
       const startedAt = new Date().toISOString();
-      const metadata = files.map((file) => ({
-        file_name: file.name,
-        email_column: columnMapping[file.name],
+      console.info("verify.upload.external_flags", {
         first_row_has_labels: firstRowHasLabels,
         remove_duplicates: removeDuplicates,
-      }));
-      const uploadResults = await apiClient.uploadTaskFiles(files, metadata);
+      });
+      const uploadResults: Awaited<ReturnType<typeof externalApiClient.uploadBatchFile>>[] = [];
+      const failedUploads: { fileName: string; error: string }[] = [];
+      await Promise.all(
+        files.map(async (file) => {
+          const columnValue = columnMapping[file.name]?.trim();
+          const columnIndex = columnValue ? columnLettersToIndex(columnValue) : null;
+          const info = fileColumns[file.name];
+          let emailColumn: string | null = null;
+          if (columnIndex !== null) {
+            if (firstRowHasLabels && info?.headers?.[columnIndex]) {
+              const header = info.headers[columnIndex]?.trim();
+              emailColumn = header ? header : `${columnIndex + 1}`;
+            } else {
+              emailColumn = `${columnIndex + 1}`;
+            }
+          }
+          if (!emailColumn) {
+            failedUploads.push({ fileName: file.name, error: "Email column selection is invalid." });
+            return;
+          }
+          try {
+            const result = await externalApiClient.uploadBatchFile(file, { emailColumn });
+            uploadResults.push(result);
+          } catch (err: unknown) {
+            const message = resolveApiErrorMessage(err, "verify.upload.external");
+            console.error("verify.upload.file_failed", { file_name: file.name, error: message });
+            failedUploads.push({ fileName: file.name, error: message });
+          }
+        }),
+      );
+      if (failedUploads.length > 0 && uploadResults.length === 0) {
+        setFileError("Unable to upload files. Please try again.");
+        return;
+      }
+      if (failedUploads.length > 0) {
+        setFileError("Some files failed to upload. Check History for updates.");
+      }
       const { links, unmatched, orphaned } = mapUploadResultsToLinks(files, uploadResults);
       const detailsByTaskId = new Map<string, TaskDetailResponse>();
       await Promise.all(
@@ -521,7 +568,7 @@ export default function VerifyV2Client() {
     setLatestUploadError(null);
     setLatestUploadRefreshing(true);
     try {
-      const taskResponse = await apiClient.listTasks();
+      const taskResponse = await externalApiClient.listTasks(10, 0, true);
       const tasks = taskResponse.tasks ?? [];
       if (tasks.length === 0) {
         setLatestUploadError("No recent uploads found. Upload a file to get started.");
@@ -571,7 +618,7 @@ export default function VerifyV2Client() {
     setErrors(null);
     setIsSubmitting(true);
     try {
-      const task = await apiClient.createTask(parsed);
+      const task = await externalApiClient.createTask(parsed);
       const taskId = task.id?.trim();
       if (!taskId) {
         console.error("verify.manual.task_missing_id", { response: task });

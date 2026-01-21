@@ -36,6 +36,21 @@ const toColumnLetters = (index: number) => {
   return letters;
 };
 
+export const columnLettersToIndex = (value: string): number | null => {
+  if (!value) return null;
+  const trimmed = value.trim().toUpperCase();
+  if (!trimmed) return null;
+  let index = 0;
+  for (let i = 0; i < trimmed.length; i += 1) {
+    const code = trimmed.charCodeAt(i);
+    if (code < 65 || code > 90) {
+      return null;
+    }
+    index = index * 26 + (code - 64);
+  }
+  return index > 0 ? index - 1 : null;
+};
+
 const normalizeHeader = (value: unknown) => {
   if (value === null || value === undefined) return "";
   const trimmed = String(value).trim();
