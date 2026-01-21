@@ -84,12 +84,17 @@
 - How:
   - Run existing `/api` mapping tests (e.g. usage utils, integrations catalog).
   - Add or adjust tests if external response mapping requires it.
-- Status: In progress.
+- Status: Completed (with warnings).
 - Done:
   - Ran `tests/api-usage-utils.test.ts` with the required env vars set.
   - Previously ran `tests/integrations-catalog.test.ts` with the required env vars set.
-- Not implemented:
-  - Manual `/api` UI smoke check against external API responses.
+  - Performed Playwright smoke check on `/api` with session injected; screenshots saved to:
+    - `/tmp/playwright-mcp-output/1769009051143/api-page.png`
+    - `/tmp/playwright-mcp-output/1769009051143/api-page-usage.png`
+- Observations:
+  - API keys loaded from the external API, but key preview text shows “ext api data is not available” for each key (external response missing `key_preview` or `key`).
+  - Usage load succeeded with no date range; total rendered as `0` and chart showed “Total usage: 0”.
+  - Console warnings: `auth.signup_bonus` 409 conflict and duplicate trial bonus logs (existing auth flow).
 
 ### Step 7 — Remove local API routes if unused
 - What: Remove `/api-keys` and `/usage*` local routes once no pages depend on them.
@@ -112,3 +117,4 @@
 - Completed Step 2 by switching key list/create/revoke flows to the external API client.
 - Completed Step 4 by adding `external_purpose` to the integrations catalog and using it for external key creation (pending external API ownership of the catalog field).
 - Completed Step 3 by replacing `/api` usage analytics with external `/api/v1/api-keys/usage` and `/api/v1/api-keys/{id}/usage`.
+- Completed Step 6 with Playwright smoke coverage for `/api` and logged the current warnings.
