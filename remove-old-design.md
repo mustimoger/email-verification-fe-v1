@@ -103,9 +103,18 @@ Only remove routes/components that are confirmed unused, while preserving the ne
 - How:
   - Run existing tests for affected pages (unit + integration where available).
   - Manual QA for key routes (overview, verify, history, api, account, pricing, auth).
-- Status: Skipped (per request).
+- Status: Completed.
 - Done:
-  - No tests or manual QA were run per the request to remove fallback/QA paths only.
+  - Ran tests:
+    - `npm run test:history`
+    - `npm run test:auth-guard`
+    - `npm run test:overview`
+    - `npm run test:account-purchases`
+    - `npx tsx tests/oauth-providers.test.ts`
+    - `npx tsx tests/pricing-quote-utils.test.ts`
+  - Manual QA (Playwright) with localStorage session injection:
+    - Visited `/signin`, `/signup`, `/pricing`, `/overview`, `/verify`, `/history`, `/integrations`, `/api`, `/account`, `/reset-password`.
+    - Observed expected auth-session console warnings (`signup_bonus` 409 conflicts, profile sync fetch failures) consistent with prior runs; no route failures after v2 removal.
 
 ## Open questions
 - None. Decisions provided:
