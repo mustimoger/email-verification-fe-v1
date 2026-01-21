@@ -6,7 +6,7 @@ import {
   formatPricePerEmail,
   formatVolumeLabel,
   type DisplayPriceEntry,
-} from "./utils";
+} from "./pricing-quote-utils";
 
 const COMPARISON_ROWS = [
   { feature: "Credits Expire", boltroute: "Never", others: "30-365 days" },

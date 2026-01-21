@@ -40,8 +40,8 @@ import {
   TasksSection,
   UsageCard,
   ValidationCard,
-} from "./overview-v2-sections";
-import styles from "./overview-v2.module.css";
+} from "./overview-sections";
+import styles from "./overview.module.css";
 
 type Stat = {
   title: string;

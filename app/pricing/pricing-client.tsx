@@ -5,8 +5,8 @@ import type { PricingConfigV2Response, PricingQuoteV2Response, PricingIntervalV2
 import { ApiError, billingApi } from "../lib/api-client";
 import { getBillingClient } from "../lib/paddle";
 import { DashboardShell } from "../components/dashboard-shell";
-import styles from "./pricing-v2.module.css";
-import { ComparisonSection, FaqSection, FinalCtaSection, VolumePricingSection } from "./pricing-v2-sections";
+import styles from "./pricing.module.css";
+import { ComparisonSection, FaqSection, FinalCtaSection, VolumePricingSection } from "./pricing-sections";
 import {
   calculateSavingsPercent,
   extractPaygDisplayPrices,
@@ -17,7 +17,7 @@ import {
   parseQuantity,
   resolveDisplayTotals,
   validateQuantity,
-} from "./utils";
+} from "./pricing-quote-utils";
 type PlanKey = "payg" | "monthly" | "annual";
 type PlanOption = {
   key: PlanKey;

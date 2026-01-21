@@ -61,7 +61,13 @@ Only remove routes/components that are confirmed unused, while preserving the ne
   - Relocate `*-v2` client/components/CSS into the matching canonical folder.
   - Update imports in `app/*/page.tsx` to point to local modules.
   - Keep shared utilities (e.g., `utils.ts`) in place.
-- Status: Pending.
+- Status: Completed.
+- Done:
+  - Moved `overview-v2`, `verify-v2`, `history-v2`, `integrations-v2`, `api-v2`, `account-v2` client/sections/CSS into their canonical folders and updated imports so canonical routes render the new UI directly.
+  - Replaced `app/signin/page.tsx` and `app/signup/page.tsx` with the v2 page implementations; updated `signin-v2`/`signup-v2` pages to import from canonical so they stay in sync until deletion.
+  - Moved `pricing-v2` client/sections/CSS into `app/pricing` and removed the `PRICING_V2` gate so `/pricing` always renders the new UI.
+  - Relocated pricing quote helpers to `app/pricing/pricing-quote-utils.ts` and updated imports/tests accordingly.
+  - Updated `*-v2` route pages to import canonical clients to avoid divergence before the routes are removed.
 
 ### Step 4 — Remove old routes and legacy components
 - What: Delete unused `*-v2` routes, legacy sidebar components, and unused wrappers.

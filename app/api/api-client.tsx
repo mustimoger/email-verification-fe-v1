@@ -27,8 +27,8 @@ import {
   ApiHero,
   ApiKeysSection,
   ApiUsageSection,
-} from "./api-v2-sections";
-import styles from "./api-v2.module.css";
+} from "./api-sections";
+import styles from "./api.module.css";
 
 type UsageView = "per_key" | "per_purpose";
 

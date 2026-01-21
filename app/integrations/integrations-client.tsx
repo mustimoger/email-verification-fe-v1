@@ -6,8 +6,8 @@ import { DashboardShell } from "../components/dashboard-shell";
 import { RequireAuth } from "../components/protected";
 import { useAuth } from "../components/auth-provider";
 import { apiClient, ApiError, IntegrationOption } from "../lib/api-client";
-import { IntegrationsCatalog, IntegrationsHero, IntegrationsHighlights } from "./integrations-v2-sections";
-import styles from "./integrations-v2.module.css";
+import { IntegrationsCatalog, IntegrationsHero, IntegrationsHighlights } from "./integrations-sections";
+import styles from "./integrations.module.css";
 
 export default function IntegrationsV2Client() {
   const { session, loading: authLoading } = useAuth();

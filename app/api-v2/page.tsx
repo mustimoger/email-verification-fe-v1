@@ -1,4 +1,4 @@
-import ApiV2Client from "./api-v2-client";
+import ApiV2Client from "../api/api-client";
 
 export default function ApiV2Page() {
   return <ApiV2Client />;

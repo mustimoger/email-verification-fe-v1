@@ -8,7 +8,7 @@ import {
   parseQuantity,
   resolveDisplayTotals,
   validateQuantity,
-} from "../app/pricing-v2/utils";
+} from "../app/pricing/pricing-quote-utils";
 
 function run(name: string, fn: () => void) {
   try {

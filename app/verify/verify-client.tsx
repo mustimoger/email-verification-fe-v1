@@ -34,7 +34,7 @@ import {
   type UploadSummary,
   type VerificationResult,
 } from "../verify/utils";
-import styles from "./verify-v2.module.css";
+import styles from "./verify.module.css";
 import {
   ManualVerificationCard,
   ResultsCard,
@@ -42,7 +42,7 @@ import {
   VerifyHero,
   WorkflowSection,
   type ResultsStatusCounts,
-} from "./verify-v2-sections";
+} from "./verify-sections";
 
 const TASK_POLL_ATTEMPTS = 3;
 const TASK_POLL_INTERVAL_MS = 2000;

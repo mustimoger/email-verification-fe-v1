@@ -8,8 +8,8 @@ import { RequireAuth } from "../components/protected";
 import { useAuth } from "../components/auth-provider";
 import { apiClient, ApiError, Credits, Profile, Purchase } from "../lib/api-client";
 import { EXTERNAL_DATA_UNAVAILABLE } from "../lib/messages";
-import { AccountHero, AccountSectionCard } from "./account-v2-sections";
-import styles from "./account-v2.module.css";
+import { AccountHero, AccountSectionCard } from "./account-sections";
+import styles from "./account.module.css";
 
 type PurchaseRow = {
   id: string;

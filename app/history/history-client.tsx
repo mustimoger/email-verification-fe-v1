@@ -14,8 +14,8 @@ import {
   shouldUseHistoryCache,
   type HistoryCacheEntry,
 } from "../history/utils";
-import styles from "./history-v2.module.css";
-import { HistoryHero, HistoryHighlights, HistoryTableSection, type HistorySummary } from "./history-v2-sections";
+import styles from "./history.module.css";
+import { HistoryHero, HistoryHighlights, HistoryTableSection, type HistorySummary } from "./history-sections";
 
 const PAGE_SIZE = 10;
 const historyCache = new Map<string, HistoryCacheEntry>();
