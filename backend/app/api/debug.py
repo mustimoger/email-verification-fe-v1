@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from ..core.auth import AuthContext, get_current_user
 from ..clients.external import ExternalAPIClient, ExternalAPIError
-from .api_keys import get_user_external_client
+from .tasks import get_user_external_client
 
 router = APIRouter(prefix="/api/debug", tags=["debug"])
 logger = logging.getLogger(__name__)

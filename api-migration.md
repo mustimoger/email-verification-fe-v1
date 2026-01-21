@@ -91,6 +91,7 @@
   - Performed Playwright smoke check on `/api` with session injected; screenshots saved to:
     - `/tmp/playwright-mcp-output/1769009051143/api-page.png`
     - `/tmp/playwright-mcp-output/1769009051143/api-page-usage.png`
+  - Ran `pytest backend/tests/test_account.py` after removing local `/api-keys` + `/usage` routes.
 - Observations:
   - API keys loaded from the external API, but key preview text shows “ext api data is not available” for each key (external response missing `key_preview` or `key`).
   - Usage load succeeded with no date range; total rendered as `0` and chart showed “Total usage: 0”.
@@ -103,7 +104,11 @@
 - How:
   - Confirm no remaining local callers.
   - Remove routes and update tests accordingly.
-- Status: Not started.
+- Status: Completed.
+- Done:
+  - Removed the local `/api-keys` and `/api/usage` routers and their module files.
+  - Updated `backend/app/main.py` to stop registering the removed routers.
+  - Removed local API key + usage route tests and re-pointed remaining dependencies to the shared external client helper in `backend/app/api/tasks.py`.
 
 ## STAYED-LOCAL
 - Supabase `integrations_catalog` reads, until the external API owns and populates this table or exposes a dedicated integrations endpoint.

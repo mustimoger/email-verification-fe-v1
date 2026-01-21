@@ -10,7 +10,7 @@ from ..services.credit_grants import list_credit_grants
 from ..core.settings import get_settings
 from ..services.supabase_client import get_storage
 from ..clients.external import ExternalAPIClient, ExternalAPIError
-from .api_keys import get_user_external_client
+from .tasks import get_user_external_client
 
 router = APIRouter(prefix="/api/account", tags=["account"])
 logger = logging.getLogger(__name__)
