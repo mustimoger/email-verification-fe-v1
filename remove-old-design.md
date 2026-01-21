@@ -77,7 +77,11 @@ Only remove routes/components that are confirmed unused, while preserving the ne
   - Remove `app/*-v2/page.tsx` and related route folders after consolidation.
   - Delete `dashboard-shell2.tsx` once confirmed unused.
   - Prune unused CSS/token files only after confirming no imports.
-- Status: Pending.
+- Status: Completed.
+- Done:
+  - Removed all `app/*-v2` route directories now that canonical routes own the UI.
+  - Deleted `app/components/dashboard-shell2.tsx` (unused legacy sidebar implementation).
+  - Removed the legacy pricing mapping helpers (`app/pricing/utils.ts`) and its tests after the new pricing UI became canonical.
 
 ### Step 5 — Update links, tests, and docs
 - What: Remove `/-v2` links and update any documentation that references old routes.
@@ -87,7 +91,11 @@ Only remove routes/components that are confirmed unused, while preserving the ne
   - `rg -n "/[a-z-]+-v2" app tests`
   - Update route references to canonical URLs.
   - Document removals and rationale in `new-design.md`.
-- Status: Pending.
+- Status: Completed.
+- Done:
+  - Moved `public/signin-v2` assets into `public/signin` and updated all `/signin-v2/*` references in auth/reset flows.
+  - Updated OAuth provider icon paths/tests to use `/signin/google.svg`.
+  - Added a note in `new-design.md` that `/-v2` routes are removed and canonical routes now own the UI.
 
 ### Step 6 — Validate and finalize
 - What: Confirm canonical routes render the new UI and no dead code remains.
@@ -95,7 +103,9 @@ Only remove routes/components that are confirmed unused, while preserving the ne
 - How:
   - Run existing tests for affected pages (unit + integration where available).
   - Manual QA for key routes (overview, verify, history, api, account, pricing, auth).
-- Status: Pending.
+- Status: Skipped (per request).
+- Done:
+  - No tests or manual QA were run per the request to remove fallback/QA paths only.
 
 ## Open questions
 - None. Decisions provided:

@@ -36,7 +36,7 @@ run("returns null for unknown provider", () => {
 
 run("returns icon path for Google provider", () => {
   const icon = getOAuthProviderIcon("google");
-  assert.strictEqual(icon, "/signin-v2/google.svg");
+  assert.strictEqual(icon, "/signin/google.svg");
 });
 
 run("returns null for unknown icon provider", () => {

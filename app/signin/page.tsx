@@ -118,7 +118,7 @@ export default function SignInV2Page() {
       <div className="flex min-h-screen w-full flex-col bg-white lg:flex-row">
         <div className="relative min-h-[260px] w-full sm:min-h-[360px] lg:min-h-screen lg:flex-1">
           <Image
-            src="/signin-v2/hero.png"
+            src="/signin/hero.png"
             alt=""
             fill
             priority
@@ -183,7 +183,7 @@ export default function SignInV2Page() {
                       aria-label={showPassword ? "Hide password" : "Show password"}
                       className="absolute right-3 top-1/2 -translate-y-1/2"
                     >
-                      <img src="/signin-v2/eye.svg" alt="" width={16} height={16} aria-hidden="true" />
+                      <img src="/signin/eye.svg" alt="" width={16} height={16} aria-hidden="true" />
                     </button>
                   </div>
                 </label>

@@ -2,6 +2,7 @@
 
 ## Goal
 Bring the rest of the dashboard up to the same visual standard as `/pricing-v2` without changing page layouts or interaction patterns.
+Note: All `/-v2` routes have been consolidated into their canonical routes; the `/-v2` paths are now removed.
 
 ## Reference
 - Visual benchmark: `/pricing-v2` (layout polish, layered backgrounds, card surfaces, accents, and motion).

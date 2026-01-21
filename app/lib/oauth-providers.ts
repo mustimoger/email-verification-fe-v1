@@ -12,7 +12,7 @@ let loggedUnknownProviders = false;
 let loggedMissingIcons = false;
 
 const PROVIDER_ICON_MAP: Record<string, string> = {
-  google: "/signin-v2/google.svg",
+  google: "/signin/google.svg",
 };
 
 export function parseOAuthProviders(value?: string | null): string[] {
