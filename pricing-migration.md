@@ -388,4 +388,8 @@
   - Base prices: set quantity min/max = 1.
   - Increment prices: set quantity max to the tier’s maximum increment units for its segment.
   - Recreate or replace increment prices that lack quantity limits and re-sync tier metadata to new price IDs.
-- Status: Pending.
+- Planned steps (this session):
+  - Add quantity limits to price creation (base min/max = 1, increment max = segment max increment units).
+  - Ensure replacement increment prices are created when limits are missing and re-sync tier metadata.
+  - Rerun annual v2 simulation to confirm Paddle accepts >100 increment quantities.
+- Status: In progress (planning).
