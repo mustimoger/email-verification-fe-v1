@@ -513,3 +513,15 @@
   - Kept layout/spacing intact and added accessible `alt` labels for each logo.
 - Notes:
   - Uses the `public/amex.png` asset provided.
+
+### Step 27 - Enlarge payment logos and remove label text
+- What: Increase payment logo size and remove the "We accept" label in the `/pricing` CTA card.
+- Where: `app/pricing/pricing-client.tsx`.
+- Why: Match the updated visual requirement for the payment row.
+- How:
+  - Remove the visible label and scale logo height to 2x.
+  - Keep accessible labeling for screen readers.
+- Status: Completed.
+- Done:
+  - Removed the visible "We accept" label while keeping an accessible screen-reader label.
+  - Doubled the payment logo height to 2x for Visa, Mastercard, Amex, and PayPal.

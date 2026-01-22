@@ -582,7 +582,7 @@ export default function PricingV2Client() {
               </div>
 
               <div className="mt-4 flex flex-wrap items-center justify-center gap-2 border-t border-[var(--pricing-border)] pt-4 text-[10px] font-semibold text-[var(--text-muted)]">
-                <span>We accept</span>
+                <span className="sr-only">We accept</span>
                 {PAYMENT_LOGOS.map((logo) => (
                   <span
                     key={logo.label}
@@ -591,7 +591,7 @@ export default function PricingV2Client() {
                     <img
                       src={logo.src}
                       alt={logo.label}
-                      className="h-3.5 w-auto object-contain"
+                      className="h-7 w-auto object-contain"
                       loading="lazy"
                     />
                   </span>
