@@ -350,6 +350,24 @@
   - Update tests for new pricing model.
   - Run pricing quote and checkout simulations (payg/monthly/annual).
   - Confirm no cents in UI totals and Paddle totals.
-- Status: Pending.
+- Planned sub-steps:
+  - Run targeted unit tests for pricing + billing (pricing_v2, billing, trial bonus).
+  - Run Paddle v2 simulation script for payg/monthly/annual and verify credit grants.
+  - Run a `/pricing` UI smoke check to confirm no cents in displayed totals.
+- Status: In progress.
+- Done:
+  - Ran targeted unit tests for pricing + billing (`backend/tests/test_pricing_v2.py`, `backend/tests/test_billing.py`, `backend/tests/test_trial_bonus.py`) to validate base+increment math, rounding, and grant flow. Result: 19 passed (existing deprecation warnings from dependencies).
+  - Ran Paddle v2 payg simulation (50,000 credits): transaction `txn_01kfk348x25kgnb5wq8vhfn3kj` created; webhook processed and `credit_grants` inserted, but credits granted were **50001** vs expected **50000** (mismatch).
+  - Ran `/pricing` UI smoke check with refreshed Supabase auth token; config + quote calls returned 200 and totals rendered as whole dollars (One‑Time $26, Monthly $19, Annual $13/month with $161/year).
 - Missing / Issue:
-  - No implementation yet.
+  - Credit grant mismatch for v2 tiers where `min_quantity` is not aligned to step size (e.g., 25001): base grant uses tier `min_quantity`, yielding +1 credit vs expected quantity (needs alignment with segment min).
+  - Monthly + annual v2 simulations deferred to avoid generating additional incorrect credit grants until the base grant alignment issue is fixed.
+
+### Step 17 - Fix v2 base credit grant alignment
+- What: Align webhook credit grants with the segment minimum used for pricing (step-size aligned), not raw tier `min_quantity`.
+- Where: `backend/app/api/billing.py` webhook handling for v2 base/increment items.
+- Why: Current grants can be off by +1 for tiers with min_quantity values like 5001/10001/25001, which do not align to the 1,000 step.
+- How:
+  - Use the same segment-min alignment logic as pricing (`credits_per_unit` step alignment) when computing base credits for v2.
+  - Keep increment credits unchanged (`credits_per_unit * quantity`).
+- Status: Pending.
