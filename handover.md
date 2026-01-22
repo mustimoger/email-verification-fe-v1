@@ -1,105 +1,81 @@
 # Handover (email-verification-fe-v1)
 
-## Current status
-- Focus: pricing overhaul to match new `pricing.csv` with 1,000‑step interpolation, floor rounding, and Paddle base+increment item model.
-- Last changes pushed: `31584c0` (on `main`).
-- Local-only files (do not commit): `key-value-pair.txt`, `handover.md`.
+## Current status (what/why/how)
+- **Focus:** Pricing v2 migration (pricing.csv anchors + base/increment pricing) and Step 16 validation.
+- **Why:** Pricing must be data-driven from `pricing.csv`, with Paddle base+increment items to avoid thousands of prices.
+- **How:** Added scripts to create base/increment Paddle prices, sync those into Supabase tier metadata, and aligned pricing math + webhook credit grants to step-size segment mins.
 
-## What changed (and why)
-### Step 13 (Supabase pricing config)
-- **What:** Replaced the active `billing_pricing_config_v2` metadata with new `pricing.csv` anchors and interpolation rules.
-- **Why:** Old FINAL pricing no longer applies; new pricing is authoritative and must be data‑driven.
-- **How:** Supabase SQL update (via MCP) set:
-  - `rounding_rule = floor_whole_dollar`.
-  - `metadata.anchors` for `payg`, `monthly`, `annual` (from `pricing.csv`).
-  - `metadata.interpolation.step_size=1000`, `rounding=floor`, `extrapolate_min_from={min:10000,max:25000}` (2k–10k uses 10k–25k slope).
-  - `metadata.display_prices.payg` updated to new anchor totals (UI volume table uses this only).
-  - `metadata.discounts = {monthly_percent:30, annual_percent:50}`.
-  - **Removed** old FINAL config + display prices to avoid stale pricing.
+## Major changes completed
+### Step 15 (Create/Sync Paddle base + increment prices)
+- **What:** Created base + increment Paddle prices for all 33 v2 tiers (66 prices total) and synced metadata to Supabase.
+- **Why:** Checkout requires base + increment price IDs and increment unit cents.
+- **How:**
+  - Added `create_price` to Paddle client.
+  - Added `backend/scripts/create_paddle_pricing_v2.py` to compute base/increment amounts from `pricing.csv` anchors and create missing Paddle prices.
+  - Extended `backend/scripts/sync_paddle_pricing_v2.py` to read `price_role` and write `increment_price_id` + `increment_unit_amount_cents` into tier metadata while keeping base `paddle_price_id`.
+  - Ran creation + sync scripts in sandbox; all 33 tiers now have both price IDs.
+- **Note:** Legacy Paddle prices without `price_role` still exist and are ignored by sync.
 
-### Step 14 (backend + UI)
-- **What:** Implemented segment base + increment pricing in code, floor rounding, and UI savings/annual display updates.
-- **Why:** Avoid thousands of Paddle prices and keep UI, Supabase, and Paddle aligned with `pricing.csv`.
-- **How (key logic):**
-  - Base price = anchor price at segment min.
-  - Increment price = slope per 1,000 credits between anchors.
-  - Total = `base + increment * ((quantity - segment_min)/1000)`.
-  - **Rounding:** floor to whole dollars (`floor_whole_dollar`).
-  - **2k–10k:** extrapolate using 10k–25k slope.
-  - **Paddle transaction items:** base price (qty 1) + increment price (qty steps).
-  - **Webhook credit grants:** base item grants `tier.min_quantity` credits, increment item grants `credits_per_unit * qty`.
+### Step 17 (Fix v2 base credit grant alignment)
+- **What:** Webhook credit grants now align base credits to step-size segment mins (not raw tier min) to prevent +1 grants.
+- **Why:** v2 tiers have `min_quantity` like 5001/10001/25001; using raw min caused off-by-one credits in base grant.
+- **How:**
+  - Exposed `resolve_segment_min_quantity` in `backend/app/services/pricing_v2.py`.
+  - Webhook base credit now uses aligned segment min in `backend/app/api/billing.py`.
+  - Added regression test `test_webhook_grants_v2_base_alignment` in `backend/tests/test_billing.py`.
+  - Ran tests: `PYTHONPATH=backend pytest backend/tests/test_pricing_v2.py backend/tests/test_billing.py backend/tests/test_trial_bonus.py` (20 passed, only dependency warnings).
 
-## Code changes (where/how)
-### Backend
-- `backend/app/services/pricing_v2.py`
-  - `compute_pricing_totals_v2(quantity, tier, config)` now requires config.
-  - Added anchor parsing + segment slope computation from `config.metadata.anchors`.
-  - Added `increment_price_id` to `PricingTierV2`.
-  - Added base/increment cents extraction (`increment_unit_amount_cents` required in metadata).
-  - Floor rounding via `rounding_rule` (errors if unsupported).
+## Step 16 validation status (unit + integration)
+- **Unit tests:** Completed (20 passed).
+- **UI smoke check:** Completed with refreshed Supabase token:
+  - `/pricing` loads, config + quote calls 200, no cents in totals.
+  - One-Time $26, Monthly $19, Annual $13/month with $161/year.
+- **Paddle v2 simulations (sandbox):**
+  - **Payg 50,000:** PASS (`txn_01kfk3p42x24ae6epx3cyk0p0v`).
+  - **Monthly 75,000:** PASS (`txn_01kfk3pek9b1vyzw9jxw19bkah`).
+  - **Annual 250,000:** FAIL (Paddle 400: `transaction_item_quantity_out_of_range`).
 
-- `backend/app/api/billing_v2.py`
-  - Builds Paddle items as base (qty 1) + increment (qty steps).
-  - Requires `increment_price_id` when increment units > 0.
-
-- `backend/app/api/billing.py`
-  - Webhook uses price role (base vs increment) to compute credits.
-  - Base line item credits = `tier.min_quantity`.
-  - Increment line item credits = `credits_per_unit * qty`.
-
-- `backend/scripts/paddle_simulation_e2e.py`
-  - v2 simulation now constructs webhook payload with base+increment items.
-
-### Frontend
-- `app/pricing/pricing-quote-utils.ts`
-  - `resolveDisplayTotals` now **floors** totals (month/year) to avoid cents.
-- `app/pricing/pricing-client.tsx`
-  - Savings badge uses metadata discounts when provided (`monthly_percent`, `annual_percent`).
-  - Keeps annual monthly‑equivalent display (`/month` + “billed annually”).
-
-### Tests
-- Updated tests to use new base+increment model and floor rounding:
-  - `backend/tests/test_pricing_v2.py`
-  - `backend/tests/test_billing.py`
-  - `backend/tests/test_trial_bonus.py`
-- Added test stubs to bypass external credit grants (avoids missing env in tests).
-
-## Tests run
-- `source .venv/bin/activate && PYTHONPATH=backend pytest backend/tests/test_pricing_v2.py backend/tests/test_billing.py backend/tests/test_trial_bonus.py`
-- Result: **19 passed** (with existing deprecation warnings).
-
-## Important behavior changes to know
-- **Pricing now depends on Supabase config metadata**; old FINAL config no longer used.
-- **Checkout will fail for quantities above a segment minimum until Step 15** adds `increment_price_id` and `increment_unit_amount_cents` into tier metadata.
-- UI savings badges are now fixed at 30% (monthly) and 50% (annual) if provided in config metadata.
+## Active blocker (why annual fails)
+- **Root cause:** Paddle price default quantity max is 100. Annual 250,000 uses increment qty 150, which exceeds max.
+- **Paddle error detail:** `transaction_item_quantity_out_of_range` with quantity 150 out of range 1–100.
 
 ## Pending work (next steps)
-### Step 15 - Create/Sync Paddle base + increment prices
-- **What:** Create Paddle prices for each segment and plan (base + increment) = 48 total.
-- **Why:** Transactions require base and increment price IDs to exist and be linked to tiers.
+### Step 18 - Set Paddle quantity limits for increment prices (pending)
+- **What:** Allow increment line item quantities > 100 by setting price-level quantity limits.
+- **Why:** Annual tiers can require more than 100 increments.
 - **How:**
-  - Create Paddle prices with custom_data:
-    - `catalog=pricing_v2`, `mode`, `interval`, `min_quantity`, `max_quantity`, `credits_per_unit=1000`.
-    - Add `price_role=base|increment`.
-  - For each segment, base price amount = price at segment min; increment price amount = slope per 1,000.
-  - Update `billing_pricing_tiers_v2.metadata` to include:
-    - `increment_price_id` (the Paddle price ID for increment).
-    - `increment_unit_amount_cents` (the per‑1k increment price in cents).
-  - **Note:** `backend/scripts/sync_paddle_pricing_v2.py` currently does not understand base/increment roles. Either extend it to map increment prices into tier metadata, or update tiers via SQL after creating prices.
+  - Base prices: quantity min/max = 1.
+  - Increment prices: quantity max = tier’s max increment units for the segment.
+  - Recreate or replace increment prices that lack quantity limits; re-sync tier metadata to new price IDs.
+  - Rerun annual v2 simulation after update.
 
-### Step 16 - Validation
-- Run `backend/scripts/paddle_simulation_e2e.py` for payg/month/annual using v2.
-- Verify:
-  - Paddle checkout totals are whole dollars (floor).
-  - Supabase `credit_grants` and external ledger reflect expected credits.
-  - UI `/pricing` shows no cents and shows correct savings badges (30%/50%).
+## Commands/scripts used (for reproducibility)
+- `PYTHONPATH=backend python backend/scripts/create_paddle_pricing_v2.py`
+- `PYTHONPATH=backend python backend/scripts/sync_paddle_pricing_v2.py`
+- `PYTHONPATH=backend pytest backend/tests/test_pricing_v2.py backend/tests/test_billing.py backend/tests/test_trial_bonus.py`
+- `PYTHONPATH=backend python backend/scripts/paddle_simulation_e2e.py --pricing-version v2 --user-email dmktadimiz@gmail.com --quantity 50000 --mode payg --interval one_time`
+- `PYTHONPATH=backend python backend/scripts/paddle_simulation_e2e.py --pricing-version v2 --user-email dmktadimiz@gmail.com --quantity 75000 --mode subscription --interval month`
+- `PYTHONPATH=backend python backend/scripts/paddle_simulation_e2e.py --pricing-version v2 --user-email dmktadimiz@gmail.com --quantity 250000 --mode subscription --interval year`
 
-## Notes / Constraints
-- **Do not disrupt UI design.** UI changes were logic-only.
-- **Minimum purchase remains 2,000**; 2k–10k uses 10k–25k slope.
-- **Annual remains billed yearly in advance**; credits multiplier remains `12` (from config).
-- `backend/app/api/billing.py` exceeds 600 lines (keep edits minimal).
+## Repo status / commits
+- Latest commits pushed:
+  - `7c8e4e3` feat: add base/increment pricing sync
+  - `e7534f5` docs: update pricing migration status
+  - `be85f78` fix: align v2 credit grants
 
-## Repo status
-- Pushed commit: `31584c0` (segment pricing model + floor rounding).
-- Uncommitted local files: `key-value-pair.txt`, `handover.md`.
+## Notes / environment
+- Backend server was restarted after Step 17 so webhook changes are live.
+- `key-value-pair.txt` refreshed with a new Supabase token (not committed).
+- Notification setting used for simulations: `ngrok2-all` -> `https://772d28b0ba31.ngrok-free.app/api/billing/webhook`.
+
+## Files changed in this session
+- `backend/app/paddle/client.py`
+- `backend/scripts/create_paddle_pricing_v2.py` (new)
+- `backend/scripts/sync_paddle_pricing_v2.py`
+- `backend/app/services/pricing_v2.py`
+- `backend/app/api/billing.py`
+- `backend/tests/test_billing.py`
+- `pricing-migration.md`
+
+## Open questions
+- None. Proceed with Step 18 to set Paddle price quantity limits, then rerun annual simulation.

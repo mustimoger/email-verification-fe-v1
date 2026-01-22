@@ -357,10 +357,13 @@
 - Status: In progress.
 - Done:
   - Ran targeted unit tests for pricing + billing (`backend/tests/test_pricing_v2.py`, `backend/tests/test_billing.py`, `backend/tests/test_trial_bonus.py`) to validate base+increment math, rounding, and grant flow. Result: 19 passed (existing deprecation warnings from dependencies).
+  - Paddle v2 simulations after restart:
+    - Payg 50,000: passed (transaction `txn_01kfk3p42x24ae6epx3cyk0p0v`).
+    - Monthly 75,000: passed (transaction `txn_01kfk3pek9b1vyzw9jxw19bkah`).
+    - Annual 250,000: failed on Paddle create transaction (400).
 - Missing / Issue:
-  - Paddle v2 payg simulation still fails after code fix because the running backend webhook has not been restarted; `credit_grants` for `txn_01kfk3gfxr58cfj3rra5tw89re` still show **50001** credits. Restart the backend server to load Step 17 changes before re-running simulations.
-  - Monthly + annual v2 simulations deferred until payg passes post-restart.
-  - `/pricing` UI smoke check is complete and was not re-run after the failed payg simulation.
+  - Annual v2 simulation failed due to Paddle `transaction_item_quantity_out_of_range`: increment item quantity 150 exceeds the default Paddle max of 100 (prices were created without quantity limits).
+  - `/pricing` UI smoke check remains valid from earlier run.
 
 ### Step 17 - Fix v2 base credit grant alignment
 - What: Align webhook credit grants with the segment minimum used for pricing (step-size aligned), not raw tier `min_quantity`.
@@ -375,4 +378,14 @@
   - Added a regression test for base alignment in `backend/tests/test_billing.py`.
   - Ran pricing/billing/trial bonus tests; all pass.
 - Missing / Issue:
-  - Runtime verification pending until the backend server is restarted so webhook logic reloads.
+  - Runtime verification completed for payg + monthly simulations (Step 16). Annual simulation remains blocked by Paddle quantity limits (Step 18).
+
+### Step 18 - Set Paddle quantity limits for increment prices
+- What: Allow increment line item quantities above 100 by setting price-level quantity limits in Paddle.
+- Where: `backend/scripts/create_paddle_pricing_v2.py` (price creation), `backend/scripts/sync_paddle_pricing_v2.py` (metadata sync).
+- Why: Annual tiers can require >100 increment units (e.g., 250,000 credits requires 150 increments), which currently triggers Paddle `transaction_item_quantity_out_of_range`.
+- How:
+  - Base prices: set quantity min/max = 1.
+  - Increment prices: set quantity max to the tier’s maximum increment units for its segment.
+  - Recreate or replace increment prices that lack quantity limits and re-sync tier metadata to new price IDs.
+- Status: Pending.
