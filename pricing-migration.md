@@ -450,7 +450,14 @@
 - Where: `backend/app/api/billing.py` (webhook credit grant calculation) and tests.
 - Why: Users should receive the exact annual credit quantity they select in the UI (no 12× multiplier).
 - How: Remove the annual multiplier in credit calculation and update the annual webhook test expectations.
-- Status: Pending.
+- Status: Completed.
+- Done:
+  - Removed the annual 12× multiplier from the webhook credit calculation so annual grants match selected credits.
+  - Updated the annual webhook unit test to expect the exact credit quantity (no multiplier).
+  - Updated the Paddle e2e simulation script to compute expected credits without an annual multiplier to match the webhook behavior.
+  - Ran `PYTHONPATH=backend pytest backend/tests/test_billing.py` (9 passed; existing dependency warnings only).
+- Notes:
+  - Paddle webhook simulation was not re-run yet; it requires the backend server and an ngrok-exposed webhook URL.
 
 ### Step 23 - Document pricing checkout validations and annual multiplier issue
 - What: Update handoff/design docs with the latest one-time/monthly/annual checkout results and the 12× annual grant issue.

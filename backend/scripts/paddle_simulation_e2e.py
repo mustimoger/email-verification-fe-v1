@@ -298,13 +298,6 @@ def _resolve_v2_tier(
     return tier, mode, interval
 
 
-def _resolve_annual_multiplier(config: PricingConfigV2) -> int:
-    multiplier = _parse_int(config.metadata.get("annual_credit_multiplier"))
-    if multiplier is None or multiplier <= 0:
-        raise RuntimeError("Missing or invalid annual_credit_multiplier in pricing config metadata")
-    return multiplier
-
-
 def _decimal_to_cents(value: Decimal) -> int:
     return int((value * Decimal(100)).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
 
@@ -431,10 +424,7 @@ async def run_flow(args: argparse.Namespace) -> int:
             config_v2,
         )
         totals = compute_pricing_totals_v2(quantity, tier, config_v2)
-        multiplier = 1
-        if tier.mode == "subscription" and tier.interval == "year":
-            multiplier = _resolve_annual_multiplier(config_v2)
-        expected_credits = tier.credits_per_unit * totals.units * multiplier
+        expected_credits = tier.credits_per_unit * totals.units
         amount = _decimal_to_cents(totals.rounded_total)
         currency = tier.currency
         increment_price_id = tier.increment_price_id

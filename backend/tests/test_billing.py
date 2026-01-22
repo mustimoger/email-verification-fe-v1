@@ -251,7 +251,7 @@ def test_webhook_grants_credits(monkeypatch):
     assert grant_call["source_id"] == "txn_1"
 
 
-def test_webhook_grants_v2_annual_multiplier(monkeypatch):
+def test_webhook_grants_v2_annual_no_multiplier(monkeypatch):
     grant_call = {}
 
     def fake_verify_webhook(raw_body, signature_header, remote_ip, headers=None):
@@ -308,7 +308,7 @@ def test_webhook_grants_v2_annual_multiplier(monkeypatch):
     }
     resp = client.post("/api/billing/webhook", json=payload, headers={"Paddle-Signature": "ts=1;v1=valid"})
     assert resp.status_code == 200, resp.text
-    assert grant_call["credits_granted"] == 144000
+    assert grant_call["credits_granted"] == 12000
     assert grant_call["user_id"] == "user-annual"
 
 

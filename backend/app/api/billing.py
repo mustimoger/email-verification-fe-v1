@@ -527,12 +527,11 @@ async def paddle_webhook(request: Request):
             if not role:
                 missing_price_ids.append(price_id)
                 continue
-            multiplier = 12 if v2_tier.mode == "subscription" and v2_tier.interval == "year" else 1
             if role == "base":
                 segment_min = resolve_segment_min_quantity(v2_tier)
-                total_credits += segment_min * qty_int * multiplier
+                total_credits += segment_min * qty_int
             else:
-                total_credits += credits_per_unit * qty_int * multiplier
+                total_credits += credits_per_unit * qty_int
             continue
         credits_per_unit = price_to_credits.get(price_id)
         if credits_per_unit is None:

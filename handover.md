@@ -1,9 +1,9 @@
 # Handover (email-verification-fe-v1)
 
 ## Current status (what/why/how)
-- **Focus:** Full UI checkout validation for 1,000,000 credits (one-time, monthly, annual) is complete; annual credit grants are still multiplied by 12 and must be fixed.
-- **Why:** Users should receive exactly the credits shown in the UI; the annual webhook multiplier currently over-grants (12×) despite annual pricing being correct.
-- **How:** Ran Playwright checkouts, verified Paddle transactions/subscriptions via MCP, and queried Supabase ledgers. Confirmed the 12× multiplier in `backend/app/api/billing.py` and the matching test (`test_webhook_grants_v2_annual_multiplier`) must be updated.
+- **Focus:** Annual credit grants now match the UI quantity after removing the 12× multiplier; annual webhook re-validation is still pending.
+- **Why:** Users should receive exactly the credits shown in the UI; the annual multiplier previously over-granted despite annual pricing being correct.
+- **How:** Removed the annual multiplier in `backend/app/api/billing.py`, updated the annual webhook unit test, and aligned the Paddle e2e expected credits calculation.
 
 ## Major changes completed
 ### Step 15 (Create/Sync Paddle base + increment prices)
@@ -109,4 +109,4 @@
 - `new-design.md`
 
 ## Open questions
-- Pending Step 22: remove annual 12× credit multiplier in `backend/app/api/billing.py`, update the annual webhook test, and re-validate annual grants.
+- Re-run the annual Paddle simulation to confirm webhook grants match selected credits with the multiplier removed.

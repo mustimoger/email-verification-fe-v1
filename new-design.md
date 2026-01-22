@@ -986,5 +986,9 @@ What was done and why:
 ### Ops: Annual credit grant multiplier removal
 - What: Remove the 12× multiplier applied to annual subscription credit grants so users receive exactly the credits shown in the UI.
 - Why: Annual pricing is already correct; multiplying credits by 12 over-grants and breaks “buy what you see” behavior.
-- How: Remove the annual multiplier in `backend/app/api/billing.py` and update the annual webhook test expectation.
-Status: Pending — implementation and re-validation required.
+- How: Remove the annual multiplier in `backend/app/api/billing.py`, update the annual webhook test expectation, and align the Paddle e2e expected credits calculation.
+Status: Completed — unit test updated; annual webhook simulation still needs re-run.
+What was done and why:
+- Removed the annual multiplier from the webhook credit calculation so credits match the selected quantity.
+- Updated the annual webhook unit test to assert the exact credits (no multiplier).
+- Updated the Paddle e2e simulation script to compute expected credits without an annual multiplier.
