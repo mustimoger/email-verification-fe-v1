@@ -1,9 +1,9 @@
 # Handover (email-verification-fe-v1)
 
 ## Current status (what/why/how)
-- **Focus:** Annual credit grants now match the UI quantity after removing the 12× multiplier; annual webhook re-validation is still pending.
+- **Focus:** Annual UI checkout re-validation completed; annual grants now match the selected credits (no 12× multiplier).
 - **Why:** Users should receive exactly the credits shown in the UI; the annual multiplier previously over-granted despite annual pricing being correct.
-- **How:** Removed the annual multiplier in `backend/app/api/billing.py`, updated the annual webhook unit test, and aligned the Paddle e2e expected credits calculation.
+- **How:** Removed the annual multiplier in `backend/app/api/billing.py`, updated the annual webhook unit test, aligned the Paddle e2e expected credits calculation, and re-ran the annual UI checkout.
 
 ## Major changes completed
 ### Step 15 (Create/Sync Paddle base + increment prices)
@@ -79,6 +79,17 @@
   - Supabase `billing_events`: `event_id=evt_01kfk5ym9d0m5zy991xm89sede`, `transaction.completed`, `credits_granted=12000000`.
   - External `credit_transactions`: `amount=12000000`, metadata includes `transaction_id=txn_01kfk5xysh3v1h877sk9bq8tk4`.
 
+## Step 24 - Annual UI checkout re-validation (1,000,000 credits)
+- **What:** Re-ran the `/pricing` annual checkout after removing the 12× credit multiplier.
+- **Why:** Confirm annual grants now match the selected credits across local + external ledgers.
+- **How:**
+  - Playwright checkout succeeded (sandbox card).
+  - Paddle transaction: `txn_01kfk8257xx7gzwmd19a6rp54r` (status `completed`, invoice `74722-10034`).
+  - Paddle subscription: `sub_01kfk843a1bnj99jm82tyaynzw` (status `active`, interval `year`, `nextBilledAt=2027-01-22T16:20:40.63074Z`).
+  - Supabase `credit_grants`: `credits_granted=1000000`, `amount=255600`, `transaction_id=txn_01kfk8257xx7gzwmd19a6rp54r`.
+  - Supabase `billing_events`: `event_id=evt_01kfk844zr4f7tang8hm9apde2`, `transaction.completed`, `credits_granted=1000000`.
+  - External `credit_transactions`: `amount=1000000`, metadata includes `transaction_id=txn_01kfk8257xx7gzwmd19a6rp54r`.
+
 ## Commands/scripts used (for reproducibility)
 - `PYTHONPATH=backend python backend/scripts/create_paddle_pricing_v2.py`
 - `PYTHONPATH=backend python backend/scripts/sync_paddle_pricing_v2.py`
@@ -109,4 +120,4 @@
 - `new-design.md`
 
 ## Open questions
-- Re-run the annual Paddle simulation to confirm webhook grants match selected credits with the multiplier removed.
+- None.

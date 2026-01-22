@@ -992,3 +992,13 @@ What was done and why:
 - Removed the annual multiplier from the webhook credit calculation so credits match the selected quantity.
 - Updated the annual webhook unit test to assert the exact credits (no multiplier).
 - Updated the Paddle e2e simulation script to compute expected credits without an annual multiplier.
+
+### Ops: Annual UI checkout re-validation (1,000,000 credits)
+- What: Re-run the annual checkout in `/pricing` after removing the 12× credit multiplier.
+- Why: Confirm the UI flow grants exactly 1,000,000 credits and updates both local + external ledgers correctly.
+- How: Completed the Playwright UI checkout with a sandbox card, then verified Paddle + Supabase records.
+Status: Completed — annual grants now match the selected credits.
+What was done and why:
+- Paddle transaction `txn_01kfk8257xx7gzwmd19a6rp54r` completed (invoice `74722-10034`), subscription `sub_01kfk843a1bnj99jm82tyaynzw` is active with yearly billing.
+- Supabase `credit_grants` and `billing_events` both recorded `credits_granted=1000000`.
+- External ledger `credit_transactions` recorded `amount=1000000` with the matching transaction id.

@@ -465,3 +465,23 @@
 - Why: Keep newcomer context accurate and highlight the pending annual grant fix.
 - How: Added explicit what/why/how summaries for the 1M checkout validations and documented the annual 12× grant mismatch.
 - Status: Completed.
+
+### Step 24 - Annual UI checkout re-validation (1,000,000 credits)
+- What: Re-run the `/pricing` annual subscription UI checkout after removing the 12× annual credit multiplier.
+- Where: `/pricing` UI (Playwright), Paddle transactions/subscriptions, Supabase `credit_grants`, `billing_events`, and `credit_transactions`.
+- Why: Confirm the annual checkout now grants exactly the selected credits and all ledgers record the correct amount.
+- How:
+  - Use Playwright with the `key-value-pair.txt` session to complete the annual checkout for 1,000,000 credits.
+  - Verify Paddle transaction + subscription status and interval.
+  - Query Supabase tables to confirm credits granted equal 1,000,000 and the external ledger reflects the same transaction.
+- Status: Completed.
+- Done:
+  - Playwright completed `/pricing` → Annual → 1,000,000 credits → Subscribe Now (sandbox card 4242).
+  - Paddle transaction: `txn_01kfk8257xx7gzwmd19a6rp54r` (status `completed`, invoice `74722-10034`, amount `255600`, line items: base `pri_01kfk27w2396j0yae9ech03pv8` qty 1, increment `pri_01kfk4pccfmzq9xcvreekcz6h9` qty 500, rounding adjustment `pri_01kfk8258qvk0g1xgg4tph52mx` qty 1).
+  - Paddle subscription: `sub_01kfk843a1bnj99jm82tyaynzw` (status `active`, billing cycle `year`, `nextBilledAt=2027-01-22T16:20:40.63074Z`).
+  - Supabase `credit_grants`: `credits_granted=1000000`, `amount=255600`, `currency=USD`, `transaction_id=txn_01kfk8257xx7gzwmd19a6rp54r`.
+  - Supabase `billing_events`: `event_id=evt_01kfk844zr4f7tang8hm9apde2`, `event_type=transaction.completed`, `credits_granted=1000000`, `transaction_id=txn_01kfk8257xx7gzwmd19a6rp54r`.
+  - External ledger `credit_transactions`: `amount=1000000`, `balance_after=18488804`, metadata includes `transaction_id=txn_01kfk8257xx7gzwmd19a6rp54r`, `invoice_number=74722-10034`.
+- Notes:
+  - Checkout overlay showed success; screenshot captured at `/tmp/playwright-mcp-output/1769098673731/annual-paddle-success.png`.
+  - Console included expected signup bonus conflict warnings and report-only CSP framing logs from Paddle.
