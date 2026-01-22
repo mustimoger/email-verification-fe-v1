@@ -357,11 +357,10 @@
 - Status: In progress.
 - Done:
   - Ran targeted unit tests for pricing + billing (`backend/tests/test_pricing_v2.py`, `backend/tests/test_billing.py`, `backend/tests/test_trial_bonus.py`) to validate base+increment math, rounding, and grant flow. Result: 19 passed (existing deprecation warnings from dependencies).
-  - Ran Paddle v2 payg simulation (50,000 credits): transaction `txn_01kfk348x25kgnb5wq8vhfn3kj` created; webhook processed and `credit_grants` inserted, but credits granted were **50001** vs expected **50000** (mismatch).
-  - Ran `/pricing` UI smoke check with refreshed Supabase auth token; config + quote calls returned 200 and totals rendered as whole dollars (One‑Time $26, Monthly $19, Annual $13/month with $161/year).
 - Missing / Issue:
-  - Credit grant mismatch for v2 tiers where `min_quantity` is not aligned to step size (e.g., 25001): base grant uses tier `min_quantity`, yielding +1 credit vs expected quantity (needs alignment with segment min).
-  - Monthly + annual v2 simulations deferred to avoid generating additional incorrect credit grants until the base grant alignment issue is fixed.
+  - Paddle v2 payg simulation still fails after code fix because the running backend webhook has not been restarted; `credit_grants` for `txn_01kfk3gfxr58cfj3rra5tw89re` still show **50001** credits. Restart the backend server to load Step 17 changes before re-running simulations.
+  - Monthly + annual v2 simulations deferred until payg passes post-restart.
+  - `/pricing` UI smoke check is complete and was not re-run after the failed payg simulation.
 
 ### Step 17 - Fix v2 base credit grant alignment
 - What: Align webhook credit grants with the segment minimum used for pricing (step-size aligned), not raw tier `min_quantity`.
@@ -371,3 +370,9 @@
   - Use the same segment-min alignment logic as pricing (`credits_per_unit` step alignment) when computing base credits for v2.
   - Keep increment credits unchanged (`credits_per_unit * quantity`).
 - Status: Pending.
+- Done:
+  - Updated webhook v2 base credit calculation to use step-aligned segment minimums (avoids +1 credit for tiers starting at 5001/10001/25001).
+  - Added a regression test for base alignment in `backend/tests/test_billing.py`.
+  - Ran pricing/billing/trial bonus tests; all pass.
+- Missing / Issue:
+  - Runtime verification pending until the backend server is restarted so webhook logic reloads.

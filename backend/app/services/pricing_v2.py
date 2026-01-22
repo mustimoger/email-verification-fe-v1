@@ -519,6 +519,10 @@ def _resolve_segment_min_quantity(tier: PricingTierV2) -> int:
     return aligned
 
 
+def resolve_segment_min_quantity(tier: PricingTierV2) -> int:
+    return _resolve_segment_min_quantity(tier)
+
+
 def _validate_tiers(tiers: List[PricingTierV2], config: PricingConfigV2) -> None:
     sorted_tiers = sorted(tiers, key=lambda tier: tier.min_quantity)
     first = sorted_tiers[0]

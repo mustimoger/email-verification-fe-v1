@@ -26,7 +26,7 @@ from ..services.billing_plans import (
 )
 from ..services.credit_grants import upsert_credit_grant
 from ..services.external_credits import build_purchase_grant_metadata, grant_external_credits
-from ..services.pricing_v2 import PricingTierV2, get_pricing_tiers_by_price_ids_v2
+from ..services.pricing_v2 import PricingTierV2, get_pricing_tiers_by_price_ids_v2, resolve_segment_min_quantity
 from ..services import supabase_client
 from ..services.paddle_store import get_paddle_ids, get_user_id_by_customer_id, upsert_paddle_ids
 
@@ -529,7 +529,8 @@ async def paddle_webhook(request: Request):
                 continue
             multiplier = 12 if v2_tier.mode == "subscription" and v2_tier.interval == "year" else 1
             if role == "base":
-                total_credits += v2_tier.min_quantity * qty_int * multiplier
+                segment_min = resolve_segment_min_quantity(v2_tier)
+                total_credits += segment_min * qty_int * multiplier
             else:
                 total_credits += credits_per_unit * qty_int * multiplier
             continue

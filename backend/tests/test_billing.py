@@ -312,6 +312,63 @@ def test_webhook_grants_v2_annual_multiplier(monkeypatch):
     assert grant_call["user_id"] == "user-annual"
 
 
+def test_webhook_grants_v2_base_alignment(monkeypatch):
+    grant_call = {}
+
+    def fake_verify_webhook(raw_body, signature_header, remote_ip, headers=None):
+        return True
+
+    def fake_record_event(**kwargs):
+        grant_call["record"] = kwargs
+        return True
+
+    def fake_upsert_credit_grant(**kwargs):
+        grant_call.update(kwargs)
+        return True
+
+    tier = PricingTierV2(
+        mode="payg",
+        interval="one_time",
+        min_quantity=25001,
+        max_quantity=50000,
+        unit_amount=Decimal("0.01"),
+        currency="USD",
+        credits_per_unit=1000,
+        paddle_price_id="pri_base",
+        metadata={"increment_price_id": "pri_inc"},
+        sort_order=1,
+        increment_price_id="pri_inc",
+    )
+
+    monkeypatch.setattr(billing_module, "verify_webhook", fake_verify_webhook)
+    monkeypatch.setattr(billing_module, "record_billing_event", fake_record_event)
+    monkeypatch.setattr(billing_module, "upsert_credit_grant", fake_upsert_credit_grant)
+    monkeypatch.setattr(
+        billing_module,
+        "get_pricing_tiers_by_price_ids_v2",
+        lambda price_ids: {"pri_base": tier, "pri_inc": tier},
+    )
+    monkeypatch.setattr(billing_module, "get_billing_plans_by_price_ids", lambda price_ids: [])
+
+    app = _build_app(monkeypatch, lambda: AuthContext(user_id="u", claims={}, token="t"))
+    client = TestClient(app)
+
+    payload = {
+        "event_id": "evt_align",
+        "event_type": "transaction.completed",
+        "data": {
+            "transaction": {
+                "id": "txn_align",
+                "items": [{"price_id": "pri_base", "quantity": 1}],
+                "custom_data": {"supabase_user_id": "user-align"},
+            }
+        },
+    }
+    resp = client.post("/api/billing/webhook", json=payload, headers={"Paddle-Signature": "ts=1;v1=valid"})
+    assert resp.status_code == 200, resp.text
+    assert grant_call["credits_granted"] == 25000
+
+
 def test_webhook_missing_price_mapping_returns_error(monkeypatch):
     called = {"record": False}
 
