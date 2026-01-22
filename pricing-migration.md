@@ -136,11 +136,23 @@
   - Add `EXTERNAL_API_ADMIN_KEY` setting.
   - Prefer `EXTERNAL_API_ADMIN_KEY`, fallback to `DEV_API_KEYS` if missing.
   - Log clear warnings when falling back or when no admin token is configured.
-- Status: In progress (validation pending).
+- Status: In progress (purchase flow validation pending).
 - Done:
   - Added `EXTERNAL_API_ADMIN_KEY` to settings and `.env.example`.
   - Updated external grant logic to use admin key first, then fall back to `DEV_API_KEYS`.
   - Removed Supabase JWT grant path to avoid user-scoped tokens granting credits.
+  - Validation attempt (full UI checkout, 50K payg):
+    - Paddle checkout succeeded (sandbox card) and webhook wrote:
+    - `credit_grants`: `txn_01kfjna2z8j6e86hdnrpe2cf32`, `credits_granted=50000`, `amount=8900`, `invoice_number=74722-10026`.
+    - `billing_events`: `evt_01kfjnas242k0ctg75fx4ta7av`, `event_type=transaction.completed`.
+  - External ledger did not update:
+    - `credit_transactions` has no new grant for that transaction.
+    - External balance via External API client (DEV key) remained `97801`.
+    - Likely cause: backend server not restarted to pick up the new admin-key logic, or admin key not configured.
+- Validation attempt (direct grant API call, 40,000 credits):
+  - Called `POST /api/v1/credits/grant` for `dmktadimiz@gmail.com` (user_id `c105fce3-786b-4708-987c-edb29a8c8ea0`).
+  - Response: `id=fcd3a6d6-3c03-4ce2-b0a8-3cc4d5e1424b`, `amount=40000`, `balance_after=137801`, `reason=manual_grant`, `metadata.source=manual_request`.
+  - `public.credit_transactions` inserted matching row (same id/amount/metadata).
 - Remaining:
   - Re-run a purchase or direct grant to confirm external credits ledger updates with the admin key path.
 
@@ -162,3 +174,4 @@
 - Completed Step 4 by standardizing grant metadata via shared helper builders.
 - Completed Step 5: ran v2 Paddle simulations, confirmed local `credit_grants`, verified external balance with Supabase JWT, and completed `/pricing` UI smoke check with config/quote 200 responses.
 - Added Step 6 to use `EXTERNAL_API_ADMIN_KEY` for credit grants with fallback to `DEV_API_KEYS` (validation pending).
+- Attempted Step 6 validation via full UI checkout (50K payg); local records updated but external ledger did not, likely due to backend restart/admin key configuration.
