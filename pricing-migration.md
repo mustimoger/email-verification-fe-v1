@@ -485,3 +485,17 @@
 - Notes:
   - Checkout overlay showed success; screenshot captured at `/tmp/playwright-mcp-output/1769098673731/annual-paddle-success.png`.
   - Console included expected signup bonus conflict warnings and report-only CSP framing logs from Paddle.
+
+### Step 25 - Verify Paddle checkout payment methods (UI)
+- What: Confirm the payment methods visible in the Paddle checkout UI for an annual subscription.
+- Where: Paddle checkout overlay (Playwright).
+- Why: Validate which methods are presented to users at checkout (card brands + PayPal, etc.).
+- How:
+  - Open the annual checkout overlay from `/pricing` and inspect the payment options shown.
+- Status: Completed.
+- Done:
+  - Opened the Paddle checkout overlay from the Annual plan in `/pricing`.
+  - Payment method buttons shown: `PayPal` and card checkout.
+  - Card brand icons shown: `visa`, `mastercard`, `amex`, `jcb`, `discover`, `diners_club`, `union_pay`.
+- Notes:
+  - Apple Pay was not shown in the overlay for this session.
