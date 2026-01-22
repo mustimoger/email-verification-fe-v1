@@ -136,11 +136,13 @@
   - Add `EXTERNAL_API_ADMIN_KEY` setting.
   - Prefer `EXTERNAL_API_ADMIN_KEY`, fallback to `DEV_API_KEYS` if missing.
   - Log clear warnings when falling back or when no admin token is configured.
-- Status: Completed.
+- Status: In progress (validation pending).
 - Done:
   - Added `EXTERNAL_API_ADMIN_KEY` to settings and `.env.example`.
   - Updated external grant logic to use admin key first, then fall back to `DEV_API_KEYS`.
   - Removed Supabase JWT grant path to avoid user-scoped tokens granting credits.
+- Remaining:
+  - Re-run a purchase or direct grant to confirm external credits ledger updates with the admin key path.
 
 ## STAYED-LOCAL
 - Pricing config/quote/checkout endpoints (`/api/billing/v2/*`).
@@ -159,4 +161,4 @@
 - Completed Step 3 by adding external credit grants for signup/trial bonuses after local inserts.
 - Completed Step 4 by standardizing grant metadata via shared helper builders.
 - Completed Step 5: ran v2 Paddle simulations, confirmed local `credit_grants`, verified external balance with Supabase JWT, and completed `/pricing` UI smoke check with config/quote 200 responses.
-- Added and completed Step 6 to use `EXTERNAL_API_ADMIN_KEY` for credit grants with fallback to `DEV_API_KEYS`.
+- Added Step 6 to use `EXTERNAL_API_ADMIN_KEY` for credit grants with fallback to `DEV_API_KEYS` (validation pending).
