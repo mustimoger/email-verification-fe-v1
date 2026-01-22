@@ -525,3 +525,12 @@
 - Done:
   - Removed the visible "We accept" label while keeping an accessible screen-reader label.
   - Doubled the payment logo height to 2x for Visa, Mastercard, Amex, and PayPal.
+
+### Step 28 - Update pricing hero copy (unknowns)
+- What: Adjust the hero subheading text on `/pricing`.
+- Where: `app/pricing/pricing-client.tsx`.
+- Why: Align the copy with the requested wording.
+- How: Replace the second sentence to remove "catch-all" references.
+- Status: Completed.
+- Done:
+  - Updated the hero subheading to remove the catch-all reference per request.

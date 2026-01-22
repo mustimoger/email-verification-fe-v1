@@ -365,7 +365,7 @@ export default function PricingV2Client() {
               </span>
             </h1>
             <p className="mt-4 text-base text-[var(--text-secondary)] sm:text-lg">
-              Credits never expire. No charge for unknowns or catch-all emails.
+              Credits never expire. No charge for unknowns emails.
             </p>
           </div>
 
