@@ -319,16 +319,28 @@
 - Missing / Issue:
   - Checkout will fail for quantities above a segment minimum until Step 15 syncs increment price IDs into tier metadata.
 
-### Step 15 - Create/Sync Paddle base + increment prices (48 total)
+### Step 15 - Create/Sync Paddle base + increment prices (66 total / 33 tiers)
 - What: Create Paddle prices for each segment and plan: base + increment.
 - Where: Paddle catalog (custom_data catalog `pricing_v2`), `backend/scripts/sync_paddle_pricing_v2.py`.
 - Why: Provide price IDs to attach to tiers and use during checkout.
 - How:
   - Create prices with custom_data: `catalog`, `mode`, `interval`, `min_quantity`, `max_quantity`, `credits_per_unit`, `price_role`.
   - Sync price IDs into `billing_pricing_tiers_v2` metadata.
-- Status: Pending.
-- Missing / Issue:
-  - No implementation yet.
+- Planned sub-steps:
+  - Update the Paddle client to support price creation so scripts can create missing base/increment prices.
+  - Add a script to compute base + increment amounts from `pricing.csv` anchors and create missing Paddle prices per tier.
+  - Align pricing_v2 segment math to step-size boundaries so tiers with min_quantity like 10001 use the correct anchor range.
+  - Extend `sync_paddle_pricing_v2.py` to recognize `price_role` and write `increment_price_id` + `increment_unit_amount_cents` into tier metadata while keeping base `paddle_price_id`.
+  - Run the creation + sync scripts (sandbox), then confirm tier metadata includes both base and increment price IDs.
+- Status: Completed.
+- Done:
+  - Added Paddle client support for `create_price` to enable scripted price creation.
+  - Added `backend/scripts/create_paddle_pricing_v2.py` to compute base + increment amounts from `pricing.csv` anchors and create missing Paddle prices for each tier.
+  - Updated `pricing_v2` segment math to align tier minimums to step-size boundaries and interpolate across anchor ranges.
+  - Extended `backend/scripts/sync_paddle_pricing_v2.py` to use `price_role` and populate `increment_price_id` + `increment_unit_amount_cents` in tier metadata while updating base `paddle_price_id`.
+  - Ran price creation + sync scripts in sandbox; all 33 tiers now have base + increment price IDs (66 prices total).
+- Notes:
+  - Legacy Paddle prices without `price_role` remain in the catalog and are ignored by the sync script.
 
 ### Step 16 - Validation (unit + integration)
 - What: Verify interpolation, rounding, and Paddle checkout totals.

@@ -242,7 +242,8 @@ def compute_pricing_totals_v2(quantity: int, tier: PricingTierV2, config: Pricin
             {"message": "Quantity does not align with tier unit size", "code": "invalid_step"},
         )
     units = quantity // credits_per_unit
-    increment_units = (quantity - tier.min_quantity) // credits_per_unit
+    segment_min = _resolve_segment_min_quantity(tier)
+    increment_units = (quantity - segment_min) // credits_per_unit
     base_units = 1
     base_amount, increment_amount = _resolve_segment_amounts(config, tier)
     raw_total = (base_amount + increment_amount * Decimal(increment_units)).quantize(
@@ -448,7 +449,8 @@ def _resolve_segment_amounts(config: PricingConfigV2, tier: PricingTierV2) -> tu
             {"message": "Invalid credits per unit", "code": "invalid_credits_per_unit"},
             status_code=500,
         )
-    if tier.min_quantity < volumes[0]:
+    segment_min = _resolve_segment_min_quantity(tier)
+    if segment_min < volumes[0]:
         anchor_start = volumes[0]
         if len(volumes) < 2:
             raise PricingValidationError(
@@ -457,26 +459,26 @@ def _resolve_segment_amounts(config: PricingConfigV2, tier: PricingTierV2) -> tu
             )
         anchor_end = volumes[1]
     else:
-        if tier.min_quantity not in anchors:
+        anchor_start = max([volume for volume in volumes if volume <= segment_min], default=None)
+        if anchor_start is None:
             logger.error(
                 "pricing_v2.anchor_for_tier_missing",
-                extra={"min_quantity": tier.min_quantity, "anchors": volumes},
+                extra={"segment_min": segment_min, "anchors": volumes},
             )
             raise PricingValidationError(
                 {"message": "Tier does not align with anchors", "code": "anchor_mismatch"},
                 status_code=500,
             )
-        idx = volumes.index(tier.min_quantity)
+        idx = volumes.index(anchor_start)
         if idx + 1 >= len(volumes):
             logger.error(
                 "pricing_v2.anchor_next_missing",
-                extra={"min_quantity": tier.min_quantity, "anchors": volumes},
+                extra={"segment_min": segment_min, "anchors": volumes},
             )
             raise PricingValidationError(
                 {"message": "Missing anchor range", "code": "anchor_range_missing"},
                 status_code=500,
             )
-        anchor_start = volumes[idx]
         anchor_end = volumes[idx + 1]
     if (anchor_end - anchor_start) % credits_per_unit != 0:
         logger.error(
@@ -494,9 +496,27 @@ def _resolve_segment_amounts(config: PricingConfigV2, tier: PricingTierV2) -> tu
             status_code=500,
         )
     slope = (anchors[anchor_end] - anchors[anchor_start]) / Decimal(steps)
-    base_steps = (tier.min_quantity - anchor_start) // credits_per_unit
+    base_steps = (segment_min - anchor_start) // credits_per_unit
     base_amount = anchors[anchor_start] + slope * Decimal(base_steps)
     return base_amount, slope
+
+
+def _resolve_segment_min_quantity(tier: PricingTierV2) -> int:
+    credits_per_unit = tier.credits_per_unit
+    if credits_per_unit <= 0:
+        raise PricingValidationError(
+            {"message": "Invalid credits per unit", "code": "invalid_credits_per_unit"},
+            status_code=500,
+        )
+    remainder = tier.min_quantity % credits_per_unit
+    if remainder == 0:
+        return tier.min_quantity
+    aligned = tier.min_quantity - remainder
+    logger.info(
+        "pricing_v2.segment_min_aligned",
+        extra={"min_quantity": tier.min_quantity, "aligned_min": aligned, "credits_per_unit": credits_per_unit},
+    )
+    return aligned
 
 
 def _validate_tiers(tiers: List[PricingTierV2], config: PricingConfigV2) -> None:

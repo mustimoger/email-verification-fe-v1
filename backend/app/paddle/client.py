@@ -218,6 +218,10 @@ class PaddleAPIClient:
         response = await self._request("POST", "/discounts", json=payload)
         return self._parse_response_generic(response)
 
+    async def create_price(self, payload: Dict[str, Any]) -> dict:
+        response = await self._request("POST", "/prices", json=payload)
+        return self._parse_response_generic(response)
+
     async def list_notification_settings(
         self,
         after: Optional[str] = None,

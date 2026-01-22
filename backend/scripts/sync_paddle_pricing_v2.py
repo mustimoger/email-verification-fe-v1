@@ -33,6 +33,7 @@ if str(BACKEND_ROOT) not in sys.path:
 
 from app.paddle.client import PaddleAPIClient, PaddleAPIError  # noqa: E402
 from app.paddle.config import PaddleEnvironmentConfig  # noqa: E402
+from app.services.pricing_v2 import format_decimal  # noqa: E402
 from app.services.supabase_client import get_supabase  # noqa: E402
 
 logger = logging.getLogger("sync_paddle_pricing_v2")
@@ -160,6 +161,16 @@ def _extract_unit_price(payload: Dict[str, Any]) -> Dict[str, Any]:
     return unit_price if isinstance(unit_price, dict) else {}
 
 
+def _extract_price_role(custom_data: Dict[str, Any]) -> Optional[str]:
+    value = custom_data.get("price_role") or custom_data.get("priceRole")
+    if not value:
+        return None
+    normalized = str(value).strip().lower()
+    if normalized in {"base", "increment"}:
+        return normalized
+    return None
+
+
 def _coerce_int(value: Any, field: str, price_id: str) -> Optional[int]:
     try:
         return int(value)
@@ -180,6 +191,32 @@ def _coerce_decimal(value: Any, field: str, price_id: str) -> Optional[Decimal]:
             extra={"field": field, "price_id": price_id, "value": value, "error": str(exc)},
         )
         return None
+
+
+def _resolve_unit_amount_decimal(payload: Dict[str, Any], custom_data: Dict[str, Any], price_id: str) -> Optional[Decimal]:
+    unit_amount_raw = custom_data.get("unit_amount_raw") or custom_data.get("unitAmountRaw")
+    if unit_amount_raw is not None:
+        unit_amount_decimal = _coerce_decimal(unit_amount_raw, "unit_amount_raw", price_id)
+        if unit_amount_decimal is not None:
+            return unit_amount_decimal
+    unit_amount_cents = custom_data.get("unit_amount_cents") or custom_data.get("unitAmountCents")
+    if unit_amount_cents is not None:
+        amount_cents = _coerce_int(unit_amount_cents, "unit_amount_cents", price_id)
+        if amount_cents is not None:
+            return (Decimal(amount_cents) / Decimal(100)).quantize(Decimal("0.0001"))
+    unit_price = _extract_unit_price(payload)
+    amount = _coerce_int(unit_price.get("amount"), "amount", price_id)
+    if amount is None:
+        return None
+    return (Decimal(amount) / Decimal(100)).quantize(Decimal("0.0001"))
+
+
+def _resolve_unit_amount_cents(payload: Dict[str, Any], custom_data: Dict[str, Any], price_id: str) -> Optional[int]:
+    unit_amount_cents = custom_data.get("unit_amount_cents") or custom_data.get("unitAmountCents")
+    if unit_amount_cents is not None:
+        return _coerce_int(unit_amount_cents, "unit_amount_cents", price_id)
+    unit_price = _extract_unit_price(payload)
+    return _coerce_int(unit_price.get("amount"), "amount", price_id)
 
 
 async def _fetch_all(
@@ -277,6 +314,11 @@ async def run_sync(
     rows: List[Dict[str, Any]] = []
     skipped_prices = 0
     catalog_prices = 0
+    role_skipped = 0
+    duplicate_roles = 0
+    missing_base = 0
+    missing_increment = 0
+    tier_updates: Dict[Tuple[str, str, int, Optional[int]], Dict[str, Optional[Dict[str, Any]]]] = {}
 
     for price in prices:
         price_id = price.get("id")
@@ -289,6 +331,15 @@ async def run_sync(
         if price_custom.get("catalog") != catalog:
             continue
         catalog_prices += 1
+
+        price_role = _extract_price_role(price_custom)
+        if not price_role:
+            logger.info(
+                "sync_paddle_pricing_v2.price_role_missing",
+                extra={"price_id": price_id, "custom_data": price_custom},
+            )
+            role_skipped += 1
+            continue
 
         mode = price_custom.get("mode")
         interval = price_custom.get("interval")
@@ -308,27 +359,17 @@ async def run_sync(
             continue
 
         key = _tier_key(str(mode), str(interval), min_quantity, max_quantity)
-        existing_row = existing.get(key)
-        if not existing_row:
-            logger.error("sync_paddle_pricing_v2.tier_not_found", extra={"price_id": price_id, "key": key})
+        unit_amount_decimal = _resolve_unit_amount_decimal(price, price_custom, str(price_id))
+        if unit_amount_decimal is None:
+            skipped_prices += 1
+            continue
+        unit_amount_cents = _resolve_unit_amount_cents(price, price_custom, str(price_id))
+        if unit_amount_cents is None:
             skipped_prices += 1
             continue
 
-        unit_amount = existing_row.get("unit_amount")
-        if unit_amount is None:
-            unit_amount_raw = price_custom.get("unit_amount_raw")
-            unit_amount_decimal = _coerce_decimal(unit_amount_raw, "unit_amount_raw", str(price_id))
-            if unit_amount_decimal is None:
-                unit_price = _extract_unit_price(price)
-                amount = _coerce_int(unit_price.get("amount"), "amount", str(price_id))
-                if amount is None:
-                    skipped_prices += 1
-                    continue
-                unit_amount_decimal = Decimal(amount) / Decimal(100)
-            unit_amount = str(unit_amount_decimal)
-
         unit_price = _extract_unit_price(price)
-        currency = existing_row.get("currency") or unit_price.get("currency_code") or unit_price.get("currencyCode")
+        currency = unit_price.get("currency_code") or unit_price.get("currencyCode")
         if not currency:
             logger.error("sync_paddle_pricing_v2.missing_currency", extra={"price_id": price_id})
             skipped_prices += 1
@@ -340,33 +381,90 @@ async def run_sync(
             skipped_prices += 1
             continue
 
+        entry = tier_updates.setdefault(key, {"base": None, "increment": None})
+        if entry.get(price_role):
+            logger.warning(
+                "sync_paddle_pricing_v2.duplicate_role",
+                extra={"price_id": price_id, "role": price_role, "key": key},
+            )
+            duplicate_roles += 1
+        entry[price_role] = {
+            "price_id": str(price_id),
+            "unit_amount": unit_amount_decimal,
+            "unit_amount_cents": unit_amount_cents,
+            "currency": str(currency),
+            "credits_per_unit": credits_per_unit,
+            "status": str(status),
+            "custom_data": price_custom,
+        }
+
+    if catalog_prices == 0:
+        logger.error("sync_paddle_pricing_v2.no_catalog_prices", extra={"catalog": catalog})
+        return 1
+
+    missing_tiers = [key for key in existing.keys() if key not in tier_updates]
+    if missing_tiers:
+        logger.error("sync_paddle_pricing_v2.missing_tier_prices", extra={"count": len(missing_tiers)})
+        return 1
+
+    for key, entry in tier_updates.items():
+        existing_row = existing.get(key)
+        if not existing_row:
+            logger.error("sync_paddle_pricing_v2.tier_not_found", extra={"key": key})
+            skipped_prices += 1
+            continue
+
+        base = entry.get("base")
+        increment = entry.get("increment")
+        if not base:
+            logger.error("sync_paddle_pricing_v2.base_price_missing", extra={"key": key})
+            missing_base += 1
+            continue
+        if not increment:
+            logger.error("sync_paddle_pricing_v2.increment_price_missing", extra={"key": key})
+            missing_increment += 1
+            continue
+
+        if base["currency"] != increment["currency"]:
+            logger.error(
+                "sync_paddle_pricing_v2.currency_mismatch",
+                extra={"key": key, "base": base["currency"], "increment": increment["currency"]},
+            )
+            skipped_prices += 1
+            continue
+
+        existing_credits = existing_row.get("credits_per_unit")
+        if existing_credits and existing_credits != base["credits_per_unit"]:
+            logger.warning(
+                "sync_paddle_pricing_v2.credits_per_unit_mismatch",
+                extra={"key": key, "existing": existing_credits, "base": base["credits_per_unit"]},
+            )
+
         sort_order = existing_row.get("sort_order")
         if sort_order is None:
-            sort_order = _coerce_int(price_custom.get("tier"), "tier", str(price_id)) or min_quantity
+            sort_order = _coerce_int(base["custom_data"].get("tier"), "tier", base["price_id"]) or key[2]
 
         metadata = dict(existing_row.get("metadata") or {})
-        metadata["paddle_custom_data"] = price_custom
+        metadata["paddle_custom_data"] = base["custom_data"]
+        metadata["increment_price_id"] = increment["price_id"]
+        metadata["increment_unit_amount_cents"] = increment["unit_amount_cents"]
         now = datetime.now(timezone.utc).isoformat()
         rows.append(
             {
-                "mode": str(mode),
-                "interval": str(interval),
-                "min_quantity": min_quantity,
-                "max_quantity": max_quantity,
-                "unit_amount": unit_amount,
-                "currency": str(currency),
-                "credits_per_unit": credits_per_unit,
-                "paddle_price_id": str(price_id),
-                "status": str(status),
+                "mode": key[0],
+                "interval": key[1],
+                "min_quantity": key[2],
+                "max_quantity": key[3],
+                "unit_amount": format_decimal(base["unit_amount"]),
+                "currency": base["currency"],
+                "credits_per_unit": existing_row.get("credits_per_unit") or base["credits_per_unit"],
+                "paddle_price_id": base["price_id"],
+                "status": base["status"],
                 "sort_order": sort_order,
                 "metadata": metadata,
                 "updated_at": now,
             }
         )
-
-    if catalog_prices == 0:
-        logger.error("sync_paddle_pricing_v2.no_catalog_prices", extra={"catalog": catalog})
-        return 1
 
     if not rows:
         logger.error("sync_paddle_pricing_v2.no_prices_to_sync")
@@ -374,6 +472,16 @@ async def run_sync(
 
     if skipped_prices:
         logger.warning("sync_paddle_pricing_v2.skipped_prices", extra={"count": skipped_prices})
+    if role_skipped:
+        logger.info("sync_paddle_pricing_v2.price_role_skipped", extra={"count": role_skipped})
+    if duplicate_roles:
+        logger.warning("sync_paddle_pricing_v2.duplicate_roles", extra={"count": duplicate_roles})
+    if missing_base or missing_increment:
+        logger.error(
+            "sync_paddle_pricing_v2.missing_roles",
+            extra={"missing_base": missing_base, "missing_increment": missing_increment},
+        )
+        return 1
 
     sb = get_supabase()
     result = (
