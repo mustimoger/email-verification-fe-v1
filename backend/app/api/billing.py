@@ -471,10 +471,18 @@ async def paddle_webhook(request: Request):
     for item in items:
         price_id = None
         quantity = 1
+        price_type = None
         if isinstance(item, dict):
             price_id = item.get("price_id") or (item.get("price") or {}).get("id")
+            price_type = (item.get("price") or {}).get("type")
             quantity = item.get("quantity") or 1
         if not price_id:
+            continue
+        if price_type == "custom":
+            logger.info(
+                "billing.webhook.skip_noncredit_item",
+                extra={"event_type": event_type, "event_id": event_id, "price_id": price_id, "price_type": price_type},
+            )
             continue
         price_ids.append(price_id)
         line_items.append((price_id, quantity))

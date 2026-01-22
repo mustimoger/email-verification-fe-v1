@@ -163,6 +163,19 @@
 - Remaining:
   - None.
 
+### Step 7 - Fix /pricing slider alignment mismatch
+- What: Align slider thumb position with the displayed selected credit tier/value.
+- Where: `/pricing` page slider component (frontend UI only).
+- Why: Current slider thumb position does not match the selected credits shown in UI (see `Screenshot_1.png`, `Screenshot_2.png`, `Screenshot_3.png`).
+- How: Inspect slider value -> label/tier mapping and ensure tick/step positions reflect the actual selected credits.
+- Status: Completed.
+- Done:
+  - Replaced the log-spaced label calculation with a linear min→max interpolation so the slider thumb and labels represent the same scale.
+  - Preserved the existing 5-label layout and rounded each tick to the configured step size to match valid slider values.
+  - Kept the UI design intact; only the label mapping logic changed.
+- Notes:
+  - Label generation remains data-driven from pricing config (min/max/step).
+
 ## STAYED-LOCAL
 - Pricing config/quote/checkout endpoints (`/api/billing/v2/*`).
 - Paddle JS initialization and checkout script injection (third-party).
@@ -180,4 +193,43 @@
 - Completed Step 3 by adding external credit grants for signup/trial bonuses after local inserts.
 - Completed Step 4 by standardizing grant metadata via shared helper builders.
 - Completed Step 5: ran v2 Paddle simulations, confirmed local `credit_grants`, verified external balance with Supabase JWT, and completed `/pricing` UI smoke check with config/quote 200 responses.
+- Monthly UI checkout (Playwright + Paddle MCP):
+  - Completed `/pricing` → Monthly → Subscribe Now flow; Paddle checkout returned success.
+  - Paddle transaction: `txn_01kfjqr9s3scq76fxf765yeg1d` (status `completed`, price `pri_01kf8tza40n6k0mw2ebqc2v0gt`, billing cycle `month`, quantity 2).
+  - Paddle subscription: `sub_01kfjqtc8btx506e55aar4r576` (status `active`, billing cycle `month`, `nextBilledAt=2026-02-22T11:35:44.621756Z`).
+  - Confirms monthly subscription is recorded and scheduled for automatic invoicing.
+- Monthly purchase credit reconciliation (Supabase):
+  - Local `credit_grants` row: `fd9de4d7-da40-4734-8d9a-2e481943bc47` (transaction `txn_01kfjqr9s3scq76fxf765yeg1d`, `credits_granted=2000`, `amount=600`, `currency=USD`).
+  - External ledger `credit_transactions` row: `340b3d84-0fe0-4fe4-8b98-558caed20040` (`amount=2000`, `balance_after=189801`, `reason=purchase`, metadata includes `transaction_id`).
+  - Confirms external credit ledger updated for the monthly subscription purchase.
+- Monthly purchase billing event:
+  - `billing_events` row: `evt_01kfjqtdvwnvgb0asm3xcnepfg` (`event_type=transaction.completed`, `transaction_id=txn_01kfjqr9s3scq76fxf765yeg1d`, `credits_granted=2000`).
 - Added Step 6 to use `EXTERNAL_API_ADMIN_KEY` for credit grants with fallback to `DEV_API_KEYS`, and validated via direct grant + full UI checkout after backend restart.
+- Added Step 7 to track fixing the `/pricing` slider position vs. selected credits mismatch.
+- Completed Step 7 by aligning slider tick labels to the linear slider scale so displayed credits match the thumb position.
+
+### Step 8 - Annual subscription UI checkout validation
+- What: Run full `/pricing` annual subscription checkout and verify Paddle + Supabase updates.
+- Where: `/pricing` UI, Paddle checkout, Supabase tables.
+- Why: Confirm annual plan is recorded and auto-billing schedule + credit grants are correct.
+- How: Complete checkout in UI, then verify Paddle subscription/transaction and `credit_grants`, `billing_events`, `credit_transactions`.
+- Status: Completed.
+- Done:
+  - Completed `/pricing` → Annual → Subscribe Now checkout after webhook fix; Paddle overlay confirmed success.
+  - Paddle transaction: `txn_01kfjse9rrnzr9y7scqaxjn3cd` (status `completed`, price `pri_01kf8tzdb09rkb3xwk126r9p2t`, billing cycle `year`, quantity 2; includes rounding adjustment line item).
+  - Paddle subscription: `sub_01kfjsf8jd2htqv0jpnc0xrf5q` (status `active`, billing cycle `year`, `nextBilledAt=2027-01-22T12:04:37.685199Z`).
+  - Annual plan is scheduled for automatic yearly invoicing (not monthly).
+  - Supabase updated successfully for the new annual transaction:
+    - `credit_grants`: `2160ada7-396a-4caf-b1b4-9001b18bc2e0` (`credits_granted=24000`, `amount=600`, `currency=USD`).
+    - `billing_events`: `evt_01kfjsfaf1rhb5fy25dnnb3gwf` (`event_type=transaction.completed`, `credits_granted=24000`).
+    - `credit_transactions`: `f9aee3a5-bc4c-40b8-a41c-4a2d481a8985` (`amount=24000`, `balance_after=213801`, metadata includes `transaction_id`).
+
+### Step 9 - Handle non-credit line items in Paddle webhook
+- What: Ensure Paddle webhook ignores non-credit line items so annual subscriptions with adjustments still grant credits.
+- Where: `backend/app/api/billing.py` webhook handler.
+- Why: Annual checkout includes an additional line item (e.g., adjustment/custom price). Current logic treats any unmapped price ID as fatal and aborts the grant flow.
+- How: Skip line items that are explicitly non-credit (e.g., custom price types) while still failing on genuinely missing credit mappings.
+- Status: Completed.
+- Done:
+  - Added a guard in the webhook item parsing loop to skip items where `price.type === "custom"` and log `billing.webhook.skip_noncredit_item`.
+  - This prevents rounding-adjustment items from causing `price_mapping_missing` and allows the credit grant flow to proceed.

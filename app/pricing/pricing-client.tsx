@@ -416,9 +416,9 @@ export default function PricingV2Client() {
                   <div className="flex justify-between text-[11px] font-medium text-[var(--text-muted)]">
                     {config ? [
                       config.pricing.min_volume,
-                      Math.round(Math.pow(10, Math.log10(config.pricing.min_volume) + (Math.log10(config.pricing.max_volume) - Math.log10(config.pricing.min_volume)) / 4)),
-                      Math.round(Math.pow(10, Math.log10(config.pricing.min_volume) + (Math.log10(config.pricing.max_volume) - Math.log10(config.pricing.min_volume)) / 2)),
-                      Math.round(Math.pow(10, Math.log10(config.pricing.min_volume) + (Math.log10(config.pricing.max_volume) - Math.log10(config.pricing.min_volume)) * 0.75)),
+                      config.pricing.min_volume + (config.pricing.max_volume - config.pricing.min_volume) / 4,
+                      config.pricing.min_volume + (config.pricing.max_volume - config.pricing.min_volume) / 2,
+                      config.pricing.min_volume + (config.pricing.max_volume - config.pricing.min_volume) * 0.75,
                       config.pricing.max_volume,
                     ].map((value, index, arr) => {
                       const stepSize = config.pricing.step_size;
