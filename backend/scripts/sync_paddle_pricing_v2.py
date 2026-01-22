@@ -171,6 +171,77 @@ def _extract_price_role(custom_data: Dict[str, Any]) -> Optional[str]:
     return None
 
 
+def _coerce_optional_int(value: Any, field: str, price_id: str) -> Optional[int]:
+    if value is None:
+        return None
+    return _coerce_int(value, field, price_id)
+
+
+def _extract_quantity_limits(payload: Dict[str, Any], price_id: str) -> Tuple[Optional[int], Optional[int]]:
+    quantity = payload.get("quantity") or {}
+    if not isinstance(quantity, dict):
+        return None, None
+    min_value = _coerce_optional_int(quantity.get("minimum") or quantity.get("min"), "quantity_minimum", price_id)
+    max_value = _coerce_optional_int(quantity.get("maximum") or quantity.get("max"), "quantity_maximum", price_id)
+    return min_value, max_value
+
+
+def _resolve_required_quantity_limits(
+    custom_data: Dict[str, Any],
+    role: str,
+    price_id: str,
+) -> Optional[Tuple[int, int]]:
+    if role == "base":
+        return (1, 1)
+    if role != "increment":
+        return None
+    min_quantity = _coerce_int(custom_data.get("min_quantity"), "min_quantity", price_id)
+    max_quantity = _coerce_int(custom_data.get("max_quantity"), "max_quantity", price_id)
+    credits_per_unit = _coerce_int(custom_data.get("credits_per_unit"), "credits_per_unit", price_id)
+    if min_quantity is None or max_quantity is None or credits_per_unit is None:
+        return None
+    if credits_per_unit <= 0:
+        logger.error(
+            "sync_paddle_pricing_v2.invalid_credits_per_unit",
+            extra={"price_id": price_id, "credits_per_unit": credits_per_unit},
+        )
+        return None
+    segment_min = min_quantity - (min_quantity % credits_per_unit)
+    if max_quantity < segment_min:
+        logger.error(
+            "sync_paddle_pricing_v2.segment_range_invalid",
+            extra={"price_id": price_id, "segment_min": segment_min, "max_quantity": max_quantity},
+        )
+        return None
+    delta = max_quantity - segment_min
+    if delta % credits_per_unit != 0:
+        logger.error(
+            "sync_paddle_pricing_v2.segment_step_mismatch",
+            extra={
+                "price_id": price_id,
+                "segment_min": segment_min,
+                "max_quantity": max_quantity,
+                "credits_per_unit": credits_per_unit,
+            },
+        )
+        return None
+    max_units = delta // credits_per_unit
+    if max_units <= 0:
+        logger.error(
+            "sync_paddle_pricing_v2.increment_units_invalid",
+            extra={"price_id": price_id, "max_units": max_units},
+        )
+        return None
+    return (1, max_units)
+
+
+def _quantity_matches(
+    actual: Tuple[Optional[int], Optional[int]],
+    required: Tuple[int, int],
+) -> bool:
+    return actual[0] == required[0] and actual[1] == required[1]
+
+
 def _coerce_int(value: Any, field: str, price_id: str) -> Optional[int]:
     try:
         return int(value)
@@ -381,13 +452,48 @@ async def run_sync(
             skipped_prices += 1
             continue
 
+        required_quantity = _resolve_required_quantity_limits(price_custom, price_role, str(price_id))
+        actual_quantity = _extract_quantity_limits(price, str(price_id))
+        quantity_match = bool(required_quantity and _quantity_matches(actual_quantity, required_quantity))
+
+        if price_role == "increment":
+            if not required_quantity:
+                logger.error(
+                    "sync_paddle_pricing_v2.increment_quantity_missing",
+                    extra={"price_id": price_id, "key": key},
+                )
+                skipped_prices += 1
+                continue
+            if not quantity_match:
+                logger.info(
+                    "sync_paddle_pricing_v2.increment_quantity_mismatch",
+                    extra={"price_id": price_id, "key": key, "required": required_quantity, "actual": actual_quantity},
+                )
+                skipped_prices += 1
+                continue
+
         entry = tier_updates.setdefault(key, {"base": None, "increment": None})
-        if entry.get(price_role):
-            logger.warning(
-                "sync_paddle_pricing_v2.duplicate_role",
-                extra={"price_id": price_id, "role": price_role, "key": key},
-            )
-            duplicate_roles += 1
+        existing_entry = entry.get(price_role)
+        if existing_entry:
+            if not existing_entry.get("quantity_match") and quantity_match:
+                entry[price_role] = {
+                    "price_id": str(price_id),
+                    "unit_amount": unit_amount_decimal,
+                    "unit_amount_cents": unit_amount_cents,
+                    "currency": str(currency),
+                    "credits_per_unit": credits_per_unit,
+                    "status": str(status),
+                    "custom_data": price_custom,
+                    "quantity_match": quantity_match,
+                }
+            else:
+                logger.warning(
+                    "sync_paddle_pricing_v2.duplicate_role",
+                    extra={"price_id": price_id, "role": price_role, "key": key},
+                )
+                duplicate_roles += 1
+            continue
+
         entry[price_role] = {
             "price_id": str(price_id),
             "unit_amount": unit_amount_decimal,
@@ -396,6 +502,7 @@ async def run_sync(
             "credits_per_unit": credits_per_unit,
             "status": str(status),
             "custom_data": price_custom,
+            "quantity_match": quantity_match,
         }
 
     if catalog_prices == 0:

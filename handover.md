@@ -33,21 +33,15 @@
 - **Paddle v2 simulations (sandbox):**
   - **Payg 50,000:** PASS (`txn_01kfk3p42x24ae6epx3cyk0p0v`).
   - **Monthly 75,000:** PASS (`txn_01kfk3pek9b1vyzw9jxw19bkah`).
-  - **Annual 250,000:** FAIL (Paddle 400: `transaction_item_quantity_out_of_range`).
+  - **Annual 250,000:** PASS (`txn_01kfk4q7he19w4p288z08t4zxm`).
 
-## Active blocker (why annual fails)
-- **Root cause:** Paddle price default quantity max is 100. Annual 250,000 uses increment qty 150, which exceeds max.
-- **Paddle error detail:** `transaction_item_quantity_out_of_range` with quantity 150 out of range 1–100.
-
-## Pending work (next steps)
-### Step 18 - Set Paddle quantity limits for increment prices (pending)
+## Step 18 - Set Paddle quantity limits for increment prices (done)
 - **What:** Allow increment line item quantities > 100 by setting price-level quantity limits.
 - **Why:** Annual tiers can require more than 100 increments.
 - **How:**
-  - Base prices: quantity min/max = 1.
-  - Increment prices: quantity max = tier’s max increment units for the segment.
-  - Recreate or replace increment prices that lack quantity limits; re-sync tier metadata to new price IDs.
-  - Rerun annual v2 simulation after update.
+  - Updated `backend/scripts/create_paddle_pricing_v2.py` to set quantity limits on price creation (base min/max = 1; increment max = segment max increment units) and replace increment prices missing limits.
+  - Updated `backend/scripts/sync_paddle_pricing_v2.py` to select increment prices that match required quantity limits and sync tier metadata to the new price IDs.
+  - Reran the annual v2 simulation after the update; Paddle accepted 150 increment units.
 
 ## Commands/scripts used (for reproducibility)
 - `PYTHONPATH=backend python backend/scripts/create_paddle_pricing_v2.py`

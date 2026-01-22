@@ -40,6 +40,7 @@ from app.services.pricing_v2 import (  # noqa: E402
     get_pricing_config_v2,
     list_pricing_tiers_v2,
     _resolve_segment_amounts,
+    resolve_segment_min_quantity,
 )
 from app.services.supabase_client import get_supabase  # noqa: E402
 
@@ -188,6 +189,91 @@ def _coerce_int(value: Any) -> Optional[int]:
         return int(value)
     except Exception:  # noqa: BLE001
         return None
+
+
+def _extract_quantity_limits(payload: Dict[str, Any]) -> Tuple[Optional[int], Optional[int]]:
+    quantity = payload.get("quantity") or {}
+    if not isinstance(quantity, dict):
+        return None, None
+    min_value = _coerce_int(quantity.get("minimum") or quantity.get("min"))
+    max_value = _coerce_int(quantity.get("maximum") or quantity.get("max"))
+    return min_value, max_value
+
+
+def _resolve_increment_max_units(tier: PricingTierV2, config: "PricingConfigV2") -> Optional[int]:
+    segment_min = resolve_segment_min_quantity(tier)
+    segment_max = tier.max_quantity if tier.max_quantity is not None else config.max_volume
+    if segment_max < segment_min:
+        logger.error(
+            "create_paddle_pricing_v2.segment_range_invalid",
+            extra={"min_quantity": tier.min_quantity, "segment_min": segment_min, "segment_max": segment_max},
+        )
+        return None
+    delta = segment_max - segment_min
+    if delta % tier.credits_per_unit != 0:
+        logger.error(
+            "create_paddle_pricing_v2.segment_step_mismatch",
+            extra={
+                "segment_min": segment_min,
+                "segment_max": segment_max,
+                "credits_per_unit": tier.credits_per_unit,
+            },
+        )
+        return None
+    max_units = delta // tier.credits_per_unit
+    if max_units <= 0:
+        logger.error(
+            "create_paddle_pricing_v2.increment_units_invalid",
+            extra={"segment_min": segment_min, "segment_max": segment_max, "max_units": max_units},
+        )
+        return None
+    return max_units
+
+
+def _resolve_price_quantity_limits(
+    tier: PricingTierV2,
+    role: str,
+    config: "PricingConfigV2",
+) -> Optional[Tuple[int, int]]:
+    if role == "base":
+        return (1, 1)
+    if role == "increment":
+        max_units = _resolve_increment_max_units(tier, config)
+        if max_units is None:
+            return None
+        return (1, max_units)
+    return None
+
+
+def _price_amount_cents(payload: Dict[str, Any]) -> Optional[int]:
+    unit_price = _extract_unit_price(payload)
+    return _coerce_int(unit_price.get("amount"))
+
+
+def _price_quantity_matches(payload: Dict[str, Any], required: Tuple[int, int]) -> bool:
+    min_value, max_value = _extract_quantity_limits(payload)
+    return min_value == required[0] and max_value == required[1]
+
+
+def _select_existing_price(
+    existing_prices: List[Dict[str, Any]],
+    amount_cents: int,
+    required_quantity: Optional[Tuple[int, int]],
+    preferred_quantity: Optional[Tuple[int, int]] = None,
+) -> Optional[Dict[str, Any]]:
+    if preferred_quantity:
+        for price in existing_prices:
+            if _price_amount_cents(price) != amount_cents:
+                continue
+            if _price_quantity_matches(price, preferred_quantity):
+                return price
+    for price in existing_prices:
+        if _price_amount_cents(price) != amount_cents:
+            continue
+        if required_quantity and not _price_quantity_matches(price, required_quantity):
+            continue
+        return price
+    return None
 
 
 async def _fetch_all(
@@ -354,6 +440,7 @@ def _build_price_payload(
     pricing_source: Optional[str],
     price_type: Optional[str],
     tax_mode: Optional[str],
+    quantity_limits: Optional[Tuple[int, int]],
 ) -> Dict[str, Any]:
     payload: Dict[str, Any] = {
         "product_id": product_id,
@@ -367,6 +454,8 @@ def _build_price_payload(
         payload["type"] = price_type
     if tax_mode:
         payload["tax_mode"] = tax_mode
+    if quantity_limits:
+        payload["quantity"] = {"minimum": quantity_limits[0], "maximum": quantity_limits[1]}
     return payload
 
 
@@ -399,7 +488,7 @@ async def run_create(
         return 1
 
     price_by_id = {str(price["id"]): price for price in prices if price.get("id")}
-    existing: Dict[PriceKey, Dict[str, Any]] = {}
+    existing: Dict[PriceKey, List[Dict[str, Any]]] = {}
     for price in prices:
         price_id = price.get("id")
         if not price_id:
@@ -413,7 +502,7 @@ async def run_create(
         key = _price_lookup_key(custom_data, role)
         if not key:
             continue
-        existing[key] = price
+        existing.setdefault(key, []).append(price)
 
     config = get_pricing_config_v2()
     pricing_source = config.metadata.get("pricing_source") if isinstance(config.metadata, dict) else None
@@ -448,23 +537,61 @@ async def run_create(
                 ("increment", increment_amount, increment_cents),
             ):
                 key = _tier_key(tier, role)
-                existing_price = existing.get(key)
-                if existing_price:
-                    unit_price = _extract_unit_price(existing_price)
-                    existing_amount = _coerce_int(unit_price.get("amount"))
-                    if existing_amount is not None and existing_amount != amount_cents:
+                quantity_limits = _resolve_price_quantity_limits(tier, role, config)
+                if quantity_limits is None:
+                    logger.error(
+                        "create_paddle_pricing_v2.quantity_limits_missing",
+                        extra={"key": key, "role": role},
+                    )
+                    return 1
+
+                existing_prices = existing.get(key, [])
+                required_quantity = quantity_limits if role == "increment" else None
+                preferred_quantity = (1, 1) if role == "base" else None
+                mismatch_scope = required_quantity if role == "increment" else (1, 1)
+                for price in existing_prices:
+                    if mismatch_scope and not _price_quantity_matches(price, mismatch_scope):
+                        continue
+                    existing_amount = _price_amount_cents(price)
+                    if existing_amount is None:
+                        continue
+                    if existing_amount != amount_cents:
                         logger.error(
                             "create_paddle_pricing_v2.amount_mismatch",
                             extra={
                                 "key": key,
+                                "price_id": price.get("id"),
                                 "existing": existing_amount,
                                 "expected": amount_cents,
                             },
                         )
                         mismatched += 1
-                    else:
-                        skipped += 1
+
+                existing_price = _select_existing_price(
+                    existing_prices,
+                    amount_cents,
+                    required_quantity=required_quantity,
+                    preferred_quantity=preferred_quantity,
+                )
+                if existing_price:
+                    skipped += 1
                     continue
+                if required_quantity:
+                    for price in existing_prices:
+                        if _price_amount_cents(price) != amount_cents:
+                            continue
+                        if _price_quantity_matches(price, required_quantity):
+                            continue
+                        logger.info(
+                            "create_paddle_pricing_v2.quantity_mismatch",
+                            extra={
+                                "key": key,
+                                "price_id": price.get("id"),
+                                "required": required_quantity,
+                                "existing": _extract_quantity_limits(price),
+                            },
+                        )
+                        break
 
                 payload = _build_price_payload(
                     tier,
@@ -477,6 +604,7 @@ async def run_create(
                     pricing_source,
                     price_type,
                     tax_mode,
+                    quantity_limits,
                 )
                 logger.info(
                     "create_paddle_pricing_v2.create_price",

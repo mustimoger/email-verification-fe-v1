@@ -354,15 +354,14 @@
   - Run targeted unit tests for pricing + billing (pricing_v2, billing, trial bonus).
   - Run Paddle v2 simulation script for payg/monthly/annual and verify credit grants.
   - Run a `/pricing` UI smoke check to confirm no cents in displayed totals.
-- Status: In progress.
+- Status: Done.
 - Done:
   - Ran targeted unit tests for pricing + billing (`backend/tests/test_pricing_v2.py`, `backend/tests/test_billing.py`, `backend/tests/test_trial_bonus.py`) to validate base+increment math, rounding, and grant flow. Result: 19 passed (existing deprecation warnings from dependencies).
   - Paddle v2 simulations after restart:
     - Payg 50,000: passed (transaction `txn_01kfk3p42x24ae6epx3cyk0p0v`).
     - Monthly 75,000: passed (transaction `txn_01kfk3pek9b1vyzw9jxw19bkah`).
-    - Annual 250,000: failed on Paddle create transaction (400).
+    - Annual 250,000: passed after increment price limits update (transaction `txn_01kfk4q7he19w4p288z08t4zxm`).
 - Missing / Issue:
-  - Annual v2 simulation failed due to Paddle `transaction_item_quantity_out_of_range`: increment item quantity 150 exceeds the default Paddle max of 100 (prices were created without quantity limits).
   - `/pricing` UI smoke check remains valid from earlier run.
 
 ### Step 17 - Fix v2 base credit grant alignment
@@ -372,13 +371,13 @@
 - How:
   - Use the same segment-min alignment logic as pricing (`credits_per_unit` step alignment) when computing base credits for v2.
   - Keep increment credits unchanged (`credits_per_unit * quantity`).
-- Status: Pending.
+- Status: Done.
 - Done:
   - Updated webhook v2 base credit calculation to use step-aligned segment minimums (avoids +1 credit for tiers starting at 5001/10001/25001).
   - Added a regression test for base alignment in `backend/tests/test_billing.py`.
   - Ran pricing/billing/trial bonus tests; all pass.
 - Missing / Issue:
-  - Runtime verification completed for payg + monthly simulations (Step 16). Annual simulation remains blocked by Paddle quantity limits (Step 18).
+  - Runtime verification completed for payg + monthly + annual simulations (Step 16).
 
 ### Step 18 - Set Paddle quantity limits for increment prices
 - What: Allow increment line item quantities above 100 by setting price-level quantity limits in Paddle.
@@ -392,4 +391,8 @@
   - Add quantity limits to price creation (base min/max = 1, increment max = segment max increment units).
   - Ensure replacement increment prices are created when limits are missing and re-sync tier metadata.
   - Rerun annual v2 simulation to confirm Paddle accepts >100 increment quantities.
-- Status: In progress (planning).
+- Status: Done.
+- Done:
+  - Updated `backend/scripts/create_paddle_pricing_v2.py` to set quantity limits on price creation (base min/max = 1; increment max = segment max increment units) and to replace increment prices missing limits.
+  - Updated `backend/scripts/sync_paddle_pricing_v2.py` to select increment prices that match required quantity limits and re-sync tier metadata to the new price IDs.
+  - Ran price creation + sync scripts and reran the annual v2 simulation; Paddle accepted the 150 increment quantity and the simulation succeeded.
