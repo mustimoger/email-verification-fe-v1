@@ -33,7 +33,7 @@ const PLAN_OPTIONS: PlanOption[] = [
 const FEATURE_LIST = [
   "Credits never expire",
   "No charge for unknowns",
-  "No charge for catch-all",
+  "Detailed insights",
   "99%+ accuracy",
   "Real-time API access",
   "Bulk upload (CSV, XLSX)",

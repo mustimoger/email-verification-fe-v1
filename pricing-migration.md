@@ -534,3 +534,12 @@
 - Status: Completed.
 - Done:
   - Updated the hero subheading to remove the catch-all reference per request.
+
+### Step 29 - Update "Everything Included" label (catch-all)
+- What: Replace the "No charge for catch-all" item text in the "Everything Included" list.
+- Where: `app/pricing/pricing-client.tsx`.
+- Why: Align the card copy with the requested wording.
+- How: Change the list item string to "Detailed insights".
+- Status: Completed.
+- Done:
+  - Replaced the "No charge for catch-all" list item with "Detailed insights".
