@@ -396,3 +396,65 @@
   - Updated `backend/scripts/create_paddle_pricing_v2.py` to set quantity limits on price creation (base min/max = 1; increment max = segment max increment units) and to replace increment prices missing limits.
   - Updated `backend/scripts/sync_paddle_pricing_v2.py` to select increment prices that match required quantity limits and re-sync tier metadata to the new price IDs.
   - Ran price creation + sync scripts and reran the annual v2 simulation; Paddle accepted the 150 increment quantity and the simulation succeeded.
+
+### Step 19 - Full UI one-time checkout validation (1,000,000 credits)
+- What: Run the `/pricing` one-time purchase flow for 1,000,000 credits and verify Paddle + Supabase updates.
+- Where: `/pricing` UI, Paddle transactions, Supabase tables.
+- Why: Confirm end-to-end payg checkout creates a completed one-time transaction, invoices, and credit grants across local + external ledgers.
+- How: Use Playwright to purchase 1,000,000 credits and inspect Paddle + Supabase for the resulting records.
+- Status: Completed.
+- Done:
+  - Playwright completed `/pricing` → One-Time → 1M → Buy Credits checkout (sandbox card).
+  - Paddle transaction completed: `txn_01kfk5d7f5evyd91df7parm74x` (status `completed`, `collectionMode=automatic`, `subscriptionId=null`, invoice `inv_01kfk5e6sq3tk5c9s8qgk2cxzq`, invoice number `74722-10031`).
+  - Line items: base price `pri_01kfk279twkwb0bnv5sgvd53d3` (qty 1), increment price `pri_01kfk4p6g3p13kmpahc74mj2wt` (qty 500), plus a custom rounding adjustment `pri_01kfk5d7fybme1m8racwcr5fd5` (qty 1).
+  - Supabase `credit_grants` inserted: `credits_granted=1000000`, `amount=42600`, `currency=USD`, `transaction_id=txn_01kfk5d7f5evyd91df7parm74x`, `invoice_number=74722-10031`.
+  - Supabase `billing_events` inserted: `event_id=evt_01kfk5e8q2f181pgev5fhkh7w9`, `event_type=transaction.completed`, `credits_granted=1000000`.
+  - External ledger `credit_transactions` inserted: `amount=1000000`, `balance_after=4488804`, `reason=purchase`, metadata includes `transaction_id=txn_01kfk5d7f5evyd91df7parm74x`.
+- Notes:
+  - One-time checkout creates a completed transaction with an invoice; no subscription record exists, so there is no recurring monthly invoice schedule.
+
+### Step 20 - Full UI monthly checkout validation (1,000,000 credits)
+- What: Run the `/pricing` monthly subscription flow for 1,000,000 credits and verify recurring billing + Supabase updates.
+- Where: `/pricing` UI, Paddle transactions/subscriptions, Supabase tables.
+- Why: Confirm monthly plan creates an active subscription that auto-invoices monthly and grants credits in both local + external ledgers.
+- How: Complete the monthly checkout in UI and inspect Paddle + Supabase records for the new transaction/subscription.
+- Status: Completed.
+- Done:
+  - Playwright completed `/pricing` → Monthly → 1M → Subscribe Now checkout (sandbox card).
+  - Paddle transaction completed: `txn_01kfk5r8280kp6nanx34az55y0` (status `completed`, `collectionMode=automatic`, invoice `inv_01kfk5sqvencmfyvj5shsw68rn`, invoice number `74722-10032`).
+  - Paddle subscription created: `sub_01kfk5sqte2tgwrr4ykftw3b25` (status `active`, billing cycle `month`, `nextBilledAt=2026-02-22T15:40:03.632439Z`).
+  - Line items: base `pri_01kfk27pc7kdy181rctg6r13bq` (qty 1) + increment `pri_01kfk4p9dch5zrw973e0vy946p` (qty 500).
+  - Supabase `credit_grants` inserted: `credits_granted=1000000`, `amount=29800`, `currency=USD`, `transaction_id=txn_01kfk5r8280kp6nanx34az55y0`, `invoice_number=74722-10032`.
+  - Supabase `billing_events` inserted: `event_id=evt_01kfk5ssjmgysdzcmk0f59vps5`, `event_type=transaction.completed`, `credits_granted=1000000`.
+  - External ledger `credit_transactions` inserted: `amount=1000000`, `balance_after=5488804`, `reason=purchase`, metadata includes `transaction_id=txn_01kfk5r8280kp6nanx34az55y0`.
+
+### Step 21 - Full UI annual checkout validation (1,000,000 credits)
+- What: Run the `/pricing` annual subscription flow for 1,000,000 credits and verify recurring billing + Supabase updates.
+- Where: `/pricing` UI, Paddle transactions/subscriptions, Supabase tables.
+- Why: Confirm annual plan creates an active yearly subscription and grants credits in both local + external ledgers.
+- How: Complete the annual checkout in UI and inspect Paddle + Supabase records for the new transaction/subscription.
+- Status: Completed.
+- Done:
+  - Playwright completed `/pricing` → Annual → 1M → Subscribe Now checkout (sandbox card).
+  - Paddle transaction completed: `txn_01kfk5xysh3v1h877sk9bq8tk4` (status `completed`, `collectionMode=automatic`, invoice `inv_01kfk5yjf5w3kjwvteyvmg4rew`, invoice number `74722-10033`).
+  - Paddle subscription created: `sub_01kfk5yjdm9yys5wnfzsjwqe9x` (status `active`, billing cycle `year`, `nextBilledAt=2027-01-22T15:42:42.282023Z`).
+  - Line items: base `pri_01kfk27w2396j0yae9ech03pv8` (qty 1) + increment `pri_01kfk4pccfmzq9xcvreekcz6h9` (qty 500) + custom rounding adjustment `pri_01kfk5xyt96tyr10ae0dv3tjt2` (qty 1).
+  - Supabase `credit_grants` inserted: `credits_granted=12000000`, `amount=255600`, `currency=USD`, `transaction_id=txn_01kfk5xysh3v1h877sk9bq8tk4`, `invoice_number=74722-10033`.
+  - Supabase `billing_events` inserted: `event_id=evt_01kfk5ym9d0m5zy991xm89sede`, `event_type=transaction.completed`, `credits_granted=12000000`.
+  - External ledger `credit_transactions` inserted: `amount=12000000`, `balance_after=17488804`, `reason=purchase`, metadata includes `transaction_id=txn_01kfk5xysh3v1h877sk9bq8tk4`.
+- Notes:
+  - Annual plan bills yearly (not monthly): Paddle `billingCycle.interval=year` and `nextBilledAt` is one year out.
+
+### Step 22 - Remove annual 12x credit multiplier (annual grants match selected credits)
+- What: Stop multiplying annual subscription credits by 12 in the webhook grant logic.
+- Where: `backend/app/api/billing.py` (webhook credit grant calculation) and tests.
+- Why: Users should receive the exact annual credit quantity they select in the UI (no 12× multiplier).
+- How: Remove the annual multiplier in credit calculation and update the annual webhook test expectations.
+- Status: Pending.
+
+### Step 23 - Document pricing checkout validations and annual multiplier issue
+- What: Update handoff/design docs with the latest one-time/monthly/annual checkout results and the 12× annual grant issue.
+- Where: `handover.md`, `new-design.md`.
+- Why: Keep newcomer context accurate and highlight the pending annual grant fix.
+- How: Added explicit what/why/how summaries for the 1M checkout validations and documented the annual 12× grant mismatch.
+- Status: Completed.

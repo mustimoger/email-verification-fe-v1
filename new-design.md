@@ -972,3 +972,19 @@ What was done and why:
 - Verified success via `backend/scripts/paddle_simulation_e2e.py` for annual v2.
 - Created this plan to guide a non-disruptive visual alignment effort, with a minimal MVP and staged rollout to avoid layout changes.
 - Added explicit reference, constraints, and scope so future sessions understand the benchmark (`/pricing-v2`) and the staging approach (`/overview-v2` first, swap later).
+
+### Ops: UI pricing checkout validations (1,000,000 credits)
+- What: Validate `/pricing` one-time, monthly, and annual checkouts at 1,000,000 credits and verify Paddle + Supabase ledger writes.
+- Why: Confirms end-to-end pricing flows are wired correctly and credits are granted in both local and external ledgers.
+- How: Ran Playwright checkout flows (sandbox card), inspected Paddle transactions/subscriptions via MCP, and verified Supabase `credit_grants`, `billing_events`, and `credit_transactions`.
+Status: Completed — all three checkout flows succeeded with expected records.
+What was done and why:
+- One-time: `txn_01kfk5d7f5evyd91df7parm74x` completed, invoice `74722-10031`; `credit_grants` and `credit_transactions` recorded 1,000,000 credits.
+- Monthly: `txn_01kfk5r8280kp6nanx34az55y0` completed with subscription `sub_01kfk5sqte2tgwrr4ykftw3b25`; `nextBilledAt=2026-02-22T15:40:03.632439Z` confirms monthly auto-invoicing; ledgers recorded 1,000,000 credits.
+- Annual: `txn_01kfk5xysh3v1h877sk9bq8tk4` completed with subscription `sub_01kfk5yjdm9yys5wnfzsjwqe9x`; `nextBilledAt=2027-01-22T15:42:42.282023Z` confirms yearly billing; ledgers recorded 12,000,000 credits due to the annual multiplier.
+
+### Ops: Annual credit grant multiplier removal
+- What: Remove the 12× multiplier applied to annual subscription credit grants so users receive exactly the credits shown in the UI.
+- Why: Annual pricing is already correct; multiplying credits by 12 over-grants and breaks “buy what you see” behavior.
+- How: Remove the annual multiplier in `backend/app/api/billing.py` and update the annual webhook test expectation.
+Status: Pending — implementation and re-validation required.
