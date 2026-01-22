@@ -41,6 +41,12 @@ const FEATURE_LIST = [
   "Priority support",
 ];
 const TRUST_ITEMS = ["Instant activation", "Secure payment", "Cancel anytime"];
+const PAYMENT_LOGOS = [
+  { label: "Visa", src: "/visa.png" },
+  { label: "Mastercard", src: "/mastercard.png" },
+  { label: "Amex", src: "/amex.png" },
+  { label: "PayPal", src: "/paypal.png" },
+];
 function useDebouncedValue<T>(value: T, delayMs: number): T {
   const [debounced, setDebounced] = useState(value);
   useEffect(() => {
@@ -577,12 +583,17 @@ export default function PricingV2Client() {
 
               <div className="mt-4 flex flex-wrap items-center justify-center gap-2 border-t border-[var(--pricing-border)] pt-4 text-[10px] font-semibold text-[var(--text-muted)]">
                 <span>We accept</span>
-                {"Visa, MC, Amex, PayPal".split(", ").map((method) => (
+                {PAYMENT_LOGOS.map((logo) => (
                   <span
-                    key={method}
-                    className="rounded-md border border-[var(--pricing-border)] px-2 py-1"
+                    key={logo.label}
+                    className="flex items-center justify-center rounded-md border border-[var(--pricing-border)] px-2 py-1"
                   >
-                    {method}
+                    <img
+                      src={logo.src}
+                      alt={logo.label}
+                      className="h-3.5 w-auto object-contain"
+                      loading="lazy"
+                    />
                   </span>
                 ))}
               </div>

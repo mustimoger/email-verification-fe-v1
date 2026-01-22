@@ -499,3 +499,17 @@
   - Card brand icons shown: `visa`, `mastercard`, `amex`, `jcb`, `discover`, `diners_club`, `union_pay`.
 - Notes:
   - Apple Pay was not shown in the overlay for this session.
+
+### Step 26 - Add payment logos to pricing CTA card
+- What: Replace the payment text badges in the `/pricing` CTA card with the actual payment logos.
+- Where: `app/pricing/pricing-client.tsx` and `public` logo assets.
+- Why: Match the UI design and show the accepted payment methods visually.
+- How:
+  - Render logo images in the "We accept" row (Visa, Mastercard, Amex, PayPal) without changing layout or spacing.
+  - Keep accessible labels for screen readers.
+- Status: Completed.
+- Done:
+  - Replaced the payment text badges with logo images for Visa, Mastercard, Amex, and PayPal in the `/pricing` CTA card.
+  - Kept layout/spacing intact and added accessible `alt` labels for each logo.
+- Notes:
+  - Uses the `public/amex.png` asset provided.
