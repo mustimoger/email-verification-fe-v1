@@ -961,5 +961,14 @@ What was done and why:
 - Pushed commit `69912ac` to `origin/main` to keep GitHub up to date.
 
 ## Progress Notes
+### Ops: Pricing v2 Step 18 (Paddle quantity limits)
+- What: Ensure Paddle increment prices allow quantities > 100 by enforcing price-level quantity limits and replacing prices missing limits.
+- How: Updated `backend/scripts/create_paddle_pricing_v2.py` to compute segment-aligned max increment units, set quantity limits on create (base min/max = 1; increment max = segment max units), and create replacement increment prices when limits are missing. Updated `backend/scripts/sync_paddle_pricing_v2.py` to select increment prices that match required quantity limits and re-sync tier metadata to the new IDs. Reran the annual v2 simulation to confirm acceptance.
+- Why: Annual tiers (e.g., 250,000 credits) require 150 increment units; Paddle’s default max of 100 caused `transaction_item_quantity_out_of_range`.
+Status: Completed — annual v2 simulation passed (`txn_01kfk4q7he19w4p288z08t4zxm`).
+What was done and why:
+- Created new increment prices with explicit quantity limits to unblock large annual quantities and avoid transaction rejections.
+- Synced Supabase tier metadata to the new increment price IDs so checkout uses the corrected limits.
+- Verified success via `backend/scripts/paddle_simulation_e2e.py` for annual v2.
 - Created this plan to guide a non-disruptive visual alignment effort, with a minimal MVP and staged rollout to avoid layout changes.
 - Added explicit reference, constraints, and scope so future sessions understand the benchmark (`/pricing-v2`) and the staging approach (`/overview-v2` first, swap later).

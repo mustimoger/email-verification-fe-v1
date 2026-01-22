@@ -1,9 +1,9 @@
 # Handover (email-verification-fe-v1)
 
 ## Current status (what/why/how)
-- **Focus:** Pricing v2 migration (pricing.csv anchors + base/increment pricing) and Step 16 validation.
-- **Why:** Pricing must be data-driven from `pricing.csv`, with Paddle base+increment items to avoid thousands of prices.
-- **How:** Added scripts to create base/increment Paddle prices, sync those into Supabase tier metadata, and aligned pricing math + webhook credit grants to step-size segment mins.
+- **Focus:** Pricing v2 migration is now fully validated after Step 18 (Paddle quantity limits) and the annual simulation pass.
+- **Why:** Pricing must be data-driven from `pricing.csv`, and Paddle must accept large increment quantities without rejecting transactions.
+- **How:** Added creation + sync logic for base/increment prices, aligned pricing math and credit grants, enforced Paddle quantity limits, and reran v2 simulations to confirm success.
 
 ## Major changes completed
 ### Step 15 (Create/Sync Paddle base + increment prices)
@@ -39,9 +39,10 @@
 - **What:** Allow increment line item quantities > 100 by setting price-level quantity limits.
 - **Why:** Annual tiers can require more than 100 increments.
 - **How:**
-  - Updated `backend/scripts/create_paddle_pricing_v2.py` to set quantity limits on price creation (base min/max = 1; increment max = segment max increment units) and replace increment prices missing limits.
+  - Updated `backend/scripts/create_paddle_pricing_v2.py` to compute segment-aligned max increment units and create prices with explicit quantity limits (base min/max = 1; increment max = segment max units).
+  - Replaced increment prices missing limits by creating new Paddle prices with matching amounts and required quantity limits.
   - Updated `backend/scripts/sync_paddle_pricing_v2.py` to select increment prices that match required quantity limits and sync tier metadata to the new price IDs.
-  - Reran the annual v2 simulation after the update; Paddle accepted 150 increment units.
+  - Reran the annual v2 simulation after the update; Paddle accepted 150 increment units (`txn_01kfk4q7he19w4p288z08t4zxm`).
 
 ## Commands/scripts used (for reproducibility)
 - `PYTHONPATH=backend python backend/scripts/create_paddle_pricing_v2.py`
@@ -53,9 +54,9 @@
 
 ## Repo status / commits
 - Latest commits pushed:
-  - `7c8e4e3` feat: add base/increment pricing sync
-  - `e7534f5` docs: update pricing migration status
-  - `be85f78` fix: align v2 credit grants
+  - `38fe1db` feat: enforce paddle price quantity limits
+  - `ed48182` docs: outline step 18 plan
+  - `f83739a` docs: update handover and pricing migration
 
 ## Notes / environment
 - Backend server was restarted after Step 17 so webhook changes are live.
@@ -63,13 +64,10 @@
 - Notification setting used for simulations: `ngrok2-all` -> `https://772d28b0ba31.ngrok-free.app/api/billing/webhook`.
 
 ## Files changed in this session
-- `backend/app/paddle/client.py`
-- `backend/scripts/create_paddle_pricing_v2.py` (new)
+- `backend/scripts/create_paddle_pricing_v2.py`
 - `backend/scripts/sync_paddle_pricing_v2.py`
-- `backend/app/services/pricing_v2.py`
-- `backend/app/api/billing.py`
-- `backend/tests/test_billing.py`
+- `handover.md`
 - `pricing-migration.md`
 
 ## Open questions
-- None. Proceed with Step 18 to set Paddle price quantity limits, then rerun annual simulation.
+- None. Pricing v2 simulations now pass for payg/monthly/annual.
