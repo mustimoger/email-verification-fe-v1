@@ -168,6 +168,17 @@ class CreditBalanceResponse(BaseModel):
     balance: Optional[int] = None
 
 
+class CreditTransactionResponse(BaseModel):
+    id: Optional[str] = None
+    user_id: Optional[str] = None
+    type: Optional[str] = None
+    amount: Optional[int] = None
+    balance_after: Optional[int] = None
+    reason: Optional[str] = None
+    metadata: Optional[Dict[str, Any]] = None
+    created_at: Optional[str] = None
+
+
 class APIKeySummary(BaseModel):
     id: Optional[str] = None
     name: Optional[str] = None
@@ -419,6 +430,21 @@ class ExternalAPIClient:
     async def get_credit_balance(self, user_id: Optional[str] = None) -> CreditBalanceResponse:
         params = {"user_id": user_id} if user_id else None
         return await self._get("/credits/balance", CreditBalanceResponse, params=params)
+
+    async def grant_credits(
+        self,
+        amount: int,
+        reason: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+        user_id: Optional[str] = None,
+    ) -> CreditTransactionResponse:
+        payload: Dict[str, Any] = {"amount": amount}
+        if reason:
+            payload["reason"] = reason
+        if metadata:
+            payload["metadata"] = metadata
+        params = {"user_id": user_id} if user_id else None
+        return await self._post("/credits/grant", payload, CreditTransactionResponse, params=params)
 
     async def get_verification_metrics(
         self,

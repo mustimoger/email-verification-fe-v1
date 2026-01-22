@@ -25,6 +25,7 @@ from ..services.billing_plans import (
     list_billing_plans,
 )
 from ..services.credit_grants import upsert_credit_grant
+from ..services.external_credits import build_purchase_grant_metadata, grant_external_credits
 from ..services.pricing_v2 import get_pricing_tiers_by_price_ids_v2
 from ..services import supabase_client
 from ..services.paddle_store import get_paddle_ids, get_user_id_by_customer_id, upsert_paddle_ids
@@ -663,6 +664,28 @@ async def paddle_webhook(request: Request):
             },
         )
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Credit grant failed")
+
+    metadata = build_purchase_grant_metadata(
+        source="purchase",
+        source_id=transaction_id,
+        transaction_id=transaction_id,
+        event_id=event_id,
+        event_type=event_type,
+        price_ids=price_ids,
+        amount=amount,
+        currency=currency,
+        checkout_email=checkout_email,
+        invoice_id=invoice_id,
+        invoice_number=invoice_number,
+        purchased_at=purchased_at,
+        credits_granted=total_credits,
+    )
+    await grant_external_credits(
+        user_id=user_id,
+        amount=total_credits,
+        reason="purchase",
+        metadata=metadata,
+    )
 
     logger.info(
         "billing.webhook.credits_granted",

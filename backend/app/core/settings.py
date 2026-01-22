@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     supabase_jwt_secret: str
     supabase_anon_key: Optional[str] = None
     supabase_auth_cookie_name: str
+    external_api_jwt_ttl_seconds: Optional[int] = None
 
     database_url: Optional[str] = None
 
@@ -104,6 +105,15 @@ class Settings(BaseSettings):
     @field_validator("signup_bonus_credits", "signup_bonus_max_account_age_seconds")
     @classmethod
     def positive_optional(cls, value):
+        if value is None:
+            return value
+        if value <= 0:
+            raise ValueError("must be greater than zero")
+        return value
+
+    @field_validator("external_api_jwt_ttl_seconds")
+    @classmethod
+    def positive_optional_ttl(cls, value):
         if value is None:
             return value
         if value <= 0:

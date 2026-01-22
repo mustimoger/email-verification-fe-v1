@@ -9,6 +9,7 @@ from ..core.auth import AuthContext, get_current_user_allow_unconfirmed
 from ..core.settings import get_settings
 from ..services import supabase_client
 from ..services.credit_grants import list_credit_grants, upsert_credit_grant
+from ..services.external_credits import build_bonus_grant_metadata, grant_external_credits
 from ..services.pricing_v2 import get_pricing_config_v2
 
 router = APIRouter(prefix="/api/credits", tags=["credits"])
@@ -125,6 +126,22 @@ async def claim_signup_bonus(
         logger.error("credits.signup_bonus.grant_failed", extra={"user_id": user.user_id})
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Signup bonus grant failed")
 
+    metadata = build_bonus_grant_metadata(
+        source="signup",
+        source_id=user.user_id,
+        credits_granted=credits,
+        user_email=getattr(auth_user, "email", None),
+        account_created_at=created_at.isoformat() if created_at else None,
+        ip=raw_meta.get("ip"),
+        user_agent=raw_meta.get("user_agent"),
+    )
+    await grant_external_credits(
+        user_id=user.user_id,
+        amount=credits,
+        reason="signup_bonus",
+        metadata=metadata,
+    )
+
     logger.info("credits.signup_bonus.granted", extra={"user_id": user.user_id, "credits": credits})
     return SignupBonusResponse(status="applied", credits_granted=credits)
 
@@ -187,6 +204,26 @@ async def claim_trial_bonus(
     if not inserted:
         logger.error("credits.trial_bonus.grant_failed", extra={"user_id": user.user_id})
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Free trial grant failed")
+
+    created_at = _parse_timestamp(getattr(auth_user, "created_at", None))
+    if created_at and created_at.tzinfo is None:
+        created_at = created_at.replace(tzinfo=timezone.utc)
+
+    metadata = build_bonus_grant_metadata(
+        source="trial",
+        source_id=user.user_id,
+        credits_granted=trial_credits,
+        user_email=getattr(auth_user, "email", None),
+        account_created_at=created_at.isoformat() if created_at else None,
+        ip=raw_meta.get("ip"),
+        user_agent=raw_meta.get("user_agent"),
+    )
+    await grant_external_credits(
+        user_id=user.user_id,
+        amount=trial_credits,
+        reason="trial_bonus",
+        metadata=metadata,
+    )
 
     logger.info("credits.trial_bonus.granted", extra={"user_id": user.user_id, "credits": trial_credits})
     return TrialBonusResponse(status="applied", credits_granted=trial_credits)
