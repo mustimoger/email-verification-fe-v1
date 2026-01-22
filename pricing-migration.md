@@ -128,6 +128,20 @@
     - Available Credits is backed by external API balance (ext-api ledger `public.credit_transactions`).
     - /pricing reads local pricing tables `public.billing_pricing_config_v2` and `public.billing_pricing_tiers_v2`, and does not read remaining credits.
 
+### Step 6 - Use external admin key for credit grants
+- What: Use a dedicated external API admin key for `/credits/grant` calls, with fallback to `DEV_API_KEYS`.
+- Where: Backend external credit grant helper (`backend/app/services/external_credits.py`) and settings/env.
+- Why: Prevent user JWTs from granting credits while ensuring local/dev can still grant via admin credentials.
+- How:
+  - Add `EXTERNAL_API_ADMIN_KEY` setting.
+  - Prefer `EXTERNAL_API_ADMIN_KEY`, fallback to `DEV_API_KEYS` if missing.
+  - Log clear warnings when falling back or when no admin token is configured.
+- Status: Completed.
+- Done:
+  - Added `EXTERNAL_API_ADMIN_KEY` to settings and `.env.example`.
+  - Updated external grant logic to use admin key first, then fall back to `DEV_API_KEYS`.
+  - Removed Supabase JWT grant path to avoid user-scoped tokens granting credits.
+
 ## STAYED-LOCAL
 - Pricing config/quote/checkout endpoints (`/api/billing/v2/*`).
 - Paddle JS initialization and checkout script injection (third-party).
@@ -145,3 +159,4 @@
 - Completed Step 3 by adding external credit grants for signup/trial bonuses after local inserts.
 - Completed Step 4 by standardizing grant metadata via shared helper builders.
 - Completed Step 5: ran v2 Paddle simulations, confirmed local `credit_grants`, verified external balance with Supabase JWT, and completed `/pricing` UI smoke check with config/quote 200 responses.
+- Added and completed Step 6 to use `EXTERNAL_API_ADMIN_KEY` for credit grants with fallback to `DEV_API_KEYS`.

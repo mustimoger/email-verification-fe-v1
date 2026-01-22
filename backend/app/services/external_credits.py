@@ -3,12 +3,8 @@ from typing import Any, Dict, Optional
 
 from ..clients.external import CreditTransactionResponse, ExternalAPIClient, ExternalAPIError
 from ..core.settings import get_settings
-from ..core.supabase_jwt import build_supabase_jwt
 
 logger = logging.getLogger(__name__)
-
-ADMIN_ROLE = "admin"
-
 
 def _compact_metadata(payload: Dict[str, Any]) -> Dict[str, Any]:
     cleaned: Dict[str, Any] = {}
@@ -21,6 +17,27 @@ def _compact_metadata(payload: Dict[str, Any]) -> Dict[str, Any]:
             continue
         cleaned[key] = value
     return cleaned
+
+
+def _resolve_admin_token() -> Optional[str]:
+    settings = get_settings()
+    explicit_key = (settings.external_api_admin_key or "").strip()
+    if explicit_key:
+        return explicit_key
+    dev_keys = settings.dev_api_keys
+    if isinstance(dev_keys, str):
+        candidate = dev_keys.strip()
+        if candidate:
+            logger.warning("external_credits.admin_key_fallback", extra={"source": "dev_api_keys"})
+            return candidate
+    elif isinstance(dev_keys, list):
+        for key in dev_keys:
+            candidate = (key or "").strip()
+            if candidate:
+                logger.warning("external_credits.admin_key_fallback", extra={"source": "dev_api_keys"})
+                return candidate
+    logger.error("external_credits.admin_key_missing")
+    return None
 
 
 def build_purchase_grant_metadata(
@@ -89,17 +106,9 @@ async def grant_external_credits(
     metadata: Optional[Dict[str, Any]] = None,
 ) -> Optional[CreditTransactionResponse]:
     settings = get_settings()
-    try:
-        token = build_supabase_jwt(
-            user_id=user_id,
-            role=ADMIN_ROLE,
-            ttl_seconds=settings.external_api_jwt_ttl_seconds,
-        )
-    except Exception as exc:  # noqa: BLE001
-        logger.error(
-            "external_credits.token_failed",
-            extra={"user_id": user_id, "error": str(exc)},
-        )
+    token = _resolve_admin_token()
+    if not token:
+        logger.error("external_credits.token_failed", extra={"user_id": user_id, "error": "missing_admin_key"})
         return None
 
     client = ExternalAPIClient(

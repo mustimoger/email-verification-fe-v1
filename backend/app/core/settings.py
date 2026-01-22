@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     supabase_anon_key: Optional[str] = None
     supabase_auth_cookie_name: str
     external_api_jwt_ttl_seconds: Optional[int] = None
+    external_api_admin_key: Optional[str] = None
 
     database_url: Optional[str] = None
 
