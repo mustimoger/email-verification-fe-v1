@@ -246,12 +246,31 @@ export default function PricingV2Client() {
   const activeQuote = quotes[activePlan];
   const paygTotals = displayTotalsByPlan.payg;
 
+  const discountOverrides = useMemo(() => {
+    const metadata = config?.pricing.metadata;
+    if (!metadata || typeof metadata !== "object") return null;
+    const raw = (metadata as { discounts?: Record<string, unknown> }).discounts;
+    if (!raw || typeof raw !== "object") return null;
+    const monthlyRaw = (raw as Record<string, unknown>).monthly_percent ?? (raw as Record<string, unknown>).monthlyPercent;
+    const annualRaw = (raw as Record<string, unknown>).annual_percent ?? (raw as Record<string, unknown>).annualPercent;
+    const monthly = Number(monthlyRaw);
+    const annual = Number(annualRaw);
+    const result: { monthly?: number; annual?: number } = {};
+    if (Number.isFinite(monthly) && monthly > 0) result.monthly = Math.round(monthly);
+    if (Number.isFinite(annual) && annual > 0) result.annual = Math.round(annual);
+    return Object.keys(result).length ? result : null;
+  }, [config?.pricing.metadata]);
+
   const savingsByPlan = useMemo(() => {
     return {
-      monthly: calculateSavingsPercent(paygTotals?.displayTotal ?? null, displayTotalsByPlan.monthly?.displayTotal ?? null),
-      annual: calculateSavingsPercent(paygTotals?.displayTotal ?? null, displayTotalsByPlan.annual?.displayTotal ?? null),
+      monthly:
+        discountOverrides?.monthly ??
+        calculateSavingsPercent(paygTotals?.displayTotal ?? null, displayTotalsByPlan.monthly?.displayTotal ?? null),
+      annual:
+        discountOverrides?.annual ??
+        calculateSavingsPercent(paygTotals?.displayTotal ?? null, displayTotalsByPlan.annual?.displayTotal ?? null),
     };
-  }, [displayTotalsByPlan, paygTotals]);
+  }, [discountOverrides, displayTotalsByPlan, paygTotals]);
 
   const pricingError = quoteError || configError;
   const quantityMessage = buildQuantityMessage(config, quantityValue);

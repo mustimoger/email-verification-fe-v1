@@ -171,7 +171,7 @@ async def quote_pricing_v2(payload: PricingQuoteRequest) -> PricingQuoteResponse
         _validate_mode_interval(payload.mode, payload.interval)
         validate_quantity_v2(payload.quantity, config)
         tier = select_pricing_tier_v2(payload.quantity, payload.mode, payload.interval, config)
-        totals = compute_pricing_totals_v2(payload.quantity, tier)
+        totals = compute_pricing_totals_v2(payload.quantity, tier, config)
     except PricingValidationError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
     except Exception as exc:  # noqa: BLE001
@@ -348,8 +348,20 @@ async def create_transaction_v2(
         logger.error("pricing_v2.transaction_validation_failed", extra={"error": str(exc)})
         raise HTTPException(status_code=500, detail="Pricing unavailable") from exc
 
-    totals = compute_pricing_totals_v2(payload.quantity, tier)
-    items = [TransactionItem(price_id=tier.paddle_price_id, quantity=totals.units)]
+    totals = compute_pricing_totals_v2(payload.quantity, tier, config)
+    items = [TransactionItem(price_id=tier.paddle_price_id, quantity=totals.base_units)]
+    increment_price_id = tier.increment_price_id
+    if totals.increment_units > 0:
+        if not increment_price_id:
+            logger.error(
+                "pricing_v2.increment_price_missing",
+                extra={"price_id": tier.paddle_price_id, "quantity": payload.quantity},
+            )
+            raise PricingValidationError(
+                {"message": "Increment pricing not configured", "code": "increment_price_missing"},
+                status_code=500,
+            )
+        items.append(TransactionItem(price_id=increment_price_id, quantity=totals.increment_units))
     discount_id: Optional[str] = None
     if totals.rounding_adjustment_cents != 0:
         description = _rounding_description(config.metadata, totals.rounding_adjustment_cents)

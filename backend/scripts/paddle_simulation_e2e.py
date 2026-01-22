@@ -313,8 +313,7 @@ def _build_transaction_payload(
     transaction_id: str,
     customer_id: Optional[str],
     user_id: str,
-    price_id: str,
-    quantity: int,
+    items: List[Dict[str, Any]],
     amount: Optional[int],
     currency: Optional[str],
     billed_at: str,
@@ -322,7 +321,7 @@ def _build_transaction_payload(
 ) -> Dict[str, Any]:
     transaction: Dict[str, Any] = {
         "id": transaction_id,
-        "items": [{"price_id": price_id, "quantity": quantity}],
+        "items": items,
         "custom_data": {"supabase_user_id": user_id, "e2e_run_id": run_id},
         "billed_at": billed_at,
     }
@@ -431,27 +430,31 @@ async def run_flow(args: argparse.Namespace) -> int:
             quantity,
             config_v2,
         )
-        totals = compute_pricing_totals_v2(quantity, tier)
+        totals = compute_pricing_totals_v2(quantity, tier, config_v2)
         multiplier = 1
         if tier.mode == "subscription" and tier.interval == "year":
             multiplier = _resolve_annual_multiplier(config_v2)
         expected_credits = tier.credits_per_unit * totals.units * multiplier
         amount = _decimal_to_cents(totals.rounded_total)
         currency = tier.currency
-        price_id = tier.paddle_price_id
-        item_quantity = totals.units
+        increment_price_id = tier.increment_price_id
+        if totals.increment_units > 0 and not increment_price_id:
+            raise RuntimeError("Tier is missing increment_price_id for incremented quantity")
+        items = [{"price_id": tier.paddle_price_id, "quantity": totals.base_units}]
+        if totals.increment_units > 0 and increment_price_id:
+            items.append({"price_id": increment_price_id, "quantity": totals.increment_units})
         checkout_payload = PricingTransactionRequest(
             quantity=quantity,
             mode=mode,
             interval=interval,
-            price_id=price_id,
+            price_id=tier.paddle_price_id,
             custom_data={"e2e_run_id": run_id},
         )
         logger.info(
             "paddle_simulation_e2e.transaction.start",
             extra={
                 "user_id": user_id,
-                "price_id": price_id,
+                "price_id": tier.paddle_price_id,
                 "quantity": quantity,
                 "units": totals.units,
                 "mode": mode,
@@ -472,8 +475,7 @@ async def run_flow(args: argparse.Namespace) -> int:
         transaction_id=transaction_id,
         customer_id=customer_id,
         user_id=user_id,
-        price_id=price_id,
-        quantity=item_quantity,
+        items=items if pricing_version == "v2" else [{"price_id": price_id, "quantity": item_quantity}],
         amount=amount,
         currency=currency,
         billed_at=billed_at,

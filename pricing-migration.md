@@ -207,6 +207,8 @@
 - Added Step 6 to use `EXTERNAL_API_ADMIN_KEY` for credit grants with fallback to `DEV_API_KEYS`, and validated via direct grant + full UI checkout after backend restart.
 - Added Step 7 to track fixing the `/pricing` slider position vs. selected credits mismatch.
 - Completed Step 7 by aligning slider tick labels to the linear slider scale so displayed credits match the thumb position.
+- Added Step 12 to re-verify pricing alignment across Paddle and the `/pricing` UI against FINAL docs.
+- Completed Step 12: verified payg + monthly tiers and Paddle prices match FINAL; annual tiers + Paddle prices still reflect monthly-equivalent amounts, causing annual underpricing vs FINAL.
 
 ### Step 8 - Annual subscription UI checkout validation
 - What: Run full `/pricing` annual subscription checkout and verify Paddle + Supabase updates.
@@ -233,3 +235,109 @@
 - Done:
   - Added a guard in the webhook item parsing loop to skip items where `price.type === "custom"` and log `billing.webhook.skip_noncredit_item`.
   - This prevents rounding-adjustment items from causing `price_mapping_missing` and allows the credit grant flow to proceed.
+
+### Step 10 - Verify pricing strategy alignment (FINAL config)
+- What: Confirm pricing strategy matches `boltroute_pricing_config_FINAL.json` and `boltroute_pricing_FINAL.md`.
+- Where: Paddle catalog/prices, `/pricing` UI, and plan tiers (one-time, monthly, annual).
+- Why: Ensure end-user pricing, billing cadence, and credit mappings reflect the final pricing spec.
+- How: Compare config + docs with runtime pricing config, Paddle price IDs/amounts, and UI displays.
+- Status: Completed (annual mismatch found).
+- Done:
+  - Verified Supabase pricing config matches `boltroute_pricing_config_FINAL.json` (min/max, step size 1000, free trial 100, display prices, discounts).
+  - Verified billing tiers (payg + monthly) align with FINAL pricing per email and rounding.
+  - Verified `/pricing` payg volume pricing cards match display prices from config.
+  - Found an annual pricing mismatch:
+    - Paddle annual unit prices are set to the monthly discounted rate (e.g., $2.96 per 1k), but billing is yearly.
+    - `/pricing` annual UI reflects this (e.g., $1/month and $6/year for 2k), which conflicts with FINAL doc ($6/month, ~$71/year).
+    - Current system grants 12× credits for annual, so annual pricing is effectively ~12× cheaper than intended.
+- Missing / Issue:
+  - Annual pricing needs correction to charge the annual total (monthly discounted price × 12) while keeping the 12× annual credit multiplier.
+
+### Step 11 - Fix annual pricing to match FINAL strategy
+- What: Update annual subscription pricing to match FINAL doc (monthly discounted price × 12 billed annually).
+- Where: Paddle annual prices + synced `billing_pricing_tiers_v2` entries.
+- Why: Current annual pricing is undercharged by ~12× compared to `boltroute_pricing_FINAL.md`.
+- How: Update Paddle annual unit amounts to `payg_price_per_email * 0.8 * 12` per 1k credits, re-sync tiers, and verify UI quotes.
+- Status: Pending.
+
+### Step 12 - Re-verify pricing alignment across Paddle + UI
+- What: Confirm pricing strategy matches `boltroute_pricing_config_FINAL.json` and `boltroute_pricing_FINAL.md`.
+- Where: Paddle prices, `/pricing` UI, and pricing tiers (one-time, monthly, annual).
+- Why: Ensure current pricing behavior and UI displays remain aligned after recent changes.
+- How: Compare FINAL docs with Supabase pricing config/tiers, Paddle price amounts, and `/pricing` UI output.
+- Status: Completed (annual mismatch persists).
+- Done:
+  - Verified `billing_pricing_config_v2` matches FINAL config (pricing_version `4.0-FINAL`, `min_volume=2000`, `max_volume=10000000`, `step_size=1000`, `free_trial_credits=100`, display prices for payg/monthly/annual monthly equiv).
+  - Verified payg + monthly tiers in `billing_pricing_tiers_v2` match FINAL formulas (`unit_amount` equals `base_price_per_email * 1000 * multiplier`).
+  - Verified Paddle payg prices use one-time billing with unit amounts that match tiers; monthly subscription prices use monthly billing with unit amounts that match tiers.
+  - Verified `/pricing` uses `billingApi.getQuoteV2()` for totals and renders annual monthly-equivalent via `resolveDisplayTotals` (annual total divided by 12).
+- Missing / Issue:
+  - Annual tiers + Paddle annual prices are set to monthly-equivalent unit amounts (0.8× PAYG per 1k), not annual totals (0.8× PAYG per 1k × 12). This undercharges annual plans by ~12× versus FINAL and causes `/pricing` annual totals to show ~$6/year for 2k (FINAL expects $71.04/year).
+
+## New pricing update (pricing.csv supersedes FINAL)
+- New source of truth: `pricing.csv` (one-time, monthly, annual totals at anchor volumes).
+- Pricing must be linearly interpolated per 1,000 credits between anchors, then **floored** to whole dollars (no cents).
+- Minimum purchase remains 2,000; 2,000–10,000 uses the 10,000–25,000 slope (linear extrapolation down).
+- Paddle must use the **segment base + increment** model (two price items per purchase/renewal) to avoid thousands of prices.
+- UI must remain unchanged; it should display annual monthly-equivalent totals, with savings vs one-time (30% monthly, 50% annual) derived from totals.
+
+### Step 13 - Define interpolated pricing curve & metadata (pricing.csv)
+- What: Store anchor totals and interpolation rules for payg/month/annual, and update display prices for the volume cards.
+- Where: `billing_pricing_config_v2.metadata` (anchors + interpolation rules + display_prices).
+- Why: Avoid hardcoding values in code and keep pricing data-driven.
+- How:
+  - Load `pricing.csv` anchors into config metadata for all three plans.
+  - Add interpolation metadata (step size 1,000, floor rounding, 2k–10k slope = 10k–25k slope).
+  - Update `display_prices.payg` to match CSV anchors for the UI volume table.
+- Status: Completed.
+- Done:
+  - Replaced `billing_pricing_config_v2.metadata` with the new `pricing.csv` anchors for payg/monthly/annual.
+  - Recorded interpolation rules (1,000 step, floor rounding, 2k–10k extrapolated from 10k–25k slope).
+  - Updated `display_prices.payg` to match the new anchor totals for the UI volume grid.
+  - Removed the old FINAL pricing metadata and discount config to avoid stale pricing setups.
+  - Updated `rounding_rule` to `floor_whole_dollar` to align future computation with floor rounding.
+
+### Step 14 - Implement segment base + increment pricing model (backend + UI rounding)
+- What: Compute totals using segment base + per‑1k increment, floor to whole dollars, and build Paddle transactions with base+increment items. Ensure UI monthly‑equivalent uses floor rounding.
+- Where: `backend/app/services/pricing_v2.py`, `backend/app/api/billing_v2.py`, `backend/app/api/billing.py` (webhook), `app/pricing/pricing-quote-utils.ts`, tests.
+- Why: Match `pricing.csv` across UI, Supabase, and Paddle without creating thousands of prices or showing cents.
+- How:
+  - Store base/increment price IDs in tier metadata; keep anchors in config metadata.
+  - Compute base + increment totals from `pricing.csv` anchors and segment bounds; floor to whole dollars.
+  - Build Paddle transaction items as base price (qty 1) + increment price (qty steps).
+  - Update webhook credit mapping to resolve base/increment price IDs to correct credits.
+  - Change UI monthly‑equivalent calculation to floor (no cents).
+  - Drive UI savings badges from config metadata discounts when provided (30% monthly, 50% annual from `pricing.csv`).
+- Status: Completed.
+- Done:
+  - Implemented anchor‑driven segment pricing and floor rounding using `pricing.csv` metadata.
+  - Added base + increment item construction for Paddle transactions and enforced increment price presence.
+  - Updated webhook credit mapping to handle base vs increment price IDs for v2 tiers.
+  - Switched UI monthly‑equivalent display to floor rounding (no cents).
+  - Pulled savings badge percentages from config metadata discounts when available.
+  - Updated pricing/billing tests and Paddle e2e simulation payloads for base+increment items.
+- Missing / Issue:
+  - Checkout will fail for quantities above a segment minimum until Step 15 syncs increment price IDs into tier metadata.
+
+### Step 15 - Create/Sync Paddle base + increment prices (48 total)
+- What: Create Paddle prices for each segment and plan: base + increment.
+- Where: Paddle catalog (custom_data catalog `pricing_v2`), `backend/scripts/sync_paddle_pricing_v2.py`.
+- Why: Provide price IDs to attach to tiers and use during checkout.
+- How:
+  - Create prices with custom_data: `catalog`, `mode`, `interval`, `min_quantity`, `max_quantity`, `credits_per_unit`, `price_role`.
+  - Sync price IDs into `billing_pricing_tiers_v2` metadata.
+- Status: Pending.
+- Missing / Issue:
+  - No implementation yet.
+
+### Step 16 - Validation (unit + integration)
+- What: Verify interpolation, rounding, and Paddle checkout totals.
+- Where: `backend/tests`, `backend/scripts/paddle_simulation_e2e.py`, `/pricing` UI.
+- Why: Ensure pricing matches `pricing.csv` across UI, Supabase, and Paddle.
+- How:
+  - Update tests for new pricing model.
+  - Run pricing quote and checkout simulations (payg/monthly/annual).
+  - Confirm no cents in UI totals and Paddle totals.
+- Status: Pending.
+- Missing / Issue:
+  - No implementation yet.

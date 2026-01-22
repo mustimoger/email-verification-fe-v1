@@ -26,7 +26,7 @@ from ..services.billing_plans import (
 )
 from ..services.credit_grants import upsert_credit_grant
 from ..services.external_credits import build_purchase_grant_metadata, grant_external_credits
-from ..services.pricing_v2 import get_pricing_tiers_by_price_ids_v2
+from ..services.pricing_v2 import PricingTierV2, get_pricing_tiers_by_price_ids_v2
 from ..services import supabase_client
 from ..services.paddle_store import get_paddle_ids, get_user_id_by_customer_id, upsert_paddle_ids
 
@@ -88,6 +88,14 @@ def _parse_int(value: Any) -> Optional[int]:
         return int(value)
     except Exception:  # noqa: BLE001
         return None
+
+
+def _resolve_v2_price_role(tier: PricingTierV2, price_id: str) -> Optional[str]:
+    if price_id == tier.paddle_price_id:
+        return "base"
+    if tier.increment_price_id and price_id == tier.increment_price_id:
+        return "increment"
+    return None
 
 
 def _extract_customer_items(payload: Any) -> list[Any]:
@@ -515,8 +523,15 @@ async def paddle_webhook(request: Request):
             if credits_per_unit <= 0:
                 missing_price_ids.append(price_id)
                 continue
+            role = _resolve_v2_price_role(v2_tier, price_id)
+            if not role:
+                missing_price_ids.append(price_id)
+                continue
             multiplier = 12 if v2_tier.mode == "subscription" and v2_tier.interval == "year" else 1
-            total_credits += credits_per_unit * qty_int * multiplier
+            if role == "base":
+                total_credits += v2_tier.min_quantity * qty_int * multiplier
+            else:
+                total_credits += credits_per_unit * qty_int * multiplier
             continue
         credits_per_unit = price_to_credits.get(price_id)
         if credits_per_unit is None:

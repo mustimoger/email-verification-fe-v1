@@ -52,14 +52,14 @@ export function validateQuantity(quantity: number | null, config: PricingConfigV
 export function resolveDisplayTotals(params: { roundedTotal: number; interval: PricingIntervalV2 }): DisplayTotals {
   const rounded = Number.isFinite(params.roundedTotal) ? params.roundedTotal : 0;
   if (params.interval === "year") {
-    const annualTotal = Math.round(rounded);
-    const monthlyEquivalent = Math.round(annualTotal / 12);
+    const annualTotal = Math.floor(rounded);
+    const monthlyEquivalent = Math.floor(annualTotal / 12);
     return { displayTotal: monthlyEquivalent, annualTotal, intervalLabel: "/month" };
   }
   if (params.interval === "month") {
-    return { displayTotal: Math.round(rounded), intervalLabel: "/month" };
+    return { displayTotal: Math.floor(rounded), intervalLabel: "/month" };
   }
-  return { displayTotal: Math.round(rounded), intervalLabel: "" };
+  return { displayTotal: Math.floor(rounded), intervalLabel: "" };
 }
 
 export function calculateSavingsPercent(paygTotal: number | null, selectedTotal: number | null): number | null {

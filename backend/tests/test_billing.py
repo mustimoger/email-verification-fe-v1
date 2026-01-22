@@ -42,6 +42,14 @@ def env(monkeypatch):
     get_paddle_config.cache_clear()
 
 
+@pytest.fixture(autouse=True)
+def disable_external_credit_grants(monkeypatch):
+    async def fake_grant_external_credits(**_kwargs):
+        return None
+
+    monkeypatch.setattr(billing_module, "grant_external_credits", fake_grant_external_credits)
+
+
 def _build_app(monkeypatch, fake_user, overrides=None):
     app = FastAPI()
     app.include_router(billing_router)
@@ -260,20 +268,25 @@ def test_webhook_grants_v2_annual_multiplier(monkeypatch):
     tier = PricingTierV2(
         mode="subscription",
         interval="year",
-        min_quantity=2000,
-        max_quantity=10000,
+        min_quantity=10000,
+        max_quantity=25000,
         unit_amount=Decimal("0.01"),
         currency="USD",
         credits_per_unit=1000,
-        paddle_price_id="pri_annual",
-        metadata={},
+        paddle_price_id="pri_annual_base",
+        metadata={"increment_price_id": "pri_annual_inc"},
         sort_order=1,
+        increment_price_id="pri_annual_inc",
     )
 
     monkeypatch.setattr(billing_module, "verify_webhook", fake_verify_webhook)
     monkeypatch.setattr(billing_module, "record_billing_event", fake_record_event)
     monkeypatch.setattr(billing_module, "upsert_credit_grant", fake_upsert_credit_grant)
-    monkeypatch.setattr(billing_module, "get_pricing_tiers_by_price_ids_v2", lambda price_ids: {"pri_annual": tier})
+    monkeypatch.setattr(
+        billing_module,
+        "get_pricing_tiers_by_price_ids_v2",
+        lambda price_ids: {"pri_annual_base": tier, "pri_annual_inc": tier},
+    )
     monkeypatch.setattr(billing_module, "get_billing_plans_by_price_ids", lambda price_ids: [])
 
     app = _build_app(monkeypatch, lambda: AuthContext(user_id="u", claims={}, token="t"))
@@ -285,14 +298,17 @@ def test_webhook_grants_v2_annual_multiplier(monkeypatch):
         "data": {
             "transaction": {
                 "id": "txn_annual",
-                "items": [{"price_id": "pri_annual", "quantity": 2}],
+                "items": [
+                    {"price_id": "pri_annual_base", "quantity": 1},
+                    {"price_id": "pri_annual_inc", "quantity": 2},
+                ],
                 "custom_data": {"supabase_user_id": "user-annual"},
             }
         },
     }
     resp = client.post("/api/billing/webhook", json=payload, headers={"Paddle-Signature": "ts=1;v1=valid"})
     assert resp.status_code == 200, resp.text
-    assert grant_call["credits_granted"] == 24000
+    assert grant_call["credits_granted"] == 144000
     assert grant_call["user_id"] == "user-annual"
 
 

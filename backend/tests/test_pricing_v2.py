@@ -26,8 +26,15 @@ def pricing_config():
         max_volume=10000000,
         step_size=1000,
         free_trial_credits=None,
-        rounding_rule="half_up",
-        metadata={},
+        rounding_rule="floor_whole_dollar",
+        metadata={
+            "anchors": {
+                "monthly": {
+                    "10000": 37,
+                    "25000": 56,
+                }
+            }
+        },
     )
 
 
@@ -36,25 +43,32 @@ def pricing_tier():
     return PricingTierV2(
         mode="subscription",
         interval="month",
-        min_quantity=2000,
-        max_quantity=10000,
-        unit_amount=Decimal("3.145"),
+        min_quantity=10000,
+        max_quantity=25000,
+        unit_amount=Decimal("1.2667"),
         currency="USD",
         credits_per_unit=1000,
         paddle_price_id="pri_test",
-        metadata={"paddle_custom_data": {"unit_amount_cents": 315}},
+        metadata={
+            "paddle_custom_data": {"unit_amount_cents": 3700},
+            "increment_price_id": "pri_inc",
+            "increment_unit_amount_cents": 127,
+        },
         sort_order=1,
+        increment_price_id="pri_inc",
     )
 
 
-def test_compute_pricing_totals_rounding(pricing_tier):
-    totals = compute_pricing_totals_v2(10000, pricing_tier)
-    assert totals.units == 10
-    assert totals.raw_total == Decimal("31.4500")
-    assert totals.rounded_total == Decimal("31")
-    assert totals.paddle_total == Decimal("31.50")
-    assert totals.rounding_adjustment == Decimal("-0.50")
-    assert totals.rounding_adjustment_cents == -50
+def test_compute_pricing_totals_rounding(pricing_tier, pricing_config):
+    totals = compute_pricing_totals_v2(18000, pricing_tier, pricing_config)
+    assert totals.base_units == 1
+    assert totals.increment_units == 8
+    assert totals.units == 18
+    assert totals.raw_total == Decimal("47.1333")
+    assert totals.rounded_total == Decimal("47")
+    assert totals.paddle_total == Decimal("47.16")
+    assert totals.rounding_adjustment == Decimal("-0.16")
+    assert totals.rounding_adjustment_cents == -16
 
 
 def test_quote_rejects_invalid_step(monkeypatch, pricing_config, pricing_tier):
@@ -77,8 +91,8 @@ def test_quote_returns_totals(monkeypatch, pricing_config, pricing_tier):
     resp = client.post("/api/billing/v2/quote", json={"quantity": 10000, "mode": "subscription", "interval": "month"})
     assert resp.status_code == 200, resp.text
     data = resp.json()
-    assert data["rounded_total"] == "31"
-    assert data["rounding_adjustment_cents"] == -50
+    assert data["rounded_total"] == "37"
+    assert data["rounding_adjustment_cents"] == 0
     assert data["tier"]["paddle_price_id"] == "pri_test"
 
 
@@ -101,6 +115,12 @@ def test_transaction_builds_items(monkeypatch, pricing_config, pricing_tier):
 
             return Obj()
 
+        async def list_discounts(self, code=None, status=None, mode=None):
+            return {"data": []}
+
+        async def create_discount(self, payload):
+            return {"data": {"id": "dsc_test"}}
+
     def fake_user():
         return AuthContext(user_id="user-1", claims={}, token="t")
 
@@ -122,7 +142,9 @@ def test_transaction_builds_items(monkeypatch, pricing_config, pricing_tier):
     assert resp.status_code == 200, resp.text
     payload = captured["payload"]
     assert payload["items"][0]["price_id"] == "pri_test"
-    assert payload["items"][0]["quantity"] == 20
+    assert payload["items"][0]["quantity"] == 1
+    assert payload["items"][1]["price_id"] == "pri_inc"
+    assert payload["items"][1]["quantity"] == 10
     assert payload["custom_data"]["supabase_user_id"] == "user-1"
 
 
@@ -161,13 +183,15 @@ def test_transaction_applies_negative_adjustment_with_discount(monkeypatch, pric
 
     resp = client.post(
         "/api/billing/v2/transactions",
-        json={"quantity": 10000, "mode": "subscription", "interval": "month"},
+        json={"quantity": 18000, "mode": "subscription", "interval": "month"},
     )
     assert resp.status_code == 200, resp.text
     payload = captured["payload"]
-    assert len(payload["items"]) == 1
+    assert len(payload["items"]) == 2
     assert payload["items"][0]["price_id"] == "pri_test"
-    assert payload["items"][0]["quantity"] == 10
+    assert payload["items"][0]["quantity"] == 1
+    assert payload["items"][1]["price_id"] == "pri_inc"
+    assert payload["items"][1]["quantity"] == 8
     assert payload["discount_id"] == "dsc_test"
 
 
@@ -176,14 +200,19 @@ def test_transaction_adds_fee_item_for_positive_adjustment(monkeypatch, pricing_
     fee_tier = PricingTierV2(
         mode="subscription",
         interval="month",
-        min_quantity=2000,
-        max_quantity=10000,
-        unit_amount=Decimal("0.262"),
+        min_quantity=10000,
+        max_quantity=25000,
+        unit_amount=Decimal("1.2667"),
         currency="USD",
         credits_per_unit=1000,
         paddle_price_id="pri_test",
-        metadata={"paddle_custom_data": {"unit_amount_cents": 26}},
+        metadata={
+            "paddle_custom_data": {"unit_amount_cents": 2600},
+            "increment_price_id": "pri_inc",
+            "increment_unit_amount_cents": 0,
+        },
         sort_order=1,
+        increment_price_id="pri_inc",
     )
 
     class FakeClient:
@@ -225,7 +254,7 @@ def test_transaction_adds_fee_item_for_positive_adjustment(monkeypatch, pricing_
     assert len(payload["items"]) == 2
     fee_item = payload["items"][1]
     assert fee_item["price"]["product_id"] == "pro_test"
-    assert fee_item["price"]["unit_price"]["amount"] == "40"
+    assert fee_item["price"]["unit_price"]["amount"] == "1100"
 
 
 def test_config_endpoint_returns_checkout_metadata(monkeypatch, pricing_config):
