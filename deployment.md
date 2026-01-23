@@ -116,6 +116,7 @@
   - Fix the TypeScript type error in `app/lib/integrations-catalog.ts` exposed by the production build.
   - Update the Supabase catalog query cast to go through `unknown` so the build type-check passes.
   - Wrap `useSearchParams()` usage for pricing/sign-in/sign-up routes with Suspense boundaries to satisfy Next.js CSR bailout rules.
+  - Commit missing redirect and embed helper modules so the deploy build can resolve their imports.
   - Re-run the Deploy workflow and confirm the deploy job completes successfully.
 
 ### Step 10 - Post-deploy validation
@@ -238,6 +239,7 @@
   - **New error:** Production build fails with a TypeScript error in `app/lib/integrations-catalog.ts` (cast to `PromiseLike` rejected; TS suggests casting through `unknown` first).
   - **Follow-on error:** `SupabaseClient` is not assignable to `SupabaseCatalogClient` because the custom query type expects `eq`/`order` on the value returned by `from(...)`.
   - **Next.js error:** `useSearchParams()` requires Suspense boundaries for `/pricing`, `/pricing/embed`, `/signin`, and `/signup` during prerender.
+  - **Module error:** Build failed with `Module not found` for `../lib/redirect-utils` and `./pricing-embed-client` because the files existed locally but were not committed, so the deploy release was missing them.
 - **Action taken:** Updated `deploy/remote-deploy.sh` to install dev dependencies for the build and switch to production afterward.
 - **Why:** `next.config.ts` requires `typescript` during the build, but runtime should stay production-grade.
 - **How:** Use `npm ci --include=dev`, run `NODE_ENV=production npm run build`, then export `NODE_ENV=production` for subsequent steps.
@@ -253,8 +255,14 @@
 - **Action taken (follow-up):** Added Suspense boundaries for the pricing embed, pricing page, sign-in, and sign-up routes.
 - **Why:** `useSearchParams()` requires a Suspense boundary when prerendering to avoid CSR bailout errors.
 - **How:** Wrapped client components in `<Suspense>` with a minimal loading fallback.
+- **Action taken (follow-up):** Prepared to commit missing redirect/embed helper modules referenced in auth and pricing routes.
+- **Why:** Deploy releases are created from the repo, and missing files cause `Module not found` during build.
+- **How:** Add `app/lib/redirect-utils.ts`, `app/lib/redirect-storage.ts`, `app/lib/embed-config.ts`, and `app/pricing/embed/pricing-embed-client.tsx` to Git.
+- **Action taken (follow-up):** Added the missing helper modules to Git so deploy releases include them.
+- **Why:** The deploy build runs from the release directory created from Git; missing files break imports during `next build`.
+- **How:** Staged the missing files and verified the build succeeds locally.
 - **Tests:** Ran `npx tsx tests/integrations-catalog.test.ts` with `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and `NEXT_PUBLIC_API_BASE_URL` set; all tests passed.
-- **Build check:** `npm run build` now succeeds.
+- **Build check:** `npm run build` succeeds.
 - **Status:** Fixes applied; deploy workflow re-run pending (not completed yet).
 
 ### Step 10 - Post-deploy validation (partial; blocked)
