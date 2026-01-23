@@ -1,0 +1,125 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: deploy-main
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Run frontend tests
+        run: |
+          npm run test:history
+          npm run test:auth-guard
+          npm run test:overview
+          npm run test:account-purchases
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run backend tests
+        run: |
+          python -m venv .venv
+          source .venv/bin/activate
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+          pytest backend/tests
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: test
+    env:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+      APP_ROOT: /var/www/boltroute-app
+      APP_ENV_REMOTE: /var/www/boltroute-app/shared/.env.local
+      BACKEND_ENV_REMOTE: /var/www/boltroute-app/shared/backend.env
+      BACKEND_VENV_PATH: /var/www/boltroute-app/shared/backend-venv
+      FRONTEND_SERVICE: boltroute-frontend
+      BACKEND_SERVICE: boltroute-backend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Start SSH agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
+
+      - name: Trust deploy host key
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H "${DEPLOY_HOST}" >> ~/.ssh/known_hosts
+
+      - name: Prepare release id
+        run: echo "RELEASE_ID=$(date +%Y%m%d%H%M%S)" >> "$GITHUB_ENV"
+
+      - name: Create release directory
+        run: |
+          ssh "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "mkdir -p ${APP_ROOT}/releases/${RELEASE_ID} ${APP_ROOT}/shared"
+
+      - name: Upload env files
+        env:
+          APP_ENV_LOCAL: ${{ secrets.APP_ENV_LOCAL }}
+          BACKEND_ENV: ${{ secrets.BACKEND_ENV }}
+        run: |
+          set -euo pipefail
+          app_env_file="$(mktemp)"
+          backend_env_file="$(mktemp)"
+          printf '%s' "${APP_ENV_LOCAL}" > "${app_env_file}"
+          printf '%s' "${BACKEND_ENV}" > "${backend_env_file}"
+          scp "${app_env_file}" "${DEPLOY_USER}@${DEPLOY_HOST}:${APP_ENV_REMOTE}"
+          scp "${backend_env_file}" "${DEPLOY_USER}@${DEPLOY_HOST}:${BACKEND_ENV_REMOTE}"
+          ssh "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "chmod 600 ${APP_ENV_REMOTE} ${BACKEND_ENV_REMOTE}"
+          rm -f "${app_env_file}" "${backend_env_file}"
+
+      - name: Sync release
+        run: |
+          rsync -a --delete \
+            --exclude .git \
+            --exclude .github \
+            --exclude node_modules \
+            --exclude .next \
+            --exclude .env \
+            --exclude .env.* \
+            --exclude .env.local \
+            --exclude backend/.env \
+            --exclude backend/.venv \
+            --exclude .pytest_cache \
+            --exclude .qa \
+            --exclude .tmp \
+            --exclude key-value-pair.txt \
+            ./ "${DEPLOY_USER}@${DEPLOY_HOST}:${APP_ROOT}/releases/${RELEASE_ID}/"
+
+      - name: Deploy release
+        run: |
+          ssh "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "APP_ROOT='${APP_ROOT}' \
+            RELEASE_ID='${RELEASE_ID}' \
+            APP_ENV_FILE='${APP_ENV_REMOTE}' \
+            BACKEND_ENV_FILE='${BACKEND_ENV_REMOTE}' \
+            BACKEND_VENV_PATH='${BACKEND_VENV_PATH}' \
+            FRONTEND_SERVICE='${FRONTEND_SERVICE}' \
+            BACKEND_SERVICE='${BACKEND_SERVICE}' \
+            bash '${APP_ROOT}/releases/${RELEASE_ID}/deploy/remote-deploy.sh'"
