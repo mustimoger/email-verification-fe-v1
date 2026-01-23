@@ -434,10 +434,10 @@ export default function PricingV2Client({ variant = "full", onCtaClick }: Pricin
         )}
 
         <div
-          className={`relative overflow-hidden ${isEmbed ? 'rounded-2xl px-4 py-8 sm:px-6' : 'rounded-[28px] px-6 py-10 sm:px-10'} border border-[var(--pricing-border)] bg-[var(--pricing-card)] shadow-[var(--pricing-shadow)] ${transitionClass}`}
+          className={`relative overflow-hidden ${isEmbed ? 'rounded-2xl px-4 pt-8 pb-6 sm:px-6' : 'rounded-[28px] px-6 py-10 sm:px-10'} border border-[var(--pricing-border)] bg-[var(--pricing-card)] shadow-[var(--pricing-shadow)] ${transitionClass}`}
           style={{ transition: "all 0.7s cubic-bezier(0.16, 1, 0.3, 1)" }}
         >
-          <div className="mb-10 text-center">
+          <div className={`${isEmbed ? 'mb-6' : 'mb-10'} text-center`}>
             <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-[var(--pricing-border)] bg-[var(--pricing-accent-soft)] px-4 py-2 text-xs font-semibold tracking-[0.2em] text-[var(--pricing-accent)]">
               <span className="h-2 w-2 rounded-full bg-[var(--pricing-accent)]" />
               SIMPLE, TRANSPARENT PRICING
@@ -486,8 +486,8 @@ export default function PricingV2Client({ variant = "full", onCtaClick }: Pricin
             })}
           </div>
 
-          <div className={`mt-10 grid gap-10 ${isEmbed ? 'md:grid-cols-[1fr_360px]' : 'lg:grid-cols-[1fr_360px]'}`}>
-            <div className="space-y-8">
+          <div className={`${isEmbed ? 'mt-6 gap-6' : 'mt-10 gap-10'} grid ${isEmbed ? 'md:grid-cols-[1fr_360px]' : 'lg:grid-cols-[1fr_360px]'}`}>
+            <div className={isEmbed ? 'space-y-6' : 'space-y-8'}>
               <div>
                 <div className="flex flex-wrap items-center justify-between gap-4">
                   <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">
