@@ -68,6 +68,46 @@ export default function PricingEmbedClient() {
     };
   }, []);
 
+  useLayoutEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.top === window) return;
+    if (!allowedOrigins.length) return;
+
+    const paramOrigin = resolveOrigin(searchParams.get(EMBED_PARENT_ORIGIN_PARAM));
+    const referrerOrigin = resolveOrigin(document.referrer);
+    const candidates = [paramOrigin, referrerOrigin].filter(
+      (entry): entry is string => Boolean(entry),
+    );
+    const targetOrigin = candidates.find((entry) => allowedOrigins.includes(entry));
+    if (!targetOrigin) return;
+
+    const sendHeight = () => {
+      const height = document.documentElement.scrollHeight;
+      window.parent.postMessage(
+        {
+          type: "pricing_embed_resize",
+          height,
+        },
+        targetOrigin,
+      );
+    };
+
+    sendHeight();
+
+    const observer = new ResizeObserver(() => {
+      sendHeight();
+    });
+
+    observer.observe(document.body);
+
+    const intervalId = setInterval(sendHeight, 500);
+
+    return () => {
+      observer.disconnect();
+      clearInterval(intervalId);
+    };
+  }, [allowedOrigins, searchParams]);
+
   const handleCtaClick = useCallback(
     (payload: PricingCtaPayload) => {
       if (typeof window === "undefined") return;
