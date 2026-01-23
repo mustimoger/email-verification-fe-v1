@@ -31,8 +31,12 @@ ln -sfn "${BACKEND_ENV_FILE}" "${RELEASE_DIR}/backend/.env"
 
 cd "${RELEASE_DIR}"
 
-npm ci --include=dev
+export NODE_ENV=development
+export NPM_CONFIG_PRODUCTION=false
+npm ci
 NODE_ENV=production npm run build
+npm prune --omit=dev
+unset NPM_CONFIG_PRODUCTION
 export NODE_ENV=production
 
 if [ ! -d "${BACKEND_VENV_PATH}" ]; then
