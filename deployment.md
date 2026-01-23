@@ -113,6 +113,7 @@
   - Diagnose the failure from the Deploy job logs and capture the exact error.
   - Update the deploy script to install dev dependencies for build, then switch to production for runtime.
   - Ensure npm does not omit dev dependencies during the build, even if production configs are present; prune dev deps after build.
+  - Fix the TypeScript type error in `app/lib/integrations-catalog.ts` exposed by the production build.
   - Re-run the Deploy workflow and confirm the deploy job completes successfully.
 
 ### Step 10 - Post-deploy validation
@@ -232,12 +233,17 @@
   - **Error:** `next build` failed to load `next.config.ts` because `typescript` was missing.
   - **Cause:** `NODE_ENV=production` is set before `npm ci`, so dev dependencies (including `typescript`) are omitted during the build.
   - **Server inspection:** Latest releases `20260123113632` and `20260123114625` contain the updated deploy script and `node_modules/typescript`, but `.next/BUILD_ID` is missing and no `shared/backend-venv` exists; `current` symlink is absent. This suggests the deploy script still fails before the venv step, likely during the build phase.
+  - **New error:** Production build fails with a TypeScript type error in `app/lib/integrations-catalog.ts` because the Supabase client type does not match the custom query interface.
 - **Action taken:** Updated `deploy/remote-deploy.sh` to install dev dependencies for the build and switch to production afterward.
 - **Why:** `next.config.ts` requires `typescript` during the build, but runtime should stay production-grade.
 - **How:** Use `npm ci --include=dev`, run `NODE_ENV=production npm run build`, then export `NODE_ENV=production` for subsequent steps.
 - **Action taken (follow-up):** Hardened the deploy script to force dev deps during the build and prune afterward.
 - **Why:** Some environments still omit dev dependencies if `production` is set; pruning keeps runtime lean.
 - **How:** Set `NODE_ENV=development` and `NPM_CONFIG_PRODUCTION=false` for `npm ci`, build with `NODE_ENV=production`, then `npm prune --omit=dev` before runtime.
+- **Action taken (follow-up):** Relaxed the integrations catalog client typing to accept the Supabase query builder and cast to a thenable for `await`.
+- **Why:** Supabase query builders are thenable at runtime but not typed as `PromiseLike`, which breaks production builds.
+- **How:** Keep the minimal `select/eq/order` interface and cast the builder to `PromiseLike<{ data; error }>` when awaiting results.
+- **Tests:** Ran `npx tsx tests/integrations-catalog.test.ts` with `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and `NEXT_PUBLIC_API_BASE_URL` set; all tests passed.
 - **Status:** Fix applied; deploy workflow re-run pending (not completed yet).
 
 ### Step 10 - Post-deploy validation (partial; blocked)
