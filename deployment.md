@@ -220,7 +220,7 @@
 - **Why:** Cutover is now handled by the CI/CD workflow.
 - **How:** Pushed commits `9152659`, `dcccc00`, `1d014a3`, `95b550b`, `ea9255a`, and `a8fb475` to `main`, which triggered the Deploy workflow.
 - **Findings:**
-  - **Workflow runs:** `21284133187` (head `9152659`), `21284149267` (head `dcccc00`), `21284716448` (head `1d014a3`), `21284786450` (head `95b550b`), `21285035783` (head `ea9255a`), and `21285205918` (head `a8fb475`) all completed with **failure**.
+  - **Workflow runs:** `21284133187` (head `9152659`), `21284149267` (head `dcccc00`), `21284716448` (head `1d014a3`), `21284786450` (head `95b550b`), `21285035783` (head `ea9255a`), `21285205918` (head `a8fb475`), and `21285878082` (head `9a67190`) all completed with **failure**.
   - **Jobs:** `test` succeeded; `deploy` failed in all runs.
   - **Failing step:** `Deploy release` (job step in the `deploy` job).
   - **Logs:** GitHub API returned `403` for job log download ("Must have admin rights to Repository").
@@ -234,7 +234,7 @@
   - **Failing step:** `npm run build` inside `deploy/remote-deploy.sh`.
   - **Error:** `next build` failed to load `next.config.ts` because `typescript` was missing.
   - **Cause:** `NODE_ENV=production` is set before `npm ci`, so dev dependencies (including `typescript`) are omitted during the build.
-  - **Server inspection:** Latest releases `20260123113632` and `20260123114625` contain the updated deploy script and `node_modules/typescript`, but `.next/BUILD_ID` is missing and no `shared/backend-venv` exists; `current` symlink is absent. This suggests the deploy script still fails before the venv step, likely during the build phase.
+  - **Server inspection:** Latest releases `20260123113632`, `20260123114625`, and `20260123121841` contain the updated deploy script and `node_modules/typescript`, but `.next/BUILD_ID` is missing and no `shared/backend-venv` exists; `current` symlink is absent. This suggests the deploy script still fails before the venv step, likely during the build phase.
   - **New error:** Production build fails with a TypeScript error in `app/lib/integrations-catalog.ts` (cast to `PromiseLike` rejected; TS suggests casting through `unknown` first).
   - **Follow-on error:** `SupabaseClient` is not assignable to `SupabaseCatalogClient` because the custom query type expects `eq`/`order` on the value returned by `from(...)`.
   - **Next.js error:** `useSearchParams()` requires Suspense boundaries for `/pricing`, `/pricing/embed`, `/signin`, and `/signup` during prerender.
