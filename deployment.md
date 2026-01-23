@@ -201,6 +201,12 @@
 - **How:** Removed stale monkeypatch in `backend/tests/test_tasks_limits.py` that referenced a deleted helper.
 - **Status:** Complete.
 
+### Step 9 - Deploy to main (in progress)
+- **What:** Triggered the GitHub Actions deployment on `main`.
+- **Why:** Cutover is now handled by the CI/CD workflow.
+- **How:** Pushed commit `9152659` to `main` which triggers the deploy workflow.
+- **Status:** In progress (awaiting workflow completion).
+
 ## Open items (required before execution)
 - Confirm the current web server (Nginx/Apache/Caddy/other) and how TLS is managed today.
 - Confirm downtime tolerance and rollback expectations for the cutover.
