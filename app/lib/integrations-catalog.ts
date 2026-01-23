@@ -13,26 +13,28 @@ type IntegrationCatalogRow = {
 };
 
 type SupabaseCatalogQuery = {
-  select: (columns: string) => SupabaseCatalogQuery;
   eq: (column: string, value: boolean) => SupabaseCatalogQuery;
   order: (column: string, options: { ascending: boolean }) => SupabaseCatalogQuery;
 };
 
+type SupabaseCatalogSelect = {
+  select: (columns: string) => SupabaseCatalogQuery;
+};
+
 type SupabaseCatalogClient = {
-  from: (table: string) => SupabaseCatalogQuery;
+  from: (table: string) => unknown;
 };
 
 export async function listIntegrationsCatalogWithClient(
   supabase: SupabaseCatalogClient,
 ): Promise<IntegrationOption[]> {
-  const query = supabase
-    .from("integrations_catalog")
+  const query = (supabase.from("integrations_catalog") as SupabaseCatalogSelect)
     .select("id,label,description,icon_url,default_name,external_purpose,sort_order,is_active")
     .eq("is_active", true)
     .order("sort_order", { ascending: true })
     .order("label", { ascending: true });
   // Supabase query builders are thenable at runtime but not typed as PromiseLike.
-  const { data, error } = await (query as PromiseLike<{
+  const { data, error } = await (query as unknown as PromiseLike<{
     data: IntegrationCatalogRow[] | null;
     error: { message: string } | null;
   }>);

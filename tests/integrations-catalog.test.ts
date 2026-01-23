@@ -26,11 +26,6 @@ class FakeQuery implements PromiseLike<QueryResult> {
 
   constructor(private result: QueryResult) {}
 
-  select(columns: string) {
-    this.calls.select = columns;
-    return this;
-  }
-
   eq(column: string, value: boolean) {
     this.calls.eq.push([column, value]);
     return this;
@@ -49,6 +44,15 @@ class FakeQuery implements PromiseLike<QueryResult> {
   }
 }
 
+class FakeSelect {
+  constructor(private query: FakeQuery) {}
+
+  select(columns: string) {
+    this.query.calls.select = columns;
+    return this.query;
+  }
+}
+
 class FakeSupabaseClient {
   lastTable: string | null = null;
   query: FakeQuery;
@@ -59,7 +63,7 @@ class FakeSupabaseClient {
 
   from(table: string) {
     this.lastTable = table;
-    return this.query;
+    return new FakeSelect(this.query);
   }
 }
 

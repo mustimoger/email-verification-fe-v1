@@ -1,11 +1,11 @@
 import { Suspense } from "react";
 
-import PricingV2Client from "./pricing-client";
+import PricingEmbedClient from "./pricing-embed-client";
 
-export default function PricingPage() {
+export default function PricingEmbedPage() {
   return (
     <Suspense fallback={<div className="min-h-screen w-full bg-white" aria-label="Loading pricing" />}>
-      <PricingV2Client />
+      <PricingEmbedClient />
     </Suspense>
   );
 }

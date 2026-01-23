@@ -2,8 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { FormEvent, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { FormEvent, Suspense, useEffect, useMemo, useState } from "react";
 import { Poppins, Roboto } from "next/font/google";
 
 import { useAuth } from "../components/auth-provider";
@@ -11,6 +11,7 @@ import { readEmailConfirmationNotice } from "../lib/auth-notices";
 import { clearRememberedEmail, readRememberedEmail, setRememberedEmail } from "../lib/auth-remember";
 import { OAuthButtons } from "../components/oauth-buttons";
 import { AuthBenefitsCard } from "../components/auth-benefits-card";
+import { buildNextQuery, resolveNextPath } from "../lib/redirect-utils";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -27,9 +28,13 @@ const roboto = Roboto({
 const sfProFamily =
   "SF Pro Display, SF Pro Text, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
 
-export default function SignInV2Page() {
+function SignInContent() {
   const { signIn, requestPasswordReset } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const nextPath = useMemo(() => resolveNextPath(searchParams, "/overview"), [searchParams]);
+  const nextQuery = useMemo(() => buildNextQuery(searchParams.get("next")), [searchParams]);
+  const signupHref = nextQuery ? `/signup${nextQuery}` : "/signup";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -110,7 +115,7 @@ export default function SignInV2Page() {
     } else {
       setRememberedEmail(email);
     }
-    router.push("/overview");
+    router.push(nextPath);
   };
 
   return (
@@ -249,12 +254,20 @@ export default function SignInV2Page() {
             style={{ fontFamily: sfProFamily }}
           >
             <span className="text-[#1a1a1a]">Dont have an account?</span>
-            <Link href="/signup" className="text-[#007aff]">
+            <Link href={signupHref} className="text-[#007aff]">
               Sign up now
             </Link>
           </div>
         </div>
       </div>
     </main>
+  );
+}
+
+export default function SignInV2Page() {
+  return (
+    <Suspense fallback={<div className="min-h-screen w-full bg-white" aria-label="Loading sign in" />}>
+      <SignInContent />
+    </Suspense>
   );
 }

@@ -2,13 +2,14 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { FormEvent, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { FormEvent, Suspense, useMemo, useState } from "react";
 import { Poppins, Roboto } from "next/font/google";
 
 import { useAuth } from "../components/auth-provider";
 import { OAuthButtons } from "../components/oauth-buttons";
 import { AuthBenefitsCard } from "../components/auth-benefits-card";
+import { buildNextQuery, resolveNextPath } from "../lib/redirect-utils";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -25,9 +26,13 @@ const roboto = Roboto({
 const sfProFamily =
   "SF Pro Display, SF Pro Text, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
 
-export default function SignUpV2Page() {
+function SignUpContent() {
   const { signUp } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const nextPath = useMemo(() => resolveNextPath(searchParams, "/overview"), [searchParams]);
+  const nextQuery = useMemo(() => buildNextQuery(searchParams.get("next")), [searchParams]);
+  const signinHref = nextQuery ? `/signin${nextQuery}` : "/signin";
 
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
@@ -56,7 +61,7 @@ export default function SignUpV2Page() {
       setLoading(false);
       return;
     }
-    router.push("/overview");
+    router.push(nextPath);
   };
 
   const togglePasswordVisibility = () => {
@@ -211,12 +216,20 @@ export default function SignUpV2Page() {
             style={{ fontFamily: sfProFamily }}
           >
             <span className="text-[#1a1a1a]">Already have an account?</span>
-            <Link href="/signin" className="text-[#007aff]">
+            <Link href={signinHref} className="text-[#007aff]">
               Sign in
             </Link>
           </div>
         </div>
       </div>
     </main>
+  );
+}
+
+export default function SignUpV2Page() {
+  return (
+    <Suspense fallback={<div className="min-h-screen w-full bg-white" aria-label="Loading sign up" />}>
+      <SignUpContent />
+    </Suspense>
   );
 }
