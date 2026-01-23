@@ -214,10 +214,11 @@
 ### Step 9 - Deploy to main (failed)
 - **What:** Triggered the GitHub Actions deployment on `main`.
 - **Why:** Cutover is now handled by the CI/CD workflow.
-- **How:** Pushed commits `9152659` and `dcccc00` to `main`, which triggered the Deploy workflow.
+- **How:** Pushed commits `9152659`, `dcccc00`, and `1d014a3` to `main`, which triggered the Deploy workflow.
 - **Findings:**
-  - **Workflow runs:** `21284133187` (head `9152659`) and `21284149267` (head `dcccc00`) both completed with **failure**.
-  - **Jobs:** `test` succeeded; `deploy` failed.
+  - **Workflow runs:** `21284133187` (head `9152659`), `21284149267` (head `dcccc00`), and `21284716448` (head `1d014a3`) all completed with **failure**.
+  - **Jobs:** `test` succeeded; `deploy` failed in all runs.
+  - **Failing step:** `Deploy release` (job step in the `deploy` job).
   - **Logs:** GitHub API returned `403` for job log download ("Must have admin rights to Repository").
 - **Status:** Blocked (requires deploy job logs to resolve failure).
 
