@@ -2,9 +2,12 @@
 
 import type { Provider } from "@supabase/supabase-js";
 import { useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 import { useAuth } from "./auth-provider";
 import { getEnabledOAuthProviders, getOAuthProviderIcon, getOAuthProviderLabel, type OAuthMode } from "../lib/oauth-providers";
+import { storeNextPath } from "../lib/redirect-storage";
+import { resolveNextPath } from "../lib/redirect-utils";
 
 type OAuthButtonsProps = {
   mode: OAuthMode;
@@ -16,6 +19,8 @@ type OAuthButtonsProps = {
 export function OAuthButtons({ mode, onError, variant = "gsi", fontFamily }: OAuthButtonsProps) {
   const { signInWithOAuth } = useAuth();
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+  const nextPath = useMemo(() => resolveNextPath(searchParams, "/overview"), [searchParams]);
 
   const providers = useMemo(() => {
     return getEnabledOAuthProviders()
@@ -38,6 +43,7 @@ export function OAuthButtons({ mode, onError, variant = "gsi", fontFamily }: OAu
   const handleOAuth = async (provider: Provider) => {
     if (loadingProvider) return;
     setLoadingProvider(provider);
+    storeNextPath(nextPath);
     const { error } = await signInWithOAuth(provider);
     if (error) {
       onError?.(error);

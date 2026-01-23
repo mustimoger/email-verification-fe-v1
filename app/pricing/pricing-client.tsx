@@ -484,7 +484,7 @@ export default function PricingV2Client({ variant = "full", onCtaClick }: Pricin
             })}
           </div>
 
-          <div className="mt-10 grid gap-10 lg:grid-cols-[1fr_360px]">
+          <div className={`mt-10 grid gap-10 ${isEmbed ? 'md:grid-cols-[1fr_360px]' : 'lg:grid-cols-[1fr_360px]'}`}>
             <div className="space-y-8">
               <div>
                 <div className="flex flex-wrap items-center justify-between gap-4">
@@ -587,7 +587,7 @@ export default function PricingV2Client({ variant = "full", onCtaClick }: Pricin
               </div>
             </div>
 
-            <div className="rounded-2xl border border-[var(--pricing-border)] bg-[var(--pricing-card-strong)] p-6 shadow-[var(--pricing-shadow)] lg:sticky lg:top-6">
+            <div className={`rounded-2xl border border-[var(--pricing-border)] bg-[var(--pricing-card-strong)] p-6 shadow-[var(--pricing-shadow)] ${isEmbed ? 'md:sticky md:top-6' : 'lg:sticky lg:top-6'}`}>
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">
                   {activePlanOption.label} Cost

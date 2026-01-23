@@ -1,10 +1,12 @@
 # Handover (2026-01-23)
 
 ## Current status
-- Deploy workflow still failing at the `Deploy release` step. Latest run: `21287792737` (head `bc6fe7d`), test job succeeded, deploy job failed.
-- Local `npm run build` succeeds after recent fixes, but remote releases still show missing `.next/BUILD_ID` and no `current` symlink or `shared/backend-venv`.
-- GitHub Actions log download via API returns `403` (admin required). Need the deploy log snippet from the Actions UI to diagnose the latest failure.
-- Pricing embed build now fails because `PricingCtaPayload` is not exported from `app/pricing/pricing-client.tsx`; local fix exists and tests/build now pass but is uncommitted.
+- Deploy workflow succeeded on `2026-01-23T13:52:34Z` (head `856ad06`), release `20260123135238`.
+- Build completed (`next build` succeeded) and backend dependencies installed into the shared venv.
+- Step 10 post-deploy validation is complete; public routes return `200` and backend health is `ok`.
+- Frontend now has a systemd drop-in that binds it to `127.0.0.1:3000`; verified via `ss`.
+- GitHub CLI is installed locally at `~/.local/bin/gh` but not authenticated; no longer required unless you want to rerun workflows from this host.
+- Pending repo housekeeping: commit and push the remaining local changes listed below.
 
 ## Recent code changes (pushed)
 - `deploy/remote-deploy.sh`: force dev deps during build, then prune (`NODE_ENV=development`, `NPM_CONFIG_PRODUCTION=false`, build, `npm prune --omit=dev`).
@@ -13,20 +15,19 @@
 - Added missing helpers to Git: `app/lib/redirect-utils.ts`, `app/lib/redirect-storage.ts`, `app/lib/embed-config.ts`, `app/pricing/embed/pricing-embed-client.tsx`.
 
 ## Recent local changes (not yet pushed)
-- `app/pricing/pricing-client.tsx`: export `PricingCtaPayload` and accept embed props so `pricing-embed-client.tsx` compiles.
-- `deployment.md` and `handover.md`: updated Step 9.1 notes and next actions for newcomers.
+- `app/account/account-client.tsx`: load credits from `externalApiClient` and truncate long checkout emails in purchase tables.
+- `app/components/auth-provider.tsx`: consume stored redirect paths after OAuth sign-in to return users to their intended page.
+- `app/components/oauth-buttons.tsx`: store resolved next path before OAuth sign-in.
+- `app/pricing/pricing-client.tsx`: adjust embed layout breakpoints for sticky sidebar on medium screens.
+- `next.config.ts`: add CSP `frame-ancestors` header for `/pricing/embed` based on env allowlist.
+- `deployment.md` and `handover.md`: updated for deploy completion and localhost bind validation.
 
 ## Latest deploy failure context
-- Build errors previously: missing `typescript`, Supabase type mismatch, missing Suspense boundaries, missing helper modules. These are now fixed locally and pushed.
-- New build error: `PricingCtaPayload` missing export in `app/pricing/pricing-client.tsx`; fix is local but not committed/pushed yet.
-- Latest server release observed: `20260123132918` under `/var/www/boltroute-app/releases` with `.next` present but no `BUILD_ID`.
-- `shared/backend-venv` still missing and `/var/www/boltroute-app/current` symlink absent.
+- Previous build errors (missing `typescript`, Supabase type mismatch, missing Suspense boundaries, missing helper modules, pricing payload export) are resolved.
+- Latest server release observed: `20260123135238`.
 
 ## What to do next
-1. Commit + push the pricing embed export fix.
-2. Re-run the GitHub Actions deploy workflow (prefer `gh` CLI).
-3. If deploy still fails, pull the `Deploy release` log lines from the Actions UI and paste them here.
-4. If deploy completes, update `deployment.md` Step 9 to complete and run Step 10 post-deploy validation.
+1. Commit and push the local changes listed above.
 
 ## Notes / environment
 - Activate the Python venv before running tests or scripts: `source .venv/bin/activate`.
@@ -34,7 +35,6 @@
 
 ## Uncommitted local changes (do not touch unless requested)
 - Modified: `app/account/account-client.tsx`, `app/components/auth-provider.tsx`, `app/components/oauth-buttons.tsx`, `app/pricing/pricing-client.tsx`, `next.config.ts`, `deployment.md`, `handover.md`.
-- Deleted: `handover.md` (recreated here).
 - Untracked: `account-migration.md`, `wp-pricing.md`.
 
 ## Commands run (recent)

@@ -22,6 +22,7 @@ type ThemeContextValue = {
 };
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
+const EMBED_THEME_LOCK = "embed";
 
 const isThemePreference = (value: string | null): value is ThemePreference =>
   value === "system" || value === "light" || value === "dark";
@@ -64,6 +65,11 @@ const readAttributeResolvedTheme = (): ResolvedTheme | null => {
   return isResolvedTheme(attr) ? attr : null;
 };
 
+const isThemeLocked = (): boolean => {
+  if (typeof document === "undefined") return false;
+  return document.documentElement.getAttribute("data-theme-lock") === EMBED_THEME_LOCK;
+};
+
 const getSystemTheme = (): ResolvedTheme => {
   if (typeof window === "undefined" || !window.matchMedia) {
     console.warn("theme.system_unavailable");
@@ -89,6 +95,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   });
 
   useEffect(() => {
+    if (isThemeLocked()) {
+      setResolvedTheme("light");
+      return;
+    }
     const nextResolved = theme === "system" ? getSystemTheme() : theme;
     setResolvedTheme(nextResolved);
     applyThemeAttributes(nextResolved, theme);
@@ -98,8 +108,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (typeof window === "undefined" || !window.matchMedia) return;
     if (theme !== "system") return;
+    if (isThemeLocked()) return;
     const media = window.matchMedia("(prefers-color-scheme: dark)");
     const handleChange = () => {
+      if (isThemeLocked()) return;
       const nextResolved = media.matches ? "dark" : "light";
       setResolvedTheme(nextResolved);
       applyThemeAttributes(nextResolved, theme);

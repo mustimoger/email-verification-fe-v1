@@ -15,6 +15,15 @@ export const themeInitScript = `(function () {
       console.warn("theme.storage_read_failed", storageError);
     }
 
+    var pathname = typeof window !== "undefined" ? window.location.pathname : "";
+    if (pathname && pathname.indexOf("/pricing/embed") === 0) {
+      root.setAttribute("data-theme", "light");
+      root.setAttribute("data-theme-preference", "light");
+      root.setAttribute("data-theme-lock", "embed");
+      root.style.colorScheme = "light";
+      return;
+    }
+
     var preference =
       stored === "light" || stored === "dark" || stored === "system"
         ? stored

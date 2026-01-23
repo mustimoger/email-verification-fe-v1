@@ -1,9 +1,12 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { ApiError, apiClient } from "../lib/api-client";
 import { setEmailConfirmationNotice } from "../lib/auth-notices";
+import { consumeNextPath } from "../lib/redirect-storage";
+import { sanitizeNextPath } from "../lib/redirect-utils";
 import type { Provider, Session, SupabaseClient, User } from "@supabase/supabase-js";
 
 import { getSupabaseBrowserClient } from "../lib/supabase-browser";
@@ -14,6 +17,7 @@ type AuthContextValue = {
   session: Session | null;
   user: User | null;
   loading: boolean;
+  consumeRedirectPath: () => string | null;
   signIn: (params: { email: string; password: string }) => Promise<{ error: string | null }>;
   signUp: (params: { email: string; password: string; username?: string; displayName?: string }) => Promise<{ error: string | null }>;
   requestPasswordReset: (params: { email: string; redirectTo?: string }) => Promise<{ error: string | null }>;
@@ -26,6 +30,7 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const supabase = useMemo(() => getSupabaseBrowserClient(), []);
+  const router = useRouter();
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const profileSyncRef = useRef<{ userId: string; email: string } | null>(null);
@@ -33,6 +38,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signupBonusAttemptedRef = useRef<string | null>(null);
   const trialBonusAttemptedRef = useRef<string | null>(null);
   const recoverySessionRef = useRef(false);
+  const oauthRedirectedRef = useRef(false);
 
   useEffect(() => {
     let mounted = true;
@@ -66,6 +72,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       if (event === "SIGNED_OUT") {
         recoverySessionRef.current = false;
+      }
+      if (event === "SIGNED_IN" && !oauthRedirectedRef.current) {
+        const nextPath = sanitizeNextPath(consumeNextPath());
+        if (nextPath && typeof window !== "undefined") {
+          oauthRedirectedRef.current = true;
+          const current = `${window.location.pathname}${window.location.search}`;
+          if (current !== nextPath) {
+            router.replace(nextPath);
+          }
+        }
       }
     });
 
@@ -160,12 +176,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     void syncProfileEmail();
   }, [session]);
 
+  useEffect(() => {
+    if (!session?.user || oauthRedirectedRef.current) return;
+    const nextPath = sanitizeNextPath(consumeNextPath());
+    if (!nextPath || typeof window === "undefined") return;
+    oauthRedirectedRef.current = true;
+    const current = `${window.location.pathname}${window.location.search}`;
+    if (current !== nextPath) {
+      router.replace(nextPath);
+    }
+  }, [router, session]);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       supabase,
       session,
       user: session?.user ?? null,
       loading,
+      consumeRedirectPath: () => {
+        const stored = consumeNextPath();
+        return sanitizeNextPath(stored);
+      },
       signIn: async ({ email, password }) => {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) {

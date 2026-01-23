@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { DashboardShell } from "../components/dashboard-shell";
 import { RequireAuth } from "../components/protected";
 import { useAuth } from "../components/auth-provider";
-import { apiClient, ApiError, Credits, Profile, Purchase } from "../lib/api-client";
+import { apiClient, ApiError, Credits, Profile, Purchase, externalApiClient } from "../lib/api-client";
 import { EXTERNAL_DATA_UNAVAILABLE } from "../lib/messages";
 import { AccountHero, AccountSectionCard } from "./account-sections";
 import styles from "./account.module.css";
@@ -94,15 +94,17 @@ export default function AccountV2Client() {
       setLoading(true);
       setError(null);
       try {
-        const [p, c, purchaseData] = await Promise.all([
+        const [p, externalCredits, purchaseData] = await Promise.all([
           apiClient.getProfile(),
-          apiClient.getCredits(),
+          externalApiClient.getCreditBalance(),
           apiClient.getPurchases(),
         ]);
         setProfile(p);
         setAvatarUrl(resolveAvatar(p.avatar_url));
         setProfileDraft({ email: p.email ?? "", display_name: p.display_name ?? "", avatar_url: p.avatar_url });
-        setCredits(c);
+        const creditsRemaining =
+          typeof externalCredits.balance === "number" ? externalCredits.balance : null;
+        setCredits({ credits_remaining: creditsRemaining });
         setPurchases(purchaseData.items ?? []);
       } catch (err: unknown) {
         const message = err instanceof ApiError ? err.message : "Failed to load account";
@@ -437,7 +439,12 @@ export default function AccountV2Client() {
                         className="grid grid-cols-5 items-center gap-3 px-5 py-4 text-sm font-semibold text-[var(--text-primary)]"
                       >
                         <span className="text-[var(--text-secondary)]">{row.date}</span>
-                        <span className="text-[var(--text-secondary)]">{row.checkoutEmail}</span>
+                        <span
+                          className="block w-[160px] max-w-full min-w-0 truncate text-[var(--text-secondary)]"
+                          title={row.checkoutEmail}
+                        >
+                          {row.checkoutEmail}
+                        </span>
                         <span className="text-[var(--text-secondary)]">{row.amount}</span>
                         <span className="text-[var(--text-secondary)]">{row.credits}</span>
                         <span className="text-right text-[var(--text-secondary)]">{row.invoice}</span>
@@ -461,7 +468,7 @@ export default function AccountV2Client() {
                         </div>
                         <div className="mt-3 space-y-2">
                           {[
-                            { label: "Checkout email", value: row.checkoutEmail },
+                            { label: "Checkout email", value: row.checkoutEmail, truncate: true },
                             { label: "Purchase amount", value: row.amount },
                             { label: "Credits bought", value: row.credits },
                             { label: "Invoice", value: row.invoice },
@@ -470,7 +477,16 @@ export default function AccountV2Client() {
                               <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">
                                 {item.label}
                               </span>
-                              <span className="text-[var(--text-secondary)]">{item.value}</span>
+                              {item.truncate ? (
+                                <span
+                                  className="block w-[160px] max-w-full min-w-0 truncate text-[var(--text-secondary)]"
+                                  title={item.value}
+                                >
+                                  {item.value}
+                                </span>
+                              ) : (
+                                <span className="text-[var(--text-secondary)]">{item.value}</span>
+                              )}
                             </div>
                           ))}
                         </div>

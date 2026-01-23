@@ -27,6 +27,7 @@
 - [ ] Step 9 - Deploy to main (cutover; deploy workflow failed)
 - [ ] Step 9.1 - Investigate deploy workflow failure (required before Step 10)
 - [ ] Step 10 - Post-deploy validation (blocked until Step 9 succeeds)
+- [ ] Step 10.1 - Tighten frontend bind to localhost (security hardening follow-up)
 
 ## MVP deployment plan (production-grade baseline)
 
@@ -120,6 +121,7 @@
   - Export the pricing embed CTA payload type and embed props from `app/pricing/pricing-client.tsx` so `pricing-embed-client.tsx` can compile.
   - Re-run unit/integration tests and a production build after the pricing embed export fix to confirm CI readiness.
   - Commit and push the pricing embed export fix so the deploy workflow can pick it up.
+  - Install and authenticate the GitHub CLI locally (user-level) to re-run the workflow from this host.
   - Write/update `handover.md` so the next session can pick up with full context.
   - Re-run the Deploy workflow and confirm the deploy job completes successfully.
 
@@ -220,18 +222,18 @@
 - **How:** Removed stale monkeypatch in `backend/tests/test_tasks_limits.py` that referenced a deleted helper.
 - **Status:** Complete.
 
-### Step 9 - Deploy to main (failed)
+### Step 9 - Deploy to main (completed)
 - **What:** Triggered the GitHub Actions deployment on `main`.
 - **Why:** Cutover is now handled by the CI/CD workflow.
 - **How:** Pushed commits `9152659`, `dcccc00`, `1d014a3`, `95b550b`, `ea9255a`, `a8fb475`, `9a67190`, `6119523`, and `bc6fe7d` to `main`, which triggered the Deploy workflow.
 - **Findings:**
-  - **Workflow runs:** `21284133187` (head `9152659`), `21284149267` (head `dcccc00`), `21284716448` (head `1d014a3`), `21284786450` (head `95b550b`), `21285035783` (head `ea9255a`), `21285205918` (head `a8fb475`), `21285878082` (head `9a67190`), `21287012685` (head `6119523`), and `21287792737` (head `bc6fe7d`) all completed with **failure**.
-  - **Jobs:** `test` succeeded; `deploy` failed in all runs.
-  - **Failing step:** `Deploy release` (job step in the `deploy` job).
-  - **Logs:** GitHub API returned `403` for job log download ("Must have admin rights to Repository").
-- **Status:** Blocked (requires deploy job logs to resolve failure).
+  - **Workflow runs:** previous failures listed in Step 9.1; latest deploy run at `2026-01-23T13:52:34Z` (head `856ad06`) completed successfully.
+  - **Release:** `20260123135238` built and deployed.
+  - **Build:** `next build` succeeded and generated static pages.
+  - **Backend deps:** shared venv updated and requirements installed.
+- **Status:** Complete (proceed to Step 10 validation).
 
-### Step 9.1 - Investigate deploy workflow failure
+### Step 9.1 - Investigate deploy workflow failure (resolved)
 - **What:** Diagnose the Deploy job failure and re-run the workflow.
 - **Why:** Deployment must succeed before post-deploy validation can be completed.
 - **How:** Obtain Deploy job logs (admin access or shared logs), capture the failing step, fix the root cause, and re-run the workflow.
@@ -269,21 +271,38 @@
 - **Action taken (follow-up):** Exposed the pricing embed payload type and embed props in `app/pricing/pricing-client.tsx`.
 - **Why:** `app/pricing/embed/pricing-embed-client.tsx` imports the payload type and passes embed props to `PricingV2Client`.
 - **How:** Exported `PricingCtaPayload` and added `variant`/`onCtaClick` props so the embed build compiles.
+- **Action taken (follow-up):** Installed GitHub CLI locally at `~/.local/bin/gh` using the latest release tarball.
+- **Why:** Need to re-run the Deploy workflow from this host as requested.
+- **How:** Downloaded the latest GitHub CLI release from `cli/cli`, extracted it, and copied the binary into `~/.local/bin`.
 - **Tests (follow-up):** Ran `npm run test:history`, `npm run test:auth-guard`, `npm run test:overview`, and `npm run test:account-purchases` with env loaded from `.env.local`; ran `npx tsx tests/integrations-catalog.test.ts`. All passed.
 - **Why:** Ensure the pricing embed export change doesn’t regress existing unit/integration coverage before re-running CI/CD.
 - **Build check (follow-up):** `npm run build` succeeds with the pricing embed export fix applied.
-- **Pending:** Commit/push the pricing embed export fix and re-run the deploy workflow.
-- **Status:** Fixes applied and validated locally; latest deploy run (`21287792737`) still failed at `Deploy release` and requires a new run after pushing.
+- **Resolution:** Deploy workflow rerun succeeded with head `856ad06` and release `20260123135238`.
+- **Notes:** Deploy logs show npm audit warnings and an ssh-agent cleanup warning, but the deploy completed.
+- **Status:** Complete.
 
-### Step 10 - Post-deploy validation (partial; blocked)
+### Step 10 - Post-deploy validation (completed)
 - **What:** Smoke-check production endpoints and service health.
 - **Why:** Validate the running services and ensure nothing regressed.
 - **How:** Hit public app routes, verify backend health locally, and check systemd service status.
 - **Findings:**
   - **Public app:** `https://app.boltroute.ai` returns `307` to `/overview`; `/overview` returns `200`.
+  - **Public pages:** `/pricing`, `/pricing/embed`, `/signin`, `/signup`, `/verify`, `/reset-password`, `/integrations`, `/history`, and `/account` all return `200`.
   - **Backend via public proxy:** `https://app.boltroute.ai/api/health` returns `404` (backend health is not exposed under `/api`).
   - **Backend local health:** `http://127.0.0.1:8001/health` returns `{"status":"ok"}`.
-  - **Services:** `boltroute-frontend` and `boltroute-backend` systemd units are **inactive**, yet processes are listening on `:3000` and `:8001` and appear bound to all interfaces.
+  - **Services:** `boltroute-frontend` and `boltroute-backend` systemd units are **active**.
+  - **Ports:** `127.0.0.1:8001` is bound as expected; `:3000` is bound on all interfaces (not just localhost), which is a deviation from the intended reverse-proxy-only exposure.
+- **Status:** Complete; consider tightening frontend bind to `127.0.0.1` if external exposure is not desired.
+
+### Step 10.1 - Tighten frontend bind to localhost
+- **What:** Bind the Next.js service to `127.0.0.1` instead of all interfaces.
+- **Why:** The frontend currently listens on `:3000` (all interfaces), which bypasses the intended reverse-proxy-only exposure.
+- **How:** Update the systemd unit `ExecStart` to pass `-H 127.0.0.1`, then reload daemon and restart the service; verify `ss -ltnp` shows `127.0.0.1:3000`.
+- **Action taken:** Added a systemd drop-in override and restarted the service.
+- **Why:** Ensure the frontend only binds to localhost.
+- **How:** Created `/etc/systemd/system/boltroute-frontend.service.d/override.conf`, cleared `ExecStart`, and set `next start -H 127.0.0.1 -p 3000`; reloaded daemon and restarted `boltroute-frontend`.
+- **Verification:** `ss -ltnp` shows `127.0.0.1:3000`.
+- **Status:** Complete.
 - **Status:** Blocked (deploy workflow failed; systemd-managed services not active as planned).
 
 ## Open items (required before execution)
