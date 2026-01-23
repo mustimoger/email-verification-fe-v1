@@ -1,7 +1,13 @@
 "use client";
 import Script from "next/script";
 import { useEffect, useMemo, useState } from "react";
-import type { PricingConfigV2Response, PricingQuoteV2Response, PricingIntervalV2 } from "../lib/api-client";
+import { useSearchParams } from "next/navigation";
+import type {
+  PricingConfigV2Response,
+  PricingQuoteV2Response,
+  PricingIntervalV2,
+  PricingModeV2,
+} from "../lib/api-client";
 import { ApiError, billingApi } from "../lib/api-client";
 import { getBillingClient } from "../lib/paddle";
 import { DashboardShell } from "../components/dashboard-shell";
@@ -24,6 +30,41 @@ type PlanOption = {
   label: string;
   mode: "payg" | "subscription";
   interval: PricingIntervalV2;
+};
+type PricingVariant = "full" | "embed";
+export type PricingCtaPayload = {
+  plan: PlanKey;
+  quantity: number;
+  mode: PricingModeV2;
+  interval: PricingIntervalV2;
+  contactRequired: boolean;
+};
+type PricingV2ClientProps = {
+  variant?: PricingVariant;
+  onCtaClick?: (payload: PricingCtaPayload) => void;
+};
+const PLAN_PARAM = "plan";
+const QUANTITY_PARAM = "quantity";
+const parsePlanParam = (value: string | null): PlanKey | null => {
+  if (!value) return null;
+  switch (value) {
+    case "payg":
+    case "monthly":
+    case "annual":
+      return value;
+    default:
+      console.warn("pricing_v2.plan_param_invalid", { value });
+      return null;
+  }
+};
+const parseQuantityParam = (value: string | null): number | null => {
+  if (!value) return null;
+  const parsed = parseQuantity(value);
+  if (parsed === null) {
+    console.warn("pricing_v2.quantity_param_invalid", { value });
+    return null;
+  }
+  return parsed;
 };
 const PLAN_OPTIONS: PlanOption[] = [
   { key: "payg", label: "One-Time Purchase", mode: "payg", interval: "one_time" },
@@ -96,7 +137,8 @@ function openSupportChat(payload: { quantity?: number; plan: PlanKey }) {
   }
   console.info("pricing_v2.contact_requested", payload);
 }
-export default function PricingV2Client() {
+export default function PricingV2Client({ variant = "full", onCtaClick }: PricingV2ClientProps) {
+  const searchParams = useSearchParams();
   const [config, setConfig] = useState<PricingConfigV2Response | null>(null);
   const [configError, setConfigError] = useState<string | null>(null);
   const [configLoading, setConfigLoading] = useState(true);
@@ -140,6 +182,26 @@ export default function PricingV2Client() {
       active = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!config) return;
+    const requestedPlan = parsePlanParam(searchParams.get(PLAN_PARAM));
+    const requestedQuantity = parseQuantityParam(searchParams.get(QUANTITY_PARAM));
+    if (requestedPlan) {
+      setActivePlan(requestedPlan);
+    }
+    if (requestedQuantity !== null) {
+      const validation = validateQuantity(requestedQuantity, config.pricing);
+      if (validation.isValid) {
+        setQuantityInput(`${requestedQuantity}`);
+      } else {
+        console.warn("pricing_v2.quantity_param_out_of_range", {
+          requestedQuantity,
+          validation,
+        });
+      }
+    }
+  }, [config, searchParams]);
 
   const activePlanOption = useMemo(
     () => PLAN_OPTIONS.find((plan) => plan.key === activePlan) ?? PLAN_OPTIONS[0],
@@ -303,6 +365,7 @@ export default function PricingV2Client() {
   const comparisonOtherLabel = comparisonPriceLabel === "Pricing unavailable" ? "Pricing unavailable" : "Varies";
 
   const environment = config?.status === "sandbox" || config?.status === "production" ? config.status : undefined;
+  const isEmbed = variant === "embed";
   const checkoutEnabled = Boolean(config?.checkout_enabled && config?.client_side_token && config?.checkout_script);
 
   const handleCheckout = async () => {
@@ -338,10 +401,30 @@ export default function PricingV2Client() {
     }
   };
 
-  const transitionClass = isLoaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6";
+  const handleCtaClick = () => {
+    if (onCtaClick) {
+      if (!debouncedQuantity) {
+        console.warn("pricing_v2.cta_missing_quantity");
+        return;
+      }
+      onCtaClick({
+        plan: activePlan,
+        quantity: debouncedQuantity,
+        mode: activePlanOption.mode,
+        interval: activePlanOption.interval,
+        contactRequired,
+      });
+      return;
+    }
+    void handleCheckout();
+  };
 
-  return (
-    <DashboardShell>
+  const transitionClass = isLoaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6";
+  const ctaDisabled =
+    configLoading || quoteLoading || Boolean(pricingError) || !debouncedQuantity || (!isEmbed && !checkoutEnabled);
+  const shouldLoadCheckoutScript = !isEmbed && checkoutEnabled;
+
+  const content = (
       <section className={`${styles.root} relative flex flex-col gap-10`}>
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
           <div className="absolute -top-48 left-1/2 h-[420px] w-[720px] -translate-x-1/2 rounded-full bg-[radial-gradient(circle_at_center,_rgba(249,168,37,0.25)_0%,_transparent_70%)]" />
@@ -547,8 +630,8 @@ export default function PricingV2Client() {
 
               <button
                 type="button"
-                onClick={handleCheckout}
-                disabled={configLoading || quoteLoading || !checkoutEnabled || Boolean(pricingError) || !debouncedQuantity}
+                onClick={handleCtaClick}
+                disabled={ctaDisabled}
                 className="mt-6 w-full rounded-xl bg-[linear-gradient(135deg,var(--pricing-accent)_0%,var(--pricing-accent-strong)_100%)] px-6 py-4 text-base font-semibold text-[var(--pricing-cta-ink)] shadow-[0_16px_32px_rgba(249,168,37,0.3)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_36px_rgba(249,168,37,0.38)] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {contactRequired ? "Contact Sales" : activePlan === "payg" ? "Buy Credits" : "Subscribe Now"}
@@ -605,26 +688,30 @@ export default function PricingV2Client() {
           </div>
         </div>
 
-        <VolumePricingSection
-          entries={volumeTable}
-          currency={currency}
-          selectedQuantity={debouncedQuantity}
-          onSelect={(volume) => setQuantityInput(`${volume}`)}
-          transitionClass={transitionClass}
-        />
+        {isEmbed ? null : (
+          <>
+            <VolumePricingSection
+              entries={volumeTable}
+              currency={currency}
+              selectedQuantity={debouncedQuantity}
+              onSelect={(volume) => setQuantityInput(`${volume}`)}
+              transitionClass={transitionClass}
+            />
 
-        <ComparisonSection
-          transitionClass={transitionClass}
-          priceLabel={comparisonPriceLabel}
-          priceOthersLabel={comparisonOtherLabel}
-        />
+            <ComparisonSection
+              transitionClass={transitionClass}
+              priceLabel={comparisonPriceLabel}
+              priceOthersLabel={comparisonOtherLabel}
+            />
 
-        <FaqSection transitionClass={transitionClass} />
+            <FaqSection transitionClass={transitionClass} />
 
-        <FinalCtaSection transitionClass={transitionClass} freeTrialCredits={config?.pricing.free_trial_credits} />
+            <FinalCtaSection transitionClass={transitionClass} freeTrialCredits={config?.pricing.free_trial_credits} />
+          </>
+        )}
 
-        {checkoutEnabled ? <Script src={config?.checkout_script ?? ""} strategy="afterInteractive" /> : null}
+        {shouldLoadCheckoutScript ? <Script src={config?.checkout_script ?? ""} strategy="afterInteractive" /> : null}
       </section>
-    </DashboardShell>
   );
+  return isEmbed ? content : <DashboardShell>{content}</DashboardShell>;
 }

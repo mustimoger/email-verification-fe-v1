@@ -117,6 +117,10 @@
   - Update the Supabase catalog query cast to go through `unknown` so the build type-check passes.
   - Wrap `useSearchParams()` usage for pricing/sign-in/sign-up routes with Suspense boundaries to satisfy Next.js CSR bailout rules.
   - Commit missing redirect and embed helper modules so the deploy build can resolve their imports.
+  - Export the pricing embed CTA payload type and embed props from `app/pricing/pricing-client.tsx` so `pricing-embed-client.tsx` can compile.
+  - Re-run unit/integration tests and a production build after the pricing embed export fix to confirm CI readiness.
+  - Commit and push the pricing embed export fix so the deploy workflow can pick it up.
+  - Write/update `handover.md` so the next session can pick up with full context.
   - Re-run the Deploy workflow and confirm the deploy job completes successfully.
 
 ### Step 10 - Post-deploy validation
@@ -219,9 +223,9 @@
 ### Step 9 - Deploy to main (failed)
 - **What:** Triggered the GitHub Actions deployment on `main`.
 - **Why:** Cutover is now handled by the CI/CD workflow.
-- **How:** Pushed commits `9152659`, `dcccc00`, `1d014a3`, `95b550b`, `ea9255a`, and `a8fb475` to `main`, which triggered the Deploy workflow.
+- **How:** Pushed commits `9152659`, `dcccc00`, `1d014a3`, `95b550b`, `ea9255a`, `a8fb475`, `9a67190`, `6119523`, and `bc6fe7d` to `main`, which triggered the Deploy workflow.
 - **Findings:**
-  - **Workflow runs:** `21284133187` (head `9152659`), `21284149267` (head `dcccc00`), `21284716448` (head `1d014a3`), `21284786450` (head `95b550b`), `21285035783` (head `ea9255a`), `21285205918` (head `a8fb475`), and `21285878082` (head `9a67190`) all completed with **failure**.
+  - **Workflow runs:** `21284133187` (head `9152659`), `21284149267` (head `dcccc00`), `21284716448` (head `1d014a3`), `21284786450` (head `95b550b`), `21285035783` (head `ea9255a`), `21285205918` (head `a8fb475`), `21285878082` (head `9a67190`), `21287012685` (head `6119523`), and `21287792737` (head `bc6fe7d`) all completed with **failure**.
   - **Jobs:** `test` succeeded; `deploy` failed in all runs.
   - **Failing step:** `Deploy release` (job step in the `deploy` job).
   - **Logs:** GitHub API returned `403` for job log download ("Must have admin rights to Repository").
@@ -235,11 +239,12 @@
   - **Failing step:** `npm run build` inside `deploy/remote-deploy.sh`.
   - **Error:** `next build` failed to load `next.config.ts` because `typescript` was missing.
   - **Cause:** `NODE_ENV=production` is set before `npm ci`, so dev dependencies (including `typescript`) are omitted during the build.
-  - **Server inspection:** Latest releases `20260123113632`, `20260123114625`, and `20260123121841` contain the updated deploy script and `node_modules/typescript`, but `.next/BUILD_ID` is missing and no `shared/backend-venv` exists; `current` symlink is absent. This suggests the deploy script still fails before the venv step, likely during the build phase.
+  - **Server inspection:** Latest releases `20260123113632`, `20260123114625`, `20260123121841`, and `20260123132918` contain the updated deploy script and `node_modules/typescript`, but `.next/BUILD_ID` is missing and no `shared/backend-venv` exists; `current` symlink is absent. This suggests the deploy script still fails before the venv step, likely during the build phase.
   - **New error:** Production build fails with a TypeScript error in `app/lib/integrations-catalog.ts` (cast to `PromiseLike` rejected; TS suggests casting through `unknown` first).
   - **Follow-on error:** `SupabaseClient` is not assignable to `SupabaseCatalogClient` because the custom query type expects `eq`/`order` on the value returned by `from(...)`.
   - **Next.js error:** `useSearchParams()` requires Suspense boundaries for `/pricing`, `/pricing/embed`, `/signin`, and `/signup` during prerender.
   - **Module error:** Build failed with `Module not found` for `../lib/redirect-utils` and `./pricing-embed-client` because the files existed locally but were not committed, so the deploy release was missing them.
+  - **Follow-on error:** `PricingCtaPayload` is not exported from `app/pricing/pricing-client.tsx`, so the embed client fails to compile.
 - **Action taken:** Updated `deploy/remote-deploy.sh` to install dev dependencies for the build and switch to production afterward.
 - **Why:** `next.config.ts` requires `typescript` during the build, but runtime should stay production-grade.
 - **How:** Use `npm ci --include=dev`, run `NODE_ENV=production npm run build`, then export `NODE_ENV=production` for subsequent steps.
@@ -261,9 +266,14 @@
 - **Action taken (follow-up):** Added the missing helper modules to Git so deploy releases include them.
 - **Why:** The deploy build runs from the release directory created from Git; missing files break imports during `next build`.
 - **How:** Staged the missing files and verified the build succeeds locally.
-- **Tests:** Ran `npx tsx tests/integrations-catalog.test.ts` with `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and `NEXT_PUBLIC_API_BASE_URL` set; all tests passed.
-- **Build check:** `npm run build` succeeds.
-- **Status:** Fixes applied; deploy workflow re-run pending (not completed yet).
+- **Action taken (follow-up):** Exposed the pricing embed payload type and embed props in `app/pricing/pricing-client.tsx`.
+- **Why:** `app/pricing/embed/pricing-embed-client.tsx` imports the payload type and passes embed props to `PricingV2Client`.
+- **How:** Exported `PricingCtaPayload` and added `variant`/`onCtaClick` props so the embed build compiles.
+- **Tests (follow-up):** Ran `npm run test:history`, `npm run test:auth-guard`, `npm run test:overview`, and `npm run test:account-purchases` with env loaded from `.env.local`; ran `npx tsx tests/integrations-catalog.test.ts`. All passed.
+- **Why:** Ensure the pricing embed export change doesn’t regress existing unit/integration coverage before re-running CI/CD.
+- **Build check (follow-up):** `npm run build` succeeds with the pricing embed export fix applied.
+- **Pending:** Commit/push the pricing embed export fix and re-run the deploy workflow.
+- **Status:** Fixes applied and validated locally; latest deploy run (`21287792737`) still failed at `Deploy release` and requires a new run after pushing.
 
 ### Step 10 - Post-deploy validation (partial; blocked)
 - **What:** Smoke-check production endpoints and service health.
