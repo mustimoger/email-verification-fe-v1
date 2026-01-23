@@ -434,7 +434,7 @@ export default function PricingV2Client({ variant = "full", onCtaClick }: Pricin
         )}
 
         <div
-          className={`relative overflow-hidden rounded-[28px] border border-[var(--pricing-border)] bg-[var(--pricing-card)] px-6 py-10 shadow-[var(--pricing-shadow)] sm:px-10 ${transitionClass}`}
+          className={`relative overflow-hidden ${isEmbed ? 'rounded-2xl px-4 py-8 sm:px-6' : 'rounded-[28px] px-6 py-10 sm:px-10'} border border-[var(--pricing-border)] bg-[var(--pricing-card)] shadow-[var(--pricing-shadow)] ${transitionClass}`}
           style={{ transition: "all 0.7s cubic-bezier(0.16, 1, 0.3, 1)" }}
         >
           <div className="mb-10 text-center">
