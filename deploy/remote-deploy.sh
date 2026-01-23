@@ -30,10 +30,10 @@ ln -sfn "${APP_ENV_FILE}" "${RELEASE_DIR}/.env.local"
 ln -sfn "${BACKEND_ENV_FILE}" "${RELEASE_DIR}/backend/.env"
 
 cd "${RELEASE_DIR}"
-export NODE_ENV=production
 
-npm ci
-npm run build
+npm ci --include=dev
+NODE_ENV=production npm run build
+export NODE_ENV=production
 
 if [ ! -d "${BACKEND_VENV_PATH}" ]; then
   python3 -m venv "${BACKEND_VENV_PATH}"

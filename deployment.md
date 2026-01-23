@@ -24,8 +24,9 @@
 - [x] Step 7 - Security hardening
 - [x] Step 8 - Test and verify before deployment
 - [x] Step 8.1 - Fix backend test failure (missing helper)
-- [ ] Step 9 - Deploy to main (cutover)
-- [ ] Step 10 - Post-deploy validation
+- [ ] Step 9 - Deploy to main (cutover; deploy workflow failed)
+- [ ] Step 9.1 - Investigate deploy workflow failure (required before Step 10)
+- [ ] Step 10 - Post-deploy validation (blocked until Step 9 succeeds)
 
 ## MVP deployment plan (production-grade baseline)
 
@@ -103,6 +104,15 @@
 - **What:** Switch traffic to the new release.
 - **Why:** Controlled cutover reduces risk.
 - **How:** Update the `current` symlink to the new release, reload/restart the systemd service, and confirm the reverse proxy routes to the new process.
+
+### Step 9.1 - Investigate deploy workflow failure
+- **What:** Inspect the failed Deploy job and identify the root cause.
+- **Why:** The workflow must complete successfully before post-deploy validation is reliable.
+- **How:** Review GitHub Actions logs for the Deploy job, capture the failing step and error output, fix the underlying issue, then re-run the workflow and confirm a successful deploy.
+- **Planned tasks (must complete in order):**
+  - Diagnose the failure from the Deploy job logs and capture the exact error.
+  - Update the deploy script to install dev dependencies for build, then switch to production for runtime.
+  - Re-run the Deploy workflow and confirm the deploy job completes successfully.
 
 ### Step 10 - Post-deploy validation
 - **What:** Confirm the app is healthy and fast in production.
@@ -201,11 +211,39 @@
 - **How:** Removed stale monkeypatch in `backend/tests/test_tasks_limits.py` that referenced a deleted helper.
 - **Status:** Complete.
 
-### Step 9 - Deploy to main (in progress)
+### Step 9 - Deploy to main (failed)
 - **What:** Triggered the GitHub Actions deployment on `main`.
 - **Why:** Cutover is now handled by the CI/CD workflow.
-- **How:** Pushed commit `9152659` to `main` which triggers the deploy workflow.
-- **Status:** In progress (awaiting workflow completion).
+- **How:** Pushed commits `9152659` and `dcccc00` to `main`, which triggered the Deploy workflow.
+- **Findings:**
+  - **Workflow runs:** `21284133187` (head `9152659`) and `21284149267` (head `dcccc00`) both completed with **failure**.
+  - **Jobs:** `test` succeeded; `deploy` failed.
+  - **Logs:** GitHub API returned `403` for job log download ("Must have admin rights to Repository").
+- **Status:** Blocked (requires deploy job logs to resolve failure).
+
+### Step 9.1 - Investigate deploy workflow failure
+- **What:** Diagnose the Deploy job failure and re-run the workflow.
+- **Why:** Deployment must succeed before post-deploy validation can be completed.
+- **How:** Obtain Deploy job logs (admin access or shared logs), capture the failing step, fix the root cause, and re-run the workflow.
+- **Findings:**
+  - **Failing step:** `npm run build` inside `deploy/remote-deploy.sh`.
+  - **Error:** `next build` failed to load `next.config.ts` because `typescript` was missing.
+  - **Cause:** `NODE_ENV=production` is set before `npm ci`, so dev dependencies (including `typescript`) are omitted during the build.
+- **Action taken:** Updated `deploy/remote-deploy.sh` to install dev dependencies for the build and switch to production afterward.
+- **Why:** `next.config.ts` requires `typescript` during the build, but runtime should stay production-grade.
+- **How:** Use `npm ci --include=dev`, run `NODE_ENV=production npm run build`, then export `NODE_ENV=production` for subsequent steps.
+- **Status:** Fix applied; deploy workflow re-run pending (not completed yet).
+
+### Step 10 - Post-deploy validation (partial; blocked)
+- **What:** Smoke-check production endpoints and service health.
+- **Why:** Validate the running services and ensure nothing regressed.
+- **How:** Hit public app routes, verify backend health locally, and check systemd service status.
+- **Findings:**
+  - **Public app:** `https://app.boltroute.ai` returns `307` to `/overview`; `/overview` returns `200`.
+  - **Backend via public proxy:** `https://app.boltroute.ai/api/health` returns `404` (backend health is not exposed under `/api`).
+  - **Backend local health:** `http://127.0.0.1:8001/health` returns `{"status":"ok"}`.
+  - **Services:** `boltroute-frontend` and `boltroute-backend` systemd units are **inactive**, yet processes are listening on `:3000` and `:8001` and appear bound to all interfaces.
+- **Status:** Blocked (deploy workflow failed; systemd-managed services not active as planned).
 
 ## Open items (required before execution)
 - Confirm the current web server (Nginx/Apache/Caddy/other) and how TLS is managed today.
