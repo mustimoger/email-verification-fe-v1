@@ -217,7 +217,7 @@
 - **Why:** Cutover is now handled by the CI/CD workflow.
 - **How:** Pushed commits `9152659`, `dcccc00`, and `1d014a3` to `main`, which triggered the Deploy workflow.
 - **Findings:**
-  - **Workflow runs:** `21284133187` (head `9152659`), `21284149267` (head `dcccc00`), and `21284716448` (head `1d014a3`) all completed with **failure**.
+  - **Workflow runs:** `21284133187` (head `9152659`), `21284149267` (head `dcccc00`), `21284716448` (head `1d014a3`), `21284786450` (head `95b550b`), and `21285035783` (head `ea9255a`) all completed with **failure**.
   - **Jobs:** `test` succeeded; `deploy` failed in all runs.
   - **Failing step:** `Deploy release` (job step in the `deploy` job).
   - **Logs:** GitHub API returned `403` for job log download ("Must have admin rights to Repository").
@@ -231,7 +231,7 @@
   - **Failing step:** `npm run build` inside `deploy/remote-deploy.sh`.
   - **Error:** `next build` failed to load `next.config.ts` because `typescript` was missing.
   - **Cause:** `NODE_ENV=production` is set before `npm ci`, so dev dependencies (including `typescript`) are omitted during the build.
-  - **Server inspection:** Latest release `20260123113632` contains the updated deploy script and `node_modules/typescript`, but `.next/BUILD_ID` is missing and no `shared/backend-venv` exists; `current` symlink is absent. This suggests the deploy script still fails before the venv step, likely during the build phase.
+  - **Server inspection:** Latest releases `20260123113632` and `20260123114625` contain the updated deploy script and `node_modules/typescript`, but `.next/BUILD_ID` is missing and no `shared/backend-venv` exists; `current` symlink is absent. This suggests the deploy script still fails before the venv step, likely during the build phase.
 - **Action taken:** Updated `deploy/remote-deploy.sh` to install dev dependencies for the build and switch to production afterward.
 - **Why:** `next.config.ts` requires `typescript` during the build, but runtime should stay production-grade.
 - **How:** Use `npm ci --include=dev`, run `NODE_ENV=production npm run build`, then export `NODE_ENV=production` for subsequent steps.
