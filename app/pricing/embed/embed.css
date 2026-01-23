@@ -1,0 +1,5 @@
+/* Override body styles for embed mode */
+body {
+  background: transparent !important;
+  min-height: auto !important;
+}
