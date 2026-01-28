@@ -371,7 +371,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
     <div className="flex min-h-screen">
       <aside
         className={[
-          "fixed inset-y-0 left-0 z-30 flex h-screen flex-col border-r border-[var(--sidebar-border)] bg-[var(--sidebar-surface)] transition-all duration-300 ease-in-out lg:static",
+          "fixed inset-y-0 left-0 z-30 flex h-screen flex-col border-r border-[var(--sidebar-border)] bg-[var(--sidebar-surface)] transition-all duration-300 ease-in-out lg:sticky lg:top-0 lg:self-start",
           "w-[240px]",
           isCollapsed ? "lg:w-[72px]" : "lg:w-[240px]",
           isNavOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",

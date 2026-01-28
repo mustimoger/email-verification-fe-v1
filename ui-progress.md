@@ -40,3 +40,13 @@
 - What: Ran unit + integration tests after the dark-mode color updates.
 - Why: Ensure UI-only changes did not introduce regressions.
 - How: Activated the Python venv, loaded `.env.local`, ran all `tests/*.test.ts` via `tsx`; initial run failed due to missing Supabase env vars, then succeeded once environment variables were loaded. Logged warnings are expected debug output from tests.
+
+### Task 7 - Completed
+- What: Adjusted the dashboard sidebar to remain visible while scrolling.
+- Why: The sidebar was leaving the viewport on long pages, making navigation inaccessible.
+- How: Switched the desktop sidebar from `lg:static` to `lg:sticky` with `lg:top-0` and `lg:self-start`.
+
+### Task 8 - Completed
+- What: Re-ran unit + integration tests after the sidebar layout tweak.
+- Why: Confirm layout change did not introduce regressions.
+- How: Activated the Python venv, loaded `.env.local`, and ran all `tests/*.test.ts` via `tsx`; warnings are expected debug output.
