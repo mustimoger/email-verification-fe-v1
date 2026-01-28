@@ -131,7 +131,7 @@ function SignInContent() {
             sizes="(min-width: 1024px) 65vw, 100vw"
           />
           <div className="absolute inset-0 hidden items-center justify-center px-6 py-8 lg:flex">
-            <AuthBenefitsCard className="w-full max-w-[360px]" />
+            <AuthBenefitsCard className="w-full max-w-[calc(360px*var(--auth-benefits-scale))]" />
           </div>
         </div>
 
@@ -142,14 +142,16 @@ function SignInContent() {
             </div>
 
             <div className="flex flex-col gap-6">
-              <h1 className={`${poppins.className} text-[20px] font-semibold leading-[28px] text-[#1a1a1a]`}>
+              <h1
+                className={`${poppins.className} text-[20px] font-semibold leading-[28px] text-[color:var(--text-primary)]`}
+              >
                 Nice to see you again
               </h1>
 
               <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
                 <label className="flex flex-col gap-2">
                   <span
-                    className="text-[11px] leading-[12px] tracking-[0.3px] text-[#333]"
+                    className="text-[11px] leading-[12px] tracking-[0.3px] text-[color:var(--text-secondary)]"
                     style={{ fontFamily: sfProFamily }}
                   >
                     Login
@@ -160,14 +162,14 @@ function SignInContent() {
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
                     placeholder="Email or phone number"
-                    className="h-12 w-full rounded-[6px] border-[0.5px] border-[#e5e5e5] bg-[#f2f2f2] px-4 text-[15px] text-[#1a1a1a] placeholder:text-[#808080] focus:outline-none focus:ring-2 focus:ring-[#007aff]/20"
+                    className="h-12 w-full rounded-[6px] border-[0.5px] border-[#e5e5e5] bg-[#f2f2f2] px-4 text-[15px] text-[color:var(--text-primary)] placeholder:text-[color:var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[#007aff]/20"
                     required
                   />
                 </label>
 
                 <label className="flex flex-col gap-2">
                   <span
-                    className="text-[11px] leading-[12px] tracking-[0.3px] text-[#333]"
+                    className="text-[11px] leading-[12px] tracking-[0.3px] text-[color:var(--text-secondary)]"
                     style={{ fontFamily: sfProFamily }}
                   >
                     Password
@@ -179,7 +181,7 @@ function SignInContent() {
                       value={password}
                       onChange={(event) => setPassword(event.target.value)}
                       placeholder="Enter password"
-                      className="h-12 w-full rounded-[6px] border-[0.5px] border-[#e5e5e5] bg-[#f2f2f2] px-4 pr-12 text-[15px] text-[#1a1a1a] placeholder:text-[#808080] focus:outline-none focus:ring-2 focus:ring-[#007aff]/20"
+                      className="h-12 w-full rounded-[6px] border-[0.5px] border-[#e5e5e5] bg-[#f2f2f2] px-4 pr-12 text-[15px] text-[color:var(--text-primary)] placeholder:text-[color:var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[#007aff]/20"
                       required
                     />
                     <button
@@ -194,7 +196,7 @@ function SignInContent() {
                 </label>
 
                 <div className="flex items-center justify-between gap-4">
-                  <label className="flex items-center gap-2 text-[12px] leading-[20px] tracking-[0.3px] text-[#1a1a1a]">
+                  <label className="flex items-center gap-2 text-[12px] leading-[20px] tracking-[0.3px] text-[color:var(--text-secondary)]">
                     <span className="relative inline-flex h-5 w-10 items-center">
                       <input
                         type="checkbox"
@@ -253,7 +255,7 @@ function SignInContent() {
             className="mt-8 flex items-center justify-center gap-2 text-[12px] leading-[20px] tracking-[0.3px]"
             style={{ fontFamily: sfProFamily }}
           >
-            <span className="text-[#1a1a1a]">Dont have an account?</span>
+            <span className="text-[color:var(--text-secondary)]">Dont have an account?</span>
             <Link href={signupHref} className="text-[#007aff]">
               Sign up now
             </Link>

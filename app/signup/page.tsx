@@ -81,7 +81,7 @@ function SignUpContent() {
             sizes="(min-width: 1024px) 65vw, 100vw"
           />
           <div className="absolute inset-0 hidden items-center justify-center px-6 py-8 lg:flex">
-            <AuthBenefitsCard className="w-full max-w-[360px]" />
+            <AuthBenefitsCard className="w-full max-w-[calc(360px*var(--auth-benefits-scale))]" />
           </div>
         </div>
 
@@ -92,14 +92,16 @@ function SignUpContent() {
             </div>
 
             <form className="flex flex-col gap-6" onSubmit={handleSubmit}>
-              <h1 className={`${poppins.className} text-[20px] font-semibold leading-[28px] text-[#1a1a1a]`}>
+              <h1
+                className={`${poppins.className} text-[20px] font-semibold leading-[28px] text-[color:var(--text-primary)]`}
+              >
                 Create your account
               </h1>
 
               <div className="flex flex-col gap-5">
                 <label className="flex flex-col gap-2">
                   <span
-                    className="text-[11px] leading-[12px] tracking-[0.3px] text-[#333]"
+                    className="text-[11px] leading-[12px] tracking-[0.3px] text-[color:var(--text-secondary)]"
                     style={{ fontFamily: sfProFamily }}
                   >
                     Email address
@@ -110,14 +112,14 @@ function SignUpContent() {
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
                     placeholder="Email address"
-                    className="h-12 w-full rounded-[6px] border-[0.5px] border-[#e5e5e5] bg-[#f2f2f2] px-4 text-[15px] text-[#1a1a1a] placeholder:text-[#808080] focus:outline-none focus:ring-2 focus:ring-[#007aff]/20"
+                    className="h-12 w-full rounded-[6px] border-[0.5px] border-[#e5e5e5] bg-[#f2f2f2] px-4 text-[15px] text-[color:var(--text-primary)] placeholder:text-[color:var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[#007aff]/20"
                     required
                   />
                 </label>
 
                 <label className="flex flex-col gap-2">
                   <span
-                    className="text-[11px] leading-[12px] tracking-[0.3px] text-[#333]"
+                    className="text-[11px] leading-[12px] tracking-[0.3px] text-[color:var(--text-secondary)]"
                     style={{ fontFamily: sfProFamily }}
                   >
                     Username
@@ -128,13 +130,13 @@ function SignUpContent() {
                     value={username}
                     onChange={(event) => setUsername(event.target.value)}
                     placeholder="Username"
-                    className="h-12 w-full rounded-[6px] border-[0.5px] border-[#e5e5e5] bg-[#f2f2f2] px-4 text-[15px] text-[#1a1a1a] placeholder:text-[#808080] focus:outline-none focus:ring-2 focus:ring-[#007aff]/20"
+                    className="h-12 w-full rounded-[6px] border-[0.5px] border-[#e5e5e5] bg-[#f2f2f2] px-4 text-[15px] text-[color:var(--text-primary)] placeholder:text-[color:var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[#007aff]/20"
                   />
                 </label>
 
                 <label className="flex flex-col gap-2">
                   <span
-                    className="text-[11px] leading-[12px] tracking-[0.3px] text-[#333]"
+                    className="text-[11px] leading-[12px] tracking-[0.3px] text-[color:var(--text-secondary)]"
                     style={{ fontFamily: sfProFamily }}
                   >
                     Password
@@ -146,7 +148,7 @@ function SignUpContent() {
                       value={password}
                       onChange={(event) => setPassword(event.target.value)}
                       placeholder="Enter password"
-                      className="h-12 w-full rounded-[6px] border-[0.5px] border-[#e5e5e5] bg-[#f2f2f2] px-4 pr-12 text-[15px] text-[#1a1a1a] placeholder:text-[#808080] focus:outline-none focus:ring-2 focus:ring-[#007aff]/20"
+                      className="h-12 w-full rounded-[6px] border-[0.5px] border-[#e5e5e5] bg-[#f2f2f2] px-4 pr-12 text-[15px] text-[color:var(--text-primary)] placeholder:text-[color:var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[#007aff]/20"
                       required
                     />
                     <button
@@ -161,7 +163,7 @@ function SignUpContent() {
                 </label>
 
                 <div className="flex flex-col gap-2">
-                  <label className="flex items-center gap-3 text-[12px] leading-[20px] tracking-[0.3px] text-[#1a1a1a]">
+                  <label className="flex items-center gap-3 text-[12px] leading-[20px] tracking-[0.3px] text-[color:var(--text-secondary)]">
                     <input
                       type="checkbox"
                       checked={acceptTerms}
@@ -171,7 +173,7 @@ function SignUpContent() {
                     <span style={{ fontFamily: sfProFamily }}>I accept terms and conditions</span>
                   </label>
                   <p
-                    className="text-[11px] leading-[16px] tracking-[0.2px] text-[#808080]"
+                    className="text-[11px] leading-[16px] tracking-[0.2px] text-[color:var(--text-muted)]"
                     style={{ fontFamily: sfProFamily }}
                   >
                     By using BoltRoute, you agree to our{" "}
@@ -215,7 +217,7 @@ function SignUpContent() {
             className="mt-8 flex items-center justify-center gap-2 text-[12px] leading-[20px] tracking-[0.3px]"
             style={{ fontFamily: sfProFamily }}
           >
-            <span className="text-[#1a1a1a]">Already have an account?</span>
+            <span className="text-[color:var(--text-secondary)]">Already have an account?</span>
             <Link href={signinHref} className="text-[#007aff]">
               Sign in
             </Link>

@@ -77,6 +77,8 @@
   --auth-glow-1: rgba(255, 255, 255, 0.14);
   --auth-glow-2: rgba(255, 255, 255, 0.12);
   --auth-glow-3: rgba(255, 255, 255, 0.1);
+  --auth-benefits-scale: 2;
+  --auth-benefits-bg-opacity: 0.175;
   --app-background: radial-gradient(circle at 20% 20%, #ffffff 0, #eef2ff 35%),
     radial-gradient(circle at 80% 0%, #ffffff 0, #f3f4f6 40%),
     linear-gradient(180deg, #f7f8fb 0%, #edf1ff 100%);
@@ -159,6 +161,8 @@
   --auth-glow-1: rgba(122, 162, 255, 0.2);
   --auth-glow-2: rgba(122, 162, 255, 0.16);
   --auth-glow-3: rgba(122, 162, 255, 0.12);
+  --auth-benefits-scale: 2;
+  --auth-benefits-bg-opacity: 0.175;
   --app-background: radial-gradient(circle at 20% 20%, #141c31 0, #0f1424 35%),
     radial-gradient(circle at 80% 0%, #1c2642 0, #101728 40%),
     linear-gradient(180deg, #0b1122 0%, #121a2f 100%);

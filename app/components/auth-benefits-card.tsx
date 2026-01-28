@@ -31,17 +31,23 @@ type AuthBenefitsCardProps = {
 export function AuthBenefitsCard({ className }: AuthBenefitsCardProps) {
   return (
     <div
-      className={`rounded-2xl bg-black/35 px-6 py-6 text-white shadow-[0_16px_40px_rgba(0,0,0,0.28)]${
+      className={`rounded-2xl bg-[rgb(0_0_0_/_var(--auth-benefits-bg-opacity))] px-[calc(24px*var(--auth-benefits-scale))] py-[calc(24px*var(--auth-benefits-scale))] text-white shadow-[0_16px_40px_rgba(0,0,0,0.28)]${
         className ? ` ${className}` : ""
       }`}
     >
-      <ul className="flex flex-col gap-4">
+      <ul className="flex flex-col gap-[calc(16px*var(--auth-benefits-scale))]">
         {BENEFITS.map(({ id, label, Icon }) => (
-          <li key={id} className="flex items-center gap-3">
-            <span className="flex h-6 w-6 items-center justify-center">
-              <Icon size={20} weight="bold" className="text-white/85" aria-hidden="true" />
+          <li key={id} className="flex items-center gap-[calc(12px*var(--auth-benefits-scale))]">
+            <span className="flex h-[calc(24px*var(--auth-benefits-scale))] w-[calc(24px*var(--auth-benefits-scale))] items-center justify-center">
+              <Icon
+                weight="bold"
+                className="h-[calc(20px*var(--auth-benefits-scale))] w-[calc(20px*var(--auth-benefits-scale))] text-white/85"
+                aria-hidden="true"
+              />
             </span>
-            <span className="text-[14px] leading-[20px] text-white/95">{label}</span>
+            <span className="text-[calc(14px*var(--auth-benefits-scale))] leading-[calc(20px*var(--auth-benefits-scale))] text-white/95">
+              {label}
+            </span>
           </li>
         ))}
       </ul>
