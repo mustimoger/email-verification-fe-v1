@@ -10,6 +10,7 @@ import type {
 } from "../lib/api-client";
 import { ApiError, billingApi } from "../lib/api-client";
 import { getBillingClient } from "../lib/paddle";
+import { useConsentStatus } from "../lib/use-consent-status";
 import { DashboardShell } from "../components/dashboard-shell";
 import styles from "./pricing.module.css";
 import { ComparisonSection, FaqSection, FinalCtaSection, VolumePricingSection } from "./pricing-sections";
@@ -154,6 +155,7 @@ export default function PricingV2Client({ variant = "full", onCtaClick }: Pricin
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
+  const consentStatus = useConsentStatus();
 
   useEffect(() => {
     setIsLoaded(true);
@@ -371,6 +373,10 @@ export default function PricingV2Client({ variant = "full", onCtaClick }: Pricin
   const handleCheckout = async () => {
     setCheckoutError(null);
     if (!config || !debouncedQuantity) return;
+    if (!isEmbed && consentStatus !== "accepted") {
+      setCheckoutError("Please accept cookies to enable checkout.");
+      return;
+    }
     if (!checkoutEnabled) {
       console.warn("pricing_v2.checkout_disabled");
       setCheckoutError("Checkout is unavailable right now.");
@@ -422,7 +428,7 @@ export default function PricingV2Client({ variant = "full", onCtaClick }: Pricin
   const transitionClass = isLoaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6";
   const ctaDisabled =
     configLoading || quoteLoading || Boolean(pricingError) || !debouncedQuantity || (!isEmbed && !checkoutEnabled);
-  const shouldLoadCheckoutScript = !isEmbed && checkoutEnabled;
+  const shouldLoadCheckoutScript = !isEmbed && checkoutEnabled && consentStatus === "accepted";
 
   const content = (
       <section className={`${styles.root} relative flex flex-col ${isEmbed ? 'gap-0' : 'gap-10'}`}>

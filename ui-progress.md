@@ -18,6 +18,13 @@
 - [x] Task 15 - Review pricing iframe auth error and identify which auth guard/token check triggers the "Missing auth token" message (MVP).
 - [x] Task 16 - Allow unauthenticated access to the embedded `/pricing` view without changing UI styling (MVP).
 - [x] Task 17 - Validate pricing embed behavior for logged-out users and run unit + integration tests.
+- [ ] Task 18 - Confirm bulk upload completion email notification requirements (trigger, payload, template, success/failure rules).
+- [ ] Task 19 - Add SMTP config + mailer service for bulk upload completion notifications (MVP).
+- [ ] Task 20 - Implement completion-triggered notification flow with idempotency tracking (MVP).
+- [ ] Task 21 - Validate notification flow and run unit + integration tests.
+- [x] Task 22 - Confirm consent banner requirements (scope, categories, gated scripts, legal link configuration).
+- [x] Task 23 - Implement MVP consent banner + consent storage and gate non-essential scripts (Crisp chat, checkout).
+- [x] Task 24 - Validate consent flow and run unit + integration tests.
 
 ## Progress log
 ### Task 1 - Completed
@@ -104,3 +111,39 @@
 - What: Ran pricing backend tests after enabling unauthenticated pricing config.
 - Why: Ensure the new optional-auth path is covered and does not break pricing flow.
 - How: Activated the Python venv and ran `pytest backend/tests/test_pricing_v2.py`; warnings are from dependencies.
+
+### Task 18 - Pending
+- What: Confirm bulk upload completion email notification requirements (trigger, payload, template, success/failure rules).
+- Why: We need precise notification behavior and message content before implementing SMTP or webhook handling.
+- How: Waiting on clarification for webhook payloads, notification timing, and email copy; no code changes yet.
+
+### Task 19 - Pending
+- What: Add SMTP config + mailer service for bulk upload completion notifications (MVP).
+- Why: A dedicated SMTP integration is required to send completion emails via Acumbamail.
+- How: Blocked until SMTP details and template requirements are confirmed.
+
+### Task 20 - Pending
+- What: Implement completion-triggered notification flow with idempotency tracking (MVP).
+- Why: Ensure each bulk upload completion sends one email and avoids duplicate notifications.
+- How: Blocked pending decision on trigger source (webhook vs polling) and idempotency storage.
+
+### Task 21 - Pending
+- What: Validate notification flow and run unit + integration tests.
+- Why: MVP changes must be verified with tests to avoid regressions.
+- How: Will run backend tests once implementation is complete.
+
+### Task 22 - Pending
+### Task 22 - Completed
+- What: Confirmed consent banner requirements (scope, UX, gated scripts, storage, legal link sources).
+- Why: Clear decisions are needed to implement a compliant MVP without guessing.
+- How: Scoped the banner to first visit on any page, set Accept/Reject-only UX, chose to gate Crisp chat and the checkout script until accept, and kept logging local-only using stored consent; legal URLs will be read from optional env vars.
+
+### Task 23 - Completed
+- What: Implemented the MVP consent banner, consent storage helper, and gated non-essential scripts (Crisp chat + checkout script).
+- Why: Ensure non-essential scripts only load after explicit opt-in while keeping the UI subtle and consistent with the dashboard design.
+- How: Added a consent storage module + hook, rendered a fixed bottom banner with Accept/Reject controls, gated Crisp initialization + checkout script loading on consent, and centralized legal link retrieval via env-driven config (with warnings when missing).
+
+### Task 24 - Completed
+- What: Validated the consent flow changes and ran unit + integration tests.
+- Why: Confirm consent gating and UI updates did not introduce regressions.
+- How: Activated the Python venv, loaded `.env.local`, and executed all `tests/*.test.ts` via `./node_modules/.bin/tsx`.

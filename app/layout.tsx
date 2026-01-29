@@ -3,6 +3,7 @@ import { Nunito_Sans } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
 import CrispChat from "./components/crisp-chat";
+import ConsentBanner from "./components/consent-banner";
 import Providers from "./providers";
 import { themeInitScript } from "./lib/theme";
 
@@ -31,6 +32,7 @@ export default function RootLayout({
         </Script>
         <CrispChat />
         <Providers>{children}</Providers>
+        <ConsentBanner />
       </body>
     </html>
   );

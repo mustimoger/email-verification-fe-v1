@@ -29,6 +29,7 @@ import { resolveAuthState } from "./auth-guard-utils";
 import { apiClient, externalApiClient } from "../lib/api-client";
 import type { Profile } from "../lib/api-client";
 import { clearCachedCredits, readCachedCredits, writeCachedCredits } from "../lib/credits-cache";
+import { getLegalLinks } from "../lib/legal-links";
 import { useTheme } from "./theme-provider";
 
 type NavItem = {
@@ -191,6 +192,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   const [creditsRemaining, setCreditsRemaining] = useState<number | null | undefined>(undefined);
   const lastUserIdRef = useRef<string | null>(null);
   const authState = resolveAuthState({ loading, hasSession: Boolean(session) });
+  const legalLinks = useMemo(() => getLegalLinks(), []);
 
   useEffect(() => {
     const handler = (event: MouseEvent) => {
@@ -610,32 +612,21 @@ export function DashboardShell({ children }: { children: ReactNode }) {
         <main className="flex-1 overflow-y-auto bg-transparent px-4 py-6 sm:px-6 lg:px-10">
           <div className="mx-auto flex max-w-6xl flex-col gap-10">
             {children}
-            <footer className="mt-auto flex flex-wrap gap-8 text-xs font-semibold text-[var(--text-muted)]">
-              <a
-                href="https://boltroute.ai/privacy-policy/"
-                target="_blank"
-                rel="noreferrer noopener"
-                className="hover:text-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
-              >
-                Privacy Policy
-              </a>
-              <a
-                href="https://boltroute.ai/terms/"
-                target="_blank"
-                rel="noreferrer noopener"
-                className="hover:text-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
-              >
-                Terms of Service
-              </a>
-              <a
-                href="https://boltroute.ai/gdpr-compliance/"
-                target="_blank"
-                rel="noreferrer noopener"
-                className="hover:text-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
-              >
-                GDPR Compliance
-              </a>
-            </footer>
+            {legalLinks.length ? (
+              <footer className="mt-auto flex flex-wrap gap-8 text-xs font-semibold text-[var(--text-muted)]">
+                {legalLinks.map((link) => (
+                  <a
+                    key={link.key}
+                    href={link.href}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="hover:text-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+                  >
+                    {link.label}
+                  </a>
+                ))}
+              </footer>
+            ) : null}
           </div>
         </main>
       </div>
