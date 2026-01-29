@@ -123,7 +123,7 @@ function SignInContent() {
         <div className="flex min-h-screen w-full flex-col bg-white lg:flex-row">
         <div className="relative min-h-[260px] w-full sm:min-h-[360px] lg:min-h-screen lg:flex-1">
           <Image
-            src="/signin/hero.png"
+            src="/background.jpg"
             alt=""
             fill
             priority
@@ -204,8 +204,8 @@ function SignInContent() {
                         checked={remember}
                         onChange={(event) => handleRememberChange(event.target.checked)}
                       />
-                      <span className="absolute inset-0 rounded-full border-[0.5px] border-[#e5e5e5] bg-[#f2f2f2]" />
-                      <span className="absolute left-[2px] top-[2px] h-4 w-4 rounded-full bg-white shadow-[1px_1px_2px_rgba(51,51,51,0.3)] transition peer-checked:translate-x-5" />
+                      <span className="absolute inset-0 rounded-full border-[0.5px] border-[var(--border)] bg-[var(--surface-strong)] transition-colors peer-checked:border-[var(--accent)] peer-checked:bg-[var(--accent)]" />
+                      <span className="absolute left-[2px] top-[2px] h-4 w-4 rounded-full bg-[var(--surface-elevated)] shadow-[1px_1px_2px_rgba(51,51,51,0.3)] transition peer-checked:translate-x-5 peer-checked:bg-[var(--accent-contrast)]" />
                     </span>
                     <span style={{ fontFamily: sfProFamily }}>Remember me</span>
                   </label>

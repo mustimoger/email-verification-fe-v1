@@ -29,6 +29,15 @@
 - [x] Task 26 - Validate dark-mode auth input updates and run unit + integration tests.
 - [x] Task 27 - Update API hero buttons to integrations + external API docs links (MVP).
 - [x] Task 28 - Validate API hero CTA updates and run unit + integration tests.
+- [x] Task 29 - Confirm desired remember-me behavior on `/signin` (email prefill vs session persistence).
+- [x] Task 30 - Update `/signin` remember-me toggle to show checked/unchecked visual states (MVP).
+- [x] Task 31 - Validate remember-me toggle visuals and run unit + integration tests.
+- [x] Task 32 - Swap auth hero images on `/signin`, `/signup`, and `/reset-password` to `/background.jpg` (MVP).
+- [ ] Task 33 - Validate auth hero image updates and run unit + integration tests.
+- [x] Task 34 - Darken auth hero image overlay so foreground card is more dominant (MVP).
+- [ ] Task 35 - Validate darker hero image update and run unit + integration tests.
+- [x] Task 36 - Remove auth hero image overlay on `/signin`, `/signup`, and `/reset-password` (MVP).
+- [ ] Task 37 - Validate auth hero overlay removal and run unit + integration tests.
 
 ## Progress log
 ### Task 1 - Completed
@@ -171,3 +180,33 @@
 - What: Validated API hero CTA updates and ran unit + integration tests.
 - Why: Ensure CTA changes do not introduce regressions.
 - How: Activated the Python venv, loaded `.env.local`, and executed all `tests/*.test.ts` via `./node_modules/.bin/tsx`.
+
+### Task 29 - Completed
+- What: Confirmed the `/signin` remember-me behavior should remain email-prefill only, and the checked state should use the existing accent theme color.
+- Why: Avoid guessing the intended behavior or styling before implementing the MVP toggle update.
+- How: Collected explicit requirements (email storage only + `--accent` for checked state) and recorded them for the upcoming UI change.
+
+### Task 30 - Completed
+- What: Updated the `/signin` remember-me toggle to visually reflect checked/unchecked states using theme tokens.
+- Why: The toggle was only moving the knob without any color feedback, so checked state was unclear.
+- How: Replaced hard-coded track colors with theme variables and added `peer-checked` styles to apply `--accent` on the track and `--accent-contrast` on the knob.
+
+### Task 31 - Completed
+- What: Validated the remember-me toggle visuals and ran unit + integration tests.
+- Why: MVP UI updates must be verified to avoid regressions.
+- How: Activated the Python venv, loaded `.env.local`, and executed `tests/*.test.ts` via `./node_modules/.bin/tsx`.
+
+### Task 32 - Completed
+- What: Replaced the auth hero image on `/signin`, `/signup`, and `/reset-password` with `/background.jpg`.
+- Why: Align the auth visuals with the new shared background asset.
+- How: Updated the `Image` `src` in each auth page to reference `/background.jpg` while keeping existing layout/sizing.
+
+### Task 34 - Completed
+- What: Darkened the auth hero background on `/signin`, `/signup`, and `/reset-password`.
+- Why: Increase contrast so the foreground card feels more dominant.
+- How: Added an `absolute` overlay using `--overlay-strong` above the hero image across the three auth pages.
+
+### Task 36 - Completed
+- What: Removed the auth hero overlay on `/signin`, `/signup`, and `/reset-password`.
+- Why: The overlay was no longer desired after updating the background asset.
+- How: Deleted the overlay `div` so the new background image displays without additional darkening.
