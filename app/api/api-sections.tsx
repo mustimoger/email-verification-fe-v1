@@ -104,16 +104,18 @@ export function ApiHero({ transitionClass }: { transitionClass?: string }) {
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <a
-              href="#api-keys"
+              href="/integrations"
               className="rounded-xl bg-[linear-gradient(135deg,var(--api-accent)_0%,var(--api-accent-strong)_100%)] px-6 py-3 text-sm font-semibold text-[var(--api-cta-ink)] shadow-[0_16px_32px_rgba(249,168,37,0.3)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_36px_rgba(249,168,37,0.38)]"
             >
-              Generate API key
+              Check integrations
             </a>
             <a
-              href="#api-usage"
+              href="https://docs.boltroute.ai/"
+              target="_blank"
+              rel="noreferrer noopener"
               className="rounded-xl border border-[var(--api-border)] bg-[var(--api-surface-contrast)] px-6 py-3 text-sm font-semibold text-[var(--text-secondary)] transition hover:-translate-y-0.5 hover:border-[var(--api-accent)] hover:bg-[var(--api-accent-soft)] hover:text-[var(--text-primary)]"
             >
-              Review usage
+              API docs
             </a>
           </div>
         </div>

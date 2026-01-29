@@ -27,8 +27,8 @@
 - [x] Task 24 - Validate consent flow and run unit + integration tests.
 - [x] Task 25 - Fix dark-mode auth input styling after data entry on `/signin` and `/signup` (MVP).
 - [x] Task 26 - Validate dark-mode auth input updates and run unit + integration tests.
-- [ ] Task 27 - Update API hero buttons to integrations + external API docs links (MVP).
-- [ ] Task 28 - Validate API hero CTA updates and run unit + integration tests.
+- [x] Task 27 - Update API hero buttons to integrations + external API docs links (MVP).
+- [x] Task 28 - Validate API hero CTA updates and run unit + integration tests.
 
 ## Progress log
 ### Task 1 - Completed
@@ -162,12 +162,12 @@
 - Why: Ensure the auth input styling updates do not introduce regressions.
 - How: Activated the Python venv, loaded `.env.local`, and executed all `tests/*.test.ts` via `./node_modules/.bin/tsx`.
 
-### Task 27 - Pending
-- What: Update API hero buttons to "Check integrations" and "API docs" with correct destinations (MVP).
-- Why: Current buttons point to sections of the same page and are redundant.
-- How: Replace the hero CTA links with `/integrations` and the external docs URL.
+### Task 27 - Completed
+- What: Updated API hero buttons to "Check integrations" and "API docs" with the correct destinations.
+- Why: The prior CTA buttons were redundant within the API page.
+- How: Swapped the primary CTA to `/integrations` and the secondary CTA to the external API docs link.
 
-### Task 28 - Pending
-- What: Validate API hero CTA updates and run unit + integration tests.
+### Task 28 - Completed
+- What: Validated API hero CTA updates and ran unit + integration tests.
 - Why: Ensure CTA changes do not introduce regressions.
-- How: Run existing frontend tests after updating the API hero links.
+- How: Activated the Python venv, loaded `.env.local`, and executed all `tests/*.test.ts` via `./node_modules/.bin/tsx`.
