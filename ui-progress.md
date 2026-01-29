@@ -9,6 +9,12 @@
 - [ ] Task 6 - Validate dark-mode readability and run unit + integration tests after color updates.
 - [ ] Task 7 - Keep the left sidebar visible while scrolling dashboard pages on desktop.
 - [ ] Task 8 - Validate sidebar behavior and run unit + integration tests after layout adjustments.
+- [x] Task 9 - Add static limit notes to `/verify` manual (Max 25 emails) and bulk upload (100MB file size) cards (MVP).
+- [x] Task 10 - Validate `/verify` UI and run unit + integration tests after limit note updates.
+- [x] Task 11 - Adjust `/verify` manual limit note copy to match exact requested punctuation and add a bulk upload 100MB limit note using the same visual style as the manual note (MVP).
+- [x] Task 12 - Validate `/verify` UI and run unit + integration tests after the manual/bulk note updates.
+- [x] Task 13 - Update dashboard footer to show Privacy Policy, Terms of Service, and GDPR Compliance links (new tab) without changing styling; remove Cookie Preferences (MVP).
+- [x] Task 14 - Validate dashboard footer behavior and run unit + integration tests after footer link updates.
 
 ## Progress log
 ### Task 1 - Completed
@@ -50,3 +56,33 @@
 - What: Re-ran unit + integration tests after the sidebar layout tweak.
 - Why: Confirm layout change did not introduce regressions.
 - How: Activated the Python venv, loaded `.env.local`, and ran all `tests/*.test.ts` via `tsx`; warnings are expected debug output.
+
+### Task 9 - Completed
+- What: Added static limit notes to `/verify` for manual (max 25 emails) and bulk upload (max 100MB file size).
+- Why: Communicate ext API constraints in the UI without changing layout or flow.
+- How: Updated the manual verification note copy to include the email cap and added a small pill badge to the bulk upload card indicating the file size limit.
+
+### Task 10 - Completed
+- What: Re-ran unit + integration tests after the `/verify` limit note updates.
+- Why: Ensure UI-only copy changes do not introduce regressions.
+- How: Activated the Python venv, loaded `.env.local`, and ran all `tests/*.test.ts` via `tsx`.
+
+### Task 11 - Completed
+- What: Updated `/verify` manual note copy to the exact requested punctuation and replaced the bulk upload limit pill with a matching warning-style note.
+- Why: Match requested wording and keep both manual/bulk limit notes visually consistent.
+- How: Edited the manual note string verbatim and inserted the bulk limit note using the same border, background, and typography style as the manual note.
+
+### Task 12 - Completed
+- What: Re-ran unit + integration tests after the manual/bulk note updates.
+- Why: Confirm UI copy/layout adjustments did not introduce regressions.
+- How: Activated the Python venv, loaded `.env.local`, and ran all `tests/*.test.ts` via `tsx`.
+
+### Task 13 - Completed
+- What: Replaced dashboard footer buttons with Privacy Policy, Terms of Service, and GDPR Compliance links, and removed the Cookie Preferences item.
+- Why: Provide correct legal links that open in new tabs without altering visual styling.
+- How: Swapped footer `button` elements for anchor tags with the same classes, added external URLs, and set `target="_blank"` with `rel="noreferrer noopener"`.
+
+### Task 14 - Completed
+- What: Re-ran unit + integration tests after footer link updates.
+- Why: Confirm UI-only changes do not introduce regressions.
+- How: Activated the Python venv, loaded `.env.local`, and ran all `tests/*.test.ts` via `tsx`.

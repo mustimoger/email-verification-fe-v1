@@ -318,7 +318,7 @@ export function ManualVerificationCard({
         </div>
       ) : null}
       <div className="mt-4 rounded-lg border border-[var(--verify-border)] bg-[var(--verify-accent-soft)] px-4 py-3 text-xs font-semibold text-[var(--verify-accent)]">
-        Manual results stay available for this session. Export them right after completion.
+        Manual results stay available for this session. Export them right after completion,max 25 emails.
       </div>
       <div className="mt-5 flex flex-wrap gap-3">
         <button
@@ -715,7 +715,10 @@ export function UploadSection({
               {fileNotice}
             </div>
           ) : null}
-          <div className="mt-4 flex flex-wrap items-center gap-2 text-xs font-semibold text-[var(--text-muted)]">
+          <div className="mt-4 rounded-lg border border-[var(--verify-border)] bg-[var(--verify-accent-soft)] px-4 py-3 text-xs font-semibold text-[var(--verify-accent)]">
+            Bulk uploads are limited to 100MB per file.
+          </div>
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-semibold text-[var(--text-muted)]">
             <span className="rounded-full border border-[var(--verify-border)] bg-[var(--verify-surface-contrast)] px-3 py-1">
               Auto-detect headers
             </span>

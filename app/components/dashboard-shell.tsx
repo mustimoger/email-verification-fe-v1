@@ -611,18 +611,30 @@ export function DashboardShell({ children }: { children: ReactNode }) {
           <div className="mx-auto flex max-w-6xl flex-col gap-10">
             {children}
             <footer className="mt-auto flex flex-wrap gap-8 text-xs font-semibold text-[var(--text-muted)]">
-              <button
-                type="button"
+              <a
+                href="https://boltroute.ai/privacy-policy/"
+                target="_blank"
+                rel="noreferrer noopener"
                 className="hover:text-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
               >
-                Privacy Policy & Terms
-              </button>
-              <button
-                type="button"
+                Privacy Policy
+              </a>
+              <a
+                href="https://boltroute.ai/terms/"
+                target="_blank"
+                rel="noreferrer noopener"
                 className="hover:text-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
               >
-                Cookie Preferences
-              </button>
+                Terms of Service
+              </a>
+              <a
+                href="https://boltroute.ai/gdpr-compliance/"
+                target="_blank"
+                rel="noreferrer noopener"
+                className="hover:text-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+              >
+                GDPR Compliance
+              </a>
             </footer>
           </div>
         </main>
