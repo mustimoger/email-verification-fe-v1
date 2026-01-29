@@ -211,3 +211,22 @@ def get_current_user_allow_unconfirmed(
         settings=settings,
         require_confirmed_email=False,
     )
+
+
+def get_current_user_optional(
+    request: Request,
+    authorization: Optional[str] = Header(default=None),
+    dev_api_key: Optional[str] = Header(default=None, alias="x-dev-api-key"),
+    settings=Depends(get_settings),
+) -> Optional[AuthContext]:
+    cookie_token = request.cookies.get(settings.supabase_auth_cookie_name)
+    token = _extract_token(authorization, cookie_token)
+    if not token:
+        return None
+    return _get_current_user(
+        request,
+        authorization=authorization,
+        dev_api_key=dev_api_key,
+        settings=settings,
+        require_confirmed_email=False,
+    )

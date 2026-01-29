@@ -4,7 +4,7 @@ from typing import Any, Dict, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field, field_validator
 
-from ..core.auth import AuthContext, get_current_user
+from ..core.auth import AuthContext, get_current_user, get_current_user_optional
 from ..paddle.client import (
     CreateTransactionRequest,
     PaddleAPIError,
@@ -127,13 +127,14 @@ class PricingTransactionResponse(BaseModel):
 
 
 @router.get("/config", response_model=PricingConfigEnvelope)
-async def config_pricing_v2(user: AuthContext = Depends(get_current_user)) -> PricingConfigEnvelope:
+async def config_pricing_v2(user: Optional[AuthContext] = Depends(get_current_user_optional)) -> PricingConfigEnvelope:
+    user_id = user.user_id if user else None
     try:
         config = get_pricing_config_v2()
         paddle_config = get_paddle_config()
         env = paddle_config.active_environment
     except Exception as exc:  # noqa: BLE001
-        logger.error("pricing_v2.config_failed", extra={"error": str(exc), "user_id": user.user_id})
+        logger.error("pricing_v2.config_failed", extra={"error": str(exc), "user_id": user_id})
         raise HTTPException(status_code=500, detail="Pricing configuration unavailable") from exc
     return PricingConfigEnvelope(
         status=paddle_config.status,

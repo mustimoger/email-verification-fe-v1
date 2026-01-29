@@ -7,14 +7,23 @@ from fastapi.testclient import TestClient
 from app.api import billing_v2 as billing_v2_module
 from app.api.billing_v2 import router as billing_v2_router
 from app.core.auth import AuthContext
+from app.core.settings import get_settings
 from app.services.pricing_v2 import PricingConfigV2, PricingTierV2, compute_pricing_totals_v2
 
 
 def _build_app(fake_user=None):
+    class StubSettings:
+        supabase_auth_cookie_name = "sb-access-token"
+        supabase_url = "https://example.supabase.co"
+        supabase_jwt_secret = "test-secret"
+        dev_api_keys = []
+
     app = FastAPI()
     app.include_router(billing_v2_router)
+    app.dependency_overrides[get_settings] = lambda: StubSettings()
     if fake_user is not None:
         app.dependency_overrides[billing_v2_module.get_current_user] = fake_user
+        app.dependency_overrides[billing_v2_module.get_current_user_optional] = fake_user
     return app
 
 
@@ -284,4 +293,27 @@ def test_config_endpoint_returns_checkout_metadata(monkeypatch, pricing_config):
     assert payload["checkout_enabled"] is True
     assert payload["checkout_script"] == "https://example.com/checkout.js"
     assert payload["client_side_token"] == "token_123"
+    assert payload["pricing"]["min_volume"] == pricing_config.min_volume
+
+
+def test_config_endpoint_allows_unauthenticated(monkeypatch, pricing_config):
+    class StubEnv:
+        checkout_script = "https://example.com/checkout.js"
+
+    class StubConfig:
+        status = "sandbox"
+        checkout_enabled = True
+        client_side_token = "token_123"
+        seller_id = "seller_123"
+        active_environment = StubEnv()
+
+    monkeypatch.setattr(billing_v2_module, "get_pricing_config_v2", lambda: pricing_config)
+    monkeypatch.setattr(billing_v2_module, "get_paddle_config", lambda: StubConfig())
+
+    app = _build_app()
+    client = TestClient(app)
+
+    resp = client.get("/api/billing/v2/config")
+    assert resp.status_code == 200, resp.text
+    payload = resp.json()
     assert payload["pricing"]["min_volume"] == pricing_config.min_volume

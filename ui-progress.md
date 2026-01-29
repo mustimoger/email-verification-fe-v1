@@ -16,8 +16,8 @@
 - [x] Task 13 - Update dashboard footer to show Privacy Policy, Terms of Service, and GDPR Compliance links (new tab) without changing styling; remove Cookie Preferences (MVP).
 - [x] Task 14 - Validate dashboard footer behavior and run unit + integration tests after footer link updates.
 - [x] Task 15 - Review pricing iframe auth error and identify which auth guard/token check triggers the "Missing auth token" message (MVP).
-- [ ] Task 16 - Allow unauthenticated access to the embedded `/pricing` view without changing UI styling (MVP).
-- [ ] Task 17 - Validate pricing embed behavior for logged-out users and run unit + integration tests.
+- [x] Task 16 - Allow unauthenticated access to the embedded `/pricing` view without changing UI styling (MVP).
+- [x] Task 17 - Validate pricing embed behavior for logged-out users and run unit + integration tests.
 
 ## Progress log
 ### Task 1 - Completed
@@ -94,3 +94,13 @@
 - What: Identified the source of the "Missing auth token" error in the pricing iframe flow.
 - Why: We need the exact auth guard blocking unauthenticated pricing data before changing behavior.
 - How: Traced the pricing page to `billingApi.getPricingConfigV2()` and confirmed `/api/billing/v2/config` is protected by `get_current_user`, which throws `Missing auth token` when no session is present.
+
+### Task 16 - Completed
+- What: Made `/api/billing/v2/config` accessible without authentication to unblock the pricing embed.
+- Why: The pricing iframe needs pricing config/quotes for logged-out users without triggering `Missing auth token`.
+- How: Added an optional auth dependency in `backend/app/core/auth.py`, updated the config endpoint to accept optional users safely, and added a test to confirm unauthenticated access.
+
+### Task 17 - Completed
+- What: Ran pricing backend tests after enabling unauthenticated pricing config.
+- Why: Ensure the new optional-auth path is covered and does not break pricing flow.
+- How: Activated the Python venv and ran `pytest backend/tests/test_pricing_v2.py`; warnings are from dependencies.
