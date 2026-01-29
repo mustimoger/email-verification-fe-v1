@@ -25,6 +25,10 @@
 - [x] Task 22 - Confirm consent banner requirements (scope, categories, gated scripts, legal link configuration).
 - [x] Task 23 - Implement MVP consent banner + consent storage and gate non-essential scripts (Crisp chat, checkout).
 - [x] Task 24 - Validate consent flow and run unit + integration tests.
+- [x] Task 25 - Fix dark-mode auth input styling after data entry on `/signin` and `/signup` (MVP).
+- [x] Task 26 - Validate dark-mode auth input updates and run unit + integration tests.
+- [ ] Task 27 - Update API hero buttons to integrations + external API docs links (MVP).
+- [ ] Task 28 - Validate API hero CTA updates and run unit + integration tests.
 
 ## Progress log
 ### Task 1 - Completed
@@ -147,3 +151,23 @@
 - What: Validated the consent flow changes and ran unit + integration tests.
 - Why: Confirm consent gating and UI updates did not introduce regressions.
 - How: Activated the Python venv, loaded `.env.local`, and executed all `tests/*.test.ts` via `./node_modules/.bin/tsx`.
+
+### Task 25 - Completed
+- What: Fixed dark-mode auth input styling after data entry on `/signin` and `/signup`.
+- Why: Inputs were using hard-coded light backgrounds that looked wrong in dark mode.
+- How: Replaced hard-coded border/background colors with theme tokens and added a dedicated `auth-input` class for targeted autofill styling.
+
+### Task 26 - Completed
+- What: Validated dark-mode auth input updates and ran unit + integration tests.
+- Why: Ensure the auth input styling updates do not introduce regressions.
+- How: Activated the Python venv, loaded `.env.local`, and executed all `tests/*.test.ts` via `./node_modules/.bin/tsx`.
+
+### Task 27 - Pending
+- What: Update API hero buttons to "Check integrations" and "API docs" with correct destinations (MVP).
+- Why: Current buttons point to sections of the same page and are redundant.
+- How: Replace the hero CTA links with `/integrations` and the external docs URL.
+
+### Task 28 - Pending
+- What: Validate API hero CTA updates and run unit + integration tests.
+- Why: Ensure CTA changes do not introduce regressions.
+- How: Run existing frontend tests after updating the API hero links.

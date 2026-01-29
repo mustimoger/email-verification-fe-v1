@@ -120,7 +120,7 @@ function SignInContent() {
 
   return (
     <main className="min-h-screen bg-white">
-      <div className="flex min-h-screen w-full flex-col bg-white lg:flex-row">
+        <div className="flex min-h-screen w-full flex-col bg-white lg:flex-row">
         <div className="relative min-h-[260px] w-full sm:min-h-[360px] lg:min-h-screen lg:flex-1">
           <Image
             src="/signin/hero.png"
@@ -162,7 +162,7 @@ function SignInContent() {
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
                     placeholder="Email or phone number"
-                    className="h-12 w-full rounded-[6px] border-[0.5px] border-[#e5e5e5] bg-[#f2f2f2] px-4 text-[15px] text-[color:var(--text-primary)] placeholder:text-[color:var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[#007aff]/20"
+                    className="auth-input h-12 w-full rounded-[6px] border border-[var(--border)] bg-[var(--surface-soft)] px-4 text-[15px] text-[color:var(--text-primary)] placeholder:text-[color:var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
                     required
                   />
                 </label>
@@ -181,7 +181,7 @@ function SignInContent() {
                       value={password}
                       onChange={(event) => setPassword(event.target.value)}
                       placeholder="Enter password"
-                      className="h-12 w-full rounded-[6px] border-[0.5px] border-[#e5e5e5] bg-[#f2f2f2] px-4 pr-12 text-[15px] text-[color:var(--text-primary)] placeholder:text-[color:var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[#007aff]/20"
+                      className="auth-input h-12 w-full rounded-[6px] border border-[var(--border)] bg-[var(--surface-soft)] px-4 pr-12 text-[15px] text-[color:var(--text-primary)] placeholder:text-[color:var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
                       required
                     />
                     <button

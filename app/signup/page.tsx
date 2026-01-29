@@ -112,7 +112,7 @@ function SignUpContent() {
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
                     placeholder="Email address"
-                    className="h-12 w-full rounded-[6px] border-[0.5px] border-[#e5e5e5] bg-[#f2f2f2] px-4 text-[15px] text-[color:var(--text-primary)] placeholder:text-[color:var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[#007aff]/20"
+                    className="auth-input h-12 w-full rounded-[6px] border border-[var(--border)] bg-[var(--surface-soft)] px-4 text-[15px] text-[color:var(--text-primary)] placeholder:text-[color:var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
                     required
                   />
                 </label>
@@ -130,7 +130,7 @@ function SignUpContent() {
                     value={username}
                     onChange={(event) => setUsername(event.target.value)}
                     placeholder="Username"
-                    className="h-12 w-full rounded-[6px] border-[0.5px] border-[#e5e5e5] bg-[#f2f2f2] px-4 text-[15px] text-[color:var(--text-primary)] placeholder:text-[color:var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[#007aff]/20"
+                    className="auth-input h-12 w-full rounded-[6px] border border-[var(--border)] bg-[var(--surface-soft)] px-4 text-[15px] text-[color:var(--text-primary)] placeholder:text-[color:var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
                   />
                 </label>
 
@@ -148,7 +148,7 @@ function SignUpContent() {
                       value={password}
                       onChange={(event) => setPassword(event.target.value)}
                       placeholder="Enter password"
-                      className="h-12 w-full rounded-[6px] border-[0.5px] border-[#e5e5e5] bg-[#f2f2f2] px-4 pr-12 text-[15px] text-[color:var(--text-primary)] placeholder:text-[color:var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[#007aff]/20"
+                      className="auth-input h-12 w-full rounded-[6px] border border-[var(--border)] bg-[var(--surface-soft)] px-4 pr-12 text-[15px] text-[color:var(--text-primary)] placeholder:text-[color:var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
                       required
                     />
                     <button
