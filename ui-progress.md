@@ -15,7 +15,7 @@
 - [x] Task 12 - Validate `/verify` UI and run unit + integration tests after the manual/bulk note updates.
 - [x] Task 13 - Update dashboard footer to show Privacy Policy, Terms of Service, and GDPR Compliance links (new tab) without changing styling; remove Cookie Preferences (MVP).
 - [x] Task 14 - Validate dashboard footer behavior and run unit + integration tests after footer link updates.
-- [ ] Task 15 - Review pricing iframe auth error and identify which auth guard/token check triggers the "Missing auth token" message (MVP).
+- [x] Task 15 - Review pricing iframe auth error and identify which auth guard/token check triggers the "Missing auth token" message (MVP).
 - [ ] Task 16 - Allow unauthenticated access to the embedded `/pricing` view without changing UI styling (MVP).
 - [ ] Task 17 - Validate pricing embed behavior for logged-out users and run unit + integration tests.
 
@@ -89,3 +89,8 @@
 - What: Re-ran unit + integration tests after footer link updates.
 - Why: Confirm UI-only changes do not introduce regressions.
 - How: Activated the Python venv, loaded `.env.local`, and ran all `tests/*.test.ts` via `tsx`.
+
+### Task 15 - Completed
+- What: Identified the source of the "Missing auth token" error in the pricing iframe flow.
+- Why: We need the exact auth guard blocking unauthenticated pricing data before changing behavior.
+- How: Traced the pricing page to `billingApi.getPricingConfigV2()` and confirmed `/api/billing/v2/config` is protected by `get_current_user`, which throws `Missing auth token` when no session is present.
