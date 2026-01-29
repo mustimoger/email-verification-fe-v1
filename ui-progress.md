@@ -15,6 +15,9 @@
 - [x] Task 12 - Validate `/verify` UI and run unit + integration tests after the manual/bulk note updates.
 - [x] Task 13 - Update dashboard footer to show Privacy Policy, Terms of Service, and GDPR Compliance links (new tab) without changing styling; remove Cookie Preferences (MVP).
 - [x] Task 14 - Validate dashboard footer behavior and run unit + integration tests after footer link updates.
+- [ ] Task 15 - Review pricing iframe auth error and identify which auth guard/token check triggers the "Missing auth token" message (MVP).
+- [ ] Task 16 - Allow unauthenticated access to the embedded `/pricing` view without changing UI styling (MVP).
+- [ ] Task 17 - Validate pricing embed behavior for logged-out users and run unit + integration tests.
 
 ## Progress log
 ### Task 1 - Completed
