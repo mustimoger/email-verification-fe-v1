@@ -44,6 +44,8 @@
 - [x] Task 41 - Validate original-resolution hero image update and run unit + integration tests.
 - [x] Task 42 - Serve auth hero image at original resolution on `/reset-password` (MVP).
 - [x] Task 43 - Validate `/reset-password` hero image update and run unit + integration tests.
+- [x] Task 44 - Hide auth hero background image on mobile view for `/signin`, `/signup`, and `/reset-password` (MVP).
+- [x] Task 45 - Validate mobile hero image visibility update and run unit + integration tests.
 
 ## Progress log
 ### Task 1 - Completed
@@ -245,4 +247,14 @@
 ### Task 43 - Completed
 - What: Validated the `/reset-password` hero image update and ran unit + integration tests.
 - Why: Confirm the reset password background change is stable.
+- How: Activated the Python venv, loaded `.env.local`, and executed `tests/*.test.ts` via `./node_modules/.bin/tsx`.
+
+### Task 44 - Completed
+- What: Hid the auth hero background image on mobile for `/signin`, `/signup`, and `/reset-password`.
+- Why: Reduce mobile visual noise and keep the auth forms front-and-center on smaller screens.
+- How: Updated the hero image wrapper to `hidden` by default and show it only at `lg` breakpoints.
+
+### Task 45 - Completed
+- What: Validated the mobile hero image visibility update and ran unit + integration tests.
+- Why: Confirm the responsive visibility change does not introduce regressions.
 - How: Activated the Python venv, loaded `.env.local`, and executed `tests/*.test.ts` via `./node_modules/.bin/tsx`.

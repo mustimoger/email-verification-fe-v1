@@ -90,7 +90,7 @@ export default function ResetPasswordPage() {
   return (
     <main className="min-h-screen bg-white">
       <div className="flex min-h-screen w-full flex-col bg-white lg:flex-row">
-        <div className="relative min-h-[260px] w-full sm:min-h-[360px] lg:min-h-screen lg:flex-1">
+        <div className="relative hidden min-h-[260px] w-full sm:min-h-[360px] lg:flex lg:min-h-screen lg:flex-1">
           <Image
             src="/background.jpg"
             alt=""
