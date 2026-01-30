@@ -38,6 +38,8 @@
 - [ ] Task 35 - Validate darker hero image update and run unit + integration tests.
 - [x] Task 36 - Remove auth hero image overlay on `/signin`, `/signup`, and `/reset-password` (MVP).
 - [ ] Task 37 - Validate auth hero overlay removal and run unit + integration tests.
+- [x] Task 38 - Set auth hero image quality to 100 on `/signin` and `/signup` (MVP).
+- [x] Task 39 - Validate auth hero image quality update and run unit + integration tests.
 
 ## Progress log
 ### Task 1 - Completed
@@ -210,3 +212,13 @@
 - What: Removed the auth hero overlay on `/signin`, `/signup`, and `/reset-password`.
 - Why: The overlay was no longer desired after updating the background asset.
 - How: Deleted the overlay `div` so the new background image displays without additional darkening.
+
+### Task 38 - Completed
+- What: Set the auth hero image quality to 100 on `/signin` and `/signup`.
+- Why: Reduce compression artifacts and better match the original background image fidelity.
+- How: Added `quality={100}` to the Next.js `Image` components on the two auth pages.
+
+### Task 39 - Completed
+- What: Validated the auth hero image quality update and ran unit + integration tests.
+- Why: Ensure the image quality adjustment did not introduce regressions.
+- How: Activated the Python venv, loaded `.env.local`, and executed `tests/*.test.ts` via `./node_modules/.bin/tsx`.

@@ -77,6 +77,7 @@ function SignUpContent() {
             alt=""
             fill
             priority
+            quality={100}
             className="object-cover"
             sizes="(min-width: 1024px) 65vw, 100vw"
           />
