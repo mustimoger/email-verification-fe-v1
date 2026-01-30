@@ -96,6 +96,7 @@ export default function ResetPasswordPage() {
             alt=""
             fill
             priority
+            unoptimized
             className="object-cover"
             sizes="(min-width: 1024px) 65vw, 100vw"
           />

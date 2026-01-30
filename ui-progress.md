@@ -40,6 +40,10 @@
 - [ ] Task 37 - Validate auth hero overlay removal and run unit + integration tests.
 - [x] Task 38 - Set auth hero image quality to 100 on `/signin` and `/signup` (MVP).
 - [x] Task 39 - Validate auth hero image quality update and run unit + integration tests.
+- [x] Task 40 - Serve auth hero image at original resolution on `/signin` and `/signup` (MVP).
+- [x] Task 41 - Validate original-resolution hero image update and run unit + integration tests.
+- [x] Task 42 - Serve auth hero image at original resolution on `/reset-password` (MVP).
+- [x] Task 43 - Validate `/reset-password` hero image update and run unit + integration tests.
 
 ## Progress log
 ### Task 1 - Completed
@@ -221,4 +225,24 @@
 ### Task 39 - Completed
 - What: Validated the auth hero image quality update and ran unit + integration tests.
 - Why: Ensure the image quality adjustment did not introduce regressions.
+- How: Activated the Python venv, loaded `.env.local`, and executed `tests/*.test.ts` via `./node_modules/.bin/tsx`.
+
+### Task 40 - Completed
+- What: Served the auth hero image at original resolution on `/signin` and `/signup`.
+- Why: Avoid any Next.js resizing or compression so the background renders at full fidelity.
+- How: Set `unoptimized` on the hero `Image` components to bypass Next.js image optimization.
+
+### Task 42 - Completed
+- What: Served the auth hero image at original resolution on `/reset-password`.
+- Why: Keep the reset password page background fidelity consistent with the other auth pages.
+- How: Added `unoptimized` to the hero `Image` component on `/reset-password`.
+
+### Task 41 - Completed
+- What: Validated the original-resolution hero image update and ran unit + integration tests.
+- Why: Ensure disabling image optimization does not introduce regressions.
+- How: Activated the Python venv, loaded `.env.local`, and executed `tests/*.test.ts` via `./node_modules/.bin/tsx`.
+
+### Task 43 - Completed
+- What: Validated the `/reset-password` hero image update and ran unit + integration tests.
+- Why: Confirm the reset password background change is stable.
 - How: Activated the Python venv, loaded `.env.local`, and executed `tests/*.test.ts` via `./node_modules/.bin/tsx`.
