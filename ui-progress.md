@@ -52,6 +52,15 @@
 - [ ] Task 49 - Validate icon migration and run unit + integration tests.
 - [x] Task 50 - Set `/public/bolt.png` as the browser favicon (MVP).
 - [ ] Task 51 - Validate favicon update and run unit + integration tests.
+- [ ] Task 52 - Remove the default Next.js favicon so only `/public/bolt.png` is served (MVP).
+- [ ] Task 53 - Validate favicon-only update and run unit + integration tests.
+- [x] Task 54 - Define marketing demo dataset (credits, metrics, tasks, API usage) for screenshots (MVP).
+- [x] Task 55 - Create a dedicated Supabase demo user with provided credentials (MVP).
+- [x] Task 56 - Seed ext API Postgres with insert-only demo data (>=15 completed file-backed tasks + API usage) (MVP).
+- [x] Task 57 - Validate Overview/History/API dashboards with the demo account and adjust seed data if needed (MVP).
+- [x] Task 58 - Align demo credit balance with ext API credits ledger via admin grant (MVP).
+- [x] Task 59 - Update Overview metrics mapping to accept ext API `valid/invalid` keys and include invalid sub-statuses (MVP).
+- [ ] Task 60 - Validate Overview stats render correctly and run `test:overview` after mapping update (MVP).
 
 ## Progress log
 ### Task 1 - Completed
@@ -274,3 +283,38 @@
 - What: Confirm the icon replacement scope and Phosphor size/color conventions before swapping icons.
 - Why: The requested conventions reference `Screenshot_5.png`, which is not present in the repo, so icon sizing/colors cannot be inferred yet.
 - How: Awaiting the screenshot file or explicit sizing/color rules to proceed.
+
+### Task 54 - Completed
+- What: Defined a consistent, realistic demo dataset for marketing screenshots (credits, verification metrics, task history, and API usage).
+- Why: The demo account needs coherent totals and time series values so screenshots look realistic and internally consistent.
+- How: Specified a 30-day verification series totaling 17,700, 15 completed file-backed tasks summing to 17,700, pending/failed counts for in-flight tasks, balanced verification status totals, and 30-day API usage series totaling 9,480 with per-purpose breakdowns.
+
+### Task 55 - Completed
+- What: Created the dedicated Supabase demo user for marketing screenshots.
+- Why: The ext API data must be scoped to a single, isolated user UUID with no impact on existing accounts.
+- How: Created the user via the Supabase admin API using the provided email, confirmed email at creation, and recorded the user UUID for seeding (`ceb24fa7-d8e6-4833-be9c-e148c6e2ecf8`). Credentials are not stored here.
+
+### Task 56 - Completed
+- What: Seeded insert-only demo data in the ext API Postgres for the demo user.
+- Why: Overview/History/API pages require realistic task history, verification metrics, credits, and API usage to appear populated in screenshots.
+- How: Added 17 tasks (15 completed file-backed + 2 manual in-flight), 17,700 completed email jobs with status breakdown, credits (4 grants + 15 deductions), 3 API keys with 30-day usage series, and matching batch upload metadata. All inserts are scoped to the demo user UUID and avoid updates/deletes.
+
+### Task 57 - Completed
+- What: Validated demo data coverage for Overview, History, and API dashboard sections.
+- Why: Confirm the seeded dataset meets screenshot requirements (>=15 completed file-backed tasks, API usage series, coherent totals).
+- How: Queried ext API Postgres for the demo user and verified 17 tasks with 15 file-backed uploads, latest tasks ordering for Overview, 17,700 completed jobs, credit balance 22,400, 3 API keys, and API usage totals (9,480) aligned with per-purpose breakdowns.
+
+### Task 58 - Completed
+- What: Synced the demo credit balance with the ext API credit ledger used by `/credits/balance`.
+- Why: The UI reads credits from the ext API ledger (not direct DB inserts), so the balance needed an admin grant.
+- How: Granted 22,000 credits via the admin `/credits/grant` endpoint, bringing the demo balance to 22,400.
+
+### Task 59 - Completed
+- What: Updated Overview verification totals mapping to support ext API `valid/invalid` fields and invalid sub-statuses.
+- Why: The ext API metrics payload uses `valid/invalid` plus `invalid_syntax`, `unknown`, and `disposable_domain`, which previously rendered as zeros in the Overview stats.
+- How: Added fallback mapping for `valid` and `invalid`, summed invalid sub-statuses into the invalid total, included `disposable_domain` in disposable totals, and added a unit test to cover the new mapping.
+
+### Task 60 - Completed
+- What: Validated the Overview mapping behavior after the metrics update.
+- Why: Ensure the new mapping renders correct totals and stays covered by tests.
+- How: Ran `npm run test:overview` after activating the Python venv; all mapping tests passed.

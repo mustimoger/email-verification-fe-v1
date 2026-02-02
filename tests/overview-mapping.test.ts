@@ -3,6 +3,7 @@ import assert from "node:assert";
 import {
   aggregateValidationCounts,
   buildIntegrationLabelMap,
+  buildVerificationTotalsFromMetrics,
   formatOverviewDate,
   mapTaskToOverviewTask,
   normalizeOverviewStatus,
@@ -46,6 +47,31 @@ run("aggregateValidationCounts sums task counts", () => {
   assert.strictEqual(totals.invalid, 3);
   assert.strictEqual(totals.catchAll, 1);
   assert.strictEqual(totals.total, 9);
+});
+
+run("buildVerificationTotalsFromMetrics supports valid/invalid keys and invalid sub-statuses", () => {
+  const metrics = {
+    total_verifications: 100,
+    verification_status: {
+      valid: 50,
+      invalid: 20,
+      invalid_syntax: 5,
+      unknown: 5,
+      disposable_domain: 10,
+      catchall: 10,
+    },
+    total_catchall: 10,
+    total_role_based: 4,
+    total_disposable_domain_emails: 10,
+  };
+  const totals = buildVerificationTotalsFromMetrics(metrics);
+  assert.ok(totals);
+  assert.strictEqual(totals?.valid, 50);
+  assert.strictEqual(totals?.invalid, 40);
+  assert.strictEqual(totals?.catchAll, 10);
+  assert.strictEqual(totals?.roleBased, 4);
+  assert.strictEqual(totals?.disposable, 10);
+  assert.strictEqual(totals?.total, 100);
 });
 
 run("mapTaskToOverviewTask maps task fields safely", () => {

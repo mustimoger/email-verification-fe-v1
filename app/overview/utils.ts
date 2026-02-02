@@ -79,8 +79,15 @@ export function buildVerificationTotalsFromMetrics(
 ): ValidationTotals | null {
   if (!metrics) return null;
   const status = metrics.verification_status ?? {};
-  const valid = coerceCount(status.exists) ?? 0;
-  const invalid = coerceCount(status.not_exists) ?? 0;
+  const valid = coerceCount(status.exists) ?? coerceCount(status.valid) ?? 0;
+  const invalidBase = coerceCount(status.invalid) ?? coerceCount(status.not_exists) ?? 0;
+  const invalidExtras = [
+    coerceCount(status.invalid_syntax),
+    coerceCount(status.unknown),
+    coerceCount(status.disposable_domain),
+    coerceCount(status.disposable_domain_emails),
+  ].reduce((sum, value) => sum + (value ?? 0), 0);
+  const invalid = invalidBase + invalidExtras;
   const catchAll =
     coerceCount(metrics.total_catchall) ??
     coerceCount(status.catchall) ??
@@ -91,6 +98,7 @@ export function buildVerificationTotalsFromMetrics(
     0;
   const disposable =
     coerceCount(metrics.total_disposable_domain_emails) ??
+    coerceCount(status.disposable_domain) ??
     coerceCount(status.disposable_domain_emails) ??
     0;
   const total =

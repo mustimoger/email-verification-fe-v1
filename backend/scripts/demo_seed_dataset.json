@@ -1,0 +1,320 @@
+{
+  "version": 1,
+  "credits": {
+    "grants": [
+      {
+        "amount": 100,
+        "reason": "Signup bonus",
+        "date": "2026-01-04",
+        "time": "09:15:00"
+      },
+      {
+        "amount": 25000,
+        "reason": "Innovator plan purchase",
+        "date": "2026-01-05",
+        "time": "10:00:00"
+      },
+      {
+        "amount": 10000,
+        "reason": "Usage top-up",
+        "date": "2026-01-21",
+        "time": "10:30:00"
+      },
+      {
+        "amount": 5000,
+        "reason": "Usage top-up",
+        "date": "2026-01-30",
+        "time": "11:00:00"
+      }
+    ]
+  },
+  "verification": {
+    "total_verifications": 17700,
+    "verification_status": {
+      "exists": 13400,
+      "not_exists": 1940,
+      "catchall": 1300,
+      "invalid_syntax": 350,
+      "unknown": 450,
+      "disposable_domain_emails": 260
+    },
+    "total_role_based": 420,
+    "total_disposable_domain_emails": 260,
+    "series": [
+      { "date": "2026-01-04", "total_verifications": 538 },
+      { "date": "2026-01-05", "total_verifications": 593 },
+      { "date": "2026-01-06", "total_verifications": 546 },
+      { "date": "2026-01-07", "total_verifications": 624 },
+      { "date": "2026-01-08", "total_verifications": 592 },
+      { "date": "2026-01-09", "total_verifications": 550 },
+      { "date": "2026-01-10", "total_verifications": 532 },
+      { "date": "2026-01-11", "total_verifications": 619 },
+      { "date": "2026-01-12", "total_verifications": 659 },
+      { "date": "2026-01-13", "total_verifications": 666 },
+      { "date": "2026-01-14", "total_verifications": 610 },
+      { "date": "2026-01-15", "total_verifications": 610 },
+      { "date": "2026-01-16", "total_verifications": 538 },
+      { "date": "2026-01-17", "total_verifications": 563 },
+      { "date": "2026-01-18", "total_verifications": 558 },
+      { "date": "2026-01-19", "total_verifications": 613 },
+      { "date": "2026-01-20", "total_verifications": 669 },
+      { "date": "2026-01-21", "total_verifications": 610 },
+      { "date": "2026-01-22", "total_verifications": 586 },
+      { "date": "2026-01-23", "total_verifications": 563 },
+      { "date": "2026-01-24", "total_verifications": 527 },
+      { "date": "2026-01-25", "total_verifications": 636 },
+      { "date": "2026-01-26", "total_verifications": 542 },
+      { "date": "2026-01-27", "total_verifications": 676 },
+      { "date": "2026-01-28", "total_verifications": 622 },
+      { "date": "2026-01-29", "total_verifications": 541 },
+      { "date": "2026-01-30", "total_verifications": 527 },
+      { "date": "2026-01-31", "total_verifications": 601 },
+      { "date": "2026-02-01", "total_verifications": 639 },
+      { "date": "2026-02-02", "total_verifications": 550 }
+    ]
+  },
+  "tasks": [
+    {
+      "date": "2026-01-04",
+      "time": "12:10:00",
+      "file_name": "newsletter_jan04.csv",
+      "is_file_backed": true,
+      "status": "completed",
+      "total": 900,
+      "valid": 667,
+      "invalid": 159,
+      "catchall": 74
+    },
+    {
+      "date": "2026-01-06",
+      "time": "10:20:00",
+      "file_name": "crm_export_2026-01-06.csv",
+      "is_file_backed": true,
+      "status": "completed",
+      "total": 3200,
+      "valid": 2552,
+      "invalid": 469,
+      "catchall": 179
+    },
+    {
+      "date": "2026-01-08",
+      "time": "09:45:00",
+      "file_name": "leads_q1_batch1.csv",
+      "is_file_backed": true,
+      "status": "completed",
+      "total": 1500,
+      "valid": 1144,
+      "invalid": 248,
+      "catchall": 108
+    },
+    {
+      "date": "2026-01-10",
+      "time": "11:05:00",
+      "file_name": "webinar_registrations.csv",
+      "is_file_backed": true,
+      "status": "completed",
+      "total": 1300,
+      "valid": 972,
+      "invalid": 216,
+      "catchall": 112
+    },
+    {
+      "date": "2026-01-12",
+      "time": "14:25:00",
+      "file_name": "partner_list_2026-01-12.csv",
+      "is_file_backed": true,
+      "status": "completed",
+      "total": 2800,
+      "valid": 2113,
+      "invalid": 484,
+      "catchall": 203
+    },
+    {
+      "date": "2026-01-14",
+      "time": "10:40:00",
+      "file_name": "product_waitlist.csv",
+      "is_file_backed": true,
+      "status": "completed",
+      "total": 1200,
+      "valid": 941,
+      "invalid": 188,
+      "catchall": 71
+    },
+    {
+      "date": "2026-01-16",
+      "time": "15:10:00",
+      "file_name": "salesforce_sync.csv",
+      "is_file_backed": true,
+      "status": "completed",
+      "total": 1100,
+      "valid": 823,
+      "invalid": 206,
+      "catchall": 71
+    },
+    {
+      "date": "2026-01-18",
+      "time": "09:30:00",
+      "file_name": "events_rsvp.csv",
+      "is_file_backed": true,
+      "status": "completed",
+      "total": 850,
+      "valid": 631,
+      "invalid": 151,
+      "catchall": 68
+    },
+    {
+      "date": "2026-01-20",
+      "time": "13:55:00",
+      "file_name": "inbound_leads.csv",
+      "is_file_backed": true,
+      "status": "completed",
+      "total": 820,
+      "valid": 604,
+      "invalid": 140,
+      "catchall": 76
+    },
+    {
+      "date": "2026-01-22",
+      "time": "12:35:00",
+      "file_name": "growth_campaign.csv",
+      "is_file_backed": true,
+      "status": "completed",
+      "total": 780,
+      "valid": 570,
+      "invalid": 148,
+      "catchall": 62
+    },
+    {
+      "date": "2026-01-24",
+      "time": "10:05:00",
+      "file_name": "app_trial_signups.csv",
+      "is_file_backed": true,
+      "status": "completed",
+      "total": 760,
+      "valid": 547,
+      "invalid": 148,
+      "catchall": 65
+    },
+    {
+      "date": "2026-01-26",
+      "time": "16:20:00",
+      "file_name": "beta_interest.csv",
+      "is_file_backed": true,
+      "status": "completed",
+      "total": 720,
+      "valid": 530,
+      "invalid": 126,
+      "catchall": 64
+    },
+    {
+      "date": "2026-01-28",
+      "time": "11:40:00",
+      "file_name": "partner_export_2026-01-28.csv",
+      "is_file_backed": true,
+      "status": "completed",
+      "total": 650,
+      "valid": 477,
+      "invalid": 116,
+      "catchall": 57
+    },
+    {
+      "date": "2026-01-30",
+      "time": "09:50:00",
+      "file_name": "pipeline_refresh.csv",
+      "is_file_backed": true,
+      "status": "completed",
+      "total": 600,
+      "valid": 439,
+      "invalid": 110,
+      "catchall": 51
+    },
+    {
+      "date": "2026-01-31",
+      "time": "15:30:00",
+      "file_name": "producthunt_leads.csv",
+      "is_file_backed": true,
+      "status": "completed",
+      "total": 520,
+      "valid": 390,
+      "invalid": 91,
+      "catchall": 39
+    },
+    {
+      "date": "2026-02-01",
+      "time": "10:15:00",
+      "is_file_backed": false,
+      "status": "failed",
+      "total": 200,
+      "job_status": { "failed": 200 }
+    },
+    {
+      "date": "2026-02-02",
+      "time": "10:45:00",
+      "is_file_backed": false,
+      "status": "processing",
+      "total": 300,
+      "job_status": { "pending": 180, "processing": 120 }
+    }
+  ],
+  "api_usage": {
+    "total_requests": 9480,
+    "requests_by_purpose": {
+      "zapier": 3820,
+      "n8n": 1840,
+      "custom": 3820,
+      "google_sheets": 0
+    },
+    "series": [
+      { "date": "2026-01-04", "usage_count": 320 },
+      { "date": "2026-01-05", "usage_count": 296 },
+      { "date": "2026-01-06", "usage_count": 309 },
+      { "date": "2026-01-07", "usage_count": 288 },
+      { "date": "2026-01-08", "usage_count": 352 },
+      { "date": "2026-01-09", "usage_count": 271 },
+      { "date": "2026-01-10", "usage_count": 338 },
+      { "date": "2026-01-11", "usage_count": 370 },
+      { "date": "2026-01-12", "usage_count": 351 },
+      { "date": "2026-01-13", "usage_count": 280 },
+      { "date": "2026-01-14", "usage_count": 318 },
+      { "date": "2026-01-15", "usage_count": 356 },
+      { "date": "2026-01-16", "usage_count": 336 },
+      { "date": "2026-01-17", "usage_count": 291 },
+      { "date": "2026-01-18", "usage_count": 298 },
+      { "date": "2026-01-19", "usage_count": 284 },
+      { "date": "2026-01-20", "usage_count": 363 },
+      { "date": "2026-01-21", "usage_count": 282 },
+      { "date": "2026-01-22", "usage_count": 343 },
+      { "date": "2026-01-23", "usage_count": 290 },
+      { "date": "2026-01-24", "usage_count": 323 },
+      { "date": "2026-01-25", "usage_count": 324 },
+      { "date": "2026-01-26", "usage_count": 316 },
+      { "date": "2026-01-27", "usage_count": 358 },
+      { "date": "2026-01-28", "usage_count": 326 },
+      { "date": "2026-01-29", "usage_count": 287 },
+      { "date": "2026-01-30", "usage_count": 307 },
+      { "date": "2026-01-31", "usage_count": 288 },
+      { "date": "2026-02-01", "usage_count": 286 },
+      { "date": "2026-02-02", "usage_count": 329 }
+    ],
+    "keys": [
+      {
+        "name": "Zapier Production",
+        "purpose": "zapier",
+        "preview": "sk_live_zap_49b2...c1a",
+        "created_date": "2025-12-15"
+      },
+      {
+        "name": "N8N Automations",
+        "purpose": "n8n",
+        "preview": "sk_live_n8n_8a3d...0ff",
+        "created_date": "2025-12-22"
+      },
+      {
+        "name": "Custom Backend",
+        "purpose": "custom",
+        "preview": "sk_live_cus_2d7c...91b",
+        "created_date": "2026-01-03"
+      }
+    ]
+  }
+}
