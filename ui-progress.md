@@ -62,7 +62,7 @@
 - [x] Task 59 - Update Overview metrics mapping to accept ext API `valid/invalid` keys and include invalid sub-statuses (MVP).
 - [x] Task 60 - Validate Overview stats render correctly and run `test:overview` after mapping update (MVP).
 - [x] Task 61 - Fix Overview mapping TypeScript build error in deploy pipeline (MVP).
-- [ ] Task 62 - Redeploy to main after fixing Overview mapping build error (MVP).
+- [x] Task 62 - Redeploy to main after fixing Overview mapping build error (MVP).
 
 ## Progress log
 ### Task 1 - Completed
@@ -325,3 +325,8 @@
 - What: Fixed the Overview mapping TypeScript build error blocking deploys.
 - Why: The deploy pipeline failed `next build` because the reducer accumulator was inferred as `number | null`.
 - How: Added an explicit `reduce<number>(...)` generic to keep the accumulator strictly numeric and re-ran `npm run test:overview`.
+
+### Task 62 - Completed
+- What: Redeployed to main after fixing the Overview mapping build error.
+- Why: The production site must include the new metrics mapping so the Overview cards show valid/invalid counts.
+- How: Pushed commit `7b07a8f` to `main` and confirmed GitHub Actions Deploy run `21593379994` completed successfully.

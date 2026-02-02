@@ -242,6 +242,12 @@
   - **Error:** TypeScript error in `app/overview/utils.ts` (`sum` possibly `null` in reducer).
 - **Status:** Blocked pending code fix and redeploy.
 
+### Step 9.3 - Deploy to main (2026-02-02) succeeded
+- **What:** Redeployed after fixing the Overview mapping build error.
+- **Why:** Needed to ship the `valid/invalid` mapping fix to production.
+- **How:** GitHub Actions Deploy workflow run `21593379994` (head `7b07a8f`) completed successfully; deploy job finished without errors.
+- **Status:** Complete.
+
 ### Step 9.1 - Investigate deploy workflow failure (resolved)
 - **What:** Diagnose the Deploy job failure and re-run the workflow.
 - **Why:** Deployment must succeed before post-deploy validation can be completed.
