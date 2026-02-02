@@ -17,6 +17,9 @@ export const metadata: Metadata = {
   title: "Email Verification Dashboard",
   description:
     "User dashboard for managing email verification credits, usage, and account settings.",
+  icons: {
+    icon: "/bolt.png",
+  },
 };
 
 export default function RootLayout({

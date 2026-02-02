@@ -46,6 +46,12 @@
 - [x] Task 43 - Validate `/reset-password` hero image update and run unit + integration tests.
 - [x] Task 44 - Hide auth hero background image on mobile view for `/signin`, `/signup`, and `/reset-password` (MVP).
 - [x] Task 45 - Validate mobile hero image visibility update and run unit + integration tests.
+- [ ] Task 46 - Confirm icon replacement scope (all icon components vs inline SVG assets) and Phosphor style defaults (MVP).
+- [ ] Task 47 - Replace existing icon components with Phosphor equivalents across the app (MVP).
+- [ ] Task 48 - Remove unused icon dependencies after migration (MVP).
+- [ ] Task 49 - Validate icon migration and run unit + integration tests.
+- [x] Task 50 - Set `/public/bolt.png` as the browser favicon (MVP).
+- [ ] Task 51 - Validate favicon update and run unit + integration tests.
 
 ## Progress log
 ### Task 1 - Completed
@@ -194,6 +200,11 @@
 - Why: Avoid guessing the intended behavior or styling before implementing the MVP toggle update.
 - How: Collected explicit requirements (email storage only + `--accent` for checked state) and recorded them for the upcoming UI change.
 
+### Task 50 - Completed
+- What: Set the browser favicon to the provided `/public/bolt.png`.
+- Why: Ensure the app uses the Bolt icon in the browser tab as requested.
+- How: Added the favicon reference to Next.js metadata icons in `app/layout.tsx` so it loads globally.
+
 ### Task 30 - Completed
 - What: Updated the `/signin` remember-me toggle to visually reflect checked/unchecked states using theme tokens.
 - Why: The toggle was only moving the knob without any color feedback, so checked state was unclear.
@@ -258,3 +269,8 @@
 - What: Validated the mobile hero image visibility update and ran unit + integration tests.
 - Why: Confirm the responsive visibility change does not introduce regressions.
 - How: Activated the Python venv, loaded `.env.local`, and executed `tests/*.test.ts` via `./node_modules/.bin/tsx`.
+
+### Task 46 - Pending
+- What: Confirm the icon replacement scope and Phosphor size/color conventions before swapping icons.
+- Why: The requested conventions reference `Screenshot_5.png`, which is not present in the repo, so icon sizing/colors cannot be inferred yet.
+- How: Awaiting the screenshot file or explicit sizing/color rules to proceed.
