@@ -86,7 +86,7 @@ export function buildVerificationTotalsFromMetrics(
     coerceCount(status.unknown),
     coerceCount(status.disposable_domain),
     coerceCount(status.disposable_domain_emails),
-  ].reduce((sum, value) => sum + (value ?? 0), 0);
+  ].reduce<number>((sum, value) => sum + (value ?? 0), 0);
   const invalid = invalidBase + invalidExtras;
   const catchAll =
     coerceCount(metrics.total_catchall) ??

@@ -233,6 +233,15 @@
   - **Backend deps:** shared venv updated and requirements installed.
 - **Status:** Complete (proceed to Step 10 validation).
 
+### Step 9.2 - Deploy to main (2026-02-02) failed
+- **What:** Deploy run for the Overview metrics mapping update.
+- **Why:** Required to ship the `valid/invalid` mapping fix to production.
+- **How:** GitHub Actions Deploy workflow run `21593228396` triggered on push of `12adc42`.
+- **Findings:**
+  - **Failing step:** `Deploy release` during `next build`.
+  - **Error:** TypeScript error in `app/overview/utils.ts` (`sum` possibly `null` in reducer).
+- **Status:** Blocked pending code fix and redeploy.
+
 ### Step 9.1 - Investigate deploy workflow failure (resolved)
 - **What:** Diagnose the Deploy job failure and re-run the workflow.
 - **Why:** Deployment must succeed before post-deploy validation can be completed.

@@ -60,7 +60,9 @@
 - [x] Task 57 - Validate Overview/History/API dashboards with the demo account and adjust seed data if needed (MVP).
 - [x] Task 58 - Align demo credit balance with ext API credits ledger via admin grant (MVP).
 - [x] Task 59 - Update Overview metrics mapping to accept ext API `valid/invalid` keys and include invalid sub-statuses (MVP).
-- [ ] Task 60 - Validate Overview stats render correctly and run `test:overview` after mapping update (MVP).
+- [x] Task 60 - Validate Overview stats render correctly and run `test:overview` after mapping update (MVP).
+- [x] Task 61 - Fix Overview mapping TypeScript build error in deploy pipeline (MVP).
+- [ ] Task 62 - Redeploy to main after fixing Overview mapping build error (MVP).
 
 ## Progress log
 ### Task 1 - Completed
@@ -318,3 +320,8 @@
 - What: Validated the Overview mapping behavior after the metrics update.
 - Why: Ensure the new mapping renders correct totals and stays covered by tests.
 - How: Ran `npm run test:overview` after activating the Python venv; all mapping tests passed.
+
+### Task 61 - Completed
+- What: Fixed the Overview mapping TypeScript build error blocking deploys.
+- Why: The deploy pipeline failed `next build` because the reducer accumulator was inferred as `number | null`.
+- How: Added an explicit `reduce<number>(...)` generic to keep the accumulator strictly numeric and re-ran `npm run test:overview`.
