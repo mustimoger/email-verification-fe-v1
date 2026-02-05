@@ -28,6 +28,7 @@
 - [ ] Step 9.1 - Investigate deploy workflow failure (required before Step 10)
 - [ ] Step 10 - Post-deploy validation (blocked until Step 9 succeeds)
 - [ ] Step 10.1 - Tighten frontend bind to localhost (security hardening follow-up)
+- [ ] Step 10.2 - Update external API base URL env + redeploy (Overview data unavailable)
 
 ## MVP deployment plan (production-grade baseline)
 
@@ -319,6 +320,12 @@
 - **Verification:** `ss -ltnp` shows `127.0.0.1:3000`.
 - **Status:** Complete.
 - **Status:** Blocked (deploy workflow failed; systemd-managed services not active as planned).
+
+### Step 10.2 - Update external API base URL env + redeploy (pending)
+- **What:** Update frontend and backend environment base URLs to the documented `https://api.boltroute.ai/api/v1`.
+- **Why:** `/overview` shows `Unavailable` when the browser calls `https://email-verification.islamsaka.com` (TLS mismatch) instead of the documented API host.
+- **How:** Update GitHub Secrets (`APP_ENV_LOCAL` and `BACKEND_ENV`) to set `NEXT_PUBLIC_EMAIL_API_BASE_URL` and `EMAIL_API_BASE_URL` to `https://api.boltroute.ai/api/v1`, then trigger a deploy to rebuild the frontend and refresh the runtime env.
+- **Status:** Pending.
 
 ## Open items (required before execution)
 - Confirm the current web server (Nginx/Apache/Caddy/other) and how TLS is managed today.
