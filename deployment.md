@@ -29,6 +29,7 @@
 - [ ] Step 10 - Post-deploy validation (blocked until Step 9 succeeds)
 - [ ] Step 10.1 - Tighten frontend bind to localhost (security hardening follow-up)
 - [ ] Step 10.2 - Update external API base URL env + redeploy (Overview data unavailable)
+- [ ] Step 10.3 - Fix frontend API base URL env + redeploy (CORS on /api)
 
 ## MVP deployment plan (production-grade baseline)
 
@@ -326,6 +327,12 @@
 - **Why:** `/overview` shows `Unavailable` when the browser calls `https://email-verification.islamsaka.com` (TLS mismatch) instead of the documented API host.
 - **How:** Update GitHub Secrets (`APP_ENV_LOCAL` and `BACKEND_ENV`) to set `NEXT_PUBLIC_EMAIL_API_BASE_URL` and `EMAIL_API_BASE_URL` to `https://api.boltroute.ai/api/v1`, then trigger a deploy to rebuild the frontend and refresh the runtime env.
 - **Status:** Pending.
+
+### Step 10.3 - Fix frontend API base URL env + redeploy (pending)
+- **What:** Ensure `NEXT_PUBLIC_API_BASE_URL` targets `https://app.boltroute.ai/api` instead of `https://api.boltroute.ai/api`.
+- **Why:** Requests to `https://api.boltroute.ai/api/*` are blocked by CORS when sent with credentials from `https://app.boltroute.ai`, causing `/overview` to show `Unavailable`.
+- **How:** Update GitHub Secret `APP_ENV_LOCAL` to set `NEXT_PUBLIC_API_BASE_URL=https://app.boltroute.ai/api`, then trigger a deploy to rebuild the frontend.
+- **Status:** In progress (secrets updated; deploying now).
 
 ## Open items (required before execution)
 - Confirm the current web server (Nginx/Apache/Caddy/other) and how TLS is managed today.
