@@ -70,10 +70,12 @@
 - [x] Task 67 - Audit Overview verification history mismatch vs History table (demo user) (MVP).
 - [ ] Task 68 - Backfill missing task counts in ext API DB for demo user (Overview table) (MVP).
 - [ ] Task 69 - Validate Overview history table matches History list after data fixes (MVP).
-- [ ] Task 70 - Add demo purchase grant for Enterprise plan (boltroute@gmail.com) so Overview Plan card shows data (MVP).
+- [x] Task 70 - Add demo purchase grant for Enterprise plan (boltroute@gmail.com) so Overview Plan card shows data (MVP).
 - [ ] Task 71 - Validate Overview Plan card shows Enterprise + purchase date (MVP).
 - [x] Task 72 - Swap dashboard logo to `/logo-white.svg` in dark mode only (MVP).
 - [ ] Task 73 - Validate dark-mode dashboard logo renders correctly (MVP).
+- [x] Task 74 - Swap auth page logos to `/logo-white.svg` in dark mode (signin/signup/reset-password) (MVP).
+- [ ] Task 75 - Validate auth page dark-mode logos render correctly (MVP).
 
 ## Progress log
 ### Task 1 - Completed
@@ -358,7 +360,15 @@
 - How: Queried ext API DB tables (tasks, task_email_jobs, emails, batch_uploads) and called `/api/v1/tasks` with a refreshed demo-user token; confirmed `/tasks` returns `metrics` with correct counts but leaves `email_count`, `valid_count`, `invalid_count`, `catchall_count`, and `job_status` as null; the tasks table has no count/status columns to backfill directly.
 ### Task 68 - Pending
 ### Task 69 - Pending
+### Task 70 - Completed
+- What: Inserted a demo purchase grant for the Enterprise plan for `boltroute@gmail.com`.
+- Why: The Overview Plan card reads purchase history from `credit_grants` and showed `Unavailable` because no purchase rows existed.
+- How: Upserted a `credit_grants` row with source `purchase`, event_type `transaction.completed`, Enterprise `price_ids`, credits/amount/currency defaults, and `purchased_at` set to `2026-02-05T00:00:00Z`.
 ### Task 72 - Completed
 - What: Switched the dashboard wordmark to `/logo-white.svg` when the resolved theme is dark.
 - Why: Ensure the sidebar logo remains legible in dark mode while preserving the existing light-mode asset.
 - How: Updated `DashboardShell` to choose between `/logo.png` and `/logo-white.svg` based on `resolvedTheme`.
+### Task 74 - Completed
+- What: Swapped auth page logos to use `/logo-white.svg` in dark mode.
+- Why: Keep the sign-in, sign-up, and reset-password wordmarks readable against dark surfaces.
+- How: Used `useTheme()` in each auth page to select `/logo-white.svg` when `resolvedTheme` is `dark`.

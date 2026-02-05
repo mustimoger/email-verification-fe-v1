@@ -6,6 +6,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { Poppins, Roboto } from "next/font/google";
 
 import { useAuth } from "../components/auth-provider";
+import { useTheme } from "../components/theme-provider";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -24,6 +25,7 @@ const sfProFamily =
 
 export default function ResetPasswordPage() {
   const { updatePassword, session, loading: authLoading, signOut } = useAuth();
+  const { resolvedTheme } = useTheme();
 
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -33,6 +35,7 @@ export default function ResetPasswordPage() {
   const [resetComplete, setResetComplete] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const logoSrc = resolvedTheme === "dark" ? "/logo-white.svg" : "/logo.png";
 
   useEffect(() => {
     if (!authLoading && !session && !resetComplete) {
@@ -105,7 +108,7 @@ export default function ResetPasswordPage() {
         <div className={`${roboto.className} flex w-full flex-col justify-between px-6 py-8 sm:px-10 sm:py-12 lg:w-[456px]`}>
           <div className="flex flex-col gap-12">
             <div className="flex items-center justify-center">
-              <Image src="/logo.png" alt="Boltroute" width={218} height={39} className="h-8 w-auto" priority />
+              <Image src={logoSrc} alt="Boltroute" width={218} height={39} className="h-8 w-auto" priority />
             </div>
 
             <div className="flex flex-col gap-6">

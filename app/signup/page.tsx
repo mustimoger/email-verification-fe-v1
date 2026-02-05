@@ -9,6 +9,7 @@ import { Poppins, Roboto } from "next/font/google";
 import { useAuth } from "../components/auth-provider";
 import { OAuthButtons } from "../components/oauth-buttons";
 import { AuthBenefitsCard } from "../components/auth-benefits-card";
+import { useTheme } from "../components/theme-provider";
 import { buildNextQuery, resolveNextPath } from "../lib/redirect-utils";
 
 const poppins = Poppins({
@@ -28,11 +29,13 @@ const sfProFamily =
 
 function SignUpContent() {
   const { signUp } = useAuth();
+  const { resolvedTheme } = useTheme();
   const router = useRouter();
   const searchParams = useSearchParams();
   const nextPath = useMemo(() => resolveNextPath(searchParams, "/overview"), [searchParams]);
   const nextQuery = useMemo(() => buildNextQuery(searchParams.get("next")), [searchParams]);
   const signinHref = nextQuery ? `/signin${nextQuery}` : "/signin";
+  const logoSrc = resolvedTheme === "dark" ? "/logo-white.svg" : "/logo.png";
 
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
@@ -90,7 +93,7 @@ function SignUpContent() {
         <div className={`${roboto.className} flex w-full flex-col justify-between px-6 py-8 sm:px-10 sm:py-12 lg:w-[456px]`}>
           <div className="flex flex-col gap-12">
             <div className="flex items-center justify-center">
-              <Image src="/logo.png" alt="Boltroute" width={218} height={39} className="h-8 w-auto" priority />
+              <Image src={logoSrc} alt="Boltroute" width={218} height={39} className="h-8 w-auto" priority />
             </div>
 
             <form className="flex flex-col gap-6" onSubmit={handleSubmit}>
