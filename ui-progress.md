@@ -63,6 +63,13 @@
 - [x] Task 60 - Validate Overview stats render correctly and run `test:overview` after mapping update (MVP).
 - [x] Task 61 - Fix Overview mapping TypeScript build error in deploy pipeline (MVP).
 - [x] Task 62 - Redeploy to main after fixing Overview mapping build error (MVP).
+- [x] Task 63 - Plan marketing mock data artifacts (Overview/History/API) with no code/ext API changes (MVP).
+- [x] Task 64 - Create artifacts-only mock data JSONs for Overview/History/API (MVP).
+- [ ] Task 65 - Add mock data README with totals and usage guidance (MVP).
+- [ ] Task 66 - Validate mock data consistency and update handover notes (MVP).
+- [x] Task 67 - Audit Overview verification history mismatch vs History table (demo user) (MVP).
+- [ ] Task 68 - Backfill missing task counts in ext API DB for demo user (Overview table) (MVP).
+- [ ] Task 69 - Validate Overview history table matches History list after data fixes (MVP).
 
 ## Progress log
 ### Task 1 - Completed
@@ -330,3 +337,20 @@
 - What: Redeployed to main after fixing the Overview mapping build error.
 - Why: The production site must include the new metrics mapping so the Overview cards show valid/invalid counts.
 - How: Pushed commit `7b07a8f` to `main` and confirmed GitHub Actions Deploy run `21593379994` completed successfully.
+
+### Task 63 - Completed
+- What: Recorded the planned marketing mock data artifact tasks in the UI progress tracker.
+- Why: The new mock data work must be tracked in root-level planning/progress docs before any implementation.
+- How: Added Tasks 64-66 to cover artifact JSON creation, README guidance, and handover validation, while keeping scope limited to no code or ext API changes.
+
+### Task 64 - Completed
+- What: Created artifacts-only mock data JSONs for Overview, History, and API usage.
+- Why: Marketing screenshots need realistic, consistent values without touching the codebase or ext API data.
+- How: Wrote `artifacts/marketing/mock_overview.json`, `artifacts/marketing/mock_history.json`, and `artifacts/marketing/mock_api_usage.json` with aligned totals (17,700 verifications, 22,400 credits, 9,480 API usage) and realistic task/series breakdowns.
+
+### Task 67 - Completed
+- What: Audited ext API `/tasks` response and DB schema to understand why Overview verification history shows zeros while History has data.
+- Why: The Overview table depends on `/tasks` fields that are null, so we need a data-only remediation path or confirm a code exception is required.
+- How: Queried ext API DB tables (tasks, task_email_jobs, emails, batch_uploads) and called `/api/v1/tasks` with a refreshed demo-user token; confirmed `/tasks` returns `metrics` with correct counts but leaves `email_count`, `valid_count`, `invalid_count`, `catchall_count`, and `job_status` as null; the tasks table has no count/status columns to backfill directly.
+### Task 68 - Pending
+### Task 69 - Pending
