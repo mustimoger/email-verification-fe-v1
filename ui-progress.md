@@ -70,6 +70,10 @@
 - [x] Task 67 - Audit Overview verification history mismatch vs History table (demo user) (MVP).
 - [ ] Task 68 - Backfill missing task counts in ext API DB for demo user (Overview table) (MVP).
 - [ ] Task 69 - Validate Overview history table matches History list after data fixes (MVP).
+- [ ] Task 70 - Add demo purchase grant for Enterprise plan (boltroute@gmail.com) so Overview Plan card shows data (MVP).
+- [ ] Task 71 - Validate Overview Plan card shows Enterprise + purchase date (MVP).
+- [x] Task 72 - Swap dashboard logo to `/logo-white.svg` in dark mode only (MVP).
+- [ ] Task 73 - Validate dark-mode dashboard logo renders correctly (MVP).
 
 ## Progress log
 ### Task 1 - Completed
@@ -354,3 +358,7 @@
 - How: Queried ext API DB tables (tasks, task_email_jobs, emails, batch_uploads) and called `/api/v1/tasks` with a refreshed demo-user token; confirmed `/tasks` returns `metrics` with correct counts but leaves `email_count`, `valid_count`, `invalid_count`, `catchall_count`, and `job_status` as null; the tasks table has no count/status columns to backfill directly.
 ### Task 68 - Pending
 ### Task 69 - Pending
+### Task 72 - Completed
+- What: Switched the dashboard wordmark to `/logo-white.svg` when the resolved theme is dark.
+- Why: Ensure the sidebar logo remains legible in dark mode while preserving the existing light-mode asset.
+- How: Updated `DashboardShell` to choose between `/logo.png` and `/logo-white.svg` based on `resolvedTheme`.

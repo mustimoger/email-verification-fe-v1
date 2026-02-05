@@ -402,7 +402,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
                 />
               ) : (
                 <Image
-                  src="/logo.png"
+                  src={resolvedTheme === "dark" ? "/logo-white.svg" : "/logo.png"}
                   alt="BoltRoute"
                   width={180}
                   height={32}
