@@ -76,6 +76,8 @@
 - [ ] Task 73 - Validate dark-mode dashboard logo renders correctly (MVP).
 - [x] Task 74 - Swap auth page logos to `/logo-white.svg` in dark mode (signin/signup/reset-password) (MVP).
 - [ ] Task 75 - Validate auth page dark-mode logos render correctly (MVP).
+- [x] Task 76 - Soften dark-mode Validation chart + pill colors on `/overview` to better match dark theme (MVP).
+- [ ] Task 77 - Validate `/overview` Validation card color updates and run unit + integration tests.
 
 ## Progress log
 ### Task 1 - Completed
@@ -372,3 +374,14 @@
 - What: Swapped auth page logos to use `/logo-white.svg` in dark mode.
 - Why: Keep the sign-in, sign-up, and reset-password wordmarks readable against dark surfaces.
 - How: Used `useTheme()` in each auth page to select `/logo-white.svg` when `resolvedTheme` is `dark`.
+
+### Task 76 - Pending
+### Task 76 - Completed
+- What: Softened the dark-mode Validation chart and pill colors while keeping the same green/orange/red/gray hues.
+- Why: The prior dark-mode palette was too bright against dark surfaces and felt out of place.
+- How: Updated the dark-theme chart color tokens in `app/globals.css` to deeper, lower-saturation values so both the donut segments and pill backgrounds render more subdued while keeping white text legible.
+
+### Task 77 - Pending
+- What: Validate `/overview` Validation card color updates and run unit + integration tests.
+- Why: Ensure the color adjustments render correctly and do not introduce regressions.
+- How: Not started yet. Will run unit + integration tests after Task 76 is implemented.
