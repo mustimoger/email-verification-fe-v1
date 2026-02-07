@@ -1,16 +1,17 @@
 import type { NextConfig } from "next";
+import { buildFrameAncestorsDirective, getEmbedParentOrigins } from "./app/lib/embed-config";
 
 const nextConfig: NextConfig = {
   async headers() {
-    const embedOrigins = process.env.NEXT_PUBLIC_PRICING_EMBED_PARENT_ORIGINS;
-    const frameAncestors = embedOrigins && embedOrigins.trim().length > 0 ? embedOrigins : "'none'";
+    const { origins } = getEmbedParentOrigins();
+    const frameAncestors = buildFrameAncestorsDirective(origins);
     return [
       {
         source: "/pricing/embed",
         headers: [
           {
             key: "Content-Security-Policy",
-            value: `frame-ancestors ${frameAncestors}`,
+            value: frameAncestors,
           },
         ],
       },

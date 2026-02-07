@@ -4,21 +4,11 @@ import { useCallback, useLayoutEffect, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 
 import PricingV2Client from "../pricing-client";
-import { getEmbedParentOrigins } from "../../lib/embed-config";
+import { getEmbedParentOrigins, resolveAllowedParentOrigin } from "../../lib/embed-config";
 import type { PricingCtaPayload } from "../pricing-client";
 
 const EMBED_PARENT_ORIGIN_PARAM = "parent_origin";
 const EMBED_THEME_LOCK = "embed";
-
-const resolveOrigin = (value?: string | null): string | null => {
-  if (!value) return null;
-  try {
-    return new URL(value).origin;
-  } catch (error) {
-    console.warn("pricing_embed.parent_origin_parse_failed", { value, error });
-    return null;
-  }
-};
 
 const buildPricingNextPath = (payload: PricingCtaPayload): string => {
   const params = new URLSearchParams();
@@ -29,7 +19,12 @@ const buildPricingNextPath = (payload: PricingCtaPayload): string => {
 
 export default function PricingEmbedClient() {
   const searchParams = useSearchParams();
+  const parentOriginParam = searchParams.get(EMBED_PARENT_ORIGIN_PARAM);
   const { origins: allowedOrigins } = useMemo(() => getEmbedParentOrigins(), []);
+  const targetOrigin = useMemo(
+    () => resolveAllowedParentOrigin({ allowedOrigins, value: parentOriginParam }),
+    [allowedOrigins, parentOriginParam],
+  );
 
   useLayoutEffect(() => {
     if (typeof document === "undefined") return;
@@ -71,14 +66,6 @@ export default function PricingEmbedClient() {
   useLayoutEffect(() => {
     if (typeof window === "undefined") return;
     if (window.top === window) return;
-    if (!allowedOrigins.length) return;
-
-    const paramOrigin = resolveOrigin(searchParams.get(EMBED_PARENT_ORIGIN_PARAM));
-    const referrerOrigin = resolveOrigin(document.referrer);
-    const candidates = [paramOrigin, referrerOrigin].filter(
-      (entry): entry is string => Boolean(entry),
-    );
-    const targetOrigin = candidates.find((entry) => allowedOrigins.includes(entry));
     if (!targetOrigin) return;
 
     const sendHeight = () => {
@@ -106,7 +93,7 @@ export default function PricingEmbedClient() {
       observer.disconnect();
       clearInterval(intervalId);
     };
-  }, [allowedOrigins, searchParams]);
+  }, [targetOrigin]);
 
   const handleCtaClick = useCallback(
     (payload: PricingCtaPayload) => {
@@ -119,18 +106,10 @@ export default function PricingEmbedClient() {
         console.error("pricing_embed.parent_origin_allowlist_empty");
         return;
       }
-
-      const paramOrigin = resolveOrigin(searchParams.get(EMBED_PARENT_ORIGIN_PARAM));
-      const referrerOrigin = resolveOrigin(document.referrer);
-      const candidates = [paramOrigin, referrerOrigin].filter(
-        (entry): entry is string => Boolean(entry),
-      );
-      const targetOrigin = candidates.find((entry) => allowedOrigins.includes(entry));
       if (!targetOrigin) {
         console.error("pricing_embed.parent_origin_untrusted", {
-          candidates,
+          parentOriginParam,
           allowedOrigins,
-          referrer: document.referrer,
         });
         return;
       }
@@ -147,7 +126,7 @@ export default function PricingEmbedClient() {
 
       window.parent.postMessage(message, targetOrigin);
     },
-    [allowedOrigins, searchParams],
+    [allowedOrigins, parentOriginParam, targetOrigin],
   );
 
   return <PricingV2Client variant="embed" onCtaClick={handleCtaClick} />;

@@ -78,6 +78,10 @@
 - [ ] Task 75 - Validate auth page dark-mode logos render correctly (MVP).
 - [x] Task 76 - Soften dark-mode Validation chart + pill colors on `/overview` to better match dark theme (MVP).
 - [ ] Task 77 - Validate `/overview` Validation card color updates and run unit + integration tests.
+- [x] Task 78 - Add `/pricing/embed` embed-support requirements to plan and audit current CSP/parent-origin behavior (MVP).
+- [x] Task 79 - Implement `/pricing/embed` header and `parent_origin` allowlist updates for local parent origins (MVP).
+- [x] Task 80 - Validate `/pricing/embed` resize + CTA postMessage flow and run unit + integration tests.
+- [ ] Task 81 - Deploy embed-support changes to `main` and capture final `/pricing/embed` response headers.
 
 ## Progress log
 ### Task 1 - Completed
@@ -385,3 +389,23 @@
 - What: Validate `/overview` Validation card color updates and run unit + integration tests.
 - Why: Ensure the color adjustments render correctly and do not introduce regressions.
 - How: Not started yet. Will run unit + integration tests after Task 76 is implemented.
+
+### Task 78 - Completed
+- What: Audited the current `/pricing/embed` implementation and documented the embed-support requirements for local parent origins.
+- Why: We need a verified baseline before changing CSP/iframe policy and parent-origin messaging behavior.
+- How: Checked `next.config.ts`, embed helpers, and live `https://app.boltroute.ai/pricing/embed` headers; confirmed `frame-ancestors` was built from a comma-separated env string and local dev origins were missing.
+
+### Task 79 - Completed
+- What: Implemented `/pricing/embed` CSP + allowlist handling and updated embed messaging origin validation.
+- Why: The old header used a comma-separated `frame-ancestors` value and local dev origins were not guaranteed in allowlist resolution.
+- How: Refactored embed origin helpers (`app/lib/embed-config.ts`) to normalize origins, build a space-separated `frame-ancestors` directive, and resolve `parent_origin` against the allowlist; wired `next.config.ts` to use the shared directive builder and updated `app/pricing/embed/pricing-embed-client.tsx` to use validated `parent_origin` for `postMessage` target origin.
+
+### Task 80 - Completed
+- What: Validated `/pricing/embed` messaging/CSP changes and executed repo unit + integration checks.
+- Why: Embed behavior must remain stable while adding local-origin support.
+- How: Added `tests/embed-config.test.ts` for origin parsing/directive/allowlist resolution, then ran tests with venv active: `tsx tests/embed-config.test.ts`, `npm run test:auth-guard`, `npm run test:history`, `npm run test:overview`, `npm run test:account-purchases`, plus `npm run build`.
+
+### Task 81 - Pending
+- What: Deploy embed-support changes to `main` and capture final `/pricing/embed` response headers.
+- Why: The request is specifically for `app.boltroute.ai`, so production headers must be verified post-deploy.
+- How: Not started yet. Will push to `main`, wait for deployment completion, then share `curl -I` output details.
