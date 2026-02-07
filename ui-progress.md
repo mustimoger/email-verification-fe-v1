@@ -81,7 +81,7 @@
 - [x] Task 78 - Add `/pricing/embed` embed-support requirements to plan and audit current CSP/parent-origin behavior (MVP).
 - [x] Task 79 - Implement `/pricing/embed` header and `parent_origin` allowlist updates for local parent origins (MVP).
 - [x] Task 80 - Validate `/pricing/embed` resize + CTA postMessage flow and run unit + integration tests.
-- [ ] Task 81 - Deploy embed-support changes to `main` and capture final `/pricing/embed` response headers.
+- [x] Task 81 - Deploy embed-support changes to `main` and capture final `/pricing/embed` response headers.
 
 ## Progress log
 ### Task 1 - Completed
@@ -405,7 +405,7 @@
 - Why: Embed behavior must remain stable while adding local-origin support.
 - How: Added `tests/embed-config.test.ts` for origin parsing/directive/allowlist resolution, then ran tests with venv active: `tsx tests/embed-config.test.ts`, `npm run test:auth-guard`, `npm run test:history`, `npm run test:overview`, `npm run test:account-purchases`, plus `npm run build`.
 
-### Task 81 - Pending
-- What: Deploy embed-support changes to `main` and capture final `/pricing/embed` response headers.
-- Why: The request is specifically for `app.boltroute.ai`, so production headers must be verified post-deploy.
-- How: Not started yet. Will push to `main`, wait for deployment completion, then share `curl -I` output details.
+### Task 81 - Completed
+- What: Deployed embed-support changes to `main` and verified live `/pricing/embed` headers on `app.boltroute.ai`.
+- Why: The final requirement is production validation for local-parent embedding behavior and exact response headers.
+- How: Pushed commit `574e58a`, monitored GitHub Actions Deploy run `21783740878` to success, validated embed behavior from a local parent origin (`http://127.0.0.1:3010`) with headless Playwright (received both `pricing_embed_resize` and `pricing_embed_cta` messages), and captured live headers via `curl -I`.
