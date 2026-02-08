@@ -94,7 +94,8 @@
 - [x] Task 91 - Create root `handover.md` with unambiguous next-session execution steps (what/why/how/where) (MVP).
 - [x] Task 92 - Verify production dashboard deploy status after monorepo move (workflow health + endpoint smoke checks) (MVP).
 - [x] Task 93 - Define and document website production deployment contract (host/path/service/domain/env/trigger) (MVP).
-- [ ] Task 94 - Implement website production deploy workflow/script from locked contract (manual trigger pre-cutover) (MVP).
+- [x] Task 94 - Implement website production deploy workflow/script from locked contract (manual trigger pre-cutover) (MVP).
+- [ ] Task 95 - Add root monorepo operator README (layout/commands/workflows/deploy ownership) (MVP).
 
 ## Progress log
 ### Task 1 - Completed
@@ -515,7 +516,14 @@
 - How: Audited current deploy workflows/secrets/runtime usage (`deploy.yml`, `website-ci.yml`, `apps/website/src/**`, `gh secret list`) and live DNS/headers (`dig`, `curl`), then finalized the contract in `deployment.md`: Option A host/user reuse, release root `/var/www/boltroute-website`, service `boltroute-website`, upstream `127.0.0.1:3002`, env path `/var/www/boltroute-website/shared/.env.local`, and manual-only deploy trigger before cutover.
 - Not implemented yet: No deploy workflow/script or DNS/proxy cutover changes were made in this step; those are deferred to the next steps by design.
 
-### Task 94 - Pending
+### Task 94 - Completed
 - What: Implement website production deploy workflow and remote deploy script from the locked contract.
 - Why: Step 3 in `handover.md` requires a separate website deploy path independent of dashboard deploy.
-- How: Add `apps/website/deploy/remote-deploy.sh` and `.github/workflows/website-deploy.yml` using manual dispatch initially, website-specific release root/service/env paths, and CI gate (`npm ci`, `lint`, `build`) before deploy.
+- How: Added `apps/website/deploy/remote-deploy.sh` (release validation, env symlink, `npm ci`, `npm run build`, prune dev deps, switch `current` symlink, restart `boltroute-website`) and `.github/workflows/website-deploy.yml` (`workflow_dispatch` trigger, website CI gate, rsync of `apps/website/`, remote deploy execution). Workflow uses existing deploy host/user/SSH secrets plus new `WEBSITE_APP_ENV_LOCAL` secret and locked paths (`/var/www/boltroute-website`, shared env path, service name).
+- Validation: With Python venv active, ran website checks locally via `cd apps/website && npm ci --include=dev && npm run lint && npm run build`; all passed with existing non-blocking warnings (`<img>` optimization and one React hook dependency warning).
+- Not implemented yet: No manual production deploy run executed yet; domain/proxy cutover away from WordPress is still pending by design.
+
+### Task 95 - Pending
+- What: Add a root monorepo operator README for daily usage and ownership boundaries.
+- Why: Step 4 in `handover.md` requires a clear runbook to avoid wrong-path edits in future sessions.
+- How: Create `README.md` at repo root covering monorepo layout, app-specific commands, workflow triggers, and current deploy ownership/status (dashboard active, website deploy manual pre-cutover).

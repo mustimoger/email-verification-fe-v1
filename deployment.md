@@ -78,8 +78,13 @@
   - Status: Locked.
 
 ### Not implemented yet
-- Website deploy workflow/script are intentionally not created in this step.
-- Reason: Step 3 implementation is a separate step and requires explicit confirmation before code changes.
+- Website deploy workflow/script are now implemented:
+  - `.github/workflows/website-deploy.yml`
+  - `apps/website/deploy/remote-deploy.sh`
+- Still not implemented:
+  - No manual website deploy run has been executed yet.
+  - Server-side service/proxy provisioning for `boltroute-website` and `127.0.0.1:3002` is not executed in this repo step.
+  - `boltroute.ai`/`www.boltroute.ai` DNS+TLS cutover from WordPress is not executed yet.
 
 ## MVP deployment plan (production-grade baseline)
 
