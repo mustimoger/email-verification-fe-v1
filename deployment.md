@@ -424,6 +424,13 @@
 - **Where:** Public endpoints (`boltroute.ai`, `www.boltroute.ai`, `app.boltroute.ai`) and target host service (`boltroute-website`).
 - **Status:** Complete (`2026-02-08 18:10:59 UTC`).
 
+### Step 110.3 - Reconcile pending-task list (completed)
+- **What:** Reconciled `ui-progress.md` unchecked checklist items against progress-log completion history.
+- **Why:** Step `110.3` is the anti-confusion gate to ensure next product-task selection is based on true pending work.
+- **How:** Audited all unchecked tasks and matched them against `Task X - Completed` entries; corrected stale checklist drift by marking Tasks `3` through `8` as completed, and confirmed all remaining unchecked tasks are truly pending.
+- **Where:** `ui-progress.md` (Tasks list + Progress log).
+- **Status:** Complete (`2026-02-08 18:13:45 UTC`).
+
 ## Open items (required before execution)
 - Confirm the current web server (Nginx/Apache/Caddy/other) and how TLS is managed today.
 - Confirm downtime tolerance and rollback expectations for the cutover.

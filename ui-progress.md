@@ -3,12 +3,12 @@
 ## Tasks
 - [x] Task 1 - Increase marketing card scale/typography and reduce background opacity on `/signin` and `/signup` (MVP).
 - [x] Task 2 - Verify responsiveness and run unit + integration tests.
-- [ ] Task 3 - Allow local frontend origins in backend CORS for local auth flows.
-- [ ] Task 4 - Restart local backend and validate auth confirmation check requests succeed from `http://localhost:3001`.
-- [ ] Task 5 - Improve dark-mode text contrast on `/signin` and `/signup` without changing layout.
-- [ ] Task 6 - Validate dark-mode readability and run unit + integration tests after color updates.
-- [ ] Task 7 - Keep the left sidebar visible while scrolling dashboard pages on desktop.
-- [ ] Task 8 - Validate sidebar behavior and run unit + integration tests after layout adjustments.
+- [x] Task 3 - Allow local frontend origins in backend CORS for local auth flows.
+- [x] Task 4 - Restart local backend and validate auth confirmation check requests succeed from `http://localhost:3001`.
+- [x] Task 5 - Improve dark-mode text contrast on `/signin` and `/signup` without changing layout.
+- [x] Task 6 - Validate dark-mode readability and run unit + integration tests after color updates.
+- [x] Task 7 - Keep the left sidebar visible while scrolling dashboard pages on desktop.
+- [x] Task 8 - Validate sidebar behavior and run unit + integration tests after layout adjustments.
 - [x] Task 9 - Add static limit notes to `/verify` manual (Max 25 emails) and bulk upload (100MB file size) cards (MVP).
 - [x] Task 10 - Validate `/verify` UI and run unit + integration tests after limit note updates.
 - [x] Task 11 - Adjust `/verify` manual limit note copy to match exact requested punctuation and add a bulk upload 100MB limit note using the same visual style as the manual note (MVP).
@@ -120,7 +120,7 @@
 - [x] Task 106 - Rewrite root `handover.md` with unambiguous post-Step-100.4 continuation steps (What/Why/How/Where) and explicit next-session execution order (MVP).
 - [x] Task 107 - Execute Step 110.1 session preflight and state sync before any new product work (MVP).
 - [x] Task 108 - Execute Step 110.2 production health check gate and capture fresh evidence (MVP).
-- [ ] Task 109 - Execute Step 110.3 stale unchecked task reconciliation in `ui-progress.md` (MVP).
+- [x] Task 109 - Execute Step 110.3 stale unchecked task reconciliation in `ui-progress.md` (MVP).
 - [ ] Task 110 - Execute Step 110.4 by selecting one true pending product task with user confirmation (MVP).
 
 ## Progress log
@@ -707,3 +707,10 @@
 - How: Ran the exact gate commands in order: `dig +short boltroute.ai A`, `dig +short www.boltroute.ai A`, `curl -I https://boltroute.ai`, `curl -I https://www.boltroute.ai`, `curl -I https://boltroute.ai/pricing`, `curl -I https://boltroute.ai/integrations`, `curl -I https://app.boltroute.ai/overview`, and `systemctl status boltroute-website --no-pager | grep -m1 'Active:'`. Results at `2026-02-08 18:10:59 UTC`: DNS resolves to `135.181.160.203` (with `www` via `boltroute.ai.`), all required endpoints returned `HTTP/2 200`, and `boltroute-website` remained `active (running)`.
 - Where: Public internet endpoints (`boltroute.ai`, `www.boltroute.ai`, `app.boltroute.ai`) and target host service check (`systemctl`).
 - Not implemented yet: Step `110.3` (stale unchecked-task reconciliation) and Step `110.4` (single true pending task selection with user confirmation) remain pending in strict order.
+
+### Task 109 - Completed
+- What: Reconciled stale unchecked items in the Tasks checklist against actual completion history.
+- Why: Step `110.3` prevents selecting the wrong next product task by ensuring the pending list reflects reality.
+- How: Audited every unchecked task and cross-checked against progress-log completion entries; corrected only stale mismatches by marking Tasks `3`, `4`, `5`, `6`, `7`, and `8` as completed because each already had a `Task X - Completed` log entry. Verified remaining unchecked tasks are true pending items.
+- Where: `ui-progress.md` Tasks list and Progress log sections.
+- Not implemented yet: Step `110.4` selection/execution of one true pending product task (with user confirmation) is still pending.
