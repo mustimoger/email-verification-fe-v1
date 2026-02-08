@@ -169,13 +169,17 @@
 - Target host (`/etc/caddy/Caddyfile`)
 
 ### Status
-- Blocked pending root access.
-- Execution update (`2026-02-08 17:47:49 UTC`):
+- Completed (`2026-02-08 17:52:06 UTC`) via root-assisted execution.
+- Earlier blocked attempt (`2026-02-08 17:47:49 UTC`):
   - Backup created: `/tmp/Caddyfile.backup.20260208T174749Z`
   - Candidate created: `/tmp/Caddyfile.step1001.20260208T174749Z` with `boltroute.ai, www.boltroute.ai` -> `reverse_proxy 127.0.0.1:3002`
   - `caddy validate --config /tmp/Caddyfile.step1001.20260208T174749Z --adapter caddyfile` => `Valid configuration`
   - `caddy reload --config /tmp/Caddyfile.step1001.20260208T174749Z --adapter caddyfile` => success
   - Final persist attempt: `cp /tmp/Caddyfile.step1001.20260208T174749Z /etc/caddy/Caddyfile` => `Permission denied`
+- Final completion evidence (`2026-02-08 17:52:06 UTC`):
+  - Operator executed root write to `/etc/caddy/Caddyfile` and reloaded Caddy.
+  - `caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile` => `Valid configuration`
+  - `caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile` => success
 
 ## Step 100.2 - Re-run post-persistence smoke checks
 
@@ -199,7 +203,8 @@
 - Any internet-connected terminal + target host shell
 
 ### Status
-- Executed (`2026-02-08 17:48:29 UTC`) with healthy runtime results:
+- Completed (`2026-02-08 17:52:35 UTC`) after persisted on-disk config:
+  - Persist check: `grep -n '^boltroute.ai, www.boltroute.ai {' /etc/caddy/Caddyfile` => line `30`
   - `dig +short boltroute.ai A` => `135.181.160.203`
   - `dig +short www.boltroute.ai A` => `boltroute.ai.` then `135.181.160.203`
   - `curl -I https://boltroute.ai` => `HTTP/2 200`
@@ -208,7 +213,6 @@
   - `curl -I https://boltroute.ai/integrations` => `HTTP/2 200`
   - `curl -I https://app.boltroute.ai/overview` => `HTTP/2 200`
   - `systemctl status boltroute-website --no-pager` => `active (running)`
-- Follow-up required: re-run Step `100.2` immediately after the blocked Step `100.1` on-disk persist is completed with root access.
 
 ## Step 100.3 - Keep rollback readiness active
 
@@ -287,10 +291,8 @@
 ### How
 1. `git push origin main` at session start.
 2. Re-read `AGENTS.md`, this `handover.md`, and `ui-progress.md`.
-3. Execute Step `100.1` as soon as root access is available.
-4. Execute Step `100.2` immediately after Step `100.1`.
-5. Monitor production routes (`boltroute.ai`, `www`, and `app`) and keep Step `100.3` rollback guard active.
-6. Execute Step `100.4` only after deploy-policy confirmation.
+3. Monitor production routes (`boltroute.ai`, `www`, and `app`) and keep Step `100.3` rollback guard active.
+4. Execute Step `100.4` only after deploy-policy confirmation.
 
 ### Where
 - Repo: `/home/codex/email-verification-fe-v1`
