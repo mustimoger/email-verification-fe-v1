@@ -85,9 +85,10 @@
   - Task 99.1 completed on `2026-02-08`: `/var/www/boltroute-website/{releases,shared}` now exists with `boltroute:boltroute` ownership and `755` permissions, and deploy-user write access was verified with a write-test.
   - Task 99.2 completed on `2026-02-08`: `boltroute-website.service` now exists, is enabled/active, and serves on `127.0.0.1:3002`; local upstream check returns `HTTP/1.1 200 OK`.
   - Task 99.3 completed on `2026-02-08`: `WEBSITE_APP_ENV_LOCAL` secret is configured in GitHub Actions (`2026-02-08T16:58:17Z`).
+  - Task 99.4 completed on `2026-02-08`: website deploy rerun `21801917773` succeeded (`website-checks` + `deploy` jobs both `success`).
 - Still not implemented:
   - Manual website deploy run was executed and failed: run `21801362879` (`2026-02-08`) failed at `Create release directory` with `mkdir: cannot create directory '/var/www/boltroute-website': Permission denied`.
-  - Website deploy workflow has not yet been rerun after Task 99.1/99.2/99.3 prerequisite completion.
+  - Pre-cutover runtime smoke checks (Task 99.5) are not yet completed after deploy rerun success.
   - `boltroute.ai`/`www.boltroute.ai` DNS+TLS cutover from WordPress is not executed yet.
 
 ## MVP deployment plan (production-grade baseline)

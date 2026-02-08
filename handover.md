@@ -76,11 +76,11 @@
 ## 3) Verified Evidence (Latest)
 
 ### What
-- Latest website deploy workflow run exists and failed in deploy stage.
-- Failure is infrastructure permissions on target host, not lint/build.
+- Latest website deploy workflow run exists and completed successfully.
+- Historical failure root cause was host filesystem permissions, now remediated.
 
 ### Why
-- Next session should continue on the remaining blockers only (secret + deploy rerun + smoke checks + cutover), since CI checks pass and host prerequisites are now provisioned.
+- Next session should continue on the remaining blockers only (runtime smoke checks + DNS/proxy cutover), since CI checks pass, host prerequisites are provisioned, and deploy rerun is green.
 
 ### How
 - Run inspected:
@@ -89,6 +89,12 @@
   - `website-checks` job: success
   - `deploy` job: failure at step `Create release directory`
   - Error: `mkdir: cannot create directory '/var/www/boltroute-website': Permission denied`
+- Rerun after remediation:
+  - Workflow run: `21801917773`
+  - URL: `https://github.com/mustimoger/email-verification-fe-v1/actions/runs/21801917773`
+  - `website-checks` job: success
+  - `deploy` job: success
+  - Deploy critical steps: `Create release directory`, `Upload env file`, `Sync release`, `Deploy release` all successful.
 - Remediation evidence (`2026-02-08`):
   - Operator created `/var/www/boltroute-website/{releases,shared}` with root privileges.
   - Validation now shows:
@@ -114,7 +120,7 @@
 ## 4) Known Open Blockers
 
 ### What
-- Website deploy workflow has not yet been rerun after host prerequisites were fixed.
+- Pre-cutover runtime smoke checks after successful deploy rerun are not yet completed.
 - DNS cutover from WordPress host (`boltroute.ai`) to website host is not executed.
 
 ### Why
@@ -207,6 +213,7 @@
    - `gh workflow run website-deploy.yml --repo mustimoger/email-verification-fe-v1 --ref main`
 2. Monitor run to completion.
 3. Record run ID, status, and any failed step.
+4. Current status (`2026-02-08`): completed with run `21801917773` (`success`).
 
 ### Where
 - Workflow: `.github/workflows/website-deploy.yml`
@@ -259,12 +266,12 @@
 - Start at `ui-progress.md` Task 99.
 
 ### Why
-- All migration/workflow implementation and prerequisite provisioning steps are done; deploy rerun, smoke checks, and cutover remain.
+- All migration/workflow implementation and prerequisite provisioning steps are done; runtime smoke checks and cutover remain.
 
 ### How
 1. Push `main` at session start.
 2. Re-read `AGENTS.md`, `handover.md`, `ui-progress.md`.
-3. Execute Section 5 Step 4 onward in order (Steps 1-3 are completed).
+3. Execute Section 5 Step 5 onward in order (Steps 1-4 are completed).
 4. After each completed sub-step:
    - update `ui-progress.md` with What/Why/How
    - update `deployment.md`/`handover.md` if state changed

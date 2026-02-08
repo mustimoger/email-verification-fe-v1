@@ -103,7 +103,8 @@
 - [x] Task 99.1 - Prepare target host filesystem and permissions for `/var/www/boltroute-website` (MVP).
 - [x] Task 99.2 - Provision and verify `boltroute-website` systemd service on `127.0.0.1:3002` (MVP).
 - [x] Task 99.3 - Add `WEBSITE_APP_ENV_LOCAL` GitHub Actions secret for website deploy (MVP).
-- [ ] Task 99.4 - Rerun manual website deploy workflow and record run outcome (MVP).
+- [x] Task 99.4 - Rerun manual website deploy workflow and record run outcome (MVP).
+- [ ] Task 99.5 - Run pre-cutover runtime smoke checks (website + dashboard unaffected) (MVP).
 
 ## Progress log
 ### Task 1 - Completed
@@ -572,7 +573,7 @@
 - Why: Task 98 identified concrete blockers that must be resolved before DNS cutover readiness can be confirmed.
 - How: Ensure `/var/www/boltroute-website` exists with deploy-user write access, create/configure `boltroute-website` service and upstream binding (`127.0.0.1:3002`), add `WEBSITE_APP_ENV_LOCAL` GitHub secret, rerun `.github/workflows/website-deploy.yml`, then verify run success and runtime health.
 - Update: `handover.md` was fully rewritten with strict, no-ambiguity next-session sequencing (What/Why/How/Where) focused on Task 99 execution order and cutover readiness.
-- Update (`2026-02-08`): Tasks 99.1, 99.2, and 99.3 are completed; next strict step is Task 99.4 deploy rerun.
+- Update (`2026-02-08`): Tasks 99.1, 99.2, 99.3, and 99.4 are completed; next strict step is Task 99.5 runtime smoke checks.
 
 ### Task 99.1 - Completed
 - What: Provisioned the website release root directories and deploy-user permissions for `/var/www/boltroute-website`.
@@ -589,7 +590,12 @@
 - Why: `website-deploy.yml` requires this secret during `Upload env file`; without it deploy fails before remote build/restart.
 - How: Operator created `/tmp/website.env.local`, set the secret via `gh secret set WEBSITE_APP_ENV_LOCAL --repo mustimoger/email-verification-fe-v1 < /tmp/website.env.local`, removed the temp file, and verification shows `WEBSITE_APP_ENV_LOCAL 2026-02-08T16:58:17Z` in `gh secret list`.
 
-### Task 99.4 - Pending
+### Task 99.4 - Completed
 - What: Rerun `Website Deploy` manually and capture the run result after prerequisites were provisioned.
 - Why: We need a successful end-to-end deployment run before runtime smoke checks and DNS/proxy cutover steps.
-- How: Trigger `.github/workflows/website-deploy.yml` on `main`, monitor completion, and record run ID + final status + failing step (if any).
+- How: Triggered `.github/workflows/website-deploy.yml` on `main` and monitored run `21801917773` to completion; overall conclusion is `success`, with both jobs successful (`website-checks` and `deploy`) and all deploy steps passing (`Create release directory`, `Upload env file`, `Sync release`, `Deploy release`).
+
+### Task 99.5 - Pending
+- What: Execute pre-cutover runtime smoke checks for website service health and dashboard non-regression.
+- Why: Even with deploy success, runtime checks are required before any DNS/proxy cutover action.
+- How: Verify `boltroute-website` service status, check website routes on `127.0.0.1:3002` (`/`, `/pricing`, `/integrations`), and confirm `https://app.boltroute.ai` remains healthy.
