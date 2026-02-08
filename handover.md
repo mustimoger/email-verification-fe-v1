@@ -12,6 +12,7 @@
 - Step 5 started: pending product-task work resumed.
   - Task 65 completed: `artifacts/marketing/README.md` added.
   - Task 66 completed: marketing mock artifacts validated for internal consistency.
+  - Task 98 completed: manual website deploy workflow run attempted (`21801362879`) and failed at remote release-directory creation due host permissions.
 
 ### Why
 - The original Step 1–4 migration/deploy plan is now executed; continuation should focus on remaining pending product tasks and operational cutover work.
@@ -104,6 +105,8 @@
 
 ### What
 - Website deploy automation exists, but no manual website production deploy run has been executed yet.
+- Website deploy workflow has been executed once (`21801362879`) and failed at `Create release directory` with permission denied for `/var/www/boltroute-website`.
+- `WEBSITE_APP_ENV_LOCAL` GitHub secret is still missing and must be set before a successful website deploy run.
 - Website server-side service/proxy provisioning and domain cutover are not executed yet (`boltroute.ai` / `www.boltroute.ai` still on WordPress host).
 - Several historical UI/data tasks remain pending in `ui-progress.md` (including 68/69/71/73/75/77 and older pending items).
 

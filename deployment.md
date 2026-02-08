@@ -82,7 +82,8 @@
   - `.github/workflows/website-deploy.yml`
   - `apps/website/deploy/remote-deploy.sh`
 - Still not implemented:
-  - No manual website deploy run has been executed yet.
+  - Manual website deploy run was executed and failed: run `21801362879` (`2026-02-08`) failed at `Create release directory` with `mkdir: cannot create directory '/var/www/boltroute-website': Permission denied`.
+  - `WEBSITE_APP_ENV_LOCAL` GitHub secret is not configured yet (required by website deploy workflow).
   - Server-side service/proxy provisioning for `boltroute-website` and `127.0.0.1:3002` is not executed in this repo step.
   - `boltroute.ai`/`www.boltroute.ai` DNS+TLS cutover from WordPress is not executed yet.
 

@@ -98,7 +98,8 @@
 - [x] Task 95 - Add root monorepo operator README (layout/commands/workflows/deploy ownership) (MVP).
 - [x] Task 96 - Choose and execute the first resumed pending product task after deploy-stability steps (MVP).
 - [x] Task 97 - Choose and execute the next resumed pending product task after Task 65 (MVP).
-- [ ] Task 98 - Choose and execute the next resumed pending product task after Task 66 (MVP).
+- [x] Task 98 - Validate pre-cutover website deploy readiness and run manual website deploy workflow (MVP).
+- [ ] Task 99 - Provision website deploy prerequisites on target host and rerun manual website deploy workflow (MVP).
 
 ## Progress log
 ### Task 1 - Completed
@@ -556,7 +557,13 @@
 - How: Selected Task 66 as the next resumed task, updated progress tracking before implementation, completed consistency validation, and updated root handover notes.
 - Not implemented yet: Additional pending product tasks remain and are intentionally deferred to the next single-task step.
 
-### Task 98 - Pending
-- What: Continue Step 5 by executing the next pending product task after Task 66.
-- Why: The remaining backlog still contains unresolved data/UI validation tasks and should be advanced one item at a time.
-- How: Select one pending task from `ui-progress.md`, record selection before implementation, complete MVP + validation, update tracker/docs, then pause for confirmation.
+### Task 98 - Completed
+- What: Validate website pre-cutover deployment readiness and execute the manual website deploy workflow.
+- Why: Before DNS cutover from WordPress to the new website, we need proof that deploy automation, secrets, and remote release steps work on the target host.
+- How: Verified workflow/secret state (`Website Deploy` exists, no prior runs, missing `WEBSITE_APP_ENV_LOCAL` secret), dispatched `.github/workflows/website-deploy.yml` on `main`, and inspected run `21801362879`. `website-checks` passed, but `deploy` failed at `Create release directory` with `mkdir: cannot create directory '/var/www/boltroute-website': Permission denied`.
+- Not implemented yet: Website release root ownership/permissions are not provisioned for deploy user, `WEBSITE_APP_ENV_LOCAL` secret is not configured, and no successful pre-cutover website deploy run exists yet.
+
+### Task 99 - Pending
+- What: Provision website deploy prerequisites on the target host and rerun manual website deploy.
+- Why: Task 98 identified concrete blockers that must be resolved before DNS cutover readiness can be confirmed.
+- How: Ensure `/var/www/boltroute-website` exists with deploy-user write access, create/configure `boltroute-website` service and upstream binding (`127.0.0.1:3002`), add `WEBSITE_APP_ENV_LOCAL` GitHub secret, rerun `.github/workflows/website-deploy.yml`, then verify run success and runtime health.
