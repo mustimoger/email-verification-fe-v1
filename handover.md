@@ -80,7 +80,7 @@
 - Failure is infrastructure permissions on target host, not lint/build.
 
 ### Why
-- Next session should continue on the remaining blockers only (service + secret + deploy rerun + cutover), since CI checks already pass and filesystem permissions are now fixed.
+- Next session should continue on the remaining blockers only (secret + deploy rerun + smoke checks + cutover), since CI checks pass and host prerequisites are now provisioned.
 
 ### How
 - Run inspected:
@@ -96,6 +96,11 @@
     - `/var/www/boltroute-website/releases` -> `drwxr-xr-x boltroute boltroute`
     - `/var/www/boltroute-website/shared` -> `drwxr-xr-x boltroute boltroute`
   - Deploy-user write test succeeded (`touch` + `rm` in `shared/`).
+  - Operator provisioned `boltroute-website.service` and sudoers restart permission for `boltroute`.
+  - Validation now shows:
+    - `systemctl status boltroute-website` -> `active (running)`
+    - `ss -ltn` -> `LISTEN ... 127.0.0.1:3002`
+    - `curl -I http://127.0.0.1:3002` -> `HTTP/1.1 200 OK`
 
 ### Where
 - Workflow file: `.github/workflows/website-deploy.yml`
@@ -109,8 +114,7 @@
 
 ### What
 - Required GitHub secret `WEBSITE_APP_ENV_LOCAL` is missing.
-- Host-level website runtime/proxy provisioning for `boltroute-website` on `127.0.0.1:3002` is not complete.
-- Current Codex session cannot apply root-only systemd/sudoers changes (`sudo -n true` requires password), so Step 2 needs operator-executed host commands.
+- Website deploy workflow has not yet been rerun after host prerequisites were fixed.
 - DNS cutover from WordPress host (`boltroute.ai`) to website host is not executed.
 
 ### Why
@@ -162,7 +166,7 @@
 3. Bind website runtime to `127.0.0.1:3002`.
 4. Reload daemon and test service restart.
 5. Confirm service status is `active`.
-6. Current status (`2026-02-08`): service is not yet present (`Unit boltroute-website.service could not be found`) and still needs root-level provisioning.
+6. Current status (`2026-02-08`): completed; service is enabled and active on `127.0.0.1:3002`.
 
 ### Where
 - Target host systemd configuration
@@ -259,7 +263,7 @@
 ### How
 1. Push `main` at session start.
 2. Re-read `AGENTS.md`, `handover.md`, `ui-progress.md`.
-3. Execute Section 5 Step 2 onward in order (Step 1 is completed).
+3. Execute Section 5 Step 3 onward in order (Steps 1 and 2 are completed).
 4. After each completed sub-step:
    - update `ui-progress.md` with What/Why/How
    - update `deployment.md`/`handover.md` if state changed

@@ -101,7 +101,8 @@
 - [x] Task 98 - Validate pre-cutover website deploy readiness and run manual website deploy workflow (MVP).
 - [ ] Task 99 - Provision website deploy prerequisites on target host and rerun manual website deploy workflow (MVP).
 - [x] Task 99.1 - Prepare target host filesystem and permissions for `/var/www/boltroute-website` (MVP).
-- [ ] Task 99.2 - Provision and verify `boltroute-website` systemd service on `127.0.0.1:3002` (MVP, blocked: root/systemd + sudoers changes required).
+- [x] Task 99.2 - Provision and verify `boltroute-website` systemd service on `127.0.0.1:3002` (MVP).
+- [ ] Task 99.3 - Add `WEBSITE_APP_ENV_LOCAL` GitHub Actions secret for website deploy (MVP).
 
 ## Progress log
 ### Task 1 - Completed
@@ -563,21 +564,26 @@
 - What: Validate website pre-cutover deployment readiness and execute the manual website deploy workflow.
 - Why: Before DNS cutover from WordPress to the new website, we need proof that deploy automation, secrets, and remote release steps work on the target host.
 - How: Verified workflow/secret state (`Website Deploy` exists, no prior runs, missing `WEBSITE_APP_ENV_LOCAL` secret), dispatched `.github/workflows/website-deploy.yml` on `main`, and inspected run `21801362879`. `website-checks` passed, but `deploy` failed at `Create release directory` with `mkdir: cannot create directory '/var/www/boltroute-website': Permission denied`.
-- Not implemented yet: Website release root ownership/permissions are not provisioned for deploy user, `WEBSITE_APP_ENV_LOCAL` secret is not configured, and no successful pre-cutover website deploy run exists yet.
+- Update: Follow-up Tasks 99.1 and 99.2 have since provisioned the website filesystem and systemd service; remaining blockers are `WEBSITE_APP_ENV_LOCAL` secret configuration and rerunning `website-deploy.yml`.
 
 ### Task 99 - Pending
 - What: Provision website deploy prerequisites on the target host and rerun manual website deploy.
 - Why: Task 98 identified concrete blockers that must be resolved before DNS cutover readiness can be confirmed.
 - How: Ensure `/var/www/boltroute-website` exists with deploy-user write access, create/configure `boltroute-website` service and upstream binding (`127.0.0.1:3002`), add `WEBSITE_APP_ENV_LOCAL` GitHub secret, rerun `.github/workflows/website-deploy.yml`, then verify run success and runtime health.
 - Update: `handover.md` was fully rewritten with strict, no-ambiguity next-session sequencing (What/Why/How/Where) focused on Task 99 execution order and cutover readiness.
+- Update (`2026-02-08`): Task 99.1 and Task 99.2 are completed; next strict step is Task 99.3 (configure `WEBSITE_APP_ENV_LOCAL`), then Task 99.4 deploy rerun.
 
 ### Task 99.1 - Completed
 - What: Provisioned the website release root directories and deploy-user permissions for `/var/www/boltroute-website`.
 - Why: The website deploy workflow cannot create a release without write access to the contract path.
 - How: Operator executed root-level setup commands to create `/var/www/boltroute-website/{releases,shared}`, set ownership to `boltroute:boltroute`, and verify write access with a write-test file; then validation confirmed all three paths exist with `755` permissions and `boltroute:boltroute` ownership.
 
-### Task 99.2 - Blocked
-- What: Audited systemd state for `boltroute-website` and attempted to start service provisioning.
-- Why: Task 99.2 must complete before env-secret setup and deploy rerun because `deploy/remote-deploy.sh` always restarts `boltroute-website`.
-- How: Confirmed `boltroute-website.service` does not exist (`systemctl status`/`systemctl cat` return not found), then checked privilege path and confirmed `sudo -n true` still fails with `sudo: a password is required`; root-level writes to `/etc/systemd/system` and `/etc/sudoers.d` cannot be executed from this Codex session.
-- Not implemented yet: Create `boltroute-website.service`, add minimal sudoers rule for `boltroute` service restart, bootstrap one release for `current`, and verify service is `active` on `127.0.0.1:3002`.
+### Task 99.2 - Completed
+- What: Provisioned and validated the `boltroute-website` systemd service bound to `127.0.0.1:3002`.
+- Why: The deploy script always runs `sudo systemctl restart boltroute-website`, so the service and restart permission must exist before rerunning website deploy.
+- How: Operator created `/etc/systemd/system/boltroute-website.service`, added `/etc/sudoers.d/boltroute-website-deploy` (`boltroute` can restart only this service), bootstrapped release `bootstrap-20260208174705` under `/var/www/boltroute-website/releases`, linked `/var/www/boltroute-website/current`, and enabled/restarted the service; validation confirms `systemctl status boltroute-website` is `active`, `ss -ltn` shows `127.0.0.1:3002`, and `curl -I http://127.0.0.1:3002` returns `HTTP/1.1 200 OK`.
+
+### Task 99.3 - Pending
+- What: Add the missing `WEBSITE_APP_ENV_LOCAL` repository secret used by `website-deploy.yml`.
+- Why: The workflow step `Upload env file` cannot run without this secret and deployment will fail before remote build/restart.
+- How: Create repo secret `WEBSITE_APP_ENV_LOCAL` with website `.env.local` contents (at minimum `NEXT_PUBLIC_SITE_URL=https://boltroute.ai`), then verify secret presence before Task 99.4 rerun.

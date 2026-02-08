@@ -83,12 +83,11 @@
   - `apps/website/deploy/remote-deploy.sh`
 - Latest state updates:
   - Task 99.1 completed on `2026-02-08`: `/var/www/boltroute-website/{releases,shared}` now exists with `boltroute:boltroute` ownership and `755` permissions, and deploy-user write access was verified with a write-test.
+  - Task 99.2 completed on `2026-02-08`: `boltroute-website.service` now exists, is enabled/active, and serves on `127.0.0.1:3002`; local upstream check returns `HTTP/1.1 200 OK`.
 - Still not implemented:
   - Manual website deploy run was executed and failed: run `21801362879` (`2026-02-08`) failed at `Create release directory` with `mkdir: cannot create directory '/var/www/boltroute-website': Permission denied`.
   - Website deploy workflow has not yet been rerun after Task 99.1 provisioning completion.
-  - Task 99.2 remains blocked in the current Codex session because `boltroute-website.service` does not exist and root-only writes are required for `/etc/systemd/system/boltroute-website.service` and `/etc/sudoers.d/boltroute-website-deploy`; `sudo -n true` returns `sudo: a password is required`.
   - `WEBSITE_APP_ENV_LOCAL` GitHub secret is not configured yet (required by website deploy workflow).
-  - Server-side service/proxy provisioning for `boltroute-website` and `127.0.0.1:3002` is not executed in this repo step.
   - `boltroute.ai`/`www.boltroute.ai` DNS+TLS cutover from WordPress is not executed yet.
 
 ## MVP deployment plan (production-grade baseline)
