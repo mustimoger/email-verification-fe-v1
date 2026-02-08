@@ -88,9 +88,11 @@
   - Task 99.4 completed on `2026-02-08`: website deploy rerun `21801917773` succeeded (`website-checks` + `deploy` jobs both `success`).
   - Task 99.5 completed on `2026-02-08`: pre-cutover smoke checks passed (`boltroute-website` active, local upstream routes `/`, `/pricing`, `/integrations` all `200`, and dashboard endpoints remained healthy: `/` `307`, `/overview` `200`, `/pricing/embed` `200`).
   - Task 99.6.1 completed on `2026-02-08 17:17:24 UTC`: pre-cutover baseline was captured and confirms no public cutover yet (`boltroute.ai` A = `192.248.184.194`; `www.boltroute.ai` resolves via `boltroute.ai.` to `192.248.184.194`; `https://boltroute.ai` returns `HTTP/2 200` from WordPress/nginx; `https://www.boltroute.ai` still fails TLS hostname validation; local website service remains healthy with `systemctl` active and `http://127.0.0.1:3002/` returning `HTTP/1.1 200 OK`).
+  - Task 99.6.2 completed on `2026-02-08 17:22:58 UTC`: configured/verified Caddy runtime vhosts for `boltroute.ai` and `www.boltroute.ai` -> `127.0.0.1:3002` using validated reload config (`/tmp/Caddyfile.99_6_2`), confirmed host routing (`curl -I http://127.0.0.1 -H 'Host: boltroute.ai'` => `308` and access log entry in `/var/log/caddy/boltroute_website_access.log`), and confirmed dashboard non-regression (`curl -I --resolve app.boltroute.ai:443:127.0.0.1 https://app.boltroute.ai/overview` => `HTTP/2 200`); TLS for `boltroute.ai`/`www.boltroute.ai` is still not issued pre-cutover (TLS alert internal error when resolved to `127.0.0.1`).
 - Still not implemented:
   - Manual website deploy run was executed and failed: run `21801362879` (`2026-02-08`) failed at `Create release directory` with `mkdir: cannot create directory '/var/www/boltroute-website': Permission denied`.
-  - `boltroute.ai`/`www.boltroute.ai` DNS+TLS cutover from WordPress is not executed yet (next strict step is Task `99.6.2` proxy vhost verification/configuration).
+  - Persistent on-disk edit of `/etc/caddy/Caddyfile` for website vhosts is not yet applied from this session because the file is root-owned and `sudo` requires a password in this shell; active routing is currently applied via `caddy reload` runtime config.
+  - `boltroute.ai`/`www.boltroute.ai` DNS+TLS cutover from WordPress is not executed yet (next strict step is Task `99.6.3` DNS cutover).
 
 ## MVP deployment plan (production-grade baseline)
 

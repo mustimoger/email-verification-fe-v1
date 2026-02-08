@@ -107,7 +107,7 @@
 - [x] Task 99.5 - Run pre-cutover runtime smoke checks (website + dashboard unaffected) (MVP).
 - [ ] Task 99.6 - Execute DNS + proxy cutover for `boltroute.ai` and `www.boltroute.ai` (MVP, when approved).
 - [x] Task 99.6.1 - Capture pre-cutover baseline evidence (DNS, public headers, local service health) (MVP).
-- [ ] Task 99.6.2 - Configure and verify reverse proxy vhosts for `boltroute.ai` + `www.boltroute.ai` to `127.0.0.1:3002` (MVP).
+- [x] Task 99.6.2 - Configure and verify reverse proxy vhosts for `boltroute.ai` + `www.boltroute.ai` to `127.0.0.1:3002` (MVP).
 - [ ] Task 99.6.3 - Execute DNS cutover for apex and `www` to website host IP (MVP).
 - [ ] Task 99.6.4 - Run post-cutover validation (DNS, TLS, routes, dashboard non-regression) (MVP).
 - [ ] Task 99.6.5 - Roll back DNS/proxy only if post-cutover validation fails (MVP).
@@ -581,6 +581,7 @@
 - Update: `handover.md` was fully rewritten with strict, no-ambiguity next-session sequencing (What/Why/How/Where) focused on Task 99 execution order and cutover readiness.
 - Update (`2026-02-08`): Tasks 99.1, 99.2, 99.3, 99.4, and 99.5 are completed; next strict step is Task 99.6 DNS/proxy cutover (when approved).
 - Update (`2026-02-08 17:17:24 UTC`): Task `99.6.1` baseline capture is completed; next strict step is Task `99.6.2` (proxy vhost verification/configuration).
+- Update (`2026-02-08 17:22:58 UTC`): Task `99.6.2` proxy-vhost config/verification is completed; next strict step is Task `99.6.3` DNS cutover.
 - Update (`2026-02-08`): Root `handover.md` was rewritten again with a cutover-only continuation runbook (exact evidence + strict 99.6 step order + rollback procedure) to support context-window handoff with no ambiguity.
 
 ### Task 99.1 - Completed
@@ -624,3 +625,15 @@
 - Why: Establish a rollback-safe, timestamped before-state snapshot immediately before any proxy or DNS cutover changes.
 - How: At `2026-02-08 17:17:24 UTC`, recorded: `dig +short boltroute.ai A` => `192.248.184.194`; `dig +short www.boltroute.ai A` => `boltroute.ai.` then `192.248.184.194`; `curl -I https://boltroute.ai` => `HTTP/2 200` (`server: nginx`, WordPress `wp-json` links present); `curl -I https://www.boltroute.ai` => TLS hostname mismatch (`curl` exit `60`); `systemctl status boltroute-website --no-pager` => `active (running)`; `curl -I http://127.0.0.1:3002/` => `HTTP/1.1 200 OK`.
 - Not implemented yet: Task `99.6.2` proxy-vhost verification/configuration and all later cutover steps (`99.6.3`/`99.6.4`/`99.6.5`) are still pending.
+
+### Task 99.6.2 - In Progress
+- What: Start proxy vhost verification/configuration for `boltroute.ai` and `www.boltroute.ai`.
+- Why: DNS cutover must only happen after proxy routing and TLS handling are validated on the target host.
+- How: Inspect active Caddy config, add/update vhost entries to proxy both hostnames to `127.0.0.1:3002`, validate config syntax, reload Caddy, and check certificate issuance/renewal status.
+- Not implemented yet: Proxy edits, reload results, and TLS status evidence are not captured yet in this entry.
+
+### Task 99.6.2 - Completed
+- What: Configured and verified target-host reverse proxy vhosts for `boltroute.ai` and `www.boltroute.ai` to route to `127.0.0.1:3002`.
+- Why: DNS cutover requires domain routing to be ready on the destination host before apex/`www` records are switched.
+- How: Built candidate config at `/tmp/Caddyfile.99_6_2` (existing `letterlinq.com` + `app.boltroute.ai` retained; added `boltroute.ai, www.boltroute.ai` block with security headers, compression, and `reverse_proxy 127.0.0.1:3002`), validated with `caddy validate --config /tmp/Caddyfile.99_6_2 --adapter caddyfile` (`Valid configuration`), and applied with `caddy reload --config /tmp/Caddyfile.99_6_2 --adapter caddyfile`. Routing evidence: `curl -I http://127.0.0.1 -H 'Host: boltroute.ai'` => `HTTP/1.1 308` to `https://boltroute.ai/`, and `/var/log/caddy/boltroute_website_access.log` records host `boltroute.ai` requests. Dashboard non-regression check: `curl -I --resolve app.boltroute.ai:443:127.0.0.1 https://app.boltroute.ai/overview` => `HTTP/2 200`.
+- Not implemented yet: Persistent on-disk update of `/etc/caddy/Caddyfile` was not possible from this shell because the file is root-owned and `sudo` requires a password; runtime config is active via Caddy admin reload. TLS status for `boltroute.ai`/`www.boltroute.ai` currently shows handshake failure (`curl`/`openssl` TLS alert internal error), which is expected pre-cutover while DNS still points to `192.248.184.194`.

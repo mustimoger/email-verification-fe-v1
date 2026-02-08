@@ -1,12 +1,12 @@
 # Handover: Dashboard + Website Integration (Cutover Stage)
 
-## 0) Snapshot (Updated 2026-02-08 17:18:04 UTC)
+## 0) Snapshot (Updated 2026-02-08 17:22:58 UTC)
 
 ### What
 - Monorepo apps are in place:
   - Dashboard: `apps/dashboard` (production: `https://app.boltroute.ai`)
   - Website: `apps/website` (target production: `https://boltroute.ai`, `https://www.boltroute.ai`)
-- Task sequence is at `ui-progress.md` Task `99.6`; sub-step `99.6.1` is completed and `99.6.2` is next.
+- Task sequence is at `ui-progress.md` Task `99.6`; sub-steps `99.6.1` and `99.6.2` are completed and `99.6.3` is next.
 
 ### Why
 - Previous blockers (filesystem, systemd service, secret, deploy rerun, smoke checks) are resolved.
@@ -127,8 +127,8 @@
   - `99.4` deploy rerun success
   - `99.5` pre-cutover smoke checks
   - `99.6.1` pre-cutover baseline capture
-- Pending:
   - `99.6.2` proxy vhost configuration/verification
+- Pending:
   - `99.6.3` DNS cutover
   - `99.6.4` post-cutover validation
   - `99.6.5` rollback (only if needed)
@@ -137,7 +137,7 @@
 - Next session must not repeat completed steps.
 
 ### How
-- Treat `99.6.2` as the active strict next step unless rollback/recovery is triggered.
+- Treat `99.6.3` as the active strict next step unless rollback/recovery is triggered.
 
 ### Where
 - Status source of truth: `ui-progress.md`
@@ -196,6 +196,22 @@
 ### Where
 - Target host reverse proxy configuration (`/etc/caddy/Caddyfile` if Caddy is used)
 - Target host certificate storage/logs
+
+### Status update (2026-02-08 17:22:58 UTC)
+- Completed with captured proxy/runtime evidence:
+  - Candidate config prepared at `/tmp/Caddyfile.99_6_2` with new host block:
+    - `boltroute.ai, www.boltroute.ai` -> `reverse_proxy 127.0.0.1:3002`
+  - `caddy validate --config /tmp/Caddyfile.99_6_2 --adapter caddyfile` => `Valid configuration`
+  - `caddy reload --config /tmp/Caddyfile.99_6_2 --adapter caddyfile` => success
+  - Routing check: `curl -I http://127.0.0.1 -H 'Host: boltroute.ai'` => `HTTP/1.1 308` to `https://boltroute.ai/`
+  - Access log check: `/var/log/caddy/boltroute_website_access.log` records host `boltroute.ai` requests
+  - Dashboard non-regression: `curl -I --resolve app.boltroute.ai:443:127.0.0.1 https://app.boltroute.ai/overview` => `HTTP/2 200`
+- TLS status verification for website domains:
+  - `curl -I --resolve boltroute.ai:443:127.0.0.1 https://boltroute.ai` => TLS alert internal error (`curl` exit `35`)
+  - `curl -I --resolve www.boltroute.ai:443:127.0.0.1 https://www.boltroute.ai` => TLS alert internal error (`curl` exit `35`)
+  - Interpreted status: certificates for `boltroute.ai`/`www.boltroute.ai` are not yet issued pre-cutover while DNS still points to `192.248.184.194`.
+- Not implemented yet in this step:
+  - Persistent file update of `/etc/caddy/Caddyfile` is not applied from this shell because the file is root-owned and `sudo` requires a password; active vhost changes are currently runtime-applied via `caddy reload`.
 
 ## Step 99.6.3 - Execute DNS cutover
 
@@ -287,7 +303,7 @@
 ## 6) Immediate Resume Point For Next Codex Session
 
 ### What
-- Resume from Task `99.6` only, starting at sub-step `99.6.2`.
+- Resume from Task `99.6` only, starting at sub-step `99.6.3`.
 
 ### Why
 - All prerequisites and pre-cutover checks are complete.
@@ -295,10 +311,10 @@
 ### How
 1. `git push origin main` at session start.
 2. Re-read `AGENTS.md`, this `handover.md`, and `ui-progress.md`.
-3. Execute Step `99.6.2` through `99.6.4` in order.
+3. Execute Step `99.6.3` through `99.6.4` in order.
 4. If any validation fails, execute `99.6.5` rollback.
 5. Update root trackers + push after each completion.
 
 ### Where
 - Repo: `/home/codex/email-verification-fe-v1`
-- Active task: `ui-progress.md` Task `99.6.2`
+- Active task: `ui-progress.md` Task `99.6.3`
