@@ -80,7 +80,7 @@
 - Historical failure root cause was host filesystem permissions, now remediated.
 
 ### Why
-- Next session should continue on the remaining blockers only (runtime smoke checks + DNS/proxy cutover), since CI checks pass, host prerequisites are provisioned, and deploy rerun is green.
+- Next session should continue on the remaining blocker only (DNS/proxy cutover), since CI checks pass, host prerequisites are provisioned, deploy rerun is green, and runtime smoke checks are now passing.
 
 ### How
 - Run inspected:
@@ -108,6 +108,14 @@
     - `ss -ltn` -> `LISTEN ... 127.0.0.1:3002`
     - `curl -I http://127.0.0.1:3002` -> `HTTP/1.1 200 OK`
   - Operator configured `WEBSITE_APP_ENV_LOCAL`; verification shows `WEBSITE_APP_ENV_LOCAL 2026-02-08T16:58:17Z` in repo secrets.
+  - Pre-cutover runtime smoke checks passed:
+    - `systemctl status boltroute-website` -> `active`
+    - `curl -I http://127.0.0.1:3002/` -> `200`
+    - `curl -I http://127.0.0.1:3002/pricing` -> `200`
+    - `curl -I http://127.0.0.1:3002/integrations` -> `200`
+    - `curl -I https://app.boltroute.ai/` -> `307` (`Location: /overview`)
+    - `curl -I https://app.boltroute.ai/overview` -> `200`
+    - `curl -I https://app.boltroute.ai/pricing/embed` -> `200`
 
 ### Where
 - Workflow file: `.github/workflows/website-deploy.yml`
@@ -120,7 +128,6 @@
 ## 4) Known Open Blockers
 
 ### What
-- Pre-cutover runtime smoke checks after successful deploy rerun are not yet completed.
 - DNS cutover from WordPress host (`boltroute.ai`) to website host is not executed.
 
 ### Why
@@ -233,6 +240,7 @@
    - `curl -I http://127.0.0.1:3002`
 3. Verify essential routes return successful responses (for example `/`, `/pricing`, `/integrations`).
 4. Confirm dashboard (`app.boltroute.ai`) remains unaffected.
+5. Current status (`2026-02-08`): completed; all checks passed.
 
 ### Where
 - Target host runtime
@@ -266,12 +274,12 @@
 - Start at `ui-progress.md` Task 99.
 
 ### Why
-- All migration/workflow implementation and prerequisite provisioning steps are done; runtime smoke checks and cutover remain.
+- All migration/workflow implementation, prerequisite provisioning, deploy rerun, and runtime smoke checks are done; only cutover remains.
 
 ### How
 1. Push `main` at session start.
 2. Re-read `AGENTS.md`, `handover.md`, `ui-progress.md`.
-3. Execute Section 5 Step 5 onward in order (Steps 1-4 are completed).
+3. Execute Section 5 Step 6 onward in order (Steps 1-5 are completed).
 4. After each completed sub-step:
    - update `ui-progress.md` with What/Why/How
    - update `deployment.md`/`handover.md` if state changed

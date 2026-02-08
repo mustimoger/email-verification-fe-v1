@@ -104,7 +104,8 @@
 - [x] Task 99.2 - Provision and verify `boltroute-website` systemd service on `127.0.0.1:3002` (MVP).
 - [x] Task 99.3 - Add `WEBSITE_APP_ENV_LOCAL` GitHub Actions secret for website deploy (MVP).
 - [x] Task 99.4 - Rerun manual website deploy workflow and record run outcome (MVP).
-- [ ] Task 99.5 - Run pre-cutover runtime smoke checks (website + dashboard unaffected) (MVP).
+- [x] Task 99.5 - Run pre-cutover runtime smoke checks (website + dashboard unaffected) (MVP).
+- [ ] Task 99.6 - Execute DNS + proxy cutover for `boltroute.ai` and `www.boltroute.ai` (MVP, when approved).
 
 ## Progress log
 ### Task 1 - Completed
@@ -566,14 +567,14 @@
 - What: Validate website pre-cutover deployment readiness and execute the manual website deploy workflow.
 - Why: Before DNS cutover from WordPress to the new website, we need proof that deploy automation, secrets, and remote release steps work on the target host.
 - How: Verified workflow/secret state (`Website Deploy` exists, no prior runs, missing `WEBSITE_APP_ENV_LOCAL` secret), dispatched `.github/workflows/website-deploy.yml` on `main`, and inspected run `21801362879`. `website-checks` passed, but `deploy` failed at `Create release directory` with `mkdir: cannot create directory '/var/www/boltroute-website': Permission denied`.
-- Update: Follow-up Tasks 99.1, 99.2, and 99.3 have since provisioned filesystem/service prerequisites and configured `WEBSITE_APP_ENV_LOCAL`; remaining blocker is rerunning `website-deploy.yml`.
+- Update: Follow-up Tasks 99.1, 99.2, 99.3, 99.4, and 99.5 have completed prerequisites, deploy rerun, and smoke checks; only DNS/proxy cutover remains.
 
 ### Task 99 - Pending
 - What: Provision website deploy prerequisites on the target host and rerun manual website deploy.
 - Why: Task 98 identified concrete blockers that must be resolved before DNS cutover readiness can be confirmed.
 - How: Ensure `/var/www/boltroute-website` exists with deploy-user write access, create/configure `boltroute-website` service and upstream binding (`127.0.0.1:3002`), add `WEBSITE_APP_ENV_LOCAL` GitHub secret, rerun `.github/workflows/website-deploy.yml`, then verify run success and runtime health.
 - Update: `handover.md` was fully rewritten with strict, no-ambiguity next-session sequencing (What/Why/How/Where) focused on Task 99 execution order and cutover readiness.
-- Update (`2026-02-08`): Tasks 99.1, 99.2, 99.3, and 99.4 are completed; next strict step is Task 99.5 runtime smoke checks.
+- Update (`2026-02-08`): Tasks 99.1, 99.2, 99.3, 99.4, and 99.5 are completed; next strict step is Task 99.6 DNS/proxy cutover (when approved).
 
 ### Task 99.1 - Completed
 - What: Provisioned the website release root directories and deploy-user permissions for `/var/www/boltroute-website`.
@@ -595,7 +596,12 @@
 - Why: We need a successful end-to-end deployment run before runtime smoke checks and DNS/proxy cutover steps.
 - How: Triggered `.github/workflows/website-deploy.yml` on `main` and monitored run `21801917773` to completion; overall conclusion is `success`, with both jobs successful (`website-checks` and `deploy`) and all deploy steps passing (`Create release directory`, `Upload env file`, `Sync release`, `Deploy release`).
 
-### Task 99.5 - Pending
+### Task 99.5 - Completed
 - What: Execute pre-cutover runtime smoke checks for website service health and dashboard non-regression.
 - Why: Even with deploy success, runtime checks are required before any DNS/proxy cutover action.
-- How: Verify `boltroute-website` service status, check website routes on `127.0.0.1:3002` (`/`, `/pricing`, `/integrations`), and confirm `https://app.boltroute.ai` remains healthy.
+- How: Verified `systemctl status boltroute-website` is `active`; verified local listener (`ss -ltn` shows `127.0.0.1:3002`); checked website routes on local upstream (`curl -I http://127.0.0.1:3002/`, `/pricing`, `/integrations` all `200`); confirmed dashboard remained healthy with `curl -I https://app.boltroute.ai/` (`307` to `/overview`), `curl -I https://app.boltroute.ai/overview` (`200`), and `curl -I https://app.boltroute.ai/pricing/embed` (`200`).
+
+### Task 99.6 - Pending
+- What: Execute DNS + proxy cutover so public traffic for `boltroute.ai` and `www.boltroute.ai` serves the new website.
+- Why: This is the final migration step after deploy/runtime validation is complete.
+- How: Update DNS A/AAAA records to the website host, configure/verify reverse proxy vhosts + TLS for `boltroute.ai` and `www.boltroute.ai` -> `127.0.0.1:3002`, then run post-cutover smoke checks with rollback plan ready.
