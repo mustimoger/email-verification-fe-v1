@@ -445,6 +445,13 @@
 - **Where:** `apps/website/content/pages/terms.mdx`.
 - **Status:** Complete (`2026-02-08 18:21:40 UTC`).
 
+### Post-Step-110.4 Task 113 - Integrations Catalog Make.com card (completed)
+- **What:** Added a `Make.com` integration entry so the dashboard Integrations Catalog now includes a fourth card.
+- **Why:** Production Integrations Catalog needed to include `make.com` alongside Zapier, n8n, and Google Sheets.
+- **How:** Added dashboard asset `apps/dashboard/public/integrations/make.png`, updated `apps/dashboard/app/lib/integrations-catalog.ts` to append managed `Make.com` option when base trio is present and Make is missing, and added unit coverage in `apps/dashboard/tests/integrations-catalog.test.ts`. Validation passed with env-loaded runs: `npx tsx tests/integrations-catalog.test.ts`, `npm run test:dashboard`, and `npm run build:dashboard`.
+- **Where:** `apps/dashboard/app/lib/integrations-catalog.ts`, `apps/dashboard/public/integrations/make.png`, `apps/dashboard/tests/integrations-catalog.test.ts`.
+- **Status:** Complete (`2026-02-08 18:34:59 UTC`).
+
 ## Open items (required before execution)
 - Confirm the current web server (Nginx/Apache/Caddy/other) and how TLS is managed today.
 - Confirm downtime tolerance and rollback expectations for the cutover.

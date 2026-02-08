@@ -124,6 +124,7 @@
 - [x] Task 110 - Execute Step 110.4 by selecting one true pending product task with user confirmation (MVP).
 - [x] Task 111 - Create root `structure.md` that explains monorepo production deployment and GitHub Actions push-to-production flow in beginner-friendly language (MVP).
 - [x] Task 112 - Fix broken privacy link on website Terms page by replacing `https://boltroute.ai/privacy` with `https://boltroute.ai/privacy-policy` (MVP).
+- [x] Task 113 - Add a `make.com` integration card to the dashboard Integrations Catalog using the logo in `apps/dashboard/public` (MVP).
 
 ## Progress log
 ### Task 1 - Completed
@@ -737,3 +738,10 @@
 - How: Updated the Terms MDX source at `apps/website/content/pages/terms.mdx`, then verified the replacement with `rg` and ran `source .venv/bin/activate && npm --prefix apps/website run build` to confirm website build integrity.
 - Where: `apps/website/content/pages/terms.mdx`.
 - Not implemented yet: No additional legal-page link normalization was performed in this task beyond the user-requested Terms-page fix.
+
+### Task 113 - Completed
+- What: Added a fourth Integrations Catalog card for `make.com` on the dashboard Integrations page.
+- Why: The Catalog was showing only Zapier, n8n, and Google Sheets; the requested `make.com` option needed to appear as a first-class integration card with the provided logo.
+- How: Copied the make logo into dashboard public assets (`apps/dashboard/public/integrations/make.png`), updated `apps/dashboard/app/lib/integrations-catalog.ts` to append a managed `Make.com` catalog option when the existing Zapier/n8n/Google Sheets trio is present and Make is absent, and added test coverage in `apps/dashboard/tests/integrations-catalog.test.ts`. Validation run: `source .venv/bin/activate && cd apps/dashboard && set -a && source .env.local && set +a && npx tsx tests/integrations-catalog.test.ts`; `source .venv/bin/activate && set -a && source apps/dashboard/.env.local && set +a && npm run test:dashboard`; `source .venv/bin/activate && set -a && source apps/dashboard/.env.local && set +a && npm run build:dashboard`.
+- Where: `apps/dashboard/app/lib/integrations-catalog.ts`, `apps/dashboard/public/integrations/make.png`, `apps/dashboard/tests/integrations-catalog.test.ts`.
+- Not implemented yet: No redesign of card layout/spacing was needed; existing Catalog styling and structure were preserved per current design principles.

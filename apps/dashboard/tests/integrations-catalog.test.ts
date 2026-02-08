@@ -121,6 +121,57 @@ async function main() {
     });
   });
 
+  await run("listIntegrationsCatalogWithClient appends Make.com when base trio exists", async () => {
+    const result: QueryResult = {
+      data: [
+        {
+          id: "zapier",
+          label: "Zapier",
+          description: "Zapier integration.",
+          icon_url: "/integrations/zapier.png",
+          default_name: "Zapier",
+          external_purpose: "zapier",
+          sort_order: 1,
+          is_active: true,
+        },
+        {
+          id: "n8n",
+          label: "n8n",
+          description: "n8n integration.",
+          icon_url: "/integrations/n8n.png",
+          default_name: "n8n",
+          external_purpose: "n8n",
+          sort_order: 2,
+          is_active: true,
+        },
+        {
+          id: "google-sheets",
+          label: "Google Sheets",
+          description: "Google Sheets integration.",
+          icon_url: "/integrations/google-sheets.png",
+          default_name: "Google Sheets",
+          external_purpose: "google sheets",
+          sort_order: 3,
+          is_active: true,
+        },
+      ],
+      error: null,
+    };
+    const client = new FakeSupabaseClient(result);
+    const options = await listIntegrationsCatalogWithClient(client);
+
+    assert.strictEqual(options.length, 4);
+    assert.deepStrictEqual(options[3], {
+      id: "make-com",
+      label: "Make.com",
+      description:
+        "Build no-code scenarios that call the API with a tagged key. Keys stay universal; selecting Make.com only tags usage.",
+      icon: "/integrations/make.png",
+      default_name: "Make.com",
+      external_purpose: "make.com",
+    });
+  });
+
   await run("listIntegrationsCatalogWithClient returns empty when data is null", async () => {
     const client = new FakeSupabaseClient({ data: null, error: null });
     const options = await listIntegrationsCatalogWithClient(client);

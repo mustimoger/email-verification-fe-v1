@@ -25,6 +25,43 @@ type SupabaseCatalogClient = {
   from: (table: string) => unknown;
 };
 
+const MAKE_DOT_COM_INTEGRATION: IntegrationOption = {
+  id: "make-com",
+  label: "Make.com",
+  description:
+    "Build no-code scenarios that call the API with a tagged key. Keys stay universal; selecting Make.com only tags usage.",
+  icon: "/integrations/make.png",
+  default_name: "Make.com",
+  external_purpose: "make.com",
+};
+
+function ensureMakeDotComIntegration(options: IntegrationOption[]): IntegrationOption[] {
+  if (options.length === 0) {
+    return options;
+  }
+
+  const ids = new Set(options.map((option) => option.id.trim().toLowerCase()));
+  const labels = new Set(options.map((option) => option.label.trim().toLowerCase()));
+
+  const hasZapier = ids.has("zapier") || labels.has("zapier");
+  const hasN8n = ids.has("n8n") || labels.has("n8n");
+  const hasGoogleSheets =
+    ids.has("google-sheets") || ids.has("google_sheets") || labels.has("google sheets");
+
+  const hasMakeDotCom =
+    ids.has("make-com") ||
+    ids.has("make.com") ||
+    ids.has("make") ||
+    labels.has("make.com") ||
+    labels.has("make");
+
+  if (!hasZapier || !hasN8n || !hasGoogleSheets || hasMakeDotCom) {
+    return options;
+  }
+
+  return [...options, MAKE_DOT_COM_INTEGRATION];
+}
+
 export async function listIntegrationsCatalogWithClient(
   supabase: SupabaseCatalogClient,
 ): Promise<IntegrationOption[]> {
@@ -48,7 +85,7 @@ export async function listIntegrationsCatalogWithClient(
     return [];
   }
 
-  return data.map((row: IntegrationCatalogRow) => ({
+  const options = data.map((row: IntegrationCatalogRow) => ({
     id: row.id,
     label: row.label,
     description: row.description,
@@ -56,6 +93,8 @@ export async function listIntegrationsCatalogWithClient(
     default_name: row.default_name,
     external_purpose: row.external_purpose,
   }));
+
+  return ensureMakeDotComIntegration(options);
 }
 
 export async function listIntegrationsCatalog(): Promise<IntegrationOption[]> {

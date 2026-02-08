@@ -1,6 +1,6 @@
 # Handover: Dashboard + Website Integration (Post-Cutover Runbook)
 
-## 0) Snapshot (Updated 2026-02-08 18:25:26 UTC)
+## 0) Snapshot (Updated 2026-02-08 18:34:59 UTC)
 
 ### What
 - Production domains are live and stable:
@@ -358,6 +358,29 @@
 
 ### Where
 - `apps/website/content/pages/terms.mdx`
+- `ui-progress.md`, `deployment.md`, `handover.md`
+
+### Next strict step
+- Continue single-task backlog execution with user confirmation per Item B and Step `110.5`.
+
+### Post-Step-110.4 Task 113 - Completed (`2026-02-08 18:34:59 UTC`)
+
+### What
+- Added `Make.com` as a fourth integration card in the dashboard Integrations Catalog.
+
+### Why
+- The integrations catalog in production needed to include `make.com` in addition to Zapier, n8n, and Google Sheets.
+
+### How
+1. Added the dashboard public asset `apps/dashboard/public/integrations/make.png`.
+2. Updated `apps/dashboard/app/lib/integrations-catalog.ts` to append a managed `Make.com` option when the base trio exists and Make is not already present.
+3. Added unit coverage in `apps/dashboard/tests/integrations-catalog.test.ts` for managed Make.com append behavior.
+4. Ran validation with env loaded: `npx tsx tests/integrations-catalog.test.ts`, `npm run test:dashboard`, and `npm run build:dashboard`.
+
+### Where
+- `apps/dashboard/public/integrations/make.png`
+- `apps/dashboard/app/lib/integrations-catalog.ts`
+- `apps/dashboard/tests/integrations-catalog.test.ts`
 - `ui-progress.md`, `deployment.md`, `handover.md`
 
 ### Next strict step
