@@ -1,0 +1,318 @@
+{
+  "as_of": "2026-02-02",
+  "range": {
+    "start": "2026-01-04",
+    "end": "2026-02-02",
+    "days": 30
+  },
+  "total_requests": 9480,
+  "requests_by_purpose": {
+    "Zapier": 4120,
+    "N8N": 2860,
+    "Custom": 2500
+  },
+  "api_keys": [
+    {
+      "id": "key_zapier_01",
+      "name": "Zapier",
+      "purpose": "Zapier",
+      "created_at": "2025-12-18T09:30:00Z",
+      "last_used_at": "2026-02-02T16:40:00Z",
+      "is_active": true,
+      "total_requests": 4120,
+      "key_preview": "zap...031"
+    },
+    {
+      "id": "key_n8n_01",
+      "name": "N8N",
+      "purpose": "N8N",
+      "created_at": "2025-12-22T11:10:00Z",
+      "last_used_at": "2026-02-02T14:05:00Z",
+      "is_active": true,
+      "total_requests": 2860,
+      "key_preview": "n8n...774"
+    },
+    {
+      "id": "key_custom_01",
+      "name": "Custom",
+      "purpose": "Custom",
+      "created_at": "2025-12-28T08:45:00Z",
+      "last_used_at": "2026-02-01T19:12:00Z",
+      "is_active": true,
+      "total_requests": 2500,
+      "key_preview": "cus...552"
+    }
+  ],
+  "series": [
+    {
+      "date": "2026-01-04",
+      "total_requests": 325,
+      "requests_by_purpose": {
+        "Zapier": 141,
+        "N8N": 98,
+        "Custom": 86
+      }
+    },
+    {
+      "date": "2026-01-05",
+      "total_requests": 315,
+      "requests_by_purpose": {
+        "Zapier": 137,
+        "N8N": 95,
+        "Custom": 83
+      }
+    },
+    {
+      "date": "2026-01-06",
+      "total_requests": 300,
+      "requests_by_purpose": {
+        "Zapier": 130,
+        "N8N": 91,
+        "Custom": 79
+      }
+    },
+    {
+      "date": "2026-01-07",
+      "total_requests": 345,
+      "requests_by_purpose": {
+        "Zapier": 150,
+        "N8N": 104,
+        "Custom": 91
+      }
+    },
+    {
+      "date": "2026-01-08",
+      "total_requests": 365,
+      "requests_by_purpose": {
+        "Zapier": 159,
+        "N8N": 110,
+        "Custom": 96
+      }
+    },
+    {
+      "date": "2026-01-09",
+      "total_requests": 285,
+      "requests_by_purpose": {
+        "Zapier": 124,
+        "N8N": 86,
+        "Custom": 75
+      }
+    },
+    {
+      "date": "2026-01-10",
+      "total_requests": 305,
+      "requests_by_purpose": {
+        "Zapier": 133,
+        "N8N": 92,
+        "Custom": 80
+      }
+    },
+    {
+      "date": "2026-01-11",
+      "total_requests": 315,
+      "requests_by_purpose": {
+        "Zapier": 137,
+        "N8N": 95,
+        "Custom": 83
+      }
+    },
+    {
+      "date": "2026-01-12",
+      "total_requests": 330,
+      "requests_by_purpose": {
+        "Zapier": 143,
+        "N8N": 100,
+        "Custom": 87
+      }
+    },
+    {
+      "date": "2026-01-13",
+      "total_requests": 310,
+      "requests_by_purpose": {
+        "Zapier": 135,
+        "N8N": 93,
+        "Custom": 82
+      }
+    },
+    {
+      "date": "2026-01-14",
+      "total_requests": 290,
+      "requests_by_purpose": {
+        "Zapier": 126,
+        "N8N": 88,
+        "Custom": 76
+      }
+    },
+    {
+      "date": "2026-01-15",
+      "total_requests": 305,
+      "requests_by_purpose": {
+        "Zapier": 133,
+        "N8N": 92,
+        "Custom": 80
+      }
+    },
+    {
+      "date": "2026-01-16",
+      "total_requests": 325,
+      "requests_by_purpose": {
+        "Zapier": 141,
+        "N8N": 98,
+        "Custom": 86
+      }
+    },
+    {
+      "date": "2026-01-17",
+      "total_requests": 340,
+      "requests_by_purpose": {
+        "Zapier": 148,
+        "N8N": 102,
+        "Custom": 90
+      }
+    },
+    {
+      "date": "2026-01-18",
+      "total_requests": 355,
+      "requests_by_purpose": {
+        "Zapier": 154,
+        "N8N": 107,
+        "Custom": 94
+      }
+    },
+    {
+      "date": "2026-01-19",
+      "total_requests": 270,
+      "requests_by_purpose": {
+        "Zapier": 117,
+        "N8N": 82,
+        "Custom": 71
+      }
+    },
+    {
+      "date": "2026-01-20",
+      "total_requests": 285,
+      "requests_by_purpose": {
+        "Zapier": 124,
+        "N8N": 86,
+        "Custom": 75
+      }
+    },
+    {
+      "date": "2026-01-21",
+      "total_requests": 300,
+      "requests_by_purpose": {
+        "Zapier": 130,
+        "N8N": 91,
+        "Custom": 79
+      }
+    },
+    {
+      "date": "2026-01-22",
+      "total_requests": 320,
+      "requests_by_purpose": {
+        "Zapier": 139,
+        "N8N": 97,
+        "Custom": 84
+      }
+    },
+    {
+      "date": "2026-01-23",
+      "total_requests": 335,
+      "requests_by_purpose": {
+        "Zapier": 146,
+        "N8N": 101,
+        "Custom": 88
+      }
+    },
+    {
+      "date": "2026-01-24",
+      "total_requests": 310,
+      "requests_by_purpose": {
+        "Zapier": 135,
+        "N8N": 93,
+        "Custom": 82
+      }
+    },
+    {
+      "date": "2026-01-25",
+      "total_requests": 295,
+      "requests_by_purpose": {
+        "Zapier": 128,
+        "N8N": 89,
+        "Custom": 78
+      }
+    },
+    {
+      "date": "2026-01-26",
+      "total_requests": 305,
+      "requests_by_purpose": {
+        "Zapier": 133,
+        "N8N": 92,
+        "Custom": 80
+      }
+    },
+    {
+      "date": "2026-01-27",
+      "total_requests": 315,
+      "requests_by_purpose": {
+        "Zapier": 137,
+        "N8N": 95,
+        "Custom": 83
+      }
+    },
+    {
+      "date": "2026-01-28",
+      "total_requests": 330,
+      "requests_by_purpose": {
+        "Zapier": 143,
+        "N8N": 100,
+        "Custom": 87
+      }
+    },
+    {
+      "date": "2026-01-29",
+      "total_requests": 345,
+      "requests_by_purpose": {
+        "Zapier": 150,
+        "N8N": 104,
+        "Custom": 91
+      }
+    },
+    {
+      "date": "2026-01-30",
+      "total_requests": 360,
+      "requests_by_purpose": {
+        "Zapier": 156,
+        "N8N": 109,
+        "Custom": 95
+      }
+    },
+    {
+      "date": "2026-01-31",
+      "total_requests": 280,
+      "requests_by_purpose": {
+        "Zapier": 122,
+        "N8N": 84,
+        "Custom": 74
+      }
+    },
+    {
+      "date": "2026-02-01",
+      "total_requests": 300,
+      "requests_by_purpose": {
+        "Zapier": 130,
+        "N8N": 90,
+        "Custom": 80
+      }
+    },
+    {
+      "date": "2026-02-02",
+      "total_requests": 320,
+      "requests_by_purpose": {
+        "Zapier": 139,
+        "N8N": 96,
+        "Custom": 85
+      }
+    }
+  ]
+}

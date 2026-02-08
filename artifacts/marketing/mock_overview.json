@@ -1,0 +1,16 @@
+{
+  "as_of": "2026-02-02",
+  "credits_remaining": 22400,
+  "verification_totals": {
+    "total": 17700,
+    "valid": 13400,
+    "invalid": 3000,
+    "catch_all": 1300
+  },
+  "invalid_breakdown": {
+    "invalid_syntax": 1940,
+    "unknown": 350,
+    "disposable_domain": 450,
+    "invalid": 260
+  }
+}

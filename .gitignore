@@ -28,7 +28,10 @@
 /*.png
 key-value-pair.txt
 .qa/
-artifacts/
+artifacts/*
+!artifacts/marketing/
+!artifacts/marketing/*.json
+!artifacts/marketing/README.md
 
 # debug
 npm-debug.log*

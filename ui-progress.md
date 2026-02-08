@@ -65,7 +65,7 @@
 - [x] Task 62 - Redeploy to main after fixing Overview mapping build error (MVP).
 - [x] Task 63 - Plan marketing mock data artifacts (Overview/History/API) with no code/ext API changes (MVP).
 - [x] Task 64 - Create artifacts-only mock data JSONs for Overview/History/API (MVP).
-- [ ] Task 65 - Add mock data README with totals and usage guidance (MVP).
+- [x] Task 65 - Add mock data README with totals and usage guidance (MVP).
 - [ ] Task 66 - Validate mock data consistency and update handover notes (MVP).
 - [x] Task 67 - Audit Overview verification history mismatch vs History table (demo user) (MVP).
 - [ ] Task 68 - Backfill missing task counts in ext API DB for demo user (Overview table) (MVP).
@@ -96,7 +96,8 @@
 - [x] Task 93 - Define and document website production deployment contract (host/path/service/domain/env/trigger) (MVP).
 - [x] Task 94 - Implement website production deploy workflow/script from locked contract (manual trigger pre-cutover) (MVP).
 - [x] Task 95 - Add root monorepo operator README (layout/commands/workflows/deploy ownership) (MVP).
-- [ ] Task 96 - Choose and execute the first resumed pending product task after deploy-stability steps (MVP).
+- [x] Task 96 - Choose and execute the first resumed pending product task after deploy-stability steps (MVP).
+- [ ] Task 97 - Choose and execute the next resumed pending product task after Task 65 (MVP).
 
 ## Progress log
 ### Task 1 - Completed
@@ -530,7 +531,19 @@
 - How: Created root `README.md` with monorepo layout, local dev/test/build commands per app, CI/deploy workflow triggers, required deploy secrets, and current deployment ownership/status (dashboard active on `app.boltroute.ai`, website deploy workflow manual pre-cutover while WordPress remains live on `boltroute.ai`).
 - Not implemented yet: No runtime/deploy behavior changed in this step; this task is documentation only.
 
-### Task 96 - Pending
+### Task 65 - Completed
+- What: Added a mock data README with totals and practical usage rules for marketing artifacts, and made the marketing artifact files trackable in git.
+- Why: Task 64 created artifact JSONs, but there was no single operator guide explaining expected totals and how to use each file consistently in screenshots.
+- How: Added `artifacts/marketing/README.md` with file purpose, snapshot totals, usage guidance per page (Overview/History/API), and cross-file consistency rules so future sessions can reuse the same values without drift; updated `.gitignore` to allow `artifacts/marketing/*.json` and `artifacts/marketing/README.md` so these artifacts are persisted.
+- Not implemented yet: Formal consistency validation + handover sync remains in Task 66.
+
+### Task 96 - Completed
 - What: Start Step 5 by selecting and executing the next pending product task from the tracker.
 - Why: `handover.md` sequence says product work resumes only after deploy-stability steps (Steps 1-4) are complete.
-- How: Pick one pending task from `ui-progress.md` (outside migration steps), document it before implementation, complete MVP + validation, then pause for confirmation.
+- How: Selected Task 65 (`artifacts/marketing` mock data README) as the first resumed product task, updated progress tracking before implementation, created the README, and verified documented totals match the artifact JSON values.
+- Not implemented yet: Additional pending product tasks remain and are deferred to follow-up steps one at a time.
+
+### Task 97 - Pending
+- What: Continue Step 5 by executing the next pending product task after Task 65.
+- Why: Product backlog items remain open and must be completed in controlled, single-task increments.
+- How: Choose one pending task from the tracker, update plan/progress before changes, complete MVP + validation, then pause for confirmation.
