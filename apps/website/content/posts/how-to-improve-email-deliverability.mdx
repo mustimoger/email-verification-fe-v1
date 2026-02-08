@@ -1,0 +1,702 @@
+---
+title: "How to Improve Email Deliverability (2026 Guide)"
+slug: "how-to-improve-email-deliverability"
+date: "2026-01-10"
+category: "Email Deliverability"
+coverImage: "/post-lp/email-deliverability.jpg"
+metaTitle: "How to Improve Email Deliverability (2026 Guide) - BoltRoute"
+metaDescription: "Short answer: Email deliverability improves when you authenticate your domain (SPF, DKIM, DMARC), maintain clean email lists, and build sender reputation through consistent engagement. Focus on authentication first—Gmail and Yahoo now require it for bulk senders. A good email deliverability rate is 95% or higher; below 90% signals serious problems requiring immediate action (Source). Key […]"
+canonical: "https://boltroute.ai/how-to-improve-email-deliverability"
+author:
+  name: "Murat Kural"
+  url: "https://boltroute.ai/author/murat/"
+faq:
+  - question: "How long does it take to improve email deliverability?"
+    answer: "Minor issues (authentication fixes, list cleaning) show improvement within 1-2 weeks. Reputation recovery from serious damage takes 4-8 weeks minimum. Full recovery from blacklisting or major spam trap hits can take 3-6 months. Consistency matters more than speed—rushing the process by scaling too fast resets progress."
+  - question: "Can I recover from a blacklisted domain?"
+    answer: "Yes, but it requires effort. First, identify why you were listed (spam traps, complaints, compromised sending). Fix the root cause completely. Then submit a delisting request to each blocklist—most have online forms. Some blocklists (Spamhaus, Barracuda) respond within 24-48 hours if your request is legitimate. Others take longer. If the underlying problem isn’t fixed, you’ll be relisted within days."
+  - question: "Does email size affect deliverability?"
+    answer: "Indirectly. Emails over 100KB may load slowly or trigger soft bounces on recipients with full mailboxes. Image-heavy emails (large file sizes) often have poor text-to-image ratios, which triggers spam filters. Keep emails under 100KB total. Use hosted images instead of embedded ones. The content matters more than raw size."
+  - question: "How often should I clean my email list?"
+    answer: "Monthly for active senders (4+ campaigns/month). Quarterly minimum for everyone else. Always clean before major campaigns to your full list. Clean immediately after any campaign with bounce rates above 2%. For B2B lists, contact decay averages 25-30% annually—addresses go bad faster than most marketers expect."
+  - question: "What’s the difference between email delivery and email deliverability?"
+    answer: "Delivery rate measures emails accepted by the receiving server (not bounced). Deliverability measures emails that reach the inbox (not spam). You can have 99% delivery and 70% deliverability—the server accepted your email, then routed it to spam. Deliverability is the metric that matters for campaign performance."
+  - question: "How do spam traps affect deliverability?"
+    answer: "Spam traps are email addresses that exist only to catch senders with poor list practices. Hitting a pristine spam trap (never a real address) signals you’re using purchased or scraped lists—severe reputation damage. Hitting a recycled trap (abandoned address reactivated) signals you’re not maintaining list hygiene—moderate damage. One spam trap hit can drop deliverability 10-20% overnight."
+  - question: "Should I use a dedicated IP or shared IP?"
+    answer: "Depends on volume. Under 50,000 emails/month: use shared IP—you won’t generate enough data to build dedicated IP reputation. Over 100,000/month: dedicated IP gives full control over your reputation. Between 50-100k: either works if you send consistently. Dedicated IPs require proper warmup; shared IPs depend on your ESP maintaining good pool reputation."
+  - question: "Why are my emails going to spam suddenly?"
+    answer: "Common causes in order of likelihood: 1.Authentication failure (DNS change broke SPF/DKIM) 2.Blocklist addition (check MXToolbox immediately) 3.Spam complaint spike from recent campaign 4.Sending to old/unengaged segment triggered spam traps 5.Content triggered filters (new template, links, or offers) Check authentication first—it’s the most common cause and fastest to verify."
+  - question: "How do I check if my domain is blacklisted?"
+    answer: "Use MXToolbox Blacklist Check or MultiRBL. Enter your sending domain and IP address. These tools check 50-100+ blocklists simultaneously. Check both domain and IP—they’re tracked separately. If listed, each blocklist page shows removal instructions."
+  - question: "Do engagement rates affect deliverability?"
+    answer: "Yes, significantly. Mailbox providers track opens, clicks, replies, deletes, and complaints. High engagement signals your emails are wanted—more inbox placement. Low engagement signals your emails aren’t valued—more spam filtering. Gmail weights engagement heavily. Sending to unengaged subscribers drags down deliverability for your entire list."
+---
+
+**Short answer:** Email deliverability improves when you authenticate your domain (SPF, DKIM, DMARC), maintain clean email lists, and build sender reputation through consistent engagement. Focus on authentication first—Gmail and Yahoo now require it for bulk senders. A good email deliverability rate is 95% or higher; below 90% signals serious problems requiring immediate action ([Source](https://powerdmarc.com/email-deliverability-issues/#:~:text=Typically%2C%20a%20deliverability%20rate%20of,authentication%20issues%20needing%20immediate%20attention.)).
+
+## Table of Contents
+
+- [What Is Email Deliverability?](#what-is-email-deliverability)
+- [Why Is Email Deliverability Important?](#why-is-email-deliverability-important)
+- [What Affects Email Deliverability?](#what-affects-email-deliverability)
+- [What Is a Good Email Deliverability Rate?](#what-is-a-good-email-deliverability-rate)
+- [How to Improve Email Deliverability: 7 Strategies That Work](#how-to-improve-email-deliverability-7-strategies-that-work)
+  - [1\. Set Up Email Authentication (SPF, DKIM, DMARC)](#1-set-up-email-authentication-spf-dkim-dmarc)
+  - [2\. Meet Gmail and Yahoo 2025 Bulk Sender Requirements](#2-meet-gmail-and-yahoo-2025-bulk-sender-requirements)
+  - [3\. Build and Protect Your Sender Reputation](#3-build-and-protect-your-sender-reputation)
+  - [4\. Clean Your Email List Regularly](#4-clean-your-email-list-regularly)
+  - [5\. Warm Up New Domains and IPs](#5-warm-up-new-domains-and-ips)
+  - [6\. Optimize Email Content for Inbox Placement](#6-optimize-email-content-for-inbox-placement)
+  - [7\. Improve Engagement Signals](#7-improve-engagement-signals)
+- [How to Test and Measure Email Deliverability](#how-to-test-and-measure-email-deliverability)
+  - [Key Metrics to Track](#key-metrics-to-track)
+  - [Tools for Testing Deliverability](#tools-for-testing-deliverability)
+  - [How to Check Email Deliverability: Quick Audit](#how-to-check-email-deliverability-quick-audit)
+- [How to Fix Email Deliverability Issues](#how-to-fix-email-deliverability-issues)
+  - [Diagnostic Flowchart](#diagnostic-flowchart)
+  - [Common Causes and Fixes](#common-causes-and-fixes)
+  - [Step-by-Step Troubleshooting Process](#step-by-step-troubleshooting-process)
+  - [Using Monitoring Tools to Fix Issues](#using-monitoring-tools-to-fix-issues)
+  - [How to Fix Low Email Deliverability Rates](#how-to-fix-low-email-deliverability-rates)
+- [B2B Email Deliverability: What’s Different](#b2b-email-deliverability-whats-different)
+  - [Corporate Spam Filters Are More Aggressive](#corporate-spam-filters-are-more-aggressive)
+  - [Lower Volume Makes Reputation Harder to Build](#lower-volume-makes-reputation-harder-to-build)
+  - [Decision-Maker Targeting Adds Risk](#decision-maker-targeting-adds-risk)
+  - [BIMI for B2B Brand Recognition](#bimi-for-b2b-brand-recognition)
+  - [B2B-Specific Deliverability Checklist](#b2b-specific-deliverability-checklist)
+- [When to Use Email Deliverability Services](#when-to-use-email-deliverability-services)
+  - [Benefits of Email Deliverability Services](#benefits-of-email-deliverability-services)
+  - [DIY vs. Managed Services Decision Framework](#diy-vs-managed-services-decision-framework)
+  - [Types of Deliverability Services](#types-of-deliverability-services)
+  - [When to Start With Verification](#when-to-start-with-verification)
+- [Frequently Asked Questions](#frequently-asked-questions)
+  - [How long does it take to improve email deliverability?](#how-long-does-it-take-to-improve-email-deliverability)
+  - [Can I recover from a blacklisted domain?](#can-i-recover-from-a-blacklisted-domain)
+  - [Does email size affect deliverability?](#does-email-size-affect-deliverability)
+  - [How often should I clean my email list?](#how-often-should-i-clean-my-email-list)
+  - [What’s the difference between email delivery and email deliverability?](#whats-the-difference-between-email-delivery-and-email-deliverability)
+  - [How do spam traps affect deliverability?](#how-do-spam-traps-affect-deliverability)
+  - [Should I use a dedicated IP or shared IP?](#should-i-use-a-dedicated-ip-or-shared-ip)
+  - [Why are my emails going to spam suddenly?](#why-are-my-emails-going-to-spam-suddenly)
+  - [How do I check if my domain is blacklisted?](#how-do-i-check-if-my-domain-is-blacklisted)
+  - [Do engagement rates affect deliverability?](#do-engagement-rates-affect-deliverability)
+
+**Key Takeaways:**
+
+-   **Authentication is mandatory:** Configure SPF, DKIM, and DMARC before sending any campaigns
+-   **List hygiene drives reputation:** Remove bounces and inactive subscribers monthly
+-   **Gmail/Yahoo 2025 rules changed everything:** One-click unsubscribe and &lt;0.3% spam complaints are now required
+-   **Warm up new domains:** Start with 50-100 emails/day, scale over 4-6 weeks
+-   **Monitor constantly:** Use Google Postmaster Tools and seed testing to catch issues early
+
+This guide covers what affects email deliverability, how to test and measure it, and the exact steps to fix deliverability issues—whether you’re troubleshooting a sudden drop or building reputation from scratch.
+
+---
+
+## What Is Email Deliverability?
+
+Email deliverability is the rate at which your emails reach subscribers’ inboxes instead of spam folders or getting blocked entirely. It measures whether mailbox providers (Gmail, Outlook, Yahoo) trust your sending reputation enough to let your messages through.
+
+This is different from **delivery rate**, which only tracks whether an email was accepted by the receiving server—not where it landed.
+
+<table className="has-fixed-layout"><tbody><tr><th>Metric</th><th>What It Measures</th><th>Example</th></tr><tr><td>Delivery Rate</td><td>Emails accepted by server (not bounced)</td><td>98% delivered = 2% hard bounced</td></tr><tr><td>Deliverability Rate</td><td>Emails that reached the inbox</td><td>85% inbox = 15% went to spam or promotions</td></tr><tr><td>Inbox Placement Rate</td><td>Emails in primary inbox specifically</td><td>72% primary inbox vs tabs/folders</td></tr></tbody></table>
+
+You can have 99% delivery rate and terrible deliverability. The server accepted your email—then routed it straight to spam. That’s why deliverability is the metric that actually matters for campaign performance.
+
+---
+
+## Why Is Email Deliverability Important?
+
+Email deliverability determines whether your campaigns generate revenue or disappear into spam folders. A 10% drop in deliverability means 10% of your audience never sees your message—and that compounds across every campaign you send.
+
+**The math is brutal:**
+
+-   100,000 subscribers at 95% deliverability = 95,000 reach
+-   100,000 subscribers at 80% deliverability = 80,000 reach
+-   That’s 15,000 lost contacts per send—without a single unsubscribe
+
+Deliverability also affects every downstream metric. Open rates, click rates, and conversions all depend on emails actually reaching the inbox. If you’re troubleshooting “low engagement,” the problem often starts with deliverability, not subject lines.
+
+**Sender reputation compounds over time.** Mailbox providers track your sending history. Good deliverability builds trust, which improves future deliverability. Poor deliverability triggers spam filtering, which tanks engagement, which destroys reputation further. The spiral moves fast in both directions.
+
+For B2B senders, the stakes are higher. Corporate spam filters (Barracuda, Proofpoint, Mimecast) are more aggressive than consumer filters. One blacklisting can cut off access to entire company domains.
+
+---
+
+## What Affects Email Deliverability?
+
+Email deliverability depends on four factors: authentication, sender reputation, content quality, and subscriber engagement. Mailbox providers weigh all four when deciding whether to inbox, spam, or block your emails.
+
+<table className="has-fixed-layout"><tbody><tr><th>Factor</th><th>What It Includes</th><th>Weight</th></tr><tr><td>Authentication</td><td>SPF, DKIM, DMARC configuration</td><td>Required (pass/fail gate)</td></tr><tr><td>Sender Reputation</td><td>IP reputation, domain reputation, complaint history</td><td>High (primary scoring factor)</td></tr><tr><td>Content Quality</td><td>Spam triggers, link hygiene, text-to-image ratio</td><td>Medium (can trigger filters)</td></tr><tr><td>Subscriber Engagement</td><td>Opens, clicks, replies, spam complaints</td><td>High (signals legitimacy)</td></tr></tbody></table>
+
+**Authentication is a gate, not a score.** Without proper SPF, DKIM, and DMARC records, Gmail and Yahoo will reject or spam your emails regardless of how good everything else is. Since February 2024, this is non-negotiable for bulk senders ([Source](https://support.google.com/a/answer/81126?hl=en)).
+
+**Sender reputation is the primary score.** Mailbox providers track your sending history across millions of data points. High complaint rates, spam trap hits, or inconsistent sending patterns damage reputation quickly. Rebuilding takes months.
+
+**Content triggers are secondary but dangerous.** Certain phrases, excessive links, URL shorteners, and image-heavy emails can trip spam filters even with good reputation.
+
+**Engagement signals legitimacy.** When subscribers open, click, and reply to your emails, mailbox providers learn your messages are wanted. Low engagement tells them the opposite—and they act accordingly.
+
+---
+
+## What Is a Good Email Deliverability Rate?
+
+A good email deliverability rate is 95% or higher. This means 95 out of 100 emails land in the inbox—not spam, not promotions tabs, not blocked. Below 90% indicates serious issues requiring immediate attention ([Source](https://powerdmarc.com/email-deliverability-issues/#:~:text=Typically%2C%20a%20deliverability%20rate%20of,authentication%20issues%20needing%20immediate%20attention.)).
+
+<table className="has-fixed-layout"><tbody><tr><th>Deliverability Rate</th><th>Status</th><th>Action Required</th></tr><tr><td>95%+</td><td>Healthy</td><td>Maintain current practices, monitor monthly</td></tr><tr><td>90-95%</td><td>Needs Improvement</td><td>Audit authentication, clean list, check reputation</td></tr><tr><td>80-90%</td><td>Problem</td><td>Immediate troubleshooting, pause non-essential sends</td></tr><tr><td>Below 80%</td><td>Critical</td><td>Stop sending, full audit, possible domain/IP change</td></tr></tbody></table>
+
+**Industry benchmarks vary.** SaaS and B2B companies typically see 92-97% deliverability. E-commerce with large promotional lists often runs 88-94%. Financial services and healthcare face stricter filtering, so 90%+ is considered strong.
+
+**Don’t confuse deliverability with delivery rate.** Most ESPs report delivery rate (emails accepted by servers), not inbox placement. You can show 98% “delivered” while half your emails sit in spam. True deliverability requires inbox placement testing with seed lists.
+
+**Track the trend, not just the number.** A stable 93% is healthier than a 96% that dropped from 99%. Sudden drops signal reputation damage, blacklisting, or authentication failures—investigate immediately even if you’re still above 90%.
+
+---
+
+## How to Improve Email Deliverability: 7 Strategies That Work
+
+These seven strategies address the root causes of deliverability problems. Start with authentication—it’s the foundation everything else depends on. Then work through reputation, list hygiene, and engagement in order.
+
+### 1\. Set Up Email Authentication (SPF, DKIM, DMARC)
+
+Email authentication proves you are who you say you are. Without it, mailbox providers assume you’re a spammer or phisher. Since February 2024, Gmail and Yahoo reject or spam emails from unauthenticated bulk senders.
+
+<table className="has-fixed-layout"><tbody><tr><th>Protocol</th><th>What It Does</th><th>Setup Difficulty</th></tr><tr><td>SPF (Sender Policy Framework)</td><td>Lists which servers can send email for your domain</td><td>Easy (one DNS TXT record)</td></tr><tr><td>DKIM (DomainKeys Identified Mail)</td><td>Adds cryptographic signature to verify email wasn’t altered</td><td>Medium (requires key generation)</td></tr><tr><td>DMARC (Domain-based Message Authentication)</td><td>Tells receivers what to do when SPF/DKIM fail</td><td>Easy (one DNS TXT record)</td></tr></tbody></table>
+
+**How to set up authentication:**
+
+1.  Access your domain’s DNS settings (via registrar or hosting provider)
+2.  Add SPF record: `v=spf1 include:_spf.youresp.com ~all` (replace with your ESP’s include)
+3.  Generate DKIM keys in your email service provider dashboard
+4.  Add DKIM TXT record to DNS with the public key
+5.  Create DMARC record: `v=DMARC1; p=none; rua=mailto:dmarc@yourdomain.com`
+6.  Monitor DMARC reports for 2-4 weeks
+7.  Gradually tighten DMARC policy: `p=none` → `p=quarantine` → `p=reject`
+
+**Common mistakes:** Using multiple SPF records (only one allowed), not including all sending sources in SPF, setting DMARC to `p=reject` before monitoring. Any of these will tank deliverability.
+
+### 2\. Meet Gmail and Yahoo 2025 Bulk Sender Requirements
+
+Gmail and Yahoo implemented strict requirements for bulk senders (5,000+ emails/day) starting February 2024. These rules apply to everyone now—enforcement has only gotten stricter in 2025 ([Source](https://support.google.com/a/answer/14229414?hl=en)).
+
+<table className="has-fixed-layout"><tbody><tr><th>Requirement</th><th>Threshold</th><th>What Happens If You Fail</th></tr><tr><td>Email Authentication</td><td>SPF, DKIM, and DMARC all required</td><td>Emails rejected or sent to spam</td></tr><tr><td>Spam Complaint Rate</td><td>Below 0.3% (target under 0.1%)</td><td>Throttling, then blocking</td></tr><tr><td>One-Click Unsubscribe</td><td>List-Unsubscribe header required</td><td>Emails flagged as non-compliant</td></tr><tr><td>Valid Forward/Reverse DNS</td><td>PTR records must match sending IP</td><td>Emails rejected at server level</td></tr><tr><td>TLS Connection</td><td>Emails must be sent over TLS encryption</td><td>Emails rejected</td></tr></tbody></table>
+
+**The 0.3% spam complaint threshold is brutal.** That’s 3 complaints per 1,000 emails. One bad campaign to a stale list can exceed this instantly. Google recommends staying under 0.1% for safety margin. ([Source](https://support.google.com/a/answer/14229414?hl=en#zippy=%2Cwhat-time-range-or-duration-is-used-when-calculating-spam-rate))
+
+**One-click unsubscribe is non-negotiable.** Your emails must include a `List-Unsubscribe` header that works with one click—no confirmation pages, no login required. Most modern ESPs handle this automatically, but verify yours does.
+
+### 3\. Build and Protect Your Sender Reputation
+
+Sender reputation is a score mailbox providers assign to your IP address and domain based on sending history. High reputation means inbox placement. Low reputation means spam folder or outright blocking.
+
+**Two types of reputation matter:**
+
+-   **IP reputation:** Tied to the server IP address sending your emails. Shared IPs pool reputation across all senders; dedicated IPs give you full control.
+-   **Domain reputation:** Tied to your sending domain. Follows you even if you change IPs or ESPs. Increasingly weighted more heavily than IP reputation.
+
+**When to use dedicated vs. shared IP:**
+
+<table className="has-fixed-layout"><tbody><tr><th>Sending Volume</th><th>Recommended</th><th>Why</th></tr><tr><td>Under 50,000/month</td><td>Shared IP</td><td>Not enough volume to build dedicated IP reputation</td></tr><tr><td>50,000-100,000/month</td><td>Either (depends on consistency)</td><td>Dedicated works if you send consistently</td></tr><tr><td>Over 100,000/month</td><td>Dedicated IP</td><td>Full control, isolation from other senders</td></tr></tbody></table>
+
+**Reputation killers to avoid:**
+
+-   **Spam traps:** Email addresses that exist only to catch spammers. Pristine traps were never real addresses. Recycled traps are abandoned addresses reactivated as traps. Hitting either destroys reputation.
+-   **High complaint rates:** Every “mark as spam” click damages your score. Stay under 0.1%.
+-   **Inconsistent sending:** Sending 10,000 emails one week, zero the next, then 50,000 looks like spammer behavior. Maintain consistent volume.
+-   **Purchased lists:** Guaranteed spam traps, complaints, and bounces. Never worth it.
+
+### 4\. Clean Your Email List Regularly
+
+List hygiene directly impacts deliverability. Invalid addresses cause bounces. Inactive subscribers kill engagement metrics. Both signal to mailbox providers that you don’t manage your list responsibly.
+
+**What to remove:**
+
+-   **Hard bounces:** Remove immediately after first bounce. These addresses don’t exist.
+-   **Soft bounces:** Remove after 3-5 consecutive soft bounces. Temporary issues became permanent.
+-   **Spam complainers:** Remove anyone who complained. Sending again guarantees another complaint.
+-   **Inactive subscribers:** No opens or clicks in 6-12 months. Re-engage or remove.
+
+**How to clean your list:**
+
+1.  Export your full email list from your ESP
+2.  Run through an [email verification service](https://boltroute.ai/email-verification/) to identify invalid, risky, and catch-all addresses
+3.  Remove or quarantine addresses flagged as invalid, spam traps, or disposable
+4.  Segment unverified/risky addresses for slower sending or exclusion
+5.  Re-import cleaned list
+6.  Set up automated hygiene: remove hard bounces instantly, flag soft bounces, sunset inactive subscribers
+
+**Use double opt-in for new subscribers.** Double opt-in requires subscribers to confirm their email address before being added to your list. This eliminates typos, fake signups, and bot registrations. Your list grows slower but stays cleaner.
+
+**Cleaning frequency:** Monthly for active senders, quarterly minimum for everyone. Clean before any major campaign to a full list.
+
+### 5\. Warm Up New Domains and IPs
+
+New domains and IP addresses have no sending reputation. Mailbox providers treat unknown senders with suspicion. Warmup builds trust gradually by starting with low volume and scaling over time.
+
+**Why warmup matters:** Sending 50,000 emails from a brand-new domain looks like a spammer who just registered a throwaway domain. Mailbox providers will throttle or block you. Warmup proves you’re a legitimate sender with engaged recipients.
+
+**Warmup schedule for new domains/IPs:**
+
+1.  **Week 1:** 50-100 emails/day to your most engaged subscribers only
+2.  **Week 2:** 200-500 emails/day, still prioritizing engaged contacts
+3.  **Week 3:** 500-1,000 emails/day, expand to moderately engaged
+4.  **Week 4:** 1,000-5,000 emails/day
+5.  **Week 5-6:** 5,000-10,000 emails/day
+6.  **Week 6+:** Scale to full volume, monitoring metrics closely
+
+**Warmup rules:**
+
+-   Send only to confirmed, engaged subscribers during warmup
+-   Maintain consistent daily sending (don’t skip days)
+-   Monitor bounce rates, spam complaints, and inbox placement at each stage
+-   If metrics dip, pause and stabilize before increasing volume
+-   Prioritize Gmail and Outlook recipients—they’re strictest during warmup
+
+**Signs warmup is working:** Inbox placement above 90%, bounce rate under 2%, spam complaints under 0.1%, steady or improving open rates as you scale.
+
+**Signs warmup is failing:** Rising bounce rates, dropping open rates, emails landing in spam, throttling messages from mailbox providers. Stop scaling immediately, investigate, fix, then resume.
+
+### 6\. Optimize Email Content for Inbox Placement
+
+Content filters scan your emails for spam signals. Even with good authentication and reputation, certain content patterns trigger filtering. Optimize your emails to avoid these traps.
+
+**Subject line best practices:**
+
+-   Avoid all caps: “FREE OFFER!!!” triggers filters
+-   Skip excessive punctuation: “Act now!!!” looks spammy
+-   Don’t use spam trigger phrases: “100% free,” “Act now,” “Limited time,” “Click here”
+-   Keep under 50 characters for mobile display
+-   Personalization helps: Using the recipient’s name signals legitimacy
+
+**Email body optimization:**
+
+-   **Text-to-image ratio:** Aim for 60% text, 40% images minimum. Image-only emails get filtered.
+-   **Alt text on images:** Spam filters can’t read images. Alt text provides context and helps deliverability.
+-   **Link hygiene:** Avoid URL shorteners (bit.ly, etc.)—they’re heavily abused by spammers. Use full URLs from reputable domains.
+-   **Limit total links:** Excessive links (10+) look like phishing. Keep it under 5 when possible.
+-   **Avoid attachments:** Attachments trigger security filters. Host files and link to them instead.
+
+**HTML structure matters:**
+
+-   Use clean, well-formatted HTML (broken code triggers filters)
+-   Include a plain-text version of every email
+-   Don’t hide text (white text on white background is a spam signal)
+-   Avoid embedded JavaScript (auto-blocked by most clients)
+
+### 7\. Improve Engagement Signals
+
+Mailbox providers track how recipients interact with your emails. High engagement signals legitimacy and earns inbox placement. Low engagement signals unwanted email and triggers spam filtering.
+
+**Engagement signals that matter:**
+
+-   **Opens:** Recipient opened the email (indicates interest)
+-   **Clicks:** Recipient clicked a link (strong positive signal)
+-   **Replies:** Recipient replied to the email (strongest positive signal)
+-   **Spam complaints:** Recipient marked as spam (strongest negative signal)
+-   **Deletes without reading:** Recipient deleted without opening (mild negative signal)
+
+**How to improve engagement:**
+
+1.  **Segment by engagement level:** Create segments for highly engaged (opened in last 30 days), moderately engaged (opened in 30-90 days), and inactive (no opens in 90+ days). Send your most important campaigns to engaged segments first.
+2.  **Personalize beyond first name:** Use behavioral data—past purchases, content interests, browsing history—to send relevant content. Relevant emails get opened.
+3.  **Optimize send times:** Test different days and times for your audience. B2B typically performs better Tuesday-Thursday mornings. B2C varies widely. Let data guide you.
+4.  **Re-engage or sunset inactive subscribers:** Send a re-engagement campaign to inactive subscribers. Those who don’t respond within 2-3 attempts should be removed. Keeping them hurts deliverability.
+5.  **Ask for replies:** Replies are the strongest engagement signal. Ask a question, request feedback, or invite responses. Even a small percentage of replies significantly boosts sender reputation.
+6.  **Make unsubscribing easy:** A visible, one-click unsubscribe reduces spam complaints. People who unsubscribe instead of complaining protect your reputation.
+
+---
+
+## How to Test and Measure Email Deliverability
+
+You can’t improve what you don’t measure. Testing email deliverability requires tracking the right metrics, using the right tools, and understanding what the numbers actually mean.
+
+### Key Metrics to Track
+
+<table className="has-fixed-layout"><tbody><tr><th>Metric</th><th>What It Tells You</th><th>Target Range</th></tr><tr><td>Inbox Placement Rate</td><td>Percentage of emails landing in inbox (not spam)</td><td>95%+ healthy, below 90% problematic</td></tr><tr><td>Bounce Rate</td><td>Percentage of emails rejected by servers</td><td>Under 2% acceptable, under 0.5% ideal</td></tr><tr><td>Spam Complaint Rate</td><td>Percentage of recipients marking email as spam</td><td>Under 0.1% ideal, above 0.3% critical</td></tr><tr><td>Open Rate</td><td>Engagement indicator (indirect deliverability signal)</td><td>15-25% typical, varies by industry</td></tr><tr><td>Unsubscribe Rate</td><td>List health indicator</td><td>Under 0.5% per campaign</td></tr></tbody></table>
+
+**Bounce rate breakdown—know the difference:**
+
+-   **Hard bounce:** Permanent failure. Address doesn’t exist, domain invalid, or recipient server permanently rejected. Remove immediately.
+-   **Soft bounce:** Temporary failure. Mailbox full, server down, or message too large. Retry automatically. Remove after 3-5 consecutive failures.
+
+A sudden spike in hard bounces indicates list quality issues—you’re sending to outdated or purchased addresses. A spike in soft bounces might indicate reputation problems causing temporary blocks.
+
+### Tools for Testing Deliverability
+
+**Google Postmaster Tools (Free)**
+
+Essential for anyone sending to Gmail recipients. Shows your domain reputation, spam rate, authentication status, and delivery errors. Setup takes 5 minutes—just verify your domain.
+
+What to monitor:
+
+-   Domain reputation (High/Medium/Low/Bad)
+-   IP reputation
+-   Spam rate (keep under 0.1%)
+-   Authentication success rate (should be 100%)
+
+**Seed List Testing**
+
+Seed testing sends your email to a panel of test addresses across major mailbox providers (Gmail, Outlook, Yahoo, corporate). You see exactly where emails land—inbox, spam, promotions, or blocked.
+
+Tools that offer seed testing:
+
+-   GlockApps
+-   Mail-Tester
+-   Inbox Ally
+-   Everest (Validity)
+
+Run seed tests before major campaigns and whenever you suspect deliverability issues.
+
+**Blocklist Monitoring**
+
+Blocklists (Spamhaus, Barracuda, SpamCop) track IPs and domains with spam complaints. Getting listed tanks deliverability instantly. Monitor your status regularly.
+
+Free blocklist checkers:
+
+-   MXToolbox
+-   MultiRBL
+-   Spamhaus lookup
+
+If you’re listed, each blocklist has a removal process. Fix the underlying issue first—removal without fixing guarantees re-listing.
+
+**Email Authentication Checkers**
+
+Verify your SPF, DKIM, and DMARC are configured correctly:
+
+-   MXToolbox SuperTool
+-   DMARC Analyzer
+-   Mail-Tester.com
+
+Run these checks after any DNS changes and quarterly as routine maintenance.
+
+### How to Check Email Deliverability: Quick Audit
+
+1.  Check Google Postmaster Tools for domain/IP reputation
+2.  Run a blocklist check on your sending IP and domain
+3.  Verify authentication with MXToolbox
+4.  Send a seed test to check inbox placement across providers
+5.  Review ESP dashboard for bounce and complaint rates
+6.  Compare open rates to your historical baseline
+
+If any step shows problems, investigate before sending your next campaign.
+
+---
+
+## How to Fix Email Deliverability Issues
+
+Fixing deliverability problems requires diagnosing the root cause first. Random fixes waste time and can make things worse. Use this systematic approach to identify what’s broken and fix it in the right order.
+
+### Diagnostic Flowchart
+
+**Start here → Check authentication**
+
+-   SPF/DKIM/DMARC failing? → Fix DNS records first
+-   Authentication passing? → Check reputation
+
+**Check reputation**
+
+-   Domain/IP reputation low? → Pause sending, investigate cause
+-   Reputation healthy? → Check list quality
+
+**Check list quality**
+
+-   Bounce rate above 2%? → Clean list immediately
+-   Complaint rate above 0.1%? → Audit content and frequency
+-   List clean? → Check content
+
+**Check content**
+
+-   Spam filter triggers present? → Rewrite content
+-   Content clean? → Check engagement
+
+**Check engagement**
+
+-   Open rates dropping? → Segment and re-engage
+-   Engagement healthy? → Monitor and maintain
+
+### Common Causes and Fixes
+
+<table className="has-fixed-layout"><tbody><tr><th>Symptom</th><th>Likely Cause</th><th>Fix</th></tr><tr><td>Emails going to spam (all providers)</td><td>Authentication failure or domain reputation</td><td>Verify SPF/DKIM/DMARC, check Postmaster Tools</td></tr><tr><td>Emails going to spam (Gmail only)</td><td>Gmail-specific reputation issue</td><td>Check Google Postmaster Tools, reduce Gmail volume temporarily</td></tr><tr><td>High bounce rate suddenly</td><td>List decay or bad data source</td><td>Verify list through email verification service, remove invalids</td></tr><tr><td>Blacklisted IP/domain</td><td>Spam trap hit or complaint spike</td><td>Request delisting, identify and remove bad addresses, pause sending</td></tr><tr><td>Low open rates across all campaigns</td><td>Inbox placement issues or list fatigue</td><td>Run seed test, segment by engagement, reduce frequency</td></tr><tr><td>Emails blocked by corporate filters</td><td>IP/domain reputation with Barracuda, Proofpoint, etc.</td><td>Check specific blocklists, request whitelisting, warm up slowly</td></tr><tr><td>Deliverability dropped after ESP migration</td><td>New IP without reputation</td><td>Proper warmup sequence, migrate engaged subscribers first</td></tr><tr><td>Inconsistent deliverability</td><td>Shared IP reputation fluctuation</td><td>Consider dedicated IP if volume supports it</td></tr></tbody></table>
+
+### Step-by-Step Troubleshooting Process
+
+1.  **Stop the bleeding:** If deliverability crashed suddenly, pause non-essential campaigns. Continuing to send with low reputation makes it worse.
+2.  **Check authentication first:** Use MXToolbox to verify SPF, DKIM, and DMARC. Any failures here override everything else—fix before proceeding.
+3.  **Check blocklists:** Run your sending IP and domain through MXToolbox blocklist check. If listed, start the delisting process immediately.
+4.  **Review Google Postmaster Tools:** Check domain reputation, spam rate, and authentication status. This shows exactly how Gmail views you.
+5.  **Audit recent campaigns:** Look for the campaign that triggered the drop. Check bounce rates, complaint rates, and engagement. Identify what changed.
+6.  **Clean your list:** Run your entire list through email verification. Remove invalids, spam traps, and high-risk addresses. This is non-negotiable for recovery.
+7.  **Reduce volume and rebuild:** Send only to your most engaged segment (opened in last 30 days) for 2-4 weeks. Rebuild reputation through positive engagement before scaling back up.
+8.  **Monitor daily during recovery:** Watch metrics closely. Any setback means pausing and investigating again.
+
+### Using Monitoring Tools to Fix Issues
+
+Email monitoring tools track deliverability metrics continuously and alert you to problems before they become critical. This addresses the question of how to fix email deliverability with monitoring—proactive detection prevents major reputation damage.
+
+**What monitoring tools catch:**
+
+-   Blacklist additions (within hours, not days)
+-   Authentication failures after DNS changes
+-   Sudden reputation drops
+-   Inbox placement changes by provider
+
+**When monitoring matters most:**
+
+-   After migrating ESPs or adding sending infrastructure
+-   When scaling volume significantly
+-   During and after warmup periods
+-   For high-volume senders (100k+/month)
+
+Tools like Validity Everest, GlockApps, and 250ok provide continuous monitoring. For lower volume senders, weekly manual checks using free tools work—but set calendar reminders. Deliverability problems compound quickly when undetected.
+
+### How to Fix Low Email Deliverability Rates
+
+If your deliverability rate is below 90%, treat it as urgent:
+
+1.  **Immediate:** Pause all campaigns except to highly engaged subscribers
+2.  **Day 1-3:** Complete full diagnostic (authentication, blocklists, reputation, list quality)
+3.  **Day 4-7:** Fix identified issues, clean list, request any blocklist removals
+4.  **Week 2-4:** Send only to engaged segments, monitor daily
+5.  **Week 5+:** Gradually reintroduce segments as metrics stabilize
+
+Recovery takes 4-8 weeks minimum for serious reputation damage. Rushing the process by scaling too fast will reset your progress.
+
+---
+
+## B2B Email Deliverability: What’s Different
+
+B2B email deliverability follows the same fundamentals as B2C, but corporate email environments add complexity. Understanding these differences is essential for improving B2B email campaign deliverability.
+
+### Corporate Spam Filters Are More Aggressive
+
+Consumer mailbox providers (Gmail, Yahoo, Outlook.com) use reputation-based filtering. Corporate email systems add dedicated security gateways that apply stricter rules.
+
+<table className="has-fixed-layout"><tbody><tr><th>Filter Type</th><th>Common Providers</th><th>What They Block</th></tr><tr><td>Secure Email Gateways</td><td>Proofpoint, Mimecast, Barracuda</td><td>Unknown senders, suspicious links, attachment types</td></tr><tr><td>Microsoft 365 Defender</td><td>Built into Office 365</td><td>Phishing patterns, impersonation attempts, bulk mail</td></tr><tr><td>Google Workspace Filters</td><td>Built into Google Workspace</td><td>Similar to Gmail but with admin-level controls</td></tr><tr><td>On-Premise Filters</td><td>Exchange, custom solutions</td><td>Varies by IT policy—often very restrictive</td></tr></tbody></table>
+
+**What this means for you:** An email that reaches Gmail inboxes might get blocked entirely by Proofpoint. B2B senders need to monitor deliverability by recipient domain type, not just overall metrics.
+
+### Lower Volume Makes Reputation Harder to Build
+
+B2B email lists are smaller than B2C. A SaaS company might have 10,000 prospects; an e-commerce brand has 500,000. Lower volume creates specific challenges:
+
+-   **Slower warmup:** Less data for mailbox providers to evaluate means longer reputation building
+-   **Higher impact per complaint:** One spam complaint in 1,000 emails is 0.1%. One complaint in 100 emails is 1%—immediate reputation damage.
+-   **Inconsistent sending patterns:** B2B campaigns often follow sales cycles, not consistent schedules. Irregular sending looks suspicious.
+
+**How to adapt:**
+
+-   Maintain minimum weekly sending even during slow periods
+-   Prioritize engagement quality over list size
+-   Consider shared IP pools designed for low-volume B2B senders
+
+### Decision-Maker Targeting Adds Risk
+
+B2B campaigns target specific roles: CEOs, VPs, Directors. These addresses are often:
+
+-   **Heavily guarded:** Executive assistants screen email, IT applies extra filtering
+-   **Less engaged:** Senior decision-makers have overflowing inboxes
+-   **More likely to complain:** Unsolicited emails to executives generate complaints faster
+
+**Mitigation strategies:**
+
+-   Warm up executive-level contacts through other channels first (LinkedIn, referrals)
+-   Lead with value, not sales pitch—executives delete promotional emails instantly
+-   Keep initial outreach short and personalized—long emails get filtered or ignored
+
+### BIMI for B2B Brand Recognition
+
+BIMI (Brand Indicators for Message Identification) displays your logo next to emails in supported inboxes. For B2B, this builds trust and recognition with prospects who receive dozens of vendor emails daily.
+
+**BIMI requirements:**
+
+1.  DMARC policy at `p=quarantine` or `p=reject`
+2.  Verified Mark Certificate (VMC) from approved certificate authority
+3.  SVG logo file meeting technical specifications
+
+BIMI adoption is still growing, but early adopters gain visibility advantage—especially in crowded B2B markets where standing out in the inbox matters.
+
+### B2B-Specific Deliverability Checklist
+
+1.  Monitor deliverability by corporate vs. consumer domains separately
+2.  Check Barracuda and Proofpoint blocklists specifically (not just Spamhaus)
+3.  Maintain consistent sending schedule even with lower volume
+4.  Warm up slower—extend standard warmup timeline by 50%
+5.  Personalize beyond mail merge—generic templates trigger corporate filters
+6.  Consider BIMI implementation for brand recognition
+7.  Test deliverability to sample corporate domains before major campaigns
+
+---
+
+## When to Use Email Deliverability Services
+
+Email deliverability services range from verification tools to full-service consulting. Knowing when to handle deliverability in-house versus hiring help saves money and accelerates recovery.
+
+### Benefits of Email Deliverability Services
+
+Professional deliverability services provide expertise and tools most marketing teams don’t have internally:
+
+-   **Diagnostic capabilities:** Access to seed testing networks, blocklist monitoring, and reputation tracking across providers
+-   **Faster troubleshooting:** Experienced consultants identify root causes in hours, not weeks
+-   **Relationship with ISPs:** Established providers have contacts at major mailbox providers for escalations
+-   **Ongoing monitoring:** Continuous tracking catches problems before they become crises
+-   **Strategic guidance:** Advice on infrastructure, warmup, and sending practices tailored to your situation
+
+### DIY vs. Managed Services Decision Framework
+
+<table className="has-fixed-layout"><tbody><tr><th>Situation</th><th>DIY Appropriate</th><th>Professional Help Recommended</th></tr><tr><td>Deliverability rate</td><td>Above 90%, stable</td><td>Below 90% or dropping fast</td></tr><tr><td>Technical expertise</td><td>Team understands DNS, authentication, ESP settings</td><td>No in-house email infrastructure knowledge</td></tr><tr><td>Volume</td><td>Under 100k/month</td><td>Over 500k/month or rapid scaling</td></tr><tr><td>Problem complexity</td><td>Single issue (bounces OR reputation OR content)</td><td>Multiple simultaneous issues or unknown cause</td></tr><tr><td>Time to fix</td><td>Can wait 4-8 weeks for gradual improvement</td><td>Revenue-critical campaigns blocked now</td></tr><tr><td>Budget</td><td>Limited—need free/low-cost solutions</td><td>Can invest $1,000-10,000+ for expert help</td></tr></tbody></table>
+
+### Types of Deliverability Services
+
+**Email Verification Services**
+
+Validate email addresses before sending. Removes invalid addresses, spam traps, and high-risk contacts. This is the lowest-cost, highest-impact first step for most deliverability problems.
+
+Use case: List hygiene, reducing bounce rates, protecting sender reputation
+
+Cost: $0.001-0.01 per email verified
+
+**Deliverability Monitoring Tools**
+
+Continuous tracking of inbox placement, blocklist status, and authentication. Alerts you to problems as they happen.
+
+Use case: Ongoing prevention, early warning system, performance benchmarking
+
+Cost: $50-500/month depending on volume and features
+
+**Deliverability Audits**
+
+One-time comprehensive review of your sending infrastructure, authentication, reputation, and practices. Delivers a report with specific fixes.
+
+Use case: Diagnosing persistent problems, pre-launch infrastructure review, post-incident analysis
+
+Cost: $500-5,000 depending on scope
+
+**Managed Deliverability Services**
+
+Ongoing expert management of your email deliverability. Includes monitoring, troubleshooting, ISP relations, and strategic guidance.
+
+Use case: High-volume senders, companies without in-house expertise, critical email revenue dependency
+
+Cost: $1,000-10,000+/month
+
+**Deliverability Consultants**
+
+Project-based expert help for specific problems or initiatives. Useful for migrations, warmup planning, or crisis recovery.
+
+Use case: ESP migration, reputation recovery, scaling strategy
+
+Cost: $150-400/hour or project-based
+
+### When to Start With Verification
+
+For most deliverability problems, email verification is the right first step:
+
+1.  **It’s immediate:** Results in minutes, not weeks
+2.  **It’s affordable:** Verify 100,000 emails for under $500
+3.  **It addresses root causes:** Invalid addresses cause bounces, which damage reputation, which kills deliverability
+4.  **It’s required anyway:** No consultant or service can fix deliverability if you’re sending to bad addresses
+
+If your bounce rate is above 2% or you haven’t verified your list in 6+ months, start here before investing in higher-cost services.
+
+[BoltRoute’s email verification](https://boltroute.ai/email-verification/) identifies invalid addresses, spam traps, catch-all domains, and risky contacts before they damage your sender reputation. Clean lists are the foundation every other deliverability improvement depends on.
+
+---
+
+## Frequently Asked Questions
+
+### How long does it take to improve email deliverability?
+
+Minor issues (authentication fixes, list cleaning) show improvement within 1-2 weeks. Reputation recovery from serious damage takes 4-8 weeks minimum. Full recovery from blacklisting or major spam trap hits can take 3-6 months. Consistency matters more than speed—rushing the process by scaling too fast resets progress.
+
+### Can I recover from a blacklisted domain?
+
+Yes, but it requires effort. First, identify why you were listed (spam traps, complaints, compromised sending). Fix the root cause completely. Then submit a delisting request to each blocklist—most have online forms. Some blocklists (Spamhaus, Barracuda) respond within 24-48 hours if your request is legitimate. Others take longer. If the underlying problem isn’t fixed, you’ll be relisted within days.
+
+### Does email size affect deliverability?
+
+Indirectly. Emails over 100KB may load slowly or trigger soft bounces on recipients with full mailboxes. Image-heavy emails (large file sizes) often have poor text-to-image ratios, which triggers spam filters. Keep emails under 100KB total. Use hosted images instead of embedded ones. The content matters more than raw size.
+
+### How often should I clean my email list?
+
+Monthly for active senders (4+ campaigns/month). Quarterly minimum for everyone else. Always clean before major campaigns to your full list. Clean immediately after any campaign with bounce rates above 2%. For B2B lists, contact decay averages 25-30% annually—addresses go bad faster than most marketers expect.
+
+### What’s the difference between email delivery and email deliverability?
+
+Delivery rate measures emails accepted by the receiving server (not bounced). Deliverability measures emails that reach the inbox (not spam). You can have 99% delivery and 70% deliverability—the server accepted your email, then routed it to spam. Deliverability is the metric that matters for campaign performance.
+
+### How do spam traps affect deliverability?
+
+Spam traps are email addresses that exist only to catch senders with poor list practices. Hitting a pristine spam trap (never a real address) signals you’re using purchased or scraped lists—severe reputation damage. Hitting a recycled trap (abandoned address reactivated) signals you’re not maintaining list hygiene—moderate damage. One spam trap hit can drop deliverability 10-20% overnight.
+
+### Should I use a dedicated IP or shared IP?
+
+Depends on volume. Under 50,000 emails/month: use shared IP—you won’t generate enough data to build dedicated IP reputation. Over 100,000/month: dedicated IP gives full control over your reputation. Between 50-100k: either works if you send consistently. Dedicated IPs require proper warmup; shared IPs depend on your ESP maintaining good pool reputation.
+
+### Why are my emails going to spam suddenly?
+
+Common causes in order of likelihood:
+1.Authentication failure (DNS change broke SPF/DKIM)
+2.Blocklist addition (check MXToolbox immediately)
+3.Spam complaint spike from recent campaign
+4.Sending to old/unengaged segment triggered spam traps
+5.Content triggered filters (new template, links, or offers)
+Check authentication first—it’s the most common cause and fastest to verify.
+
+### How do I check if my domain is blacklisted?
+
+Use MXToolbox Blacklist Check or MultiRBL. Enter your sending domain and IP address. These tools check 50-100+ blocklists simultaneously. Check both domain and IP—they’re tracked separately. If listed, each blocklist page shows removal instructions.
+
+### Do engagement rates affect deliverability?
+
+Yes, significantly. Mailbox providers track opens, clicks, replies, deletes, and complaints. High engagement signals your emails are wanted—more inbox placement. Low engagement signals your emails aren’t valued—more spam filtering. Gmail weights engagement heavily. Sending to unengaged subscribers drags down deliverability for your entire list.
+
+### How long does it take to improve email deliverability?
+
+Minor issues (authentication fixes, list cleaning) show improvement within 1-2 weeks. Reputation recovery from serious damage takes 4-8 weeks minimum. Full recovery from blacklisting or major spam trap hits can take 3-6 months. Consistency matters more than speed—rushing the process by scaling too fast resets progress.
+
+### Can I recover from a blacklisted domain?
+
+Yes, but it requires effort. First, identify why you were listed (spam traps, complaints, compromised sending). Fix the root cause completely. Then submit a delisting request to each blocklist—most have online forms. Some blocklists (Spamhaus, Barracuda) respond within 24-48 hours if your request is legitimate. Others take longer. If the underlying problem isn’t fixed, you’ll be relisted within days.
+
+### Does email size affect deliverability?
+
+Indirectly. Emails over 100KB may load slowly or trigger soft bounces on recipients with full mailboxes. Image-heavy emails (large file sizes) often have poor text-to-image ratios, which triggers spam filters. Keep emails under 100KB total. Use hosted images instead of embedded ones. The content matters more than raw size.
+
+### How often should I clean my email list?
+
+Monthly for active senders (4+ campaigns/month). Quarterly minimum for everyone else. Always clean before major campaigns to your full list. Clean immediately after any campaign with bounce rates above 2%. For B2B lists, contact decay averages 25-30% annually—addresses go bad faster than most marketers expect.
+
+### What’s the difference between email delivery and email deliverability?
+
+Delivery rate measures emails accepted by the receiving server (not bounced). Deliverability measures emails that reach the inbox (not spam). You can have 99% delivery and 70% deliverability—the server accepted your email, then routed it to spam. Deliverability is the metric that matters for campaign performance.
+
+### How do spam traps affect deliverability?
+
+Spam traps are email addresses that exist only to catch senders with poor list practices. Hitting a pristine spam trap (never a real address) signals you’re using purchased or scraped lists—severe reputation damage. Hitting a recycled trap (abandoned address reactivated) signals you’re not maintaining list hygiene—moderate damage. One spam trap hit can drop deliverability 10-20% overnight.
+
+### Should I use a dedicated IP or shared IP?
+
+Depends on volume. Under 50,000 emails/month: use shared IP—you won’t generate enough data to build dedicated IP reputation. Over 100,000/month: dedicated IP gives full control over your reputation. Between 50-100k: either works if you send consistently. Dedicated IPs require proper warmup; shared IPs depend on your ESP maintaining good pool reputation.
+
+### Why are my emails going to spam suddenly?
+
+Common causes in order of likelihood:
+
+1.  Authentication failure (DNS change broke SPF/DKIM)
+2.  Blocklist addition (check MXToolbox immediately)
+3.  Spam complaint spike from recent campaign
+4.  Sending to old/unengaged segment triggered spam traps
+5.  Content triggered filters (new template, links, or offers)
+
+Check authentication first—it’s the most common cause and fastest to verify.
+
+### How do I check if my domain is blacklisted?
+
+Use MXToolbox Blacklist Check or MultiRBL. Enter your sending domain and IP address. These tools check 50-100+ blocklists simultaneously. Check both domain and IP—they’re tracked separately. If listed, each blocklist page shows removal instructions.
+
+### Do engagement rates affect deliverability?
+
+Yes, significantly. Mailbox providers track opens, clicks, replies, deletes, and complaints. High engagement signals your emails are wanted—more inbox placement. Low engagement signals your emails aren’t valued—more spam filtering. Gmail weights engagement heavily. Sending to unengaged subscribers drags down deliverability for your entire list.
+
+---

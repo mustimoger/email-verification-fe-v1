@@ -82,6 +82,15 @@
 - [x] Task 79 - Implement `/pricing/embed` header and `parent_origin` allowlist updates for local parent origins (MVP).
 - [x] Task 80 - Validate `/pricing/embed` resize + CTA postMessage flow and run unit + integration tests.
 - [x] Task 81 - Deploy embed-support changes to `main` and capture final `/pricing/embed` response headers.
+- [x] Task 82 - Define phased monorepo migration tasks (Step 1 add `apps/website`, Step 2 move dashboard later) (MVP).
+- [x] Task 83 - Import `br-website1` into `apps/website` as source-only files while keeping dashboard at repo root (MVP).
+- [x] Task 84 - Validate Step 1 monorepo structure and confirm dashboard root flow is unchanged (MVP).
+- [x] Task 85 - Prepare Step 2 move plan (`apps/dashboard`) and request confirmation before execution (MVP).
+- [ ] Task 86 - Commit and push Step 1 baseline (`apps/website` import) before major dashboard move (MVP).
+- [ ] Task 87 - Move dashboard project from repo root to `apps/dashboard` with no behavior change target (MVP).
+- [ ] Task 88 - Update dashboard deploy pipeline and deploy scripts to new `apps/dashboard` paths (MVP).
+- [ ] Task 89 - Add independent website CI workflow with path filters (MVP).
+- [ ] Task 90 - Validate monorepo Step 2 (dashboard tests/build + workflow lint sanity) and request confirmation before further enhancements (MVP).
 
 ## Progress log
 ### Task 1 - Completed
@@ -409,3 +418,53 @@
 - What: Deployed embed-support changes to `main` and verified live `/pricing/embed` headers on `app.boltroute.ai`.
 - Why: The final requirement is production validation for local-parent embedding behavior and exact response headers.
 - How: Pushed commit `574e58a`, monitored GitHub Actions Deploy run `21783740878` to success, validated embed behavior from a local parent origin (`http://127.0.0.1:3010`) with headless Playwright (received both `pricing_embed_resize` and `pricing_embed_cta` messages), and captured live headers via `curl -I`.
+
+### Task 82 - Completed
+- What: Defined phased monorepo migration tasks in root progress docs before file moves.
+- Why: Monorepo migration has multiple high-impact steps, so task sequencing must be explicit for safe execution and newcomer handover.
+- How: Added Task 82-85 entries that lock the agreed order: Step 1 adds `apps/website`, Step 2 moves dashboard only after explicit confirmation.
+
+### Task 83 - Completed
+- What: Imported the public website project into `apps/website` as source-only content.
+- Why: This is the agreed MVP phase that starts monorepo adoption without breaking the existing dashboard root runtime/deploy path.
+- How: Synced `/home/codex/br-website1/` to `/home/codex/email-verification-fe-v1/apps/website/` via `rsync`, excluding `.git`, `node_modules`, `.next`, and `.env` so only source/config/content assets were added.
+
+### Task 84 - Completed
+- What: Validated the Step 1 repository state after website import.
+- Why: Ensure the monorepo folder exists and the dashboard root project remains unchanged for current production flow.
+- How: Verified `apps/website` structure and key files, confirmed excluded runtime directories are absent, confirmed `rsync --dry-run` shows no deltas vs source, and ran root dashboard regression check `npm run test:auth-guard` (with Python venv active), which passed.
+
+### Task 85 - Pending
+- What: Prepare Step 2 move plan to relocate dashboard into `apps/dashboard`.
+- Why: Step 2 will affect CI/CD paths and deployment scripts, so it must begin only after explicit user confirmation.
+- How: Document required path updates and sequence, then wait for confirmation before executing any dashboard move.
+
+### Task 85 - Completed
+- What: Finalized the Step 2 execution plan and received explicit confirmation to proceed.
+- Why: The migration rule requires user confirmation between steps because Step 2 changes core repo layout and CI/CD paths.
+- How: Locked execution order to: baseline push, dashboard move, pipeline rewiring, website CI isolation, then validation.
+
+### Task 86 - Pending
+- What: Commit and push the Step 1 baseline before the major Step 2 move.
+- Why: Repo rules require pushing before major changes so rollback points are clear and remote history stays aligned.
+- How: Commit `apps/website` import + progress updates, then push `main`.
+
+### Task 87 - Pending
+- What: Move dashboard project from root into `apps/dashboard`.
+- Why: Complete monorepo structure while preserving current dashboard behavior and keeping website isolated in `apps/website`.
+- How: Relocate dashboard frontend/backend/deploy/test/config assets into `apps/dashboard`, keep root docs/planning intact, and avoid introducing behavior changes.
+
+### Task 88 - Pending
+- What: Update dashboard deployment workflow and remote deploy script paths for `apps/dashboard`.
+- Why: Existing CI/CD assumes dashboard files live at repo root and would fail after relocation.
+- How: Rewrite workflow commands/rsync/deploy script references to operate from `apps/dashboard`, while keeping existing server/service names.
+
+### Task 89 - Pending
+- What: Add independent website CI workflow with path-based triggering.
+- Why: Website changes should not trigger dashboard deployment, and website CI should run independently.
+- How: Add a separate GitHub Actions workflow scoped to `apps/website/**` (and shared root workflow files as needed) to run install/lint/build checks.
+
+### Task 90 - Pending
+- What: Validate Step 2 monorepo state and pause for confirmation.
+- Why: Need proof that the relocated dashboard and updated workflows are operational before any further enhancement work.
+- How: Run dashboard tests/build from new paths and perform workflow sanity checks; then report and wait for confirmation.

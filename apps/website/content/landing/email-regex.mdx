@@ -1,0 +1,182 @@
+---
+title: "Email Regex Validation - And What to Do When It's Not Enough"
+slug: "email-regex"
+description: "Regex checks format. BoltRoute checks if the email actually exists."
+metaTitle: "Email Regex Validation vs Real Verification | BoltRoute"
+metaDescription: "Regex catches syntax, not deliverability. Use BoltRoute to verify mailbox existence, domain health, and risk before sending."
+canonical: "https://boltroute.ai/email-regex"
+featuredImage: "/post-lp/email-regex/featured.jpg"
+heroCta:
+  title: "Regex Isn't Enough. Verify for Real"
+  description: "Check mailbox existence and domain health before you send."
+  primaryLabel: "Verify Emails Now"
+  primaryHref: "https://app.boltroute.ai/signup"
+endCta:
+  title: "Email Verification Built for Developers"
+  description: "Drop regex maintenance and verify via API or workflows."
+  primaryLabel: "Verify My Email List"
+  primaryHref: "https://app.boltroute.ai/signup"
+faq:
+  - question: "Is email regex enough for validation?"
+    answer: "Regex validates format. It confirms an address has an at-sign, a valid TLD, and no illegal characters. But regex cannot tell you whether the mailbox exists, whether the domain is active, or whether the address is a catch-all. For sending, you need verification against the actual mail server."
+  - question: "How does BoltRoute compare to building my own email validation regex?"
+    answer: "BoltRoute goes beyond pattern matching. Instead of maintaining complex regex libraries, you call one API endpoint and get SMTP validation, domain health, and risk scoring. You get a definitive result: Valid, Invalid, or Risky."
+  - question: "Can I use BoltRoute for Python email validation or other languages?"
+    answer: "Yes. BoltRoute's REST API works with any language that can make HTTP requests, including Python, Node.js, Ruby, Go, and PHP. No SDK is required."
+  - question: "What's the difference between IMAP vs POP3 vs SMTP for email validation?"
+    answer: "IMAP and POP3 are retrieval protocols used to fetch emails. SMTP is the sending protocol and is what matters for verification. BoltRoute uses SMTP-level checks to confirm whether a mailbox can receive mail."
+  - question: "Do you check DMARC or other DNS records?"
+    answer: "BoltRoute checks domain health, including MX records and DNS configuration. For dedicated DMARC monitoring and reporting, you would typically use a specialized tool, but BoltRoute flags missing or misconfigured records that affect deliverability."
+  - question: "What results does BoltRoute return?"
+    answer: "Each verification returns a clear status: Valid, Invalid, Risky, Catch-all, Role-based, or Disposable. You also get diagnostics like SMTP response, domain health, and risk score."
+draft: false
+---
+
+Validate syntax, domain health, and mailbox existence in one API call with no regex maintenance.
+
+No credit card required.
+
+## The Problem with Regex-Only Email Validation
+
+Regex catches typos. It does not catch bad addresses.
+
+**Format is not validity.**  
+An address like `john.smith@company.com` can pass regex but still fail in production because the mailbox does not exist, the domain is dead, or it is a catch-all.
+
+**The real costs:**
+
+- Bounces spike and sender reputation drops
+- You burn credits sending to addresses that were never real
+- Maintaining edge-case regex patterns consumes engineering time
+
+Regex is a filter. It is not verification.
+
+## Go Beyond Regex with Real Email Verification
+
+BoltRoute verifies addresses against live mail servers, not just pattern matching.
+
+One API call returns syntax validation, domain health, MX status, and mailbox existence. It works from any language that supports HTTP.
+
+Keep regex for client-side instant feedback. Use BoltRoute for the final truth before sending.
+
+## What BoltRoute Checks (That Regex Can't)
+
+<table className="has-fixed-layout">
+  <thead>
+    <tr>
+      <th>Feature</th>
+      <th>What It Does</th>
+      <th>Why It Matters</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>SMTP Validation</strong></td>
+      <td>Connects to mail servers and checks mailbox acceptance</td>
+      <td>Catches invalid addresses that pass regex</td>
+    </tr>
+    <tr>
+      <td><strong>Domain Health Check</strong></td>
+      <td>Verifies MX records, DNS configuration, and domain status</td>
+      <td>Prevents sends to dead or misconfigured domains</td>
+    </tr>
+    <tr>
+      <td><strong>Risk Scoring</strong></td>
+      <td>Flags catch-alls, role-based addresses, and disposables</td>
+      <td>Helps you decide how to handle risky contacts</td>
+    </tr>
+    <tr>
+      <td><strong>Webhook Callbacks</strong></td>
+      <td>Returns asynchronous results for workflow automation</td>
+      <td>Fits verification into existing pipelines</td>
+    </tr>
+    <tr>
+      <td><strong>REST API</strong></td>
+      <td>Returns consistent statuses: Valid, Invalid, Risky, Catch-all, Role-based, Disposable</td>
+      <td>Removes regex maintenance and guesswork</td>
+    </tr>
+  </tbody>
+</table>
+
+## Get Started in 3 Steps
+
+1. **Sign up free**  
+Get 100 verifications instantly with no credit card required.
+2. **Verify your way**  
+Use the REST API, upload CSV or Excel files, or connect via Zapier, n8n, or Google Sheets.
+3. **Send with confidence**  
+Only send to addresses marked valid and protect your sender reputation.
+
+<CTACard
+  variant="inline"
+  title="Go Beyond Regex Validation"
+  description="One API call confirms whether an email actually exists."
+  primaryLabel="Start Free - 100 Verifications"
+  primaryHref="https://app.boltroute.ai/signup"
+/>
+
+## Built for Developers Who Ship
+
+**Clear results**  
+Every address returns Valid, Invalid, Risky, Catch-all, Role-based, or Disposable.
+
+**Workflow-ready**  
+Use Zapier, n8n, Google Sheets, or direct API integrations.
+
+**Risk-free start**  
+100 free verifications with no credit card required.
+
+## Simple Pricing. Credits Never Expire.
+
+<table className="has-fixed-layout">
+  <thead>
+    <tr>
+      <th>Plan</th>
+      <th>Credits</th>
+      <th>Price</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Free</strong></td>
+      <td>100</td>
+      <td>$0</td>
+    </tr>
+    <tr>
+      <td><strong>Basic</strong></td>
+      <td>10,000</td>
+      <td>$29/mo</td>
+    </tr>
+    <tr>
+      <td><strong>Professional</strong></td>
+      <td>100,000</td>
+      <td>$129</td>
+    </tr>
+    <tr>
+      <td><strong>Enterprise</strong></td>
+      <td>500,000</td>
+      <td>$279</td>
+    </tr>
+    <tr>
+      <td><strong>Custom</strong></td>
+      <td>1M+</td>
+      <td>Contact us</td>
+    </tr>
+  </tbody>
+</table>
+
+No subscriptions that reset. No credits that vanish.
+
+<CTACard
+  variant="inline"
+  title="Stop Guessing With Regex"
+  description="Catch invalid and risky emails regex cannot detect."
+  primaryLabel="Clean My List - Free"
+  primaryHref="https://app.boltroute.ai/signup"
+/>
+
+## Stop Guessing. Start Verifying.
+
+Email regex tells you format looks right. BoltRoute tells you the address is real.
+
+Get 100 free verifications and see what regex misses.

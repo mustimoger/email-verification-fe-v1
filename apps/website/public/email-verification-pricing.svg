@@ -1,0 +1,58 @@
+<svg width="600" height="400" viewBox="0 0 600 400" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .header-text { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 20px; font-weight: 700; text-anchor: middle; }
+      .label-text { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 16px; font-weight: 600; fill: #111827; }
+      .price-text { font-family: 'Courier New', Courier, monospace; font-size: 16px; font-weight: 600; text-anchor: end; fill: #111827; }
+      .sub-text { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 12px; font-weight: 500; text-anchor: middle; fill: #EF4444; }
+    </style>
+  </defs>
+
+  <g transform="translate(40, 50)">
+    <rect width="240" height="240" rx="8" fill="white" stroke="#E5E7EB" stroke-width="1"/>
+    
+    <path d="M0.5 8C0.5 3.85786 3.85786 0.5 8 0.5H232C236.142 0.5 239.5 3.85786 239.5 8V60H0.5V8Z" fill="#F3F4F6"/>
+    <text x="120" y="38" class="header-text" fill="#6B7280">Others</text>
+    <line x1="0" y1="60" x2="240" y2="60" stroke="#E5E7EB"/>
+
+    <text x="20" y="95" class="label-text">Valid</text>
+    <text x="220" y="95" class="price-text">$0.001</text>
+    <line x1="0" y1="120" x2="240" y2="120" stroke="#E5E7EB" opacity="0.5"/>
+
+    <text x="20" y="155" class="label-text">Invalid</text>
+    <text x="220" y="155" class="price-text">$0.001</text>
+    <line x1="0" y1="180" x2="240" y2="180" stroke="#E5E7EB" opacity="0.5"/>
+
+    <rect x="2" y="182" width="236" height="56" fill="#FEF2F2" stroke="#EF4444" stroke-width="2"/>
+    <text x="20" y="215" class="label-text">Unknown</text>
+    <text x="220" y="215" class="price-text">$0.001</text>
+    
+    <text x="120" y="255" class="sub-text">You pay anyway</text>
+  </g>
+
+  <g transform="translate(320, 50)">
+    <rect width="240" height="240" rx="8" fill="white" stroke="#E5E7EB" stroke-width="1"/>
+
+    <path d="M0.5 8C0.5 3.85786 3.85786 0.5 8 0.5H232C236.142 0.5 239.5 3.85786 239.5 8V60H0.5V8Z" fill="#EFF6FF"/>
+    <text x="120" y="38" class="header-text" fill="#3B82F6">BoltRoute</text>
+    <line x1="0" y1="60" x2="240" y2="60" stroke="#E5E7EB"/>
+
+    <text x="20" y="95" class="label-text">Valid</text>
+    <text x="190" y="95" class="price-text">$0.00012</text>
+    <path d="M205 92 L212 99 L225 86" stroke="#22C55E" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="0" y1="120" x2="240" y2="120" stroke="#E5E7EB" opacity="0.5"/>
+
+    <text x="20" y="155" class="label-text">Invalid</text>
+    <text x="190" y="155" class="price-text">$0.00012</text>
+    <path d="M205 152 L212 159 L225 146" stroke="#22C55E" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="0" y1="180" x2="240" y2="180" stroke="#E5E7EB" opacity="0.5"/>
+
+    <text x="20" y="215" class="label-text">Unknown</text>
+    
+    <text x="155" y="215" class="price-text" fill="#111827">$0.00</text>
+    
+    <path d="M168 212 L173 217 L182 208" stroke="#22C55E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    
+    <text x="190" y="215" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="700" font-size="14" fill="#22C55E">FREE</text>
+  </g>
+</svg>

@@ -1,0 +1,41 @@
+name: Email Publish
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Publish from email
+        run: node scripts/publish-from-email.js
+        env:
+          IMAP_HOST: ${{ secrets.IMAP_HOST }}
+          IMAP_PORT: ${{ secrets.IMAP_PORT }}
+          IMAP_USER: ${{ secrets.IMAP_USER }}
+          IMAP_PASS: ${{ secrets.IMAP_PASS }}
+          IMAP_SECURE: ${{ secrets.IMAP_SECURE }}
+          IMAP_FOLDER: ${{ secrets.IMAP_FOLDER }}
+          IMAP_TLS_REJECT_UNAUTHORIZED: ${{ secrets.IMAP_TLS_REJECT_UNAUTHORIZED }}
+          PROCESSED_FOLDER: ${{ secrets.PROCESSED_FOLDER }}
+          ALLOWED_SENDERS: ${{ secrets.ALLOWED_SENDERS }}
+          GIT_AUTHOR_NAME: ${{ secrets.GIT_AUTHOR_NAME }}
+          GIT_AUTHOR_EMAIL: ${{ secrets.GIT_AUTHOR_EMAIL }}

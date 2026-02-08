@@ -1,0 +1,60 @@
+<svg width="420" height="420" viewBox="0 0 420 420" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <g transform="translate(7.5, 7.5)">
+    <defs>
+      <filter id="shadow-2-rev" x="-50" y="-50" width="500" height="500">
+        <feDropShadow dx="0" dy="10" stdDeviation="15" flood-color="#000000" flood-opacity="0.08"/>
+      </filter>
+    </defs>
+    <rect x="25" y="25" width="350" height="350" rx="24" fill="white" filter="url(#shadow-2-rev)"/>
+    <rect x="25" y="25" width="350" height="350" rx="24" stroke="#E5E7EB" stroke-width="1"/>
+
+    <g transform="translate(50, 60)">
+      
+      <rect x="0" y="0" width="100" height="16" rx="4" fill="#F3F4F6"/>
+      <rect x="240" y="0" width="60" height="16" rx="4" fill="#F3F4F6"/>
+
+      <g transform="translate(0, 35)">
+        <rect x="0" y="0" width="300" height="40" rx="8" fill="white" stroke="#E5E7EB" stroke-width="1"/>
+        <circle cx="25" cy="20" r="10" fill="#E5E7EB"/>
+        <rect x="45" y="15" width="140" height="10" rx="3" fill="#9CA3AF"/>
+        <rect x="220" y="10" width="70" height="20" rx="10" fill="#ECFDF5"/>
+        <text x="255" y="24" text-anchor="middle" font-family="sans-serif" font-size="9" font-weight="bold" fill="#059669">VALID</text>
+      </g>
+
+      <g transform="translate(0, 80)">
+        <rect x="0" y="0" width="300" height="40" rx="8" fill="white" stroke="#E5E7EB" stroke-width="1"/>
+        <circle cx="25" cy="20" r="10" fill="#E5E7EB"/>
+        <rect x="45" y="15" width="110" height="10" rx="3" fill="#9CA3AF"/>
+        <rect x="220" y="10" width="70" height="20" rx="10" fill="#FEF2F2"/>
+        <text x="255" y="24" text-anchor="middle" font-family="sans-serif" font-size="9" font-weight="bold" fill="#DC2626">INVALID</text>
+      </g>
+
+      <g transform="translate(0, 125)">
+        <rect x="0" y="0" width="300" height="40" rx="8" fill="white" stroke="#E5E7EB" stroke-width="1"/>
+        <circle cx="25" cy="20" r="10" fill="#E5E7EB"/>
+        <rect x="45" y="15" width="160" height="10" rx="3" fill="#9CA3AF"/>
+        <rect x="220" y="10" width="70" height="20" rx="10" fill="#FFFBEB"/>
+        <text x="255" y="24" text-anchor="middle" font-family="sans-serif" font-size="9" font-weight="bold" fill="#D97706">CATCH-ALL</text>
+      </g>
+
+      <g transform="translate(0, 170)">
+        <rect x="0" y="0" width="300" height="40" rx="8" fill="white" stroke="#E5E7EB" stroke-width="1"/>
+        <circle cx="25" cy="20" r="10" fill="#E5E7EB"/>
+        <rect x="45" y="15" width="120" height="10" rx="3" fill="#9CA3AF"/>
+        <rect x="220" y="10" width="70" height="20" rx="10" fill="#EFF6FF"/>
+        <text x="255" y="24" text-anchor="middle" font-family="sans-serif" font-size="9" font-weight="bold" fill="#2563EB">ROLE</text>
+      </g>
+
+      <g transform="translate(0, 215)">
+        <rect x="0" y="0" width="300" height="40" rx="8" fill="white" stroke="#E5E7EB" stroke-width="1"/>
+        <circle cx="25" cy="20" r="10" fill="#E5E7EB"/>
+        <rect x="45" y="15" width="130" height="10" rx="3" fill="#9CA3AF"/>
+        <rect x="220" y="10" width="70" height="20" rx="10" fill="#F3F4F6"/>
+        <text x="255" y="24" text-anchor="middle" font-family="sans-serif" font-size="9" font-weight="bold" fill="#4B5563">DISPOSABLE</text>
+      </g>
+
+    </g>
+
+    <text x="200" y="355" text-anchor="middle" font-family="sans-serif" font-weight="600" font-size="12" letter-spacing="0.5" fill="#111827">LIVE RESULTS</text>
+  </g>
+</svg>
