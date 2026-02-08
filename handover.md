@@ -261,6 +261,7 @@
   - Implementation: `.github/workflows/website-deploy.yml` now includes:
     - `push.branches: [main]`
     - `push.paths: ["apps/website/**", ".github/workflows/website-deploy.yml"]`
+  - Validation evidence: auto-triggered workflow run `21802721793` (`https://github.com/mustimoger/email-verification-fe-v1/actions/runs/21802721793`) completed `success` with both jobs green (`website-checks`, `deploy`) on `2026-02-08 17:59:01 UTC`.
 
 ---
 

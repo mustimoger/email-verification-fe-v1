@@ -116,7 +116,7 @@
 - [x] Task 102 - Execute Step 100.2 post-persistence smoke checks for `boltroute.ai`/`www`/`app` + service health (MVP).
 - [x] Task 103 - Complete Step 100.1 with operator root commands and re-run Step 100.2 against persisted on-disk Caddy config (MVP).
 - [x] Task 104 - Capture final operator verification (`17:53:35 UTC`) and Caddyfile formatting hardening, then update runbook commands for hosts without `rg` (MVP).
-- [ ] Task 105 - Execute Step 100.4 by deciding and implementing post-cutover website deploy trigger policy in GitHub Actions (MVP).
+- [x] Task 105 - Execute Step 100.4 by deciding and implementing post-cutover website deploy trigger policy in GitHub Actions (MVP).
 
 ## Progress log
 ### Task 1 - Completed
@@ -669,7 +669,7 @@
 - What: Closed operator-assisted Step `100.1` + durable Step `100.2` validation loop.
 - Why: Step `100.1` initially failed from this shell due root restrictions, so operator execution was required to complete the MVP safely.
 - How: Operator completed root persistence/reload and shared output; then at `2026-02-08 17:52:35 UTC` revalidation confirmed persisted host block (`/etc/caddy/Caddyfile` line `30`) and healthy endpoints/services (`boltroute.ai`, `www`, `/pricing`, `/integrations`, `app/overview` all `HTTP/2 200`; `boltroute-website` `active`).
-- Not implemented yet: None for this task; follow-up deploy-trigger policy decision remains in Step `100.4`.
+- Not implemented yet: None for this task.
 
 ### Task 104 - Completed
 - What: Captured final operator verification and Caddyfile formatting hardening, then synced runbook compatibility guidance.
@@ -677,8 +677,8 @@
 - How: Recorded the final persisted-config check (`/etc/caddy/Caddyfile` host block line `30`, public routes all `HTTP/2 200`, DNS `135.181.160.203`), captured successful `sudo caddy fmt --overwrite /etc/caddy/Caddyfile` + validate/reload at `2026-02-08 17:54:22 UTC`, and updated docs to use `grep -m1 'Active:'` for portable service-status capture.
 - Not implemented yet: None for this task.
 
-### Task 105 - In Progress
-- What: Start Step `100.4` decision and implementation for website deploy trigger policy.
-- Why: Post-cutover policy must now be explicit and reflected in automation rather than remaining a pending decision.
-- How: Decide whether to keep `workflow_dispatch` only or add `push` trigger for `main` with `apps/website/**` path scope, apply workflow changes, and update root docs with the locked post-cutover policy.
-- Not implemented yet: Policy decision evidence, workflow update, and final validation notes are pending.
+### Task 105 - Completed
+- What: Completed Step `100.4` decision and implementation for website deploy trigger policy.
+- Why: Post-cutover operations required a locked, automation-backed release policy instead of manual-only ambiguity.
+- How: Updated `.github/workflows/website-deploy.yml` to trigger on `push` to `main` for `apps/website/**` and workflow-file changes while retaining `workflow_dispatch`; verified implementation by successful auto-triggered run `21802721793` (`website-checks` + `deploy` both `success`) at `2026-02-08 17:59:01 UTC`.
+- Not implemented yet: None for this task.

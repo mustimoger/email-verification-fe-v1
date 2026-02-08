@@ -100,6 +100,7 @@
   - Step 100.2 operator rerun on `2026-02-08 17:53:35 UTC`: repeated persisted-host-block (`line 30`), DNS, and public-route checks all remained healthy (`HTTP/2 200` on apex/`www`/`pricing`/`integrations`/`app /overview`).
   - Caddyfile formatting hardening on `2026-02-08 17:54:22 UTC`: `sudo caddy fmt --overwrite /etc/caddy/Caddyfile` completed, followed by successful validate + reload.
   - Step 100.4 completion on `2026-02-08`: post-cutover deploy policy implemented in `.github/workflows/website-deploy.yml`; workflow now triggers on `push` to `main` with website path filters and still supports manual `workflow_dispatch`.
+  - Step 100.4 validation on `2026-02-08 17:59:01 UTC`: push commit `25886db` auto-triggered run `21802721793`; run completed `success` with `website-checks` and `deploy` jobs green.
 - Open items:
   - Keep rollback procedure (`99.6.5`) available for regressions.
 - Historical notes:
