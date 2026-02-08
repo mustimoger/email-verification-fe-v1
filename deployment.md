@@ -410,6 +410,13 @@
 - **How:** Update GitHub Secret `APP_ENV_LOCAL` to set `NEXT_PUBLIC_API_BASE_URL=https://app.boltroute.ai/api`, then trigger a deploy to rebuild the frontend.
 - **Status:** Pending verification (this file does not yet contain a final completion log for this sub-step).
 
+### Step 110.1 - Session preflight and state sync (completed)
+- **What:** Executed runbook preflight to synchronize repository state before new operations.
+- **Why:** Step `110.1` is the mandatory anti-drift gate before fresh production checks and backlog reconciliation.
+- **How:** Ran `git push origin main` (no new remote changes), re-read root execution documents (`AGENTS.md`, `handover.md`, `ui-progress.md`, `deployment.md`), and verified a clean working tree with `git status --short --branch` reporting `## main...origin/main`.
+- **Where:** `/home/codex/email-verification-fe-v1` (repo root) and root docs listed above.
+- **Status:** Complete (`2026-02-08 18:07:42 UTC`).
+
 ## Open items (required before execution)
 - Confirm the current web server (Nginx/Apache/Caddy/other) and how TLS is managed today.
 - Confirm downtime tolerance and rollback expectations for the cutover.

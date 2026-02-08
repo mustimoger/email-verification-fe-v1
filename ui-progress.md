@@ -118,6 +118,10 @@
 - [x] Task 104 - Capture final operator verification (`17:53:35 UTC`) and Caddyfile formatting hardening, then update runbook commands for hosts without `rg` (MVP).
 - [x] Task 105 - Execute Step 100.4 by deciding and implementing post-cutover website deploy trigger policy in GitHub Actions (MVP).
 - [x] Task 106 - Rewrite root `handover.md` with unambiguous post-Step-100.4 continuation steps (What/Why/How/Where) and explicit next-session execution order (MVP).
+- [x] Task 107 - Execute Step 110.1 session preflight and state sync before any new product work (MVP).
+- [ ] Task 108 - Execute Step 110.2 production health check gate and capture fresh evidence (MVP).
+- [ ] Task 109 - Execute Step 110.3 stale unchecked task reconciliation in `ui-progress.md` (MVP).
+- [ ] Task 110 - Execute Step 110.4 by selecting one true pending product task with user confirmation (MVP).
 
 ## Progress log
 ### Task 1 - Completed
@@ -689,3 +693,10 @@
 - Why: The previous handover mixed historical cutover detail with current-state operations, leaving avoidable ambiguity when context is nearly exhausted.
 - How: Replaced handover content with a clean sequence including: locked contract values, validated evidence anchors, active open items only, and strict ordered next steps (`110.1` to `110.5`) using explicit `What/Why/How/Where` for each step.
 - Not implemented yet: Handover rewrite is complete; next execution work begins from Step `110.1` in the new runbook.
+
+### Task 107 - Completed
+- What: Executed Step `110.1` session preflight and repository state synchronization.
+- Why: The post-cutover runbook requires baseline state validation before any production health checks or product-task work.
+- How: Ran `git push origin main` (returned `Everything up-to-date`), re-read `AGENTS.md`, `handover.md`, `ui-progress.md`, and `deployment.md`, then confirmed a clean tree with `git status --short --branch` showing only `## main...origin/main`.
+- Where: Repo root `/home/codex/email-verification-fe-v1` and root docs listed above.
+- Not implemented yet: Step `110.2` (production health gate), Step `110.3` (stale-task reconciliation), and Step `110.4` (single pending product task selection) are still pending in strict order.
