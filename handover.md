@@ -1,12 +1,12 @@
 # Handover: Dashboard + Website Integration (Cutover Stage)
 
-## 0) Snapshot (Updated 2026-02-08 17:22:58 UTC)
+## 0) Snapshot (Updated 2026-02-08 17:29:20 UTC)
 
 ### What
 - Monorepo apps are in place:
   - Dashboard: `apps/dashboard` (production: `https://app.boltroute.ai`)
   - Website: `apps/website` (target production: `https://boltroute.ai`, `https://www.boltroute.ai`)
-- Task sequence is at `ui-progress.md` Task `99.6`; sub-steps `99.6.1` and `99.6.2` are completed and `99.6.3` is next.
+- Task sequence is at `ui-progress.md` Task `99.6`; sub-steps `99.6.1`, `99.6.2`, and `99.6.3` are completed and `99.6.4` is next.
 
 ### Why
 - Previous blockers (filesystem, systemd service, secret, deploy rerun, smoke checks) are resolved.
@@ -104,8 +104,11 @@
 
 ### How
 - DNS snapshot:
-  - `dig +short boltroute.ai A` => `192.248.184.194`
-  - `dig +short www.boltroute.ai A` => `boltroute.ai.` then `192.248.184.194`
+  - recursive check from this host during transition: `dig +short boltroute.ai A` => `192.248.184.194`
+  - recursive check from this host during transition: `dig +short www.boltroute.ai A` => `boltroute.ai.` then `192.248.184.194`
+  - authoritative check: `dig @saanvi.ns.cloudflare.com +short boltroute.ai A` => `135.181.160.203`
+  - authoritative check: `dig @alaric.ns.cloudflare.com +short boltroute.ai A` => `135.181.160.203`
+  - authoritative check: `dig @saanvi.ns.cloudflare.com +short www.boltroute.ai CNAME` => `boltroute.ai.`
   - `dig +short app.boltroute.ai A` => `135.181.160.203`
 - Public response snapshot:
   - `https://boltroute.ai` returns WordPress/nginx response (`wp-json` link present)
@@ -128,8 +131,8 @@
   - `99.5` pre-cutover smoke checks
   - `99.6.1` pre-cutover baseline capture
   - `99.6.2` proxy vhost configuration/verification
-- Pending:
   - `99.6.3` DNS cutover
+- Pending:
   - `99.6.4` post-cutover validation
   - `99.6.5` rollback (only if needed)
 
@@ -137,7 +140,7 @@
 - Next session must not repeat completed steps.
 
 ### How
-- Treat `99.6.3` as the active strict next step unless rollback/recovery is triggered.
+- Treat `99.6.4` as the active strict next step unless rollback/recovery is triggered.
 
 ### Where
 - Status source of truth: `ui-progress.md`
@@ -231,6 +234,19 @@
 ### Where
 - DNS provider control panel
 
+### Status update (2026-02-08 17:29:20 UTC)
+- Completed with captured DNS-provider evidence:
+  - Operator-provided Cloudflare DNS screenshot confirms:
+    - `A boltroute.ai` -> `135.181.160.203`
+    - `CNAME www` -> `boltroute.ai`
+    - `A app` remains `135.181.160.203`
+  - Authoritative verification:
+    - `dig @saanvi.ns.cloudflare.com +short boltroute.ai A` => `135.181.160.203`
+    - `dig @alaric.ns.cloudflare.com +short boltroute.ai A` => `135.181.160.203`
+    - `dig @saanvi.ns.cloudflare.com +short www.boltroute.ai CNAME` => `boltroute.ai.`
+- Propagation note:
+  - Recursive `dig +short boltroute.ai A` from this host still returned `192.248.184.194` at capture time, so public validation must account for TTL/cache propagation in Step `99.6.4`.
+
 ## Step 99.6.4 - Post-cutover validation
 
 ### What
@@ -303,7 +319,7 @@
 ## 6) Immediate Resume Point For Next Codex Session
 
 ### What
-- Resume from Task `99.6` only, starting at sub-step `99.6.3`.
+- Resume from Task `99.6` only, starting at sub-step `99.6.4`.
 
 ### Why
 - All prerequisites and pre-cutover checks are complete.
@@ -311,10 +327,10 @@
 ### How
 1. `git push origin main` at session start.
 2. Re-read `AGENTS.md`, this `handover.md`, and `ui-progress.md`.
-3. Execute Step `99.6.3` through `99.6.4` in order.
+3. Execute Step `99.6.4` only (and `99.6.5` rollback only if validation fails).
 4. If any validation fails, execute `99.6.5` rollback.
 5. Update root trackers + push after each completion.
 
 ### Where
 - Repo: `/home/codex/email-verification-fe-v1`
-- Active task: `ui-progress.md` Task `99.6.3`
+- Active task: `ui-progress.md` Task `99.6.4`

@@ -108,7 +108,7 @@
 - [ ] Task 99.6 - Execute DNS + proxy cutover for `boltroute.ai` and `www.boltroute.ai` (MVP, when approved).
 - [x] Task 99.6.1 - Capture pre-cutover baseline evidence (DNS, public headers, local service health) (MVP).
 - [x] Task 99.6.2 - Configure and verify reverse proxy vhosts for `boltroute.ai` + `www.boltroute.ai` to `127.0.0.1:3002` (MVP).
-- [ ] Task 99.6.3 - Execute DNS cutover for apex and `www` to website host IP (MVP).
+- [x] Task 99.6.3 - Execute DNS cutover for apex and `www` to website host IP (MVP).
 - [ ] Task 99.6.4 - Run post-cutover validation (DNS, TLS, routes, dashboard non-regression) (MVP).
 - [ ] Task 99.6.5 - Roll back DNS/proxy only if post-cutover validation fails (MVP).
 
@@ -582,6 +582,7 @@
 - Update (`2026-02-08`): Tasks 99.1, 99.2, 99.3, 99.4, and 99.5 are completed; next strict step is Task 99.6 DNS/proxy cutover (when approved).
 - Update (`2026-02-08 17:17:24 UTC`): Task `99.6.1` baseline capture is completed; next strict step is Task `99.6.2` (proxy vhost verification/configuration).
 - Update (`2026-02-08 17:22:58 UTC`): Task `99.6.2` proxy-vhost config/verification is completed; next strict step is Task `99.6.3` DNS cutover.
+- Update (`2026-02-08 17:29:20 UTC`): Task `99.6.3` DNS cutover is completed at authoritative DNS; next strict step is Task `99.6.4` post-cutover validation.
 - Update (`2026-02-08`): Root `handover.md` was rewritten again with a cutover-only continuation runbook (exact evidence + strict 99.6 step order + rollback procedure) to support context-window handoff with no ambiguity.
 
 ### Task 99.1 - Completed
@@ -637,3 +638,15 @@
 - Why: DNS cutover requires domain routing to be ready on the destination host before apex/`www` records are switched.
 - How: Built candidate config at `/tmp/Caddyfile.99_6_2` (existing `letterlinq.com` + `app.boltroute.ai` retained; added `boltroute.ai, www.boltroute.ai` block with security headers, compression, and `reverse_proxy 127.0.0.1:3002`), validated with `caddy validate --config /tmp/Caddyfile.99_6_2 --adapter caddyfile` (`Valid configuration`), and applied with `caddy reload --config /tmp/Caddyfile.99_6_2 --adapter caddyfile`. Routing evidence: `curl -I http://127.0.0.1 -H 'Host: boltroute.ai'` => `HTTP/1.1 308` to `https://boltroute.ai/`, and `/var/log/caddy/boltroute_website_access.log` records host `boltroute.ai` requests. Dashboard non-regression check: `curl -I --resolve app.boltroute.ai:443:127.0.0.1 https://app.boltroute.ai/overview` => `HTTP/2 200`.
 - Not implemented yet: Persistent on-disk update of `/etc/caddy/Caddyfile` was not possible from this shell because the file is root-owned and `sudo` requires a password; runtime config is active via Caddy admin reload. TLS status for `boltroute.ai`/`www.boltroute.ai` currently shows handshake failure (`curl`/`openssl` TLS alert internal error), which is expected pre-cutover while DNS still points to `192.248.184.194`.
+
+### Task 99.6.3 - In Progress
+- What: Start DNS cutover for `boltroute.ai` and `www.boltroute.ai` to website host IP.
+- Why: Public traffic will not switch from WordPress until DNS records are updated to the website host.
+- How: Determine DNS provider/control path, change apex + `www` A records (and AAAA only if present) to `135.181.160.203`, then capture evidence for the provider-side change.
+- Not implemented yet: DNS provider write action and post-change evidence are not captured yet in this entry.
+
+### Task 99.6.3 - Completed
+- What: Confirmed DNS cutover for apex and `www` to the website host IP in Cloudflare authoritative DNS.
+- Why: Task `99.6.3` requires provider-side DNS record updates before post-cutover service validation can begin.
+- How: Reviewed operator-provided Cloudflare screenshot showing `A boltroute.ai -> 135.181.160.203` and `CNAME www -> boltroute.ai` (with `app` already `135.181.160.203`), then verified authoritative nameservers directly: `dig @saanvi.ns.cloudflare.com +short boltroute.ai A` => `135.181.160.203`, `dig @alaric.ns.cloudflare.com +short boltroute.ai A` => `135.181.160.203`, and `dig @saanvi.ns.cloudflare.com +short www.boltroute.ai CNAME` => `boltroute.ai.`.
+- Not implemented yet: Recursive resolver propagation is still mixed (`dig +short boltroute.ai A` from this host returned `192.248.184.194` at check time), so public validation in Task `99.6.4` must account for propagation lag.
