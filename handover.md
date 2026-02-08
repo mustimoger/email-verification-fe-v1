@@ -1,12 +1,12 @@
 # Handover: Dashboard + Website Integration (Cutover Stage)
 
-## 0) Snapshot (Updated 2026-02-08 17:10:11 UTC)
+## 0) Snapshot (Updated 2026-02-08 17:18:04 UTC)
 
 ### What
 - Monorepo apps are in place:
   - Dashboard: `apps/dashboard` (production: `https://app.boltroute.ai`)
   - Website: `apps/website` (target production: `https://boltroute.ai`, `https://www.boltroute.ai`)
-- Task sequence is at `ui-progress.md` Task `99.6` (cutover pending approval).
+- Task sequence is at `ui-progress.md` Task `99.6`; sub-step `99.6.1` is completed and `99.6.2` is next.
 
 ### Why
 - Previous blockers (filesystem, systemd service, secret, deploy rerun, smoke checks) are resolved.
@@ -105,7 +105,7 @@
 ### How
 - DNS snapshot:
   - `dig +short boltroute.ai A` => `192.248.184.194`
-  - `dig +short www.boltroute.ai A` => `192.248.184.194`
+  - `dig +short www.boltroute.ai A` => `boltroute.ai.` then `192.248.184.194`
   - `dig +short app.boltroute.ai A` => `135.181.160.203`
 - Public response snapshot:
   - `https://boltroute.ai` returns WordPress/nginx response (`wp-json` link present)
@@ -126,14 +126,18 @@
   - `99.3` secret configuration
   - `99.4` deploy rerun success
   - `99.5` pre-cutover smoke checks
+  - `99.6.1` pre-cutover baseline capture
 - Pending:
-  - `99.6` DNS + proxy cutover
+  - `99.6.2` proxy vhost configuration/verification
+  - `99.6.3` DNS cutover
+  - `99.6.4` post-cutover validation
+  - `99.6.5` rollback (only if needed)
 
 ### Why
 - Next session must not repeat completed steps.
 
 ### How
-- Treat `99.6` as the only active step unless rollback/recovery is triggered.
+- Treat `99.6.2` as the active strict next step unless rollback/recovery is triggered.
 
 ### Where
 - Status source of truth: `ui-progress.md`
@@ -163,6 +167,15 @@
 
 ### Where
 - DNS provider + target host terminal
+
+### Status update (2026-02-08 17:17:24 UTC)
+- Completed with captured baseline evidence:
+  - `dig +short boltroute.ai A` => `192.248.184.194`
+  - `dig +short www.boltroute.ai A` => `boltroute.ai.` then `192.248.184.194`
+  - `curl -I https://boltroute.ai` => `HTTP/2 200` (`server: nginx`, WordPress `wp-json` links present)
+  - `curl -I https://www.boltroute.ai` => TLS hostname mismatch (`curl` exit code `60`)
+  - `systemctl status boltroute-website --no-pager` => `active (running)`
+  - `curl -I http://127.0.0.1:3002/` => `HTTP/1.1 200 OK`
 
 ## Step 99.6.2 - Configure/verify proxy vhosts for website domains
 
@@ -274,7 +287,7 @@
 ## 6) Immediate Resume Point For Next Codex Session
 
 ### What
-- Resume from Task `99.6` only.
+- Resume from Task `99.6` only, starting at sub-step `99.6.2`.
 
 ### Why
 - All prerequisites and pre-cutover checks are complete.
@@ -282,10 +295,10 @@
 ### How
 1. `git push origin main` at session start.
 2. Re-read `AGENTS.md`, this `handover.md`, and `ui-progress.md`.
-3. Execute Step `99.6.1` through `99.6.4` in order.
+3. Execute Step `99.6.2` through `99.6.4` in order.
 4. If any validation fails, execute `99.6.5` rollback.
 5. Update root trackers + push after each completion.
 
 ### Where
 - Repo: `/home/codex/email-verification-fe-v1`
-- Active task: `ui-progress.md` Task `99.6`
+- Active task: `ui-progress.md` Task `99.6.2`

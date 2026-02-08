@@ -87,9 +87,10 @@
   - Task 99.3 completed on `2026-02-08`: `WEBSITE_APP_ENV_LOCAL` secret is configured in GitHub Actions (`2026-02-08T16:58:17Z`).
   - Task 99.4 completed on `2026-02-08`: website deploy rerun `21801917773` succeeded (`website-checks` + `deploy` jobs both `success`).
   - Task 99.5 completed on `2026-02-08`: pre-cutover smoke checks passed (`boltroute-website` active, local upstream routes `/`, `/pricing`, `/integrations` all `200`, and dashboard endpoints remained healthy: `/` `307`, `/overview` `200`, `/pricing/embed` `200`).
+  - Task 99.6.1 completed on `2026-02-08 17:17:24 UTC`: pre-cutover baseline was captured and confirms no public cutover yet (`boltroute.ai` A = `192.248.184.194`; `www.boltroute.ai` resolves via `boltroute.ai.` to `192.248.184.194`; `https://boltroute.ai` returns `HTTP/2 200` from WordPress/nginx; `https://www.boltroute.ai` still fails TLS hostname validation; local website service remains healthy with `systemctl` active and `http://127.0.0.1:3002/` returning `HTTP/1.1 200 OK`).
 - Still not implemented:
   - Manual website deploy run was executed and failed: run `21801362879` (`2026-02-08`) failed at `Create release directory` with `mkdir: cannot create directory '/var/www/boltroute-website': Permission denied`.
-  - `boltroute.ai`/`www.boltroute.ai` DNS+TLS cutover from WordPress is not executed yet.
+  - `boltroute.ai`/`www.boltroute.ai` DNS+TLS cutover from WordPress is not executed yet (next strict step is Task `99.6.2` proxy vhost verification/configuration).
 
 ## MVP deployment plan (production-grade baseline)
 
