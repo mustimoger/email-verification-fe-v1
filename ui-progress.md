@@ -99,18 +99,19 @@
 - [x] Task 96 - Choose and execute the first resumed pending product task after deploy-stability steps (MVP).
 - [x] Task 97 - Choose and execute the next resumed pending product task after Task 65 (MVP).
 - [x] Task 98 - Validate pre-cutover website deploy readiness and run manual website deploy workflow (MVP).
-- [ ] Task 99 - Provision website deploy prerequisites on target host and rerun manual website deploy workflow (MVP).
+- [x] Task 99 - Provision website deploy prerequisites on target host and rerun manual website deploy workflow (MVP).
 - [x] Task 99.1 - Prepare target host filesystem and permissions for `/var/www/boltroute-website` (MVP).
 - [x] Task 99.2 - Provision and verify `boltroute-website` systemd service on `127.0.0.1:3002` (MVP).
 - [x] Task 99.3 - Add `WEBSITE_APP_ENV_LOCAL` GitHub Actions secret for website deploy (MVP).
 - [x] Task 99.4 - Rerun manual website deploy workflow and record run outcome (MVP).
 - [x] Task 99.5 - Run pre-cutover runtime smoke checks (website + dashboard unaffected) (MVP).
-- [ ] Task 99.6 - Execute DNS + proxy cutover for `boltroute.ai` and `www.boltroute.ai` (MVP, when approved).
+- [x] Task 99.6 - Execute DNS + proxy cutover for `boltroute.ai` and `www.boltroute.ai` (MVP, when approved).
 - [x] Task 99.6.1 - Capture pre-cutover baseline evidence (DNS, public headers, local service health) (MVP).
 - [x] Task 99.6.2 - Configure and verify reverse proxy vhosts for `boltroute.ai` + `www.boltroute.ai` to `127.0.0.1:3002` (MVP).
 - [x] Task 99.6.3 - Execute DNS cutover for apex and `www` to website host IP (MVP).
-- [ ] Task 99.6.4 - Run post-cutover validation (DNS, TLS, routes, dashboard non-regression) (MVP).
+- [x] Task 99.6.4 - Run post-cutover validation (DNS, TLS, routes, dashboard non-regression) (MVP).
 - [ ] Task 99.6.5 - Roll back DNS/proxy only if post-cutover validation fails (MVP).
+- [x] Task 100 - Normalize root integration tracking docs (`handover.md`, `ui-progress.md`, `deployment.md`) so status and next steps are internally consistent (MVP).
 
 ## Progress log
 ### Task 1 - Completed
@@ -574,7 +575,7 @@
 - How: Verified workflow/secret state (`Website Deploy` exists, no prior runs, missing `WEBSITE_APP_ENV_LOCAL` secret), dispatched `.github/workflows/website-deploy.yml` on `main`, and inspected run `21801362879`. `website-checks` passed, but `deploy` failed at `Create release directory` with `mkdir: cannot create directory '/var/www/boltroute-website': Permission denied`.
 - Update: Follow-up Tasks 99.1, 99.2, 99.3, 99.4, and 99.5 have completed prerequisites, deploy rerun, and smoke checks; only DNS/proxy cutover remains.
 
-### Task 99 - Pending
+### Task 99 - Completed
 - What: Provision website deploy prerequisites on the target host and rerun manual website deploy.
 - Why: Task 98 identified concrete blockers that must be resolved before DNS cutover readiness can be confirmed.
 - How: Ensure `/var/www/boltroute-website` exists with deploy-user write access, create/configure `boltroute-website` service and upstream binding (`127.0.0.1:3002`), add `WEBSITE_APP_ENV_LOCAL` GitHub secret, rerun `.github/workflows/website-deploy.yml`, then verify run success and runtime health.
@@ -583,6 +584,7 @@
 - Update (`2026-02-08 17:17:24 UTC`): Task `99.6.1` baseline capture is completed; next strict step is Task `99.6.2` (proxy vhost verification/configuration).
 - Update (`2026-02-08 17:22:58 UTC`): Task `99.6.2` proxy-vhost config/verification is completed; next strict step is Task `99.6.3` DNS cutover.
 - Update (`2026-02-08 17:29:20 UTC`): Task `99.6.3` DNS cutover is completed at authoritative DNS; next strict step is Task `99.6.4` post-cutover validation.
+- Update (`2026-02-08 17:33:29 UTC`): Task `99.6.4` post-cutover validation is completed successfully (public website + dashboard + local service checks all passed), so Task `99` is closed.
 - Update (`2026-02-08`): Root `handover.md` was rewritten again with a cutover-only continuation runbook (exact evidence + strict 99.6 step order + rollback procedure) to support context-window handoff with no ambiguity.
 
 ### Task 99.1 - Completed
@@ -610,43 +612,38 @@
 - Why: Even with deploy success, runtime checks are required before any DNS/proxy cutover action.
 - How: Verified `systemctl status boltroute-website` is `active`; verified local listener (`ss -ltn` shows `127.0.0.1:3002`); checked website routes on local upstream (`curl -I http://127.0.0.1:3002/`, `/pricing`, `/integrations` all `200`); confirmed dashboard remained healthy with `curl -I https://app.boltroute.ai/` (`307` to `/overview`), `curl -I https://app.boltroute.ai/overview` (`200`), and `curl -I https://app.boltroute.ai/pricing/embed` (`200`).
 
-### Task 99.6 - Pending
+### Task 99.6 - Completed
 - What: Execute DNS + proxy cutover so public traffic for `boltroute.ai` and `www.boltroute.ai` serves the new website.
 - Why: This is the final migration step after deploy/runtime validation is complete.
 - How: Update DNS A/AAAA records to the website host, configure/verify reverse proxy vhosts + TLS for `boltroute.ai` and `www.boltroute.ai` -> `127.0.0.1:3002`, then run post-cutover smoke checks with rollback plan ready.
-
-### Task 99.6.1 - In Progress
-- What: Start pre-cutover baseline capture before changing DNS or proxy configuration.
-- Why: We need an exact before-state snapshot for rollback confidence and post-cutover comparison.
-- How: Prepare to record `dig` outputs for apex/`www`, public `curl -I` headers, and local service health checks (`systemctl status boltroute-website`, `curl -I http://127.0.0.1:3002/`) in strict `99.6.1` order.
-- Not implemented yet: Baseline command outputs are not captured yet in this entry; they will be appended immediately after command execution.
 
 ### Task 99.6.1 - Completed
 - What: Captured pre-cutover baseline evidence for DNS, public headers, and local website service health.
 - Why: Establish a rollback-safe, timestamped before-state snapshot immediately before any proxy or DNS cutover changes.
 - How: At `2026-02-08 17:17:24 UTC`, recorded: `dig +short boltroute.ai A` => `192.248.184.194`; `dig +short www.boltroute.ai A` => `boltroute.ai.` then `192.248.184.194`; `curl -I https://boltroute.ai` => `HTTP/2 200` (`server: nginx`, WordPress `wp-json` links present); `curl -I https://www.boltroute.ai` => TLS hostname mismatch (`curl` exit `60`); `systemctl status boltroute-website --no-pager` => `active (running)`; `curl -I http://127.0.0.1:3002/` => `HTTP/1.1 200 OK`.
-- Not implemented yet: Task `99.6.2` proxy-vhost verification/configuration and all later cutover steps (`99.6.3`/`99.6.4`/`99.6.5`) are still pending.
-
-### Task 99.6.2 - In Progress
-- What: Start proxy vhost verification/configuration for `boltroute.ai` and `www.boltroute.ai`.
-- Why: DNS cutover must only happen after proxy routing and TLS handling are validated on the target host.
-- How: Inspect active Caddy config, add/update vhost entries to proxy both hostnames to `127.0.0.1:3002`, validate config syntax, reload Caddy, and check certificate issuance/renewal status.
-- Not implemented yet: Proxy edits, reload results, and TLS status evidence are not captured yet in this entry.
+- Historical note: At this checkpoint, later cutover steps were still pending; those are now completed in the entries below.
 
 ### Task 99.6.2 - Completed
 - What: Configured and verified target-host reverse proxy vhosts for `boltroute.ai` and `www.boltroute.ai` to route to `127.0.0.1:3002`.
 - Why: DNS cutover requires domain routing to be ready on the destination host before apex/`www` records are switched.
 - How: Built candidate config at `/tmp/Caddyfile.99_6_2` (existing `letterlinq.com` + `app.boltroute.ai` retained; added `boltroute.ai, www.boltroute.ai` block with security headers, compression, and `reverse_proxy 127.0.0.1:3002`), validated with `caddy validate --config /tmp/Caddyfile.99_6_2 --adapter caddyfile` (`Valid configuration`), and applied with `caddy reload --config /tmp/Caddyfile.99_6_2 --adapter caddyfile`. Routing evidence: `curl -I http://127.0.0.1 -H 'Host: boltroute.ai'` => `HTTP/1.1 308` to `https://boltroute.ai/`, and `/var/log/caddy/boltroute_website_access.log` records host `boltroute.ai` requests. Dashboard non-regression check: `curl -I --resolve app.boltroute.ai:443:127.0.0.1 https://app.boltroute.ai/overview` => `HTTP/2 200`.
-- Not implemented yet: Persistent on-disk update of `/etc/caddy/Caddyfile` was not possible from this shell because the file is root-owned and `sudo` requires a password; runtime config is active via Caddy admin reload. TLS status for `boltroute.ai`/`www.boltroute.ai` currently shows handshake failure (`curl`/`openssl` TLS alert internal error), which is expected pre-cutover while DNS still points to `192.248.184.194`.
-
-### Task 99.6.3 - In Progress
-- What: Start DNS cutover for `boltroute.ai` and `www.boltroute.ai` to website host IP.
-- Why: Public traffic will not switch from WordPress until DNS records are updated to the website host.
-- How: Determine DNS provider/control path, change apex + `www` A records (and AAAA only if present) to `135.181.160.203`, then capture evidence for the provider-side change.
-- Not implemented yet: DNS provider write action and post-change evidence are not captured yet in this entry.
+- Not implemented yet: Persistent on-disk update of `/etc/caddy/Caddyfile` was not possible from this shell because the file is root-owned and `sudo` requires a password; runtime config is active via Caddy admin reload.
+- Historical note: Pre-cutover TLS checks to `127.0.0.1` reported expected handshake failures while DNS still pointed to WordPress.
 
 ### Task 99.6.3 - Completed
 - What: Confirmed DNS cutover for apex and `www` to the website host IP in Cloudflare authoritative DNS.
 - Why: Task `99.6.3` requires provider-side DNS record updates before post-cutover service validation can begin.
 - How: Reviewed operator-provided Cloudflare screenshot showing `A boltroute.ai -> 135.181.160.203` and `CNAME www -> boltroute.ai` (with `app` already `135.181.160.203`), then verified authoritative nameservers directly: `dig @saanvi.ns.cloudflare.com +short boltroute.ai A` => `135.181.160.203`, `dig @alaric.ns.cloudflare.com +short boltroute.ai A` => `135.181.160.203`, and `dig @saanvi.ns.cloudflare.com +short www.boltroute.ai CNAME` => `boltroute.ai.`.
-- Not implemented yet: Recursive resolver propagation is still mixed (`dig +short boltroute.ai A` from this host returned `192.248.184.194` at check time), so public validation in Task `99.6.4` must account for propagation lag.
+- Historical note: During early propagation, recursive DNS was mixed; this was expected and was resolved during Task `99.6.4` validation.
+
+### Task 99.6.4 - Completed
+- What: Completed post-cutover validation for DNS propagation, public website HTTPS routes, dashboard non-regression, and local website service health.
+- Why: This is the cutover acceptance gate; without passing checks we would trigger rollback (`99.6.5`).
+- How: At `2026-02-08 17:33:29 UTC`, final checks passed: `dig +short boltroute.ai A` => `135.181.160.203`; `dig +short www.boltroute.ai A` => `boltroute.ai.` then `135.181.160.203`; `curl -I https://boltroute.ai` => `HTTP/2 200`; `curl -I https://www.boltroute.ai` => `HTTP/2 200`; `curl -I https://boltroute.ai/pricing` => `HTTP/2 200`; `curl -I https://boltroute.ai/integrations` => `HTTP/2 200`; `curl -I https://app.boltroute.ai/overview` => `HTTP/2 200`; `systemctl status boltroute-website --no-pager` => `active (running)`.
+- Not implemented yet: Rollback Task `99.6.5` was intentionally not executed because validation recovered and passed. During the first validation attempt at `17:31:33 UTC`, apex/`www` briefly returned TLS alert internal error (`curl` exit `35`), then succeeded from `17:32:19 UTC` onward as certificate issuance completed.
+
+### Task 100 - Completed
+- What: Normalized root integration tracking docs after successful website cutover.
+- Why: Mixed in-progress snapshots and stale checklist states were causing ambiguity for next-session execution.
+- How: Updated `handover.md` to post-cutover `100.x` strict next actions, reconciled `deployment.md` checklist/status and open items, and removed stale `99.6.x In Progress` log entries from `ui-progress.md` while preserving final evidence and historical notes.
+- Not implemented yet: Persistent on-disk Caddyfile update still requires root access; rollback task `99.6.5` remains conditional and unexecuted by design.

@@ -24,10 +24,10 @@
 - [x] Step 7 - Security hardening
 - [x] Step 8 - Test and verify before deployment
 - [x] Step 8.1 - Fix backend test failure (missing helper)
-- [ ] Step 9 - Deploy to main (cutover; deploy workflow failed)
-- [ ] Step 9.1 - Investigate deploy workflow failure (required before Step 10)
-- [ ] Step 10 - Post-deploy validation (blocked until Step 9 succeeds)
-- [ ] Step 10.1 - Tighten frontend bind to localhost (security hardening follow-up)
+- [x] Step 9 - Deploy to main (cutover)
+- [x] Step 9.1 - Investigate deploy workflow failure (resolved before Step 10)
+- [x] Step 10 - Post-deploy validation
+- [x] Step 10.1 - Tighten frontend bind to localhost (security hardening follow-up)
 - [ ] Step 10.2 - Update external API base URL env + redeploy (Overview data unavailable)
 - [ ] Step 10.3 - Fix frontend API base URL env + redeploy (CORS on /api)
 
@@ -77,8 +77,8 @@
   - Planned post-cutover policy: add `push` trigger on `main` with `apps/website/**` path filter.
   - Status: Locked.
 
-### Not implemented yet
-- Website deploy workflow/script are now implemented:
+### Current state and open items
+- Website deploy workflow/script are implemented:
   - `.github/workflows/website-deploy.yml`
   - `apps/website/deploy/remote-deploy.sh`
 - Latest state updates:
@@ -90,10 +90,14 @@
   - Task 99.6.1 completed on `2026-02-08 17:17:24 UTC`: pre-cutover baseline was captured and confirms no public cutover yet (`boltroute.ai` A = `192.248.184.194`; `www.boltroute.ai` resolves via `boltroute.ai.` to `192.248.184.194`; `https://boltroute.ai` returns `HTTP/2 200` from WordPress/nginx; `https://www.boltroute.ai` still fails TLS hostname validation; local website service remains healthy with `systemctl` active and `http://127.0.0.1:3002/` returning `HTTP/1.1 200 OK`).
   - Task 99.6.2 completed on `2026-02-08 17:22:58 UTC`: configured/verified Caddy runtime vhosts for `boltroute.ai` and `www.boltroute.ai` -> `127.0.0.1:3002` using validated reload config (`/tmp/Caddyfile.99_6_2`), confirmed host routing (`curl -I http://127.0.0.1 -H 'Host: boltroute.ai'` => `308` and access log entry in `/var/log/caddy/boltroute_website_access.log`), and confirmed dashboard non-regression (`curl -I --resolve app.boltroute.ai:443:127.0.0.1 https://app.boltroute.ai/overview` => `HTTP/2 200`); TLS for `boltroute.ai`/`www.boltroute.ai` is still not issued pre-cutover (TLS alert internal error when resolved to `127.0.0.1`).
   - Task 99.6.3 completed on `2026-02-08 17:29:20 UTC`: DNS cutover is confirmed at Cloudflare authoritative nameservers (`dig @saanvi.ns.cloudflare.com +short boltroute.ai A` => `135.181.160.203`; `dig @alaric.ns.cloudflare.com +short boltroute.ai A` => `135.181.160.203`; `dig @saanvi.ns.cloudflare.com +short www.boltroute.ai CNAME` => `boltroute.ai.`). Operator screenshot confirms matching Cloudflare records (`A boltroute.ai -> 135.181.160.203`, `CNAME www -> boltroute.ai`).
-- Still not implemented:
-  - Manual website deploy run was executed and failed: run `21801362879` (`2026-02-08`) failed at `Create release directory` with `mkdir: cannot create directory '/var/www/boltroute-website': Permission denied`.
-  - Persistent on-disk edit of `/etc/caddy/Caddyfile` for website vhosts is not yet applied from this session because the file is root-owned and `sudo` requires a password in this shell; active routing is currently applied via `caddy reload` runtime config.
-  - Public recursive DNS propagation is not complete yet from all resolvers (`dig +short boltroute.ai A` from this host still returned `192.248.184.194` during verification), so next strict step is Task `99.6.4` post-cutover validation.
+  - Task 99.6.4 completed on `2026-02-08 17:33:29 UTC`: post-cutover validation passed (`dig +short boltroute.ai A` => `135.181.160.203`; `dig +short www.boltroute.ai A` => `boltroute.ai.` then `135.181.160.203`; `curl -I https://boltroute.ai` => `HTTP/2 200`; `curl -I https://www.boltroute.ai` => `HTTP/2 200`; `curl -I https://boltroute.ai/pricing` => `HTTP/2 200`; `curl -I https://boltroute.ai/integrations` => `HTTP/2 200`; dashboard check `https://app.boltroute.ai/overview` => `HTTP/2 200`; `systemctl status boltroute-website` => `active (running)`). Rollback step `99.6.5` was not triggered.
+- Open items:
+  - Persist website vhosts on disk in `/etc/caddy/Caddyfile` when root access is available; current routing is active from runtime reload.
+  - Decide post-cutover website deploy trigger policy (`workflow_dispatch` only vs adding `push` for `apps/website/**`).
+  - Keep rollback procedure (`99.6.5`) available for regressions.
+- Historical notes:
+  - Initial manual run `21801362879` failed at `Create release directory` due missing permissions; this was remediated and superseded by successful run `21801917773`.
+  - During initial post-cutover checks at `2026-02-08 17:31:33 UTC`, apex/`www` TLS briefly failed (`curl` exit `35`) while cert issuance completed; it recovered by `17:32:19 UTC` and final validation passed.
 
 ## MVP deployment plan (production-grade baseline)
 
@@ -384,7 +388,6 @@
 - **How:** Created `/etc/systemd/system/boltroute-frontend.service.d/override.conf`, cleared `ExecStart`, and set `next start -H 127.0.0.1 -p 3000`; reloaded daemon and restarted `boltroute-frontend`.
 - **Verification:** `ss -ltnp` shows `127.0.0.1:3000`.
 - **Status:** Complete.
-- **Status:** Blocked (deploy workflow failed; systemd-managed services not active as planned).
 
 ### Step 10.2 - Update external API base URL env + redeploy (pending)
 - **What:** Update frontend and backend environment base URLs to the documented `https://api.boltroute.ai/api/v1`.
@@ -396,7 +399,7 @@
 - **What:** Ensure `NEXT_PUBLIC_API_BASE_URL` targets `https://app.boltroute.ai/api` instead of `https://api.boltroute.ai/api`.
 - **Why:** Requests to `https://api.boltroute.ai/api/*` are blocked by CORS when sent with credentials from `https://app.boltroute.ai`, causing `/overview` to show `Unavailable`.
 - **How:** Update GitHub Secret `APP_ENV_LOCAL` to set `NEXT_PUBLIC_API_BASE_URL=https://app.boltroute.ai/api`, then trigger a deploy to rebuild the frontend.
-- **Status:** In progress (secrets updated; deploying now).
+- **Status:** Pending verification (this file does not yet contain a final completion log for this sub-step).
 
 ## Open items (required before execution)
 - Confirm the current web server (Nginx/Apache/Caddy/other) and how TLS is managed today.

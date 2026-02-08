@@ -1,19 +1,19 @@
 # Handover: Dashboard + Website Integration (Cutover Stage)
 
-## 0) Snapshot (Updated 2026-02-08 17:29:20 UTC)
+## 0) Snapshot (Updated 2026-02-08 17:33:29 UTC)
 
 ### What
 - Monorepo apps are in place:
   - Dashboard: `apps/dashboard` (production: `https://app.boltroute.ai`)
   - Website: `apps/website` (target production: `https://boltroute.ai`, `https://www.boltroute.ai`)
-- Task sequence is at `ui-progress.md` Task `99.6`; sub-steps `99.6.1`, `99.6.2`, and `99.6.3` are completed and `99.6.4` is next.
+- Task sequence is at `ui-progress.md` Task `99.6`; sub-steps `99.6.1` through `99.6.4` are completed successfully.
 
 ### Why
 - Previous blockers (filesystem, systemd service, secret, deploy rerun, smoke checks) are resolved.
-- Remaining work is DNS + reverse proxy cutover only.
+- DNS + reverse proxy cutover is completed and validated.
 
 ### How
-- Continue strictly from Task `99.6` and do not re-run completed setup tasks unless rollback/recovery requires it.
+- Keep Task `99.6` state as completed; rollback remains available only for future regression handling.
 
 ### Where
 - Primary tracker: `ui-progress.md`
@@ -94,25 +94,27 @@
 - Target host runtime (`boltroute-website` service)
 - Public dashboard domain (`app.boltroute.ai`)
 
-## C) DNS/public status evidence (pre-cutover)
+## C) DNS/public status evidence (post-cutover)
 
 ### What
-- `boltroute.ai` is still on WordPress host (expected before cutover).
+- `boltroute.ai` and `www.boltroute.ai` are cut over to the website host.
 
 ### Why
-- Confirms public cutover has not started yet.
+- Confirms public cutover is active and serving from the new host.
 
 ### How
-- DNS snapshot:
-  - recursive check from this host during transition: `dig +short boltroute.ai A` => `192.248.184.194`
-  - recursive check from this host during transition: `dig +short www.boltroute.ai A` => `boltroute.ai.` then `192.248.184.194`
+- DNS snapshot (`2026-02-08 17:33:29 UTC`):
+  - `dig +short boltroute.ai A` => `135.181.160.203`
+  - `dig +short www.boltroute.ai A` => `boltroute.ai.` then `135.181.160.203`
   - authoritative check: `dig @saanvi.ns.cloudflare.com +short boltroute.ai A` => `135.181.160.203`
   - authoritative check: `dig @alaric.ns.cloudflare.com +short boltroute.ai A` => `135.181.160.203`
   - authoritative check: `dig @saanvi.ns.cloudflare.com +short www.boltroute.ai CNAME` => `boltroute.ai.`
   - `dig +short app.boltroute.ai A` => `135.181.160.203`
-- Public response snapshot:
-  - `https://boltroute.ai` returns WordPress/nginx response (`wp-json` link present)
-  - `https://www.boltroute.ai` currently has certificate hostname mismatch
+- Public response snapshot (`2026-02-08 17:33:29 UTC`):
+  - `curl -I https://boltroute.ai` => `HTTP/2 200`
+  - `curl -I https://www.boltroute.ai` => `HTTP/2 200`
+  - `curl -I https://boltroute.ai/pricing` => `HTTP/2 200`
+  - `curl -I https://boltroute.ai/integrations` => `HTTP/2 200`
 
 ### Where
 - DNS provider zone records
@@ -132,162 +134,105 @@
   - `99.6.1` pre-cutover baseline capture
   - `99.6.2` proxy vhost configuration/verification
   - `99.6.3` DNS cutover
-- Pending:
   - `99.6.4` post-cutover validation
-  - `99.6.5` rollback (only if needed)
+- Conditional not triggered:
+  - `99.6.5` rollback (not required, validation passed)
 
 ### Why
 - Next session must not repeat completed steps.
 
 ### How
-- Treat `99.6.4` as the active strict next step unless rollback/recovery is triggered.
+- Treat Task `99.6` as completed; execute rollback instructions only if a new regression appears.
 
 ### Where
 - Status source of truth: `ui-progress.md`
 
 ---
 
-## 4) Next Actions (Strict Order)
+## 4) Next Actions (Strict Order, Post-Cutover)
 
-## Step 99.6.1 - Pre-cutover baseline capture
-
-### What
-- Capture immediate pre-change state for rollback confidence.
-
-### Why
-- Provides concrete rollback target values and post-change comparison.
-
-### How
-1. Record DNS:
-   - `dig +short boltroute.ai A`
-   - `dig +short www.boltroute.ai A`
-2. Record current public headers:
-   - `curl -I https://boltroute.ai`
-   - `curl -I https://www.boltroute.ai`
-3. Record target host health:
-   - `systemctl status boltroute-website --no-pager`
-   - `curl -I http://127.0.0.1:3002/`
-
-### Where
-- DNS provider + target host terminal
-
-### Status update (2026-02-08 17:17:24 UTC)
-- Completed with captured baseline evidence:
-  - `dig +short boltroute.ai A` => `192.248.184.194`
-  - `dig +short www.boltroute.ai A` => `boltroute.ai.` then `192.248.184.194`
-  - `curl -I https://boltroute.ai` => `HTTP/2 200` (`server: nginx`, WordPress `wp-json` links present)
-  - `curl -I https://www.boltroute.ai` => TLS hostname mismatch (`curl` exit code `60`)
-  - `systemctl status boltroute-website --no-pager` => `active (running)`
-  - `curl -I http://127.0.0.1:3002/` => `HTTP/1.1 200 OK`
-
-## Step 99.6.2 - Configure/verify proxy vhosts for website domains
+## Step 100.1 - Persist website vhost config on disk
 
 ### What
-- Ensure target host reverse proxy routes both domains to `127.0.0.1:3002`.
+- Persist the active website reverse-proxy block into `/etc/caddy/Caddyfile`.
 
 ### Why
-- DNS cutover without correct vhost routing will break the site.
+- Current routing is known healthy, but persistence currently depends on runtime-loaded config.
 
 ### How
-1. On target host, update proxy config for:
-   - `boltroute.ai`
-   - `www.boltroute.ai`
-2. Route both to `127.0.0.1:3002`.
-3. Reload proxy and verify config syntax.
-4. Verify TLS issuance/renewal status for both hostnames.
+1. Back up `/etc/caddy/Caddyfile`.
+2. Add a persistent host block for `boltroute.ai, www.boltroute.ai` to `reverse_proxy 127.0.0.1:3002`.
+3. Run `caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile`.
+4. Run `caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile`.
 
 ### Where
-- Target host reverse proxy configuration (`/etc/caddy/Caddyfile` if Caddy is used)
-- Target host certificate storage/logs
+- Target host (`/etc/caddy/Caddyfile`)
 
-### Status update (2026-02-08 17:22:58 UTC)
-- Completed with captured proxy/runtime evidence:
-  - Candidate config prepared at `/tmp/Caddyfile.99_6_2` with new host block:
-    - `boltroute.ai, www.boltroute.ai` -> `reverse_proxy 127.0.0.1:3002`
-  - `caddy validate --config /tmp/Caddyfile.99_6_2 --adapter caddyfile` => `Valid configuration`
-  - `caddy reload --config /tmp/Caddyfile.99_6_2 --adapter caddyfile` => success
-  - Routing check: `curl -I http://127.0.0.1 -H 'Host: boltroute.ai'` => `HTTP/1.1 308` to `https://boltroute.ai/`
-  - Access log check: `/var/log/caddy/boltroute_website_access.log` records host `boltroute.ai` requests
-  - Dashboard non-regression: `curl -I --resolve app.boltroute.ai:443:127.0.0.1 https://app.boltroute.ai/overview` => `HTTP/2 200`
-- TLS status verification for website domains:
-  - `curl -I --resolve boltroute.ai:443:127.0.0.1 https://boltroute.ai` => TLS alert internal error (`curl` exit `35`)
-  - `curl -I --resolve www.boltroute.ai:443:127.0.0.1 https://www.boltroute.ai` => TLS alert internal error (`curl` exit `35`)
-  - Interpreted status: certificates for `boltroute.ai`/`www.boltroute.ai` are not yet issued pre-cutover while DNS still points to `192.248.184.194`.
-- Not implemented yet in this step:
-  - Persistent file update of `/etc/caddy/Caddyfile` is not applied from this shell because the file is root-owned and `sudo` requires a password; active vhost changes are currently runtime-applied via `caddy reload`.
+### Status
+- Pending (requires root access).
 
-## Step 99.6.3 - Execute DNS cutover
+## Step 100.2 - Re-run post-persistence smoke checks
 
 ### What
-- Point `boltroute.ai` and `www.boltroute.ai` to the website host.
+- Re-validate public website routes, dashboard non-regression, and local service health after Step `100.1`.
 
 ### Why
-- This switches public traffic from WordPress to the deployed Next.js website.
+- Confirms persisted config behaves exactly like the validated runtime state.
 
 ### How
-1. Update DNS A (and AAAA if used) for:
-   - `boltroute.ai`
-   - `www.boltroute.ai`
-2. Set to website target host IP (`135.181.160.203` unless infrastructure owner specifies otherwise at cutover time).
-3. Save/confirm change in DNS provider UI.
+1. `dig +short boltroute.ai A`
+2. `dig +short www.boltroute.ai A`
+3. `curl -I https://boltroute.ai`
+4. `curl -I https://www.boltroute.ai`
+5. `curl -I https://boltroute.ai/pricing`
+6. `curl -I https://boltroute.ai/integrations`
+7. `curl -I https://app.boltroute.ai/overview`
+8. `systemctl status boltroute-website --no-pager`
 
 ### Where
-- DNS provider control panel
+- Any internet-connected terminal + target host shell
 
-### Status update (2026-02-08 17:29:20 UTC)
-- Completed with captured DNS-provider evidence:
-  - Operator-provided Cloudflare DNS screenshot confirms:
-    - `A boltroute.ai` -> `135.181.160.203`
-    - `CNAME www` -> `boltroute.ai`
-    - `A app` remains `135.181.160.203`
-  - Authoritative verification:
-    - `dig @saanvi.ns.cloudflare.com +short boltroute.ai A` => `135.181.160.203`
-    - `dig @alaric.ns.cloudflare.com +short boltroute.ai A` => `135.181.160.203`
-    - `dig @saanvi.ns.cloudflare.com +short www.boltroute.ai CNAME` => `boltroute.ai.`
-- Propagation note:
-  - Recursive `dig +short boltroute.ai A` from this host still returned `192.248.184.194` at capture time, so public validation must account for TTL/cache propagation in Step `99.6.4`.
+### Status
+- Pending.
 
-## Step 99.6.4 - Post-cutover validation
+## Step 100.3 - Keep rollback readiness active
 
 ### What
-- Validate website public routing + TLS + unaffected dashboard.
+- Keep rollback playbook available for production regressions.
 
 ### Why
-- Cutover is only complete when end-user routes are healthy.
+- Post-cutover risk moves from migration execution to ongoing production stability.
 
 ### How
-1. Check DNS propagation:
-   - `dig +short boltroute.ai A`
-   - `dig +short www.boltroute.ai A`
-2. Check public response codes:
-   - `curl -I https://boltroute.ai`
-   - `curl -I https://www.boltroute.ai`
-   - `curl -I https://boltroute.ai/pricing`
-   - `curl -I https://boltroute.ai/integrations`
-3. Verify dashboard remains healthy:
-   - `curl -I https://app.boltroute.ai/overview`
-4. Verify local service still healthy:
-   - `systemctl status boltroute-website --no-pager`
+1. If regression is detected, revert `boltroute.ai` and `www.boltroute.ai` DNS back to `192.248.184.194`.
+2. Revert proxy changes only if they are part of the regression.
+3. Re-run website + dashboard smoke checks.
+4. Record the exact failing check and timestamp.
 
 ### Where
-- Any terminal with internet access + target host terminal
+- DNS provider + target host
 
-## Step 99.6.5 - Rollback (only if validation fails)
+### Status
+- Standby (execute only on failure).
+
+## Step 100.4 - Decide website deploy trigger policy after cutover
 
 ### What
-- Restore WordPress DNS target and previous proxy behavior.
+- Decide whether to keep manual-only website deploys or enable `push` auto-deploy for `apps/website/**`.
 
 ### Why
-- Minimize outage if cutover health criteria fail.
+- Contract currently defines manual deploy pre-cutover; post-cutover policy should be explicit.
 
 ### How
-1. Revert DNS A records for `boltroute.ai` and `www.boltroute.ai` back to pre-cutover target (`192.248.184.194`).
-2. Revert proxy changes if they introduced routing/TLS errors.
-3. Re-validate public site behavior and dashboard health.
-4. Document exact failed check and stop further changes.
+1. Review release governance and rollback tolerance.
+2. If approved, update `.github/workflows/website-deploy.yml` to include `push` trigger with path filters.
+3. Validate workflow behavior and document final policy in root docs.
 
 ### Where
-- DNS provider + target host proxy config
+- GitHub Actions workflow and root markdown docs
+
+### Status
+- Pending product/ops decision.
 
 ---
 
@@ -319,18 +264,19 @@
 ## 6) Immediate Resume Point For Next Codex Session
 
 ### What
-- Resume from Task `99.6` only, starting at sub-step `99.6.4`.
+- Resume from post-cutover state; Task `99.6` is completed.
 
 ### Why
-- All prerequisites and pre-cutover checks are complete.
+- DNS + proxy cutover and post-cutover validations are complete.
 
 ### How
 1. `git push origin main` at session start.
 2. Re-read `AGENTS.md`, this `handover.md`, and `ui-progress.md`.
-3. Execute Step `99.6.4` only (and `99.6.5` rollback only if validation fails).
-4. If any validation fails, execute `99.6.5` rollback.
-5. Update root trackers + push after each completion.
+3. Execute Step `100.1` as soon as root access is available.
+4. Execute Step `100.2` immediately after Step `100.1`.
+5. Monitor production routes (`boltroute.ai`, `www`, and `app`) and keep Step `100.3` rollback guard active.
+6. Execute Step `100.4` only after deploy-policy confirmation.
 
 ### Where
 - Repo: `/home/codex/email-verification-fe-v1`
-- Active task: `ui-progress.md` Task `99.6.4`
+- Active state: Task `99.6` completed (rollback playbook remains available)
