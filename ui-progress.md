@@ -86,11 +86,11 @@
 - [x] Task 83 - Import `br-website1` into `apps/website` as source-only files while keeping dashboard at repo root (MVP).
 - [x] Task 84 - Validate Step 1 monorepo structure and confirm dashboard root flow is unchanged (MVP).
 - [x] Task 85 - Prepare Step 2 move plan (`apps/dashboard`) and request confirmation before execution (MVP).
-- [ ] Task 86 - Commit and push Step 1 baseline (`apps/website` import) before major dashboard move (MVP).
-- [ ] Task 87 - Move dashboard project from repo root to `apps/dashboard` with no behavior change target (MVP).
-- [ ] Task 88 - Update dashboard deploy pipeline and deploy scripts to new `apps/dashboard` paths (MVP).
-- [ ] Task 89 - Add independent website CI workflow with path filters (MVP).
-- [ ] Task 90 - Validate monorepo Step 2 (dashboard tests/build + workflow lint sanity) and request confirmation before further enhancements (MVP).
+- [x] Task 86 - Commit and push Step 1 baseline (`apps/website` import) before major dashboard move (MVP).
+- [x] Task 87 - Move dashboard project from repo root to `apps/dashboard` with no behavior change target (MVP).
+- [x] Task 88 - Update dashboard deploy pipeline and deploy scripts to new `apps/dashboard` paths (MVP).
+- [x] Task 89 - Add independent website CI workflow with path filters (MVP).
+- [x] Task 90 - Validate monorepo Step 2 (dashboard tests/build + workflow lint sanity) and request confirmation before further enhancements (MVP).
 
 ## Progress log
 ### Task 1 - Completed
@@ -449,22 +449,48 @@
 - Why: Repo rules require pushing before major changes so rollback points are clear and remote history stays aligned.
 - How: Commit `apps/website` import + progress updates, then push `main`.
 
+### Task 86 - Completed
+- What: Committed and pushed the Step 1 baseline before dashboard relocation.
+- Why: Creates a stable rollback checkpoint before high-impact path moves.
+- How: Created commit `fb7a33d` with `apps/website` import + tracker updates and pushed to `origin/main`.
+
 ### Task 87 - Pending
 - What: Move dashboard project from root into `apps/dashboard`.
 - Why: Complete monorepo structure while preserving current dashboard behavior and keeping website isolated in `apps/website`.
 - How: Relocate dashboard frontend/backend/deploy/test/config assets into `apps/dashboard`, keep root docs/planning intact, and avoid introducing behavior changes.
+
+### Task 87 - Completed
+- What: Moved dashboard project from repo root to `apps/dashboard`.
+- Why: This completes the agreed monorepo structure while preserving website isolation and minimizing behavior drift.
+- How: Relocated dashboard frontend (`app`), backend (`backend`), deploy scripts (`deploy`), tests (`tests`), static assets (`public`), and dashboard configs/scripts into `apps/dashboard` using `git mv` so history is preserved; added root monorepo scripts in a new root `package.json`; updated root `.gitignore` to ignore nested `node_modules` and `.next`.
 
 ### Task 88 - Pending
 - What: Update dashboard deployment workflow and remote deploy script paths for `apps/dashboard`.
 - Why: Existing CI/CD assumes dashboard files live at repo root and would fail after relocation.
 - How: Rewrite workflow commands/rsync/deploy script references to operate from `apps/dashboard`, while keeping existing server/service names.
 
+### Task 88 - Completed
+- What: Updated dashboard deployment workflow for the new `apps/dashboard` layout.
+- Why: The existing workflow was root-path based and would fail after relocation.
+- How: Updated `.github/workflows/deploy.yml` to trigger only for dashboard path changes, run test commands from `apps/dashboard`, and sync release payload from `./apps/dashboard/` to the server release directory; server/service names and remote deploy script behavior were kept unchanged.
+
 ### Task 89 - Pending
 - What: Add independent website CI workflow with path-based triggering.
 - Why: Website changes should not trigger dashboard deployment, and website CI should run independently.
 - How: Add a separate GitHub Actions workflow scoped to `apps/website/**` (and shared root workflow files as needed) to run install/lint/build checks.
 
+### Task 89 - Completed
+- What: Added an independent website CI workflow with path filters.
+- Why: Website updates must be validated independently and must not trigger dashboard deployment pipeline runs.
+- How: Added `.github/workflows/website-ci.yml` with `push`/`pull_request` path filters for `apps/website/**`; workflow runs `npm ci`, `npm run lint`, and `npm run build` in `apps/website`.
+- Not implemented yet: Website production deploy stage is intentionally not included because deploy target/server credentials/domain routing details were not provided in this step.
+
 ### Task 90 - Pending
 - What: Validate Step 2 monorepo state and pause for confirmation.
 - Why: Need proof that the relocated dashboard and updated workflows are operational before any further enhancement work.
 - How: Run dashboard tests/build from new paths and perform workflow sanity checks; then report and wait for confirmation.
+
+### Task 90 - Completed
+- What: Validated monorepo Step 2 state after dashboard relocation and workflow updates.
+- Why: Confirms the MVP migration is operational before any follow-up enhancements.
+- How: Ran dashboard frontend tests and build via root monorepo scripts (`npm run test:dashboard`, `npm run build:dashboard`), ran backend smoke test from new path (`pytest backend/tests/test_settings.py` from `apps/dashboard` with venv active), and ran website CI-equivalent commands locally (`npm --prefix apps/website ci`, `lint`, `build`). All commands completed successfully; website lint/build emitted existing non-blocking warnings (e.g., `<img>`/hook dependency notices).

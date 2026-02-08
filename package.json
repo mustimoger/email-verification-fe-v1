@@ -1,40 +1,13 @@
 {
-  "name": "ev-temp",
-  "version": "0.1.0",
+  "name": "boltroute-monorepo",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint",
-    "test:history": "tsx tests/history-mapping.test.ts",
-    "test:auth-guard": "tsx tests/auth-guard-utils.test.ts",
-    "test:overview": "tsx tests/overview-mapping.test.ts",
-    "test:account-purchases": "tsx tests/account-purchases.test.ts"
-  },
-  "dependencies": {
-    "@paddle/paddle-js": "^1.6.1",
-    "@phosphor-icons/react": "^2.1.10",
-    "@supabase/supabase-js": "^2.87.3",
-    "lucide-react": "^0.561.0",
-    "next": "16.0.10",
-    "papaparse": "^5.5.3",
-    "react": "19.2.1",
-    "react-dom": "19.2.1",
-    "recharts": "^3.5.1",
-    "xlsx": "^0.18.5"
-  },
-  "devDependencies": {
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
-    "@types/papaparse": "^5.5.2",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "16.0.10",
-    "playwright": "^1.57.0",
-    "tailwindcss": "^4",
-    "tsx": "^4.19.2",
-    "typescript": "^5"
+    "dev:dashboard": "npm --prefix apps/dashboard run dev",
+    "build:dashboard": "npm --prefix apps/dashboard run build",
+    "test:dashboard": "npm --prefix apps/dashboard run test:history && npm --prefix apps/dashboard run test:auth-guard && npm --prefix apps/dashboard run test:overview && npm --prefix apps/dashboard run test:account-purchases",
+    "dev:website": "npm --prefix apps/website run dev",
+    "build:website": "npm --prefix apps/website run build",
+    "lint:website": "npm --prefix apps/website run lint",
+    "content:website": "npm --prefix apps/website run content:build"
   }
 }

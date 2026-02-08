@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - main
+    paths:
+      - "apps/dashboard/**"
+      - ".github/workflows/deploy.yml"
 
 concurrency:
   group: deploy-main
@@ -12,6 +15,9 @@ concurrency:
 jobs:
   test:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/dashboard
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -110,7 +116,7 @@ jobs:
             --exclude .qa \
             --exclude .tmp \
             --exclude key-value-pair.txt \
-            ./ "${DEPLOY_USER}@${DEPLOY_HOST}:${APP_ROOT}/releases/${RELEASE_ID}/"
+            ./apps/dashboard/ "${DEPLOY_USER}@${DEPLOY_HOST}:${APP_ROOT}/releases/${RELEASE_ID}/"
 
       - name: Deploy release
         run: |
