@@ -91,6 +91,10 @@
 - [x] Task 88 - Update dashboard deploy pipeline and deploy scripts to new `apps/dashboard` paths (MVP).
 - [x] Task 89 - Add independent website CI workflow with path filters (MVP).
 - [x] Task 90 - Validate monorepo Step 2 (dashboard tests/build + workflow lint sanity) and request confirmation before further enhancements (MVP).
+- [x] Task 91 - Create root `handover.md` with unambiguous next-session execution steps (what/why/how/where) (MVP).
+- [x] Task 92 - Verify production dashboard deploy status after monorepo move (workflow health + endpoint smoke checks) (MVP).
+- [x] Task 93 - Define and document website production deployment contract (host/path/service/domain/env/trigger) (MVP).
+- [ ] Task 94 - Implement website production deploy workflow/script from locked contract (manual trigger pre-cutover) (MVP).
 
 ## Progress log
 ### Task 1 - Completed
@@ -494,3 +498,24 @@
 - What: Validated monorepo Step 2 state after dashboard relocation and workflow updates.
 - Why: Confirms the MVP migration is operational before any follow-up enhancements.
 - How: Ran dashboard frontend tests and build via root monorepo scripts (`npm run test:dashboard`, `npm run build:dashboard`), ran backend smoke test from new path (`pytest backend/tests/test_settings.py` from `apps/dashboard` with venv active), and ran website CI-equivalent commands locally (`npm --prefix apps/website ci`, `lint`, `build`). All commands completed successfully; website lint/build emitted existing non-blocking warnings (e.g., `<img>`/hook dependency notices).
+
+### Task 91 - Completed
+- What: Created a root-level `handover.md` with explicit continuation steps for the next Codex session.
+- Why: Current context window is nearly exhausted and the migration state must be documented to prevent uncertainty in follow-up work.
+- How: Added `handover.md` covering current monorepo state, validated commit anchors, unresolved gaps, strict ordered next actions, and mandatory process rules using explicit what/why/how/where sections.
+
+### Task 92 - Completed
+- What: Verified production dashboard deploy health after the monorepo move.
+- Why: Step 1 in `handover.md` requires proof that `apps/dashboard` path changes deploy correctly and production routes remain healthy.
+- How: Queried GitHub Actions deploy runs with `gh run list --workflow deploy.yml`; confirmed commit `018aca6` run `21796340993` succeeded (both `test` and `deploy` jobs green via `gh run view 21796340993`). Then ran production smoke checks: `https://app.boltroute.ai/` (`307` to `/overview`, final `200`), `https://app.boltroute.ai/overview` (`200`), and `https://app.boltroute.ai/pricing/embed` (`200`).
+
+### Task 93 - Completed
+- What: Define the website deployment contract inputs required before implementing `website-deploy.yml`.
+- Why: Step 2 in `handover.md` blocks deploy automation until host/user/path/service/domain/env/trigger values are explicitly locked.
+- How: Audited current deploy workflows/secrets/runtime usage (`deploy.yml`, `website-ci.yml`, `apps/website/src/**`, `gh secret list`) and live DNS/headers (`dig`, `curl`), then finalized the contract in `deployment.md`: Option A host/user reuse, release root `/var/www/boltroute-website`, service `boltroute-website`, upstream `127.0.0.1:3002`, env path `/var/www/boltroute-website/shared/.env.local`, and manual-only deploy trigger before cutover.
+- Not implemented yet: No deploy workflow/script or DNS/proxy cutover changes were made in this step; those are deferred to the next steps by design.
+
+### Task 94 - Pending
+- What: Implement website production deploy workflow and remote deploy script from the locked contract.
+- Why: Step 3 in `handover.md` requires a separate website deploy path independent of dashboard deploy.
+- How: Add `apps/website/deploy/remote-deploy.sh` and `.github/workflows/website-deploy.yml` using manual dispatch initially, website-specific release root/service/env paths, and CI gate (`npm ci`, `lint`, `build`) before deploy.

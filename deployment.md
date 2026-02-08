@@ -31,6 +31,56 @@
 - [ ] Step 10.2 - Update external API base URL env + redeploy (Overview data unavailable)
 - [ ] Step 10.3 - Fix frontend API base URL env + redeploy (CORS on /api)
 
+## Step 2 (Monorepo) - Website deployment contract status
+
+### What
+- Lock the website deployment contract before implementing `.github/workflows/website-deploy.yml`.
+
+### Why
+- `handover.md` requires exact deploy inputs (host/path/service/domain/env/trigger) before any website production deploy automation is written.
+
+### How
+- Collected facts from:
+  - `.github/workflows/deploy.yml` (dashboard deploy baseline)
+  - `.github/workflows/website-ci.yml` (current website CI-only status)
+  - `apps/website/src/**` (runtime env usage)
+  - live DNS + header checks (`dig`, `curl`) on February 8, 2026.
+
+### Contract items (required)
+- 1. Destination host + deploy user:
+  - Locked: Reuse dashboard deploy host/user (Option A) via existing repo secrets `DEPLOY_HOST` + `DEPLOY_USER`.
+  - Known: dashboard deploy currently targets `/var/www/boltroute-app` on host `135.181.160.203` (`app.boltroute.ai` infra).
+  - Known: `boltroute.ai` and `www.boltroute.ai` resolve to `192.248.184.194`, while `app.boltroute.ai` resolves to `135.181.160.203`.
+  - Known: `https://boltroute.ai` currently serves WordPress via `nginx` (response includes `wp-json` links).
+  - Status: Locked.
+- 2. Website release root path:
+  - Locked: `/var/www/boltroute-website`.
+  - Status: Locked.
+- 3. Website systemd service name:
+  - Locked: `boltroute-website`.
+  - Status: Locked.
+- 4. Reverse proxy/vhost mapping:
+  - Known: final target domains are `boltroute.ai` and `www.boltroute.ai`.
+  - Known: new website is not assigned to those domains yet; current WordPress site remains active there and will be replaced at cutover.
+  - Known: `http://www.boltroute.ai` redirects to HTTPS, but `https://www.boltroute.ai` currently has a certificate hostname mismatch.
+  - Locked pre-cutover deploy shape: run website service on `127.0.0.1:3002` on Option A host for verification without switching public traffic.
+  - Locked cutover target: move `boltroute.ai` and `www.boltroute.ai` to website host and proxy both hostnames to `127.0.0.1:3002`.
+  - Status: Deployment contract locked; DNS/TLS/proxy cutover execution remains a later operational step.
+- 5. Environment file location + required env keys:
+  - Known runtime key from code: one of `NEXT_PUBLIC_SITE_URL` or `SITE_URL` is needed for absolute canonical/OG URLs (`apps/website/src/app/[slug]/page.tsx`).
+  - Known: `apps/website` runtime does not require other env keys for page rendering.
+  - Known optional automation keys (not website runtime): `IMAP_*`, `PROCESSED_FOLDER`, `ALLOWED_SENDERS`, `GIT_AUTHOR_*` for email publishing workflow in `apps/website/.github/workflows/email-publish.yml`.
+  - Locked env file path: `/var/www/boltroute-website/shared/.env.local`.
+  - Status: Locked.
+- 6. Deploy trigger policy:
+  - Locked initial policy: manual deploy only (`workflow_dispatch`) until domain cutover is approved and complete.
+  - Planned post-cutover policy: add `push` trigger on `main` with `apps/website/**` path filter.
+  - Status: Locked.
+
+### Not implemented yet
+- Website deploy workflow/script are intentionally not created in this step.
+- Reason: Step 3 implementation is a separate step and requires explicit confirmation before code changes.
+
 ## MVP deployment plan (production-grade baseline)
 
 ### Step 1 - Inventory and baseline checks
