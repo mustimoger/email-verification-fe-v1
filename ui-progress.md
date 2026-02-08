@@ -567,3 +567,4 @@
 - What: Provision website deploy prerequisites on the target host and rerun manual website deploy.
 - Why: Task 98 identified concrete blockers that must be resolved before DNS cutover readiness can be confirmed.
 - How: Ensure `/var/www/boltroute-website` exists with deploy-user write access, create/configure `boltroute-website` service and upstream binding (`127.0.0.1:3002`), add `WEBSITE_APP_ENV_LOCAL` GitHub secret, rerun `.github/workflows/website-deploy.yml`, then verify run success and runtime health.
+- Update: `handover.md` was fully rewritten with strict, no-ambiguity next-session sequencing (What/Why/How/Where) focused on Task 99 execution order and cutover readiness.
