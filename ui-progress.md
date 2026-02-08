@@ -95,7 +95,8 @@
 - [x] Task 92 - Verify production dashboard deploy status after monorepo move (workflow health + endpoint smoke checks) (MVP).
 - [x] Task 93 - Define and document website production deployment contract (host/path/service/domain/env/trigger) (MVP).
 - [x] Task 94 - Implement website production deploy workflow/script from locked contract (manual trigger pre-cutover) (MVP).
-- [ ] Task 95 - Add root monorepo operator README (layout/commands/workflows/deploy ownership) (MVP).
+- [x] Task 95 - Add root monorepo operator README (layout/commands/workflows/deploy ownership) (MVP).
+- [ ] Task 96 - Choose and execute the first resumed pending product task after deploy-stability steps (MVP).
 
 ## Progress log
 ### Task 1 - Completed
@@ -523,7 +524,13 @@
 - Validation: With Python venv active, ran website checks locally via `cd apps/website && npm ci --include=dev && npm run lint && npm run build`; all passed with existing non-blocking warnings (`<img>` optimization and one React hook dependency warning).
 - Not implemented yet: No manual production deploy run executed yet; domain/proxy cutover away from WordPress is still pending by design.
 
-### Task 95 - Pending
+### Task 95 - Completed
 - What: Add a root monorepo operator README for daily usage and ownership boundaries.
 - Why: Step 4 in `handover.md` requires a clear runbook to avoid wrong-path edits in future sessions.
-- How: Create `README.md` at repo root covering monorepo layout, app-specific commands, workflow triggers, and current deploy ownership/status (dashboard active, website deploy manual pre-cutover).
+- How: Created root `README.md` with monorepo layout, local dev/test/build commands per app, CI/deploy workflow triggers, required deploy secrets, and current deployment ownership/status (dashboard active on `app.boltroute.ai`, website deploy workflow manual pre-cutover while WordPress remains live on `boltroute.ai`).
+- Not implemented yet: No runtime/deploy behavior changed in this step; this task is documentation only.
+
+### Task 96 - Pending
+- What: Start Step 5 by selecting and executing the next pending product task from the tracker.
+- Why: `handover.md` sequence says product work resumes only after deploy-stability steps (Steps 1-4) are complete.
+- How: Pick one pending task from `ui-progress.md` (outside migration steps), document it before implementation, complete MVP + validation, then pause for confirmation.
