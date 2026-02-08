@@ -123,6 +123,7 @@
 - [x] Task 109 - Execute Step 110.3 stale unchecked task reconciliation in `ui-progress.md` (MVP).
 - [x] Task 110 - Execute Step 110.4 by selecting one true pending product task with user confirmation (MVP).
 - [x] Task 111 - Create root `structure.md` that explains monorepo production deployment and GitHub Actions push-to-production flow in beginner-friendly language (MVP).
+- [x] Task 112 - Fix broken privacy link on website Terms page by replacing `https://boltroute.ai/privacy` with `https://boltroute.ai/privacy-policy` (MVP).
 
 ## Progress log
 ### Task 1 - Completed
@@ -729,3 +730,10 @@
 - How: Documented the two production pipelines from real workflow/script sources (`deploy.yml`, `website-deploy.yml`, `website-ci.yml`, and both remote deploy scripts), including trigger rules, release process, service restarts, secret usage, and practical "how code reaches production" steps.
 - Where: `structure.md` (repo root).
 - Not implemented yet: No runtime or infrastructure changes were performed; this task is documentation-only.
+
+### Task 112 - Completed
+- What: Fixed the broken privacy URL in the Terms page content by changing `https://boltroute.ai/privacy` to `https://boltroute.ai/privacy-policy`.
+- Why: The previous URL is broken on production and sends users to a non-existent page from the legal terms content.
+- How: Updated the Terms MDX source at `apps/website/content/pages/terms.mdx`, then verified the replacement with `rg` and ran `source .venv/bin/activate && npm --prefix apps/website run build` to confirm website build integrity.
+- Where: `apps/website/content/pages/terms.mdx`.
+- Not implemented yet: No additional legal-page link normalization was performed in this task beyond the user-requested Terms-page fix.

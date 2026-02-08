@@ -1,6 +1,6 @@
 # Handover: Dashboard + Website Integration (Post-Cutover Runbook)
 
-## 0) Snapshot (Updated 2026-02-08 18:21:39 UTC)
+## 0) Snapshot (Updated 2026-02-08 18:25:26 UTC)
 
 ### What
 - Production domains are live and stable:
@@ -342,3 +342,23 @@
 
 ### Next strict step
 - Follow Step `110.5` steady-state ops posture and continue backlog work one confirmed task at a time.
+
+### Post-Step-110.4 Task 112 - Completed (`2026-02-08 18:25:26 UTC`)
+
+### What
+- Fixed the broken privacy URL in the Terms page content on the website app.
+
+### Why
+- Legal-page links must resolve correctly; `https://boltroute.ai/privacy` was broken and needed to point to the existing Privacy Policy route.
+
+### How
+1. Updated `apps/website/content/pages/terms.mdx` to use `https://boltroute.ai/privacy-policy`.
+2. Verified the replacement by search.
+3. Ran `source .venv/bin/activate && npm --prefix apps/website run build` to confirm site build health.
+
+### Where
+- `apps/website/content/pages/terms.mdx`
+- `ui-progress.md`, `deployment.md`, `handover.md`
+
+### Next strict step
+- Continue single-task backlog execution with user confirmation per Item B and Step `110.5`.

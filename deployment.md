@@ -438,6 +438,13 @@
 - **Where:** `ui-progress.md` (Task `110` + Task `111`), `structure.md`.
 - **Status:** Complete (`2026-02-08 18:21:39 UTC`).
 
+### Post-Step-110.4 Task 112 - Terms privacy link fix (completed)
+- **What:** Replaced broken Terms-page privacy URL with the valid policy URL.
+- **Why:** `https://boltroute.ai/privacy` is broken in production Terms content; legal links must resolve correctly.
+- **How:** Updated `apps/website/content/pages/terms.mdx` from `https://boltroute.ai/privacy` to `https://boltroute.ai/privacy-policy`, verified replacement by search, and validated with `source .venv/bin/activate && npm --prefix apps/website run build` (build passed; existing non-blocking lint warnings remained).
+- **Where:** `apps/website/content/pages/terms.mdx`.
+- **Status:** Complete (`2026-02-08 18:21:40 UTC`).
+
 ## Open items (required before execution)
 - Confirm the current web server (Nginx/Apache/Caddy/other) and how TLS is managed today.
 - Confirm downtime tolerance and rollback expectations for the cutover.
