@@ -83,6 +83,7 @@
   - `apps/website/deploy/remote-deploy.sh`
 - Still not implemented:
   - Manual website deploy run was executed and failed: run `21801362879` (`2026-02-08`) failed at `Create release directory` with `mkdir: cannot create directory '/var/www/boltroute-website': Permission denied`.
+  - Task 99.1 execution attempt on `2026-02-08` from this Codex session is blocked by host privilege constraints: `/var/www` is `root:root` and direct `mkdir -p /var/www/boltroute-website/{releases,shared}` fails with `Permission denied`; `sudo -n mkdir ...` fails with `sudo: a password is required`.
   - `WEBSITE_APP_ENV_LOCAL` GitHub secret is not configured yet (required by website deploy workflow).
   - Server-side service/proxy provisioning for `boltroute-website` and `127.0.0.1:3002` is not executed in this repo step.
   - `boltroute.ai`/`www.boltroute.ai` DNS+TLS cutover from WordPress is not executed yet.

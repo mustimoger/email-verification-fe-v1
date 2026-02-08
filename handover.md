@@ -89,6 +89,11 @@
   - `website-checks` job: success
   - `deploy` job: failure at step `Create release directory`
   - Error: `mkdir: cannot create directory '/var/www/boltroute-website': Permission denied`
+- Session evidence (`2026-02-08`):
+  - `/var/www` confirmed as `root:root` (`drwxr-xr-x`).
+  - Direct `mkdir -p /var/www/boltroute-website/{releases,shared}` fails with `Permission denied`.
+  - `sudo -n mkdir ...` fails with `sudo: a password is required`.
+  - SSH as `boltroute` from this session host fails (`Permission denied (publickey,password)`), so deploy-user write validation cannot be executed from this session context.
 
 ### Where
 - Workflow file: `.github/workflows/website-deploy.yml`
@@ -102,6 +107,7 @@
 
 ### What
 - Deploy user lacks write/create permissions for `/var/www/boltroute-website`.
+- Current Codex session context lacks root-capable access to fix `/var/www` ownership/permissions directly.
 - Required GitHub secret `WEBSITE_APP_ENV_LOCAL` is missing.
 - Host-level website runtime/proxy provisioning for `boltroute-website` on `127.0.0.1:3002` is not complete.
 - DNS cutover from WordPress host (`boltroute.ai`) to website host is not executed.
@@ -135,6 +141,7 @@
    - `/var/www/boltroute-website/shared`
 3. Set ownership/permissions so `DEPLOY_USER` can write under `/var/www/boltroute-website`.
 4. Verify with a write test as `DEPLOY_USER`.
+5. Current status: blocked in this session until root-level host commands are executed by an operator with sufficient privileges.
 
 ### Where
 - Target host filesystem
@@ -250,7 +257,7 @@
 ### How
 1. Push `main` at session start.
 2. Re-read `AGENTS.md`, `handover.md`, `ui-progress.md`.
-3. Execute Section 5 Step 1 onward in order.
+3. Unblock Step 1 with root-level host access, then execute Section 5 Step 1 onward in order.
 4. After each completed sub-step:
    - update `ui-progress.md` with What/Why/How
    - update `deployment.md`/`handover.md` if state changed

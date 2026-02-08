@@ -100,6 +100,7 @@
 - [x] Task 97 - Choose and execute the next resumed pending product task after Task 65 (MVP).
 - [x] Task 98 - Validate pre-cutover website deploy readiness and run manual website deploy workflow (MVP).
 - [ ] Task 99 - Provision website deploy prerequisites on target host and rerun manual website deploy workflow (MVP).
+- [ ] Task 99.1 - Prepare target host filesystem and permissions for `/var/www/boltroute-website` (MVP, blocked: root-level filesystem access required).
 
 ## Progress log
 ### Task 1 - Completed
@@ -568,3 +569,9 @@
 - Why: Task 98 identified concrete blockers that must be resolved before DNS cutover readiness can be confirmed.
 - How: Ensure `/var/www/boltroute-website` exists with deploy-user write access, create/configure `boltroute-website` service and upstream binding (`127.0.0.1:3002`), add `WEBSITE_APP_ENV_LOCAL` GitHub secret, rerun `.github/workflows/website-deploy.yml`, then verify run success and runtime health.
 - Update: `handover.md` was fully rewritten with strict, no-ambiguity next-session sequencing (What/Why/How/Where) focused on Task 99 execution order and cutover readiness.
+
+### Task 99.1 - Blocked
+- What: Attempted to provision `/var/www/boltroute-website` filesystem paths and permissions on the deploy host.
+- Why: Task 99.1 must be completed before service provisioning and deploy rerun can proceed safely.
+- How: Verified `/var/www` is owned by `root:root` (`drwxr-xr-x`), confirmed `/var/www/boltroute-website` does not exist, and attempted `mkdir -p /var/www/boltroute-website/{releases,shared}` which failed with `Permission denied`; attempted `sudo -n mkdir ...` also failed with `sudo: a password is required`.
+- Not implemented yet: Root-privileged execution is still required to create `/var/www/boltroute-website`, set ownership to `boltroute:boltroute`, and validate deploy-user write access.
