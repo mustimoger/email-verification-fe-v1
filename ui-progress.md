@@ -575,6 +575,7 @@
 - How: Ensure `/var/www/boltroute-website` exists with deploy-user write access, create/configure `boltroute-website` service and upstream binding (`127.0.0.1:3002`), add `WEBSITE_APP_ENV_LOCAL` GitHub secret, rerun `.github/workflows/website-deploy.yml`, then verify run success and runtime health.
 - Update: `handover.md` was fully rewritten with strict, no-ambiguity next-session sequencing (What/Why/How/Where) focused on Task 99 execution order and cutover readiness.
 - Update (`2026-02-08`): Tasks 99.1, 99.2, 99.3, 99.4, and 99.5 are completed; next strict step is Task 99.6 DNS/proxy cutover (when approved).
+- Update (`2026-02-08`): Root `handover.md` was rewritten again with a cutover-only continuation runbook (exact evidence + strict 99.6 step order + rollback procedure) to support context-window handoff with no ambiguity.
 
 ### Task 99.1 - Completed
 - What: Provisioned the website release root directories and deploy-user permissions for `/var/www/boltroute-website`.

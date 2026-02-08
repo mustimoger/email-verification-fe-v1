@@ -1,290 +1,291 @@
-# Handover: Dashboard + Website Integration (Cutover Readiness)
+# Handover: Dashboard + Website Integration (Cutover Stage)
 
-## 0) Scope (Updated February 8, 2026)
+## 0) Snapshot (Updated 2026-02-08 17:10:11 UTC)
 
 ### What
-- This repo now contains both applications:
-  - Dashboard: `apps/dashboard` (live at `app.boltroute.ai`)
-  - Public website: `apps/website` (to replace current WordPress site at `boltroute.ai`)
-- Website deploy automation exists but cutover is not finished.
+- Monorepo apps are in place:
+  - Dashboard: `apps/dashboard` (production: `https://app.boltroute.ai`)
+  - Website: `apps/website` (target production: `https://boltroute.ai`, `https://www.boltroute.ai`)
+- Task sequence is at `ui-progress.md` Task `99.6` (cutover pending approval).
 
 ### Why
-- Next session must continue from the exact cutover-readiness state without repeating completed migration work.
+- Previous blockers (filesystem, systemd service, secret, deploy rerun, smoke checks) are resolved.
+- Remaining work is DNS + reverse proxy cutover only.
 
 ### How
-- Use this file as the primary continuation runbook.
-- Use `ui-progress.md` for task status and `deployment.md` for deploy contract details.
+- Continue strictly from Task `99.6` and do not re-run completed setup tasks unless rollback/recovery requires it.
 
 ### Where
-- Task tracker: `ui-progress.md`
-- Deploy contract/status: `deployment.md`
-- Operator commands: `README.md`
+- Primary tracker: `ui-progress.md`
+- Deploy contract and status: `deployment.md`
+- This continuation runbook: `handover.md`
 
 ---
 
-## 1) Current Confirmed State
+## 1) Locked Decisions (Do Not Re-Decide)
 
 ### What
-- Monorepo migration is complete:
-  - Step 1 import complete: website source is under `apps/website`.
-  - Step 2 move complete: dashboard moved to `apps/dashboard`.
-- Dashboard deploy pipeline is active and healthy.
-- Website deploy pipeline is implemented and manually triggerable.
-- Marketing mock-data docs/consistency tasks (65, 66) are complete.
+- Deployment contract is locked to reuse dashboard host/user (Option A).
+- Website service contract is locked.
 
 ### Why
-- There is no need to re-run migration steps; effort should focus on pre-cutover provisioning and deploy success.
-
-### How
-- Completed artifacts/workflows:
-  - Dashboard deploy workflow: `.github/workflows/deploy.yml`
-  - Website CI workflow: `.github/workflows/website-ci.yml`
-  - Website deploy workflow: `.github/workflows/website-deploy.yml`
-  - Website remote deploy script: `apps/website/deploy/remote-deploy.sh`
-  - Root monorepo runbook: `README.md`
-
-### Where
-- Apps: `apps/dashboard`, `apps/website`
-- Workflows: `.github/workflows/`
-- Deploy scripts: `apps/dashboard/deploy/`, `apps/website/deploy/`
-
----
-
-## 2) Locked Decisions (Do Not Re-decide Unless User Changes Them)
-
-### What
-- Website deployment contract is locked to **Option A** (reuse dashboard deploy host/user).
-- Website deploy is **manual pre-cutover**.
-
-### Why
-- These were explicitly confirmed and used to build the workflow/script already in `main`.
+- Workflows/scripts and host provisioning were built against these values.
 
 ### How
 - Locked values:
   - Deploy host/user: `DEPLOY_HOST` + `DEPLOY_USER`
-  - Website app root: `/var/www/boltroute-website`
-  - Website env file path: `/var/www/boltroute-website/shared/.env.local`
-  - Website service name: `boltroute-website`
-  - Website upstream target: `127.0.0.1:3002`
-  - Trigger policy (pre-cutover): `workflow_dispatch`
+  - Website root: `/var/www/boltroute-website`
+  - Website env file: `/var/www/boltroute-website/shared/.env.local`
+  - Website service: `boltroute-website`
+  - Website upstream: `127.0.0.1:3002`
+  - Deploy workflow: `.github/workflows/website-deploy.yml` (manual pre-cutover)
 
 ### Where
-- Contract source: `deployment.md` section `Step 2 (Monorepo) - Website deployment contract status`
+- Contract details are also reflected in `deployment.md`.
 
 ---
 
-## 3) Verified Evidence (Latest)
+## 2) Verified Current State (Evidence)
+
+## A) Workflow evidence
 
 ### What
-- Latest website deploy workflow run exists and completed successfully.
-- Historical failure root cause was host filesystem permissions, now remediated.
+- Historical failing run exists, and remediation rerun succeeded.
 
 ### Why
-- Next session should continue on the remaining blocker only (DNS/proxy cutover), since CI checks pass, host prerequisites are provisioned, deploy rerun is green, and runtime smoke checks are now passing.
+- Confirms deploy pipeline now works end-to-end after prerequisite fixes.
 
 ### How
-- Run inspected:
-  - Workflow run: `21801362879`
+- Failed run:
+  - Run ID: `21801362879`
   - URL: `https://github.com/mustimoger/email-verification-fe-v1/actions/runs/21801362879`
-  - `website-checks` job: success
-  - `deploy` job: failure at step `Create release directory`
-  - Error: `mkdir: cannot create directory '/var/www/boltroute-website': Permission denied`
-- Rerun after remediation:
-  - Workflow run: `21801917773`
+  - Failure: `Create release directory` (`Permission denied`)
+- Successful rerun:
+  - Run ID: `21801917773`
   - URL: `https://github.com/mustimoger/email-verification-fe-v1/actions/runs/21801917773`
-  - `website-checks` job: success
-  - `deploy` job: success
-  - Deploy critical steps: `Create release directory`, `Upload env file`, `Sync release`, `Deploy release` all successful.
-- Remediation evidence (`2026-02-08`):
-  - Operator created `/var/www/boltroute-website/{releases,shared}` with root privileges.
-  - Validation now shows:
-    - `/var/www/boltroute-website` -> `drwxr-xr-x boltroute boltroute`
-    - `/var/www/boltroute-website/releases` -> `drwxr-xr-x boltroute boltroute`
-    - `/var/www/boltroute-website/shared` -> `drwxr-xr-x boltroute boltroute`
-  - Deploy-user write test succeeded (`touch` + `rm` in `shared/`).
-  - Operator provisioned `boltroute-website.service` and sudoers restart permission for `boltroute`.
-  - Validation now shows:
-    - `systemctl status boltroute-website` -> `active (running)`
-    - `ss -ltn` -> `LISTEN ... 127.0.0.1:3002`
-    - `curl -I http://127.0.0.1:3002` -> `HTTP/1.1 200 OK`
-  - Operator configured `WEBSITE_APP_ENV_LOCAL`; verification shows `WEBSITE_APP_ENV_LOCAL 2026-02-08T16:58:17Z` in repo secrets.
-  - Pre-cutover runtime smoke checks passed:
-    - `systemctl status boltroute-website` -> `active`
-    - `curl -I http://127.0.0.1:3002/` -> `200`
-    - `curl -I http://127.0.0.1:3002/pricing` -> `200`
-    - `curl -I http://127.0.0.1:3002/integrations` -> `200`
-    - `curl -I https://app.boltroute.ai/` -> `307` (`Location: /overview`)
-    - `curl -I https://app.boltroute.ai/overview` -> `200`
-    - `curl -I https://app.boltroute.ai/pricing/embed` -> `200`
+  - Status: `completed` / `success`
+  - Jobs: `website-checks` = success, `deploy` = success
+  - Critical deploy steps succeeded: `Create release directory`, `Upload env file`, `Sync release`, `Deploy release`
 
 ### Where
-- Workflow file: `.github/workflows/website-deploy.yml`
-- Failure context recorded in:
-  - `ui-progress.md` (Task 98 completed, Task 99 pending)
-  - `deployment.md` (website deploy blockers)
+- GitHub Actions workflow: `.github/workflows/website-deploy.yml`
 
----
-
-## 4) Known Open Blockers
+## B) Host/runtime evidence
 
 ### What
-- DNS cutover from WordPress host (`boltroute.ai`) to website host is not executed.
+- Website runtime is active on the target upstream and serving pages.
 
 ### Why
-- These prevent successful pre-cutover deployment and production cutover readiness.
+- Confirms cutover target is healthy before DNS switch.
 
 ### How
-- Resolve blockers in strict order under Section 5.
+- Service: `systemctl status boltroute-website` => `active (running)`
+- Listener: `ss -ltn` includes `127.0.0.1:3002`
+- Local route checks:
+  - `curl -I http://127.0.0.1:3002/` => `200`
+  - `curl -I http://127.0.0.1:3002/pricing` => `200`
+  - `curl -I http://127.0.0.1:3002/integrations` => `200`
+- Dashboard unaffected:
+  - `curl -I https://app.boltroute.ai/` => `307` to `/overview`
+  - `curl -I https://app.boltroute.ai/overview` => `200`
+  - `curl -I https://app.boltroute.ai/pricing/embed` => `200`
 
 ### Where
-- Pending task: `ui-progress.md` Task 99
-- Operational notes: `deployment.md`
+- Target host runtime (`boltroute-website` service)
+- Public dashboard domain (`app.boltroute.ai`)
 
----
-
-## 5) Next Actions (Strict Order, Step-by-Step)
-
-## Step 1: Prepare target host filesystem and permissions (Task 99.1)
+## C) DNS/public status evidence (pre-cutover)
 
 ### What
-- Ensure website release root exists and is writable by deploy user.
+- `boltroute.ai` is still on WordPress host (expected before cutover).
 
 ### Why
-- Current workflow fails before upload because deploy user cannot create `/var/www/boltroute-website`.
+- Confirms public cutover has not started yet.
 
 ### How
-1. SSH to target host from `DEPLOY_HOST`.
-2. Create required paths:
-   - `/var/www/boltroute-website/releases`
-   - `/var/www/boltroute-website/shared`
-3. Set ownership/permissions so `DEPLOY_USER` can write under `/var/www/boltroute-website`.
-4. Verify with a write test as `DEPLOY_USER`.
-5. Current status (`2026-02-08`): completed; paths exist and are writable by `DEPLOY_USER` (`boltroute`).
+- DNS snapshot:
+  - `dig +short boltroute.ai A` => `192.248.184.194`
+  - `dig +short www.boltroute.ai A` => `192.248.184.194`
+  - `dig +short app.boltroute.ai A` => `135.181.160.203`
+- Public response snapshot:
+  - `https://boltroute.ai` returns WordPress/nginx response (`wp-json` link present)
+  - `https://www.boltroute.ai` currently has certificate hostname mismatch
 
 ### Where
-- Target host filesystem
-- Contract path: `/var/www/boltroute-website`
-
-## Step 2: Provision/verify website systemd service (Task 99.2)
-
-### What
-- Ensure `boltroute-website` service exists and is configured to run the website from `current` on `127.0.0.1:3002`.
-
-### Why
-- Deploy script ends with `sudo systemctl restart boltroute-website`; service must exist and be valid.
-
-### How
-1. Create or verify `/etc/systemd/system/boltroute-website.service`.
-2. Configure startup from `/var/www/boltroute-website/current`.
-3. Bind website runtime to `127.0.0.1:3002`.
-4. Reload daemon and test service restart.
-5. Confirm service status is `active`.
-6. Current status (`2026-02-08`): completed; service is enabled and active on `127.0.0.1:3002`.
-
-### Where
-- Target host systemd configuration
-- Service name: `boltroute-website`
-
-## Step 3: Add/verify website env secret (Task 99.3)
-
-### What
-- Add `WEBSITE_APP_ENV_LOCAL` in GitHub Actions secrets.
-
-### Why
-- Workflow step `Upload env file` requires this secret.
-
-### How
-1. Add secret in repo settings:
-   - Key: `WEBSITE_APP_ENV_LOCAL`
-   - Value: website `.env.local` content
-2. Include at minimum:
-   - `NEXT_PUBLIC_SITE_URL=https://boltroute.ai`
-   - or `SITE_URL=https://boltroute.ai`
-3. Keep final value aligned with cutover target domain.
-4. Current status (`2026-02-08`): completed; `gh secret list` shows `WEBSITE_APP_ENV_LOCAL 2026-02-08T16:58:17Z`.
-
-### Where
-- GitHub repo secrets: `mustimoger/email-verification-fe-v1`
-- Workflow consumer: `.github/workflows/website-deploy.yml`
-
-## Step 4: Rerun manual website deploy workflow (Task 99.4)
-
-### What
-- Re-run `Website Deploy` manually after Steps 1-3.
-
-### Why
-- Must confirm deployment works end-to-end before DNS cutover.
-
-### How
-1. Trigger workflow:
-   - `gh workflow run website-deploy.yml --repo mustimoger/email-verification-fe-v1 --ref main`
-2. Monitor run to completion.
-3. Record run ID, status, and any failed step.
-4. Current status (`2026-02-08`): completed with run `21801917773` (`success`).
-
-### Where
-- Workflow: `.github/workflows/website-deploy.yml`
-
-## Step 5: Pre-cutover runtime smoke checks (Task 99.5)
-
-### What
-- Validate deployed website is serving correctly on target host without public DNS switch.
-
-### Why
-- Need confidence in runtime health before replacing WordPress routing.
-
-### How
-1. Verify service:
-   - `systemctl status boltroute-website`
-2. Verify local upstream:
-   - `curl -I http://127.0.0.1:3002`
-3. Verify essential routes return successful responses (for example `/`, `/pricing`, `/integrations`).
-4. Confirm dashboard (`app.boltroute.ai`) remains unaffected.
-5. Current status (`2026-02-08`): completed; all checks passed.
-
-### Where
-- Target host runtime
-- Dashboard domain: `https://app.boltroute.ai`
-
-## Step 6: DNS + proxy cutover plan and execution (Task 99.6, when approved)
-
-### What
-- Replace WordPress routing for `boltroute.ai` / `www.boltroute.ai` with the new website.
-
-### Why
-- Final objective is website live on `boltroute.ai` while dashboard stays on `app.boltroute.ai`.
-
-### How
-1. Update DNS records for `boltroute.ai` and `www.boltroute.ai` to target host.
-2. Configure reverse proxy vhosts for both domains -> `127.0.0.1:3002`.
-3. Verify TLS issuance/renewal for both domains.
-4. Run post-cutover smoke checks.
-5. Keep rollback plan ready (restore prior DNS target if needed).
-
-### Where
-- DNS provider
-- Target host reverse proxy config
+- DNS provider zone records
 - Public endpoints: `https://boltroute.ai`, `https://www.boltroute.ai`
+
+---
+
+## 3) Completion Matrix (Task 99)
+
+### What
+- Completed sub-steps:
+  - `99.1` filesystem permissions
+  - `99.2` systemd service provisioning
+  - `99.3` secret configuration
+  - `99.4` deploy rerun success
+  - `99.5` pre-cutover smoke checks
+- Pending:
+  - `99.6` DNS + proxy cutover
+
+### Why
+- Next session must not repeat completed steps.
+
+### How
+- Treat `99.6` as the only active step unless rollback/recovery is triggered.
+
+### Where
+- Status source of truth: `ui-progress.md`
+
+---
+
+## 4) Next Actions (Strict Order)
+
+## Step 99.6.1 - Pre-cutover baseline capture
+
+### What
+- Capture immediate pre-change state for rollback confidence.
+
+### Why
+- Provides concrete rollback target values and post-change comparison.
+
+### How
+1. Record DNS:
+   - `dig +short boltroute.ai A`
+   - `dig +short www.boltroute.ai A`
+2. Record current public headers:
+   - `curl -I https://boltroute.ai`
+   - `curl -I https://www.boltroute.ai`
+3. Record target host health:
+   - `systemctl status boltroute-website --no-pager`
+   - `curl -I http://127.0.0.1:3002/`
+
+### Where
+- DNS provider + target host terminal
+
+## Step 99.6.2 - Configure/verify proxy vhosts for website domains
+
+### What
+- Ensure target host reverse proxy routes both domains to `127.0.0.1:3002`.
+
+### Why
+- DNS cutover without correct vhost routing will break the site.
+
+### How
+1. On target host, update proxy config for:
+   - `boltroute.ai`
+   - `www.boltroute.ai`
+2. Route both to `127.0.0.1:3002`.
+3. Reload proxy and verify config syntax.
+4. Verify TLS issuance/renewal status for both hostnames.
+
+### Where
+- Target host reverse proxy configuration (`/etc/caddy/Caddyfile` if Caddy is used)
+- Target host certificate storage/logs
+
+## Step 99.6.3 - Execute DNS cutover
+
+### What
+- Point `boltroute.ai` and `www.boltroute.ai` to the website host.
+
+### Why
+- This switches public traffic from WordPress to the deployed Next.js website.
+
+### How
+1. Update DNS A (and AAAA if used) for:
+   - `boltroute.ai`
+   - `www.boltroute.ai`
+2. Set to website target host IP (`135.181.160.203` unless infrastructure owner specifies otherwise at cutover time).
+3. Save/confirm change in DNS provider UI.
+
+### Where
+- DNS provider control panel
+
+## Step 99.6.4 - Post-cutover validation
+
+### What
+- Validate website public routing + TLS + unaffected dashboard.
+
+### Why
+- Cutover is only complete when end-user routes are healthy.
+
+### How
+1. Check DNS propagation:
+   - `dig +short boltroute.ai A`
+   - `dig +short www.boltroute.ai A`
+2. Check public response codes:
+   - `curl -I https://boltroute.ai`
+   - `curl -I https://www.boltroute.ai`
+   - `curl -I https://boltroute.ai/pricing`
+   - `curl -I https://boltroute.ai/integrations`
+3. Verify dashboard remains healthy:
+   - `curl -I https://app.boltroute.ai/overview`
+4. Verify local service still healthy:
+   - `systemctl status boltroute-website --no-pager`
+
+### Where
+- Any terminal with internet access + target host terminal
+
+## Step 99.6.5 - Rollback (only if validation fails)
+
+### What
+- Restore WordPress DNS target and previous proxy behavior.
+
+### Why
+- Minimize outage if cutover health criteria fail.
+
+### How
+1. Revert DNS A records for `boltroute.ai` and `www.boltroute.ai` back to pre-cutover target (`192.248.184.194`).
+2. Revert proxy changes if they introduced routing/TLS errors.
+3. Re-validate public site behavior and dashboard health.
+4. Document exact failed check and stop further changes.
+
+### Where
+- DNS provider + target host proxy config
+
+---
+
+## 5) Mandatory Documentation After Each Step
+
+### What
+- Update root documentation after every completed sub-step.
+
+### Why
+- Prevent state loss between Codex sessions.
+
+### How
+1. Update `ui-progress.md`:
+   - status checkbox
+   - progress log with `What / Why / How / Not implemented yet` (if any)
+2. Update `deployment.md` with current deployment/cutover state.
+3. Update `handover.md` with next strict step and latest evidence.
+4. Commit and push `main`.
+5. Ask user confirmation before starting next step.
+
+### Where
+- Root markdown files:
+  - `ui-progress.md`
+  - `deployment.md`
+  - `handover.md`
 
 ---
 
 ## 6) Immediate Resume Point For Next Codex Session
 
 ### What
-- Start at `ui-progress.md` Task 99.
+- Resume from Task `99.6` only.
 
 ### Why
-- All migration/workflow implementation, prerequisite provisioning, deploy rerun, and runtime smoke checks are done; only cutover remains.
+- All prerequisites and pre-cutover checks are complete.
 
 ### How
-1. Push `main` at session start.
-2. Re-read `AGENTS.md`, `handover.md`, `ui-progress.md`.
-3. Execute Section 5 Step 6 onward in order (Steps 1-5 are completed).
-4. After each completed sub-step:
-   - update `ui-progress.md` with What/Why/How
-   - update `deployment.md`/`handover.md` if state changed
-   - ask for user confirmation before next task step
+1. `git push origin main` at session start.
+2. Re-read `AGENTS.md`, this `handover.md`, and `ui-progress.md`.
+3. Execute Step `99.6.1` through `99.6.4` in order.
+4. If any validation fails, execute `99.6.5` rollback.
+5. Update root trackers + push after each completion.
 
 ### Where
-- Process rules source: `AGENTS.md`
-- Active task: `ui-progress.md` Task 99
+- Repo: `/home/codex/email-verification-fe-v1`
+- Active task: `ui-progress.md` Task `99.6`
