@@ -1,6 +1,6 @@
 # Handover: Dashboard + Website Integration (Post-Cutover Runbook)
 
-## 0) Snapshot (Updated 2026-02-08 18:07:42 UTC)
+## 0) Snapshot (Updated 2026-02-08 18:10:59 UTC)
 
 ### What
 - Production domains are live and stable:
@@ -249,7 +249,7 @@
 ## 6) Immediate Resume Point (One Line)
 
 ### What
-- Resume at Step `110.2`, then execute Step `110.3` before any new product implementation.
+- Resume at Step `110.3` before any new product implementation.
 
 ### Why
 - This guarantees state sync, production safety, and backlog clarity.
@@ -282,4 +282,24 @@
 - Source-of-truth docs: `AGENTS.md`, `handover.md`, `ui-progress.md`, `deployment.md`
 
 ### Next strict step
-- Execute Step `110.2` production health check gate, then pause for user confirmation before starting Step `110.3`.
+- Execute Step `110.3` stale unchecked-task reconciliation gate, then pause for user confirmation before starting Step `110.4`.
+
+### Step 110.2 - Completed (`2026-02-08 18:10:59 UTC`)
+
+### What
+- Completed production health checks for website routes, dashboard route, DNS, and website service state.
+
+### Why
+- Step `110.2` is the runtime safety gate before any tracker reconciliation or product-task execution.
+
+### How
+1. Ran `dig +short boltroute.ai A` and `dig +short www.boltroute.ai A` (both resolved to `135.181.160.203`, with `www` via `boltroute.ai.`).
+2. Ran `curl -I` checks for `https://boltroute.ai`, `https://www.boltroute.ai`, `https://boltroute.ai/pricing`, `https://boltroute.ai/integrations`, and `https://app.boltroute.ai/overview` (all returned `HTTP/2 200`).
+3. Ran `systemctl status boltroute-website --no-pager | grep -m1 'Active:'` (reported `active (running)`).
+
+### Where
+- Public endpoints: `boltroute.ai`, `www.boltroute.ai`, `app.boltroute.ai`
+- Target host service check: `boltroute-website`
+
+### Next strict step
+- Execute Step `110.3` stale unchecked-task reconciliation gate, then pause for user confirmation before starting Step `110.4`.

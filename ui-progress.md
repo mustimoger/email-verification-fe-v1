@@ -119,7 +119,7 @@
 - [x] Task 105 - Execute Step 100.4 by deciding and implementing post-cutover website deploy trigger policy in GitHub Actions (MVP).
 - [x] Task 106 - Rewrite root `handover.md` with unambiguous post-Step-100.4 continuation steps (What/Why/How/Where) and explicit next-session execution order (MVP).
 - [x] Task 107 - Execute Step 110.1 session preflight and state sync before any new product work (MVP).
-- [ ] Task 108 - Execute Step 110.2 production health check gate and capture fresh evidence (MVP).
+- [x] Task 108 - Execute Step 110.2 production health check gate and capture fresh evidence (MVP).
 - [ ] Task 109 - Execute Step 110.3 stale unchecked task reconciliation in `ui-progress.md` (MVP).
 - [ ] Task 110 - Execute Step 110.4 by selecting one true pending product task with user confirmation (MVP).
 
@@ -700,3 +700,10 @@
 - How: Ran `git push origin main` (returned `Everything up-to-date`), re-read `AGENTS.md`, `handover.md`, `ui-progress.md`, and `deployment.md`, then confirmed a clean tree with `git status --short --branch` showing only `## main...origin/main`.
 - Where: Repo root `/home/codex/email-verification-fe-v1` and root docs listed above.
 - Not implemented yet: Step `110.2` (production health gate), Step `110.3` (stale-task reconciliation), and Step `110.4` (single pending product task selection) are still pending in strict order.
+
+### Task 108 - Completed
+- What: Executed Step `110.2` production health check gate and captured fresh runtime evidence.
+- Why: The runbook requires a live production-health pass before reconciling pending task state or starting new product implementation.
+- How: Ran the exact gate commands in order: `dig +short boltroute.ai A`, `dig +short www.boltroute.ai A`, `curl -I https://boltroute.ai`, `curl -I https://www.boltroute.ai`, `curl -I https://boltroute.ai/pricing`, `curl -I https://boltroute.ai/integrations`, `curl -I https://app.boltroute.ai/overview`, and `systemctl status boltroute-website --no-pager | grep -m1 'Active:'`. Results at `2026-02-08 18:10:59 UTC`: DNS resolves to `135.181.160.203` (with `www` via `boltroute.ai.`), all required endpoints returned `HTTP/2 200`, and `boltroute-website` remained `active (running)`.
+- Where: Public internet endpoints (`boltroute.ai`, `www.boltroute.ai`, `app.boltroute.ai`) and target host service check (`systemctl`).
+- Not implemented yet: Step `110.3` (stale unchecked-task reconciliation) and Step `110.4` (single true pending task selection with user confirmation) remain pending in strict order.

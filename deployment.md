@@ -417,6 +417,13 @@
 - **Where:** `/home/codex/email-verification-fe-v1` (repo root) and root docs listed above.
 - **Status:** Complete (`2026-02-08 18:07:42 UTC`).
 
+### Step 110.2 - Production health check gate (completed)
+- **What:** Executed full production route/service health gate before pending-task reconciliation.
+- **Why:** Step `110.2` is required to confirm post-cutover runtime stability and preserve rollback optionality before any new product work.
+- **How:** Ran required checks in strict order at `2026-02-08 18:10:59 UTC`: `dig +short boltroute.ai A` => `135.181.160.203`; `dig +short www.boltroute.ai A` => `boltroute.ai.` then `135.181.160.203`; `curl -I https://boltroute.ai` => `HTTP/2 200`; `curl -I https://www.boltroute.ai` => `HTTP/2 200`; `curl -I https://boltroute.ai/pricing` => `HTTP/2 200`; `curl -I https://boltroute.ai/integrations` => `HTTP/2 200`; `curl -I https://app.boltroute.ai/overview` => `HTTP/2 200`; `systemctl status boltroute-website --no-pager | grep -m1 'Active:'` => `active (running)`.
+- **Where:** Public endpoints (`boltroute.ai`, `www.boltroute.ai`, `app.boltroute.ai`) and target host service (`boltroute-website`).
+- **Status:** Complete (`2026-02-08 18:10:59 UTC`).
+
 ## Open items (required before execution)
 - Confirm the current web server (Nginx/Apache/Caddy/other) and how TLS is managed today.
 - Confirm downtime tolerance and rollback expectations for the cutover.
