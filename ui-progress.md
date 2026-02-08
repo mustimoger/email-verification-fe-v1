@@ -66,7 +66,7 @@
 - [x] Task 63 - Plan marketing mock data artifacts (Overview/History/API) with no code/ext API changes (MVP).
 - [x] Task 64 - Create artifacts-only mock data JSONs for Overview/History/API (MVP).
 - [x] Task 65 - Add mock data README with totals and usage guidance (MVP).
-- [ ] Task 66 - Validate mock data consistency and update handover notes (MVP).
+- [x] Task 66 - Validate mock data consistency and update handover notes (MVP).
 - [x] Task 67 - Audit Overview verification history mismatch vs History table (demo user) (MVP).
 - [ ] Task 68 - Backfill missing task counts in ext API DB for demo user (Overview table) (MVP).
 - [ ] Task 69 - Validate Overview history table matches History list after data fixes (MVP).
@@ -97,7 +97,8 @@
 - [x] Task 94 - Implement website production deploy workflow/script from locked contract (manual trigger pre-cutover) (MVP).
 - [x] Task 95 - Add root monorepo operator README (layout/commands/workflows/deploy ownership) (MVP).
 - [x] Task 96 - Choose and execute the first resumed pending product task after deploy-stability steps (MVP).
-- [ ] Task 97 - Choose and execute the next resumed pending product task after Task 65 (MVP).
+- [x] Task 97 - Choose and execute the next resumed pending product task after Task 65 (MVP).
+- [ ] Task 98 - Choose and execute the next resumed pending product task after Task 66 (MVP).
 
 ## Progress log
 ### Task 1 - Completed
@@ -543,7 +544,19 @@
 - How: Selected Task 65 (`artifacts/marketing` mock data README) as the first resumed product task, updated progress tracking before implementation, created the README, and verified documented totals match the artifact JSON values.
 - Not implemented yet: Additional pending product tasks remain and are deferred to follow-up steps one at a time.
 
-### Task 97 - Pending
+### Task 66 - Completed
+- What: Validated marketing mock artifact consistency and updated handover notes with current execution state.
+- Why: Task 65 established artifact guidance, and Task 66 required proof that cross-file totals remain consistent plus handover updates so future sessions do not restart from stale assumptions.
+- How: Ran Node-based consistency checks across `artifacts/marketing/mock_overview.json`, `mock_history.json`, and `mock_api_usage.json` (task counts, completed totals, verification subtotals, API series sums, purpose sums) and all checks passed. Updated `handover.md` with current completion status (Steps 1-4 done, Step 5 active), added mock-data validation details, and refreshed known gaps to reflect current website deploy/cutover reality.
+- Not implemented yet: Data backfill/overview-history DB reconciliation tasks remain in Task 68 and Task 69.
+
+### Task 97 - Completed
 - What: Continue Step 5 by executing the next pending product task after Task 65.
 - Why: Product backlog items remain open and must be completed in controlled, single-task increments.
-- How: Choose one pending task from the tracker, update plan/progress before changes, complete MVP + validation, then pause for confirmation.
+- How: Selected Task 66 as the next resumed task, updated progress tracking before implementation, completed consistency validation, and updated root handover notes.
+- Not implemented yet: Additional pending product tasks remain and are intentionally deferred to the next single-task step.
+
+### Task 98 - Pending
+- What: Continue Step 5 by executing the next pending product task after Task 66.
+- Why: The remaining backlog still contains unresolved data/UI validation tasks and should be advanced one item at a time.
+- How: Select one pending task from `ui-progress.md`, record selection before implementation, complete MVP + validation, update tracker/docs, then pause for confirmation.
