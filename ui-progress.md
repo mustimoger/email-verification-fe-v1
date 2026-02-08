@@ -101,7 +101,7 @@
 - [x] Task 98 - Validate pre-cutover website deploy readiness and run manual website deploy workflow (MVP).
 - [ ] Task 99 - Provision website deploy prerequisites on target host and rerun manual website deploy workflow (MVP).
 - [x] Task 99.1 - Prepare target host filesystem and permissions for `/var/www/boltroute-website` (MVP).
-- [ ] Task 99.2 - Provision and verify `boltroute-website` systemd service on `127.0.0.1:3002` (MVP).
+- [ ] Task 99.2 - Provision and verify `boltroute-website` systemd service on `127.0.0.1:3002` (MVP, blocked: root/systemd + sudoers changes required).
 
 ## Progress log
 ### Task 1 - Completed
@@ -576,7 +576,8 @@
 - Why: The website deploy workflow cannot create a release without write access to the contract path.
 - How: Operator executed root-level setup commands to create `/var/www/boltroute-website/{releases,shared}`, set ownership to `boltroute:boltroute`, and verify write access with a write-test file; then validation confirmed all three paths exist with `755` permissions and `boltroute:boltroute` ownership.
 
-### Task 99.2 - Pending
-- What: Provision and verify the `boltroute-website` systemd service bound to `127.0.0.1:3002`.
-- Why: The remote deploy script ends by restarting `boltroute-website`; deployment remains blocked if the service definition is missing/invalid.
-- How: Create or verify `/etc/systemd/system/boltroute-website.service`, run daemon-reload, restart the service, and confirm `active` status plus upstream binding.
+### Task 99.2 - Blocked
+- What: Audited systemd state for `boltroute-website` and attempted to start service provisioning.
+- Why: Task 99.2 must complete before env-secret setup and deploy rerun because `deploy/remote-deploy.sh` always restarts `boltroute-website`.
+- How: Confirmed `boltroute-website.service` does not exist (`systemctl status`/`systemctl cat` return not found), then checked privilege path and confirmed `sudo -n true` still fails with `sudo: a password is required`; root-level writes to `/etc/systemd/system` and `/etc/sudoers.d` cannot be executed from this Codex session.
+- Not implemented yet: Create `boltroute-website.service`, add minimal sudoers rule for `boltroute` service restart, bootstrap one release for `current`, and verify service is `active` on `127.0.0.1:3002`.

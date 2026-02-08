@@ -110,6 +110,7 @@
 ### What
 - Required GitHub secret `WEBSITE_APP_ENV_LOCAL` is missing.
 - Host-level website runtime/proxy provisioning for `boltroute-website` on `127.0.0.1:3002` is not complete.
+- Current Codex session cannot apply root-only systemd/sudoers changes (`sudo -n true` requires password), so Step 2 needs operator-executed host commands.
 - DNS cutover from WordPress host (`boltroute.ai`) to website host is not executed.
 
 ### Why
@@ -161,6 +162,7 @@
 3. Bind website runtime to `127.0.0.1:3002`.
 4. Reload daemon and test service restart.
 5. Confirm service status is `active`.
+6. Current status (`2026-02-08`): service is not yet present (`Unit boltroute-website.service could not be found`) and still needs root-level provisioning.
 
 ### Where
 - Target host systemd configuration
