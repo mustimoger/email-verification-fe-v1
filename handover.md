@@ -169,7 +169,13 @@
 - Target host (`/etc/caddy/Caddyfile`)
 
 ### Status
-- Pending (requires root access).
+- Blocked pending root access.
+- Execution update (`2026-02-08 17:47:49 UTC`):
+  - Backup created: `/tmp/Caddyfile.backup.20260208T174749Z`
+  - Candidate created: `/tmp/Caddyfile.step1001.20260208T174749Z` with `boltroute.ai, www.boltroute.ai` -> `reverse_proxy 127.0.0.1:3002`
+  - `caddy validate --config /tmp/Caddyfile.step1001.20260208T174749Z --adapter caddyfile` => `Valid configuration`
+  - `caddy reload --config /tmp/Caddyfile.step1001.20260208T174749Z --adapter caddyfile` => success
+  - Final persist attempt: `cp /tmp/Caddyfile.step1001.20260208T174749Z /etc/caddy/Caddyfile` => `Permission denied`
 
 ## Step 100.2 - Re-run post-persistence smoke checks
 
@@ -193,7 +199,16 @@
 - Any internet-connected terminal + target host shell
 
 ### Status
-- Pending.
+- Executed (`2026-02-08 17:48:29 UTC`) with healthy runtime results:
+  - `dig +short boltroute.ai A` => `135.181.160.203`
+  - `dig +short www.boltroute.ai A` => `boltroute.ai.` then `135.181.160.203`
+  - `curl -I https://boltroute.ai` => `HTTP/2 200`
+  - `curl -I https://www.boltroute.ai` => `HTTP/2 200`
+  - `curl -I https://boltroute.ai/pricing` => `HTTP/2 200`
+  - `curl -I https://boltroute.ai/integrations` => `HTTP/2 200`
+  - `curl -I https://app.boltroute.ai/overview` => `HTTP/2 200`
+  - `systemctl status boltroute-website --no-pager` => `active (running)`
+- Follow-up required: re-run Step `100.2` immediately after the blocked Step `100.1` on-disk persist is completed with root access.
 
 ## Step 100.3 - Keep rollback readiness active
 

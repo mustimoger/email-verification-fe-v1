@@ -112,6 +112,8 @@
 - [x] Task 99.6.4 - Run post-cutover validation (DNS, TLS, routes, dashboard non-regression) (MVP).
 - [ ] Task 99.6.5 - Roll back DNS/proxy only if post-cutover validation fails (MVP).
 - [x] Task 100 - Normalize root integration tracking docs (`handover.md`, `ui-progress.md`, `deployment.md`) so status and next steps are internally consistent (MVP).
+- [ ] Task 101 - Execute Step 100.1 by persisting website vhosts in `/etc/caddy/Caddyfile` and reloading Caddy (MVP, blocked pending root write access).
+- [x] Task 102 - Execute Step 100.2 post-persistence smoke checks for `boltroute.ai`/`www`/`app` + service health (MVP).
 
 ## Progress log
 ### Task 1 - Completed
@@ -647,3 +649,15 @@
 - Why: Mixed in-progress snapshots and stale checklist states were causing ambiguity for next-session execution.
 - How: Updated `handover.md` to post-cutover `100.x` strict next actions, reconciled `deployment.md` checklist/status and open items, and removed stale `99.6.x In Progress` log entries from `ui-progress.md` while preserving final evidence and historical notes.
 - Not implemented yet: Persistent on-disk Caddyfile update still requires root access; rollback task `99.6.5` remains conditional and unexecuted by design.
+
+### Task 101 - Blocked
+- What: Executed Step `100.1` workflow to persist website vhosts and reload Caddy.
+- Why: Runtime-loaded routing is currently healthy, but durable on-disk config is required for restart-safe operations.
+- How: Created backup `/tmp/Caddyfile.backup.20260208T174749Z`, prepared candidate `/tmp/Caddyfile.step1001.20260208T174749Z` including `boltroute.ai, www.boltroute.ai` -> `127.0.0.1:3002`, ran `caddy validate` (`Valid configuration`), and reloaded Caddy from the candidate file successfully.
+- Not implemented yet: Final on-disk write to `/etc/caddy/Caddyfile` failed with `Permission denied` (no passwordless sudo in this shell), so Step `100.1` remains open pending root-assisted file update.
+
+### Task 102 - Completed
+- What: Ran Step `100.2` smoke checks for website and dashboard health after Step `100.1` runtime reload.
+- Why: Even with the Step `100.1` persistence blocker, we need current production-route health evidence before handoff.
+- How: At `2026-02-08 17:48:29 UTC`, checks returned healthy responses: `dig +short boltroute.ai A` => `135.181.160.203`; `dig +short www.boltroute.ai A` => `boltroute.ai.` then `135.181.160.203`; `curl -I https://boltroute.ai` => `HTTP/2 200`; `curl -I https://www.boltroute.ai` => `HTTP/2 200`; `curl -I https://boltroute.ai/pricing` => `HTTP/2 200`; `curl -I https://boltroute.ai/integrations` => `HTTP/2 200`; `curl -I https://app.boltroute.ai/overview` => `HTTP/2 200`; `systemctl status boltroute-website` => `active (running)`.
+- Not implemented yet: Re-run this exact Step `100.2` set once `/etc/caddy/Caddyfile` persistence is completed with root access, so validation reflects durable config rather than runtime-loaded config only.
