@@ -101,6 +101,7 @@
     - `systemctl status boltroute-website` -> `active (running)`
     - `ss -ltn` -> `LISTEN ... 127.0.0.1:3002`
     - `curl -I http://127.0.0.1:3002` -> `HTTP/1.1 200 OK`
+  - Operator configured `WEBSITE_APP_ENV_LOCAL`; verification shows `WEBSITE_APP_ENV_LOCAL 2026-02-08T16:58:17Z` in repo secrets.
 
 ### Where
 - Workflow file: `.github/workflows/website-deploy.yml`
@@ -113,7 +114,6 @@
 ## 4) Known Open Blockers
 
 ### What
-- Required GitHub secret `WEBSITE_APP_ENV_LOCAL` is missing.
 - Website deploy workflow has not yet been rerun after host prerequisites were fixed.
 - DNS cutover from WordPress host (`boltroute.ai`) to website host is not executed.
 
@@ -172,13 +172,13 @@
 - Target host systemd configuration
 - Service name: `boltroute-website`
 
-## Step 3: Add missing website env secret (Task 99.3)
+## Step 3: Add/verify website env secret (Task 99.3)
 
 ### What
 - Add `WEBSITE_APP_ENV_LOCAL` in GitHub Actions secrets.
 
 ### Why
-- Workflow step `Upload env file` requires this secret; it is currently missing.
+- Workflow step `Upload env file` requires this secret.
 
 ### How
 1. Add secret in repo settings:
@@ -188,6 +188,7 @@
    - `NEXT_PUBLIC_SITE_URL=https://boltroute.ai`
    - or `SITE_URL=https://boltroute.ai`
 3. Keep final value aligned with cutover target domain.
+4. Current status (`2026-02-08`): completed; `gh secret list` shows `WEBSITE_APP_ENV_LOCAL 2026-02-08T16:58:17Z`.
 
 ### Where
 - GitHub repo secrets: `mustimoger/email-verification-fe-v1`
@@ -258,12 +259,12 @@
 - Start at `ui-progress.md` Task 99.
 
 ### Why
-- All migration and workflow implementation steps are done; only provisioning, rerun, and cutover remain.
+- All migration/workflow implementation and prerequisite provisioning steps are done; deploy rerun, smoke checks, and cutover remain.
 
 ### How
 1. Push `main` at session start.
 2. Re-read `AGENTS.md`, `handover.md`, `ui-progress.md`.
-3. Execute Section 5 Step 3 onward in order (Steps 1 and 2 are completed).
+3. Execute Section 5 Step 4 onward in order (Steps 1-3 are completed).
 4. After each completed sub-step:
    - update `ui-progress.md` with What/Why/How
    - update `deployment.md`/`handover.md` if state changed

@@ -102,7 +102,8 @@
 - [ ] Task 99 - Provision website deploy prerequisites on target host and rerun manual website deploy workflow (MVP).
 - [x] Task 99.1 - Prepare target host filesystem and permissions for `/var/www/boltroute-website` (MVP).
 - [x] Task 99.2 - Provision and verify `boltroute-website` systemd service on `127.0.0.1:3002` (MVP).
-- [ ] Task 99.3 - Add `WEBSITE_APP_ENV_LOCAL` GitHub Actions secret for website deploy (MVP).
+- [x] Task 99.3 - Add `WEBSITE_APP_ENV_LOCAL` GitHub Actions secret for website deploy (MVP).
+- [ ] Task 99.4 - Rerun manual website deploy workflow and record run outcome (MVP).
 
 ## Progress log
 ### Task 1 - Completed
@@ -564,14 +565,14 @@
 - What: Validate website pre-cutover deployment readiness and execute the manual website deploy workflow.
 - Why: Before DNS cutover from WordPress to the new website, we need proof that deploy automation, secrets, and remote release steps work on the target host.
 - How: Verified workflow/secret state (`Website Deploy` exists, no prior runs, missing `WEBSITE_APP_ENV_LOCAL` secret), dispatched `.github/workflows/website-deploy.yml` on `main`, and inspected run `21801362879`. `website-checks` passed, but `deploy` failed at `Create release directory` with `mkdir: cannot create directory '/var/www/boltroute-website': Permission denied`.
-- Update: Follow-up Tasks 99.1 and 99.2 have since provisioned the website filesystem and systemd service; remaining blockers are `WEBSITE_APP_ENV_LOCAL` secret configuration and rerunning `website-deploy.yml`.
+- Update: Follow-up Tasks 99.1, 99.2, and 99.3 have since provisioned filesystem/service prerequisites and configured `WEBSITE_APP_ENV_LOCAL`; remaining blocker is rerunning `website-deploy.yml`.
 
 ### Task 99 - Pending
 - What: Provision website deploy prerequisites on the target host and rerun manual website deploy.
 - Why: Task 98 identified concrete blockers that must be resolved before DNS cutover readiness can be confirmed.
 - How: Ensure `/var/www/boltroute-website` exists with deploy-user write access, create/configure `boltroute-website` service and upstream binding (`127.0.0.1:3002`), add `WEBSITE_APP_ENV_LOCAL` GitHub secret, rerun `.github/workflows/website-deploy.yml`, then verify run success and runtime health.
 - Update: `handover.md` was fully rewritten with strict, no-ambiguity next-session sequencing (What/Why/How/Where) focused on Task 99 execution order and cutover readiness.
-- Update (`2026-02-08`): Task 99.1 and Task 99.2 are completed; next strict step is Task 99.3 (configure `WEBSITE_APP_ENV_LOCAL`), then Task 99.4 deploy rerun.
+- Update (`2026-02-08`): Tasks 99.1, 99.2, and 99.3 are completed; next strict step is Task 99.4 deploy rerun.
 
 ### Task 99.1 - Completed
 - What: Provisioned the website release root directories and deploy-user permissions for `/var/www/boltroute-website`.
@@ -583,7 +584,12 @@
 - Why: The deploy script always runs `sudo systemctl restart boltroute-website`, so the service and restart permission must exist before rerunning website deploy.
 - How: Operator created `/etc/systemd/system/boltroute-website.service`, added `/etc/sudoers.d/boltroute-website-deploy` (`boltroute` can restart only this service), bootstrapped release `bootstrap-20260208174705` under `/var/www/boltroute-website/releases`, linked `/var/www/boltroute-website/current`, and enabled/restarted the service; validation confirms `systemctl status boltroute-website` is `active`, `ss -ltn` shows `127.0.0.1:3002`, and `curl -I http://127.0.0.1:3002` returns `HTTP/1.1 200 OK`.
 
-### Task 99.3 - Pending
-- What: Add the missing `WEBSITE_APP_ENV_LOCAL` repository secret used by `website-deploy.yml`.
-- Why: The workflow step `Upload env file` cannot run without this secret and deployment will fail before remote build/restart.
-- How: Create repo secret `WEBSITE_APP_ENV_LOCAL` with website `.env.local` contents (at minimum `NEXT_PUBLIC_SITE_URL=https://boltroute.ai`), then verify secret presence before Task 99.4 rerun.
+### Task 99.3 - Completed
+- What: Configured the missing `WEBSITE_APP_ENV_LOCAL` repository secret for website deployment.
+- Why: `website-deploy.yml` requires this secret during `Upload env file`; without it deploy fails before remote build/restart.
+- How: Operator created `/tmp/website.env.local`, set the secret via `gh secret set WEBSITE_APP_ENV_LOCAL --repo mustimoger/email-verification-fe-v1 < /tmp/website.env.local`, removed the temp file, and verification shows `WEBSITE_APP_ENV_LOCAL 2026-02-08T16:58:17Z` in `gh secret list`.
+
+### Task 99.4 - Pending
+- What: Rerun `Website Deploy` manually and capture the run result after prerequisites were provisioned.
+- Why: We need a successful end-to-end deployment run before runtime smoke checks and DNS/proxy cutover steps.
+- How: Trigger `.github/workflows/website-deploy.yml` on `main`, monitor completion, and record run ID + final status + failing step (if any).
