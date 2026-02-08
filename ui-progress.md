@@ -100,7 +100,8 @@
 - [x] Task 97 - Choose and execute the next resumed pending product task after Task 65 (MVP).
 - [x] Task 98 - Validate pre-cutover website deploy readiness and run manual website deploy workflow (MVP).
 - [ ] Task 99 - Provision website deploy prerequisites on target host and rerun manual website deploy workflow (MVP).
-- [ ] Task 99.1 - Prepare target host filesystem and permissions for `/var/www/boltroute-website` (MVP, blocked: root-level filesystem access required).
+- [x] Task 99.1 - Prepare target host filesystem and permissions for `/var/www/boltroute-website` (MVP).
+- [ ] Task 99.2 - Provision and verify `boltroute-website` systemd service on `127.0.0.1:3002` (MVP).
 
 ## Progress log
 ### Task 1 - Completed
@@ -570,8 +571,12 @@
 - How: Ensure `/var/www/boltroute-website` exists with deploy-user write access, create/configure `boltroute-website` service and upstream binding (`127.0.0.1:3002`), add `WEBSITE_APP_ENV_LOCAL` GitHub secret, rerun `.github/workflows/website-deploy.yml`, then verify run success and runtime health.
 - Update: `handover.md` was fully rewritten with strict, no-ambiguity next-session sequencing (What/Why/How/Where) focused on Task 99 execution order and cutover readiness.
 
-### Task 99.1 - Blocked
-- What: Attempted to provision `/var/www/boltroute-website` filesystem paths and permissions on the deploy host.
-- Why: Task 99.1 must be completed before service provisioning and deploy rerun can proceed safely.
-- How: Verified `/var/www` is owned by `root:root` (`drwxr-xr-x`), confirmed `/var/www/boltroute-website` does not exist, and attempted `mkdir -p /var/www/boltroute-website/{releases,shared}` which failed with `Permission denied`; attempted `sudo -n mkdir ...` also failed with `sudo: a password is required`.
-- Not implemented yet: Root-privileged execution is still required to create `/var/www/boltroute-website`, set ownership to `boltroute:boltroute`, and validate deploy-user write access.
+### Task 99.1 - Completed
+- What: Provisioned the website release root directories and deploy-user permissions for `/var/www/boltroute-website`.
+- Why: The website deploy workflow cannot create a release without write access to the contract path.
+- How: Operator executed root-level setup commands to create `/var/www/boltroute-website/{releases,shared}`, set ownership to `boltroute:boltroute`, and verify write access with a write-test file; then validation confirmed all three paths exist with `755` permissions and `boltroute:boltroute` ownership.
+
+### Task 99.2 - Pending
+- What: Provision and verify the `boltroute-website` systemd service bound to `127.0.0.1:3002`.
+- Why: The remote deploy script ends by restarting `boltroute-website`; deployment remains blocked if the service definition is missing/invalid.
+- How: Create or verify `/etc/systemd/system/boltroute-website.service`, run daemon-reload, restart the service, and confirm `active` status plus upstream binding.

@@ -80,7 +80,7 @@
 - Failure is infrastructure permissions on target host, not lint/build.
 
 ### Why
-- Next session must fix the actual blocker, not troubleshoot already-passing CI steps.
+- Next session should continue on the remaining blockers only (service + secret + deploy rerun + cutover), since CI checks already pass and filesystem permissions are now fixed.
 
 ### How
 - Run inspected:
@@ -89,11 +89,13 @@
   - `website-checks` job: success
   - `deploy` job: failure at step `Create release directory`
   - Error: `mkdir: cannot create directory '/var/www/boltroute-website': Permission denied`
-- Session evidence (`2026-02-08`):
-  - `/var/www` confirmed as `root:root` (`drwxr-xr-x`).
-  - Direct `mkdir -p /var/www/boltroute-website/{releases,shared}` fails with `Permission denied`.
-  - `sudo -n mkdir ...` fails with `sudo: a password is required`.
-  - SSH as `boltroute` from this session host fails (`Permission denied (publickey,password)`), so deploy-user write validation cannot be executed from this session context.
+- Remediation evidence (`2026-02-08`):
+  - Operator created `/var/www/boltroute-website/{releases,shared}` with root privileges.
+  - Validation now shows:
+    - `/var/www/boltroute-website` -> `drwxr-xr-x boltroute boltroute`
+    - `/var/www/boltroute-website/releases` -> `drwxr-xr-x boltroute boltroute`
+    - `/var/www/boltroute-website/shared` -> `drwxr-xr-x boltroute boltroute`
+  - Deploy-user write test succeeded (`touch` + `rm` in `shared/`).
 
 ### Where
 - Workflow file: `.github/workflows/website-deploy.yml`
@@ -106,8 +108,6 @@
 ## 4) Known Open Blockers
 
 ### What
-- Deploy user lacks write/create permissions for `/var/www/boltroute-website`.
-- Current Codex session context lacks root-capable access to fix `/var/www` ownership/permissions directly.
 - Required GitHub secret `WEBSITE_APP_ENV_LOCAL` is missing.
 - Host-level website runtime/proxy provisioning for `boltroute-website` on `127.0.0.1:3002` is not complete.
 - DNS cutover from WordPress host (`boltroute.ai`) to website host is not executed.
@@ -141,7 +141,7 @@
    - `/var/www/boltroute-website/shared`
 3. Set ownership/permissions so `DEPLOY_USER` can write under `/var/www/boltroute-website`.
 4. Verify with a write test as `DEPLOY_USER`.
-5. Current status: blocked in this session until root-level host commands are executed by an operator with sufficient privileges.
+5. Current status (`2026-02-08`): completed; paths exist and are writable by `DEPLOY_USER` (`boltroute`).
 
 ### Where
 - Target host filesystem
@@ -257,7 +257,7 @@
 ### How
 1. Push `main` at session start.
 2. Re-read `AGENTS.md`, `handover.md`, `ui-progress.md`.
-3. Unblock Step 1 with root-level host access, then execute Section 5 Step 1 onward in order.
+3. Execute Section 5 Step 2 onward in order (Step 1 is completed).
 4. After each completed sub-step:
    - update `ui-progress.md` with What/Why/How
    - update `deployment.md`/`handover.md` if state changed
