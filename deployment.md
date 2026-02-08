@@ -73,9 +73,12 @@
   - Locked env file path: `/var/www/boltroute-website/shared/.env.local`.
   - Status: Locked.
 - 6. Deploy trigger policy:
-  - Locked initial policy: manual deploy only (`workflow_dispatch`) until domain cutover is approved and complete.
-  - Planned post-cutover policy: add `push` trigger on `main` with `apps/website/**` path filter.
-  - Status: Locked.
+  - Initial policy (pre-cutover): manual deploy only (`workflow_dispatch`).
+  - Post-cutover locked policy: automatic deploy on `push` to `main` scoped to `apps/website/**`, while retaining `workflow_dispatch`.
+  - Implemented workflow paths:
+    - `apps/website/**`
+    - `.github/workflows/website-deploy.yml`
+  - Status: Locked and implemented.
 
 ### Current state and open items
 - Website deploy workflow/script are implemented:
@@ -96,8 +99,8 @@
   - Step 100.2 post-persist smoke checks on `2026-02-08 17:52:35 UTC`: persisted host block present at `/etc/caddy/Caddyfile` line `30`; `boltroute.ai`, `www`, `/pricing`, `/integrations`, and `app.boltroute.ai/overview` all returned `HTTP/2 200`; DNS resolves to `135.181.160.203`; `boltroute-website` service is `active (running)`.
   - Step 100.2 operator rerun on `2026-02-08 17:53:35 UTC`: repeated persisted-host-block (`line 30`), DNS, and public-route checks all remained healthy (`HTTP/2 200` on apex/`www`/`pricing`/`integrations`/`app /overview`).
   - Caddyfile formatting hardening on `2026-02-08 17:54:22 UTC`: `sudo caddy fmt --overwrite /etc/caddy/Caddyfile` completed, followed by successful validate + reload.
+  - Step 100.4 completion on `2026-02-08`: post-cutover deploy policy implemented in `.github/workflows/website-deploy.yml`; workflow now triggers on `push` to `main` with website path filters and still supports manual `workflow_dispatch`.
 - Open items:
-  - Decide post-cutover website deploy trigger policy (`workflow_dispatch` only vs adding `push` for `apps/website/**`).
   - Keep rollback procedure (`99.6.5`) available for regressions.
 - Historical notes:
   - Initial manual run `21801362879` failed at `Create release directory` due missing permissions; this was remediated and superseded by successful run `21801917773`.

@@ -116,6 +116,7 @@
 - [x] Task 102 - Execute Step 100.2 post-persistence smoke checks for `boltroute.ai`/`www`/`app` + service health (MVP).
 - [x] Task 103 - Complete Step 100.1 with operator root commands and re-run Step 100.2 against persisted on-disk Caddy config (MVP).
 - [x] Task 104 - Capture final operator verification (`17:53:35 UTC`) and Caddyfile formatting hardening, then update runbook commands for hosts without `rg` (MVP).
+- [ ] Task 105 - Execute Step 100.4 by deciding and implementing post-cutover website deploy trigger policy in GitHub Actions (MVP).
 
 ## Progress log
 ### Task 1 - Completed
@@ -675,3 +676,9 @@
 - Why: Operator output added newer proof (`17:53:35 UTC`) and revealed that `rg` is unavailable on the target host, causing a blank `SYSTEMD_ACTIVE` capture in one command variant.
 - How: Recorded the final persisted-config check (`/etc/caddy/Caddyfile` host block line `30`, public routes all `HTTP/2 200`, DNS `135.181.160.203`), captured successful `sudo caddy fmt --overwrite /etc/caddy/Caddyfile` + validate/reload at `2026-02-08 17:54:22 UTC`, and updated docs to use `grep -m1 'Active:'` for portable service-status capture.
 - Not implemented yet: None for this task.
+
+### Task 105 - In Progress
+- What: Start Step `100.4` decision and implementation for website deploy trigger policy.
+- Why: Post-cutover policy must now be explicit and reflected in automation rather than remaining a pending decision.
+- How: Decide whether to keep `workflow_dispatch` only or add `push` trigger for `main` with `apps/website/**` path scope, apply workflow changes, and update root docs with the locked post-cutover policy.
+- Not implemented yet: Policy decision evidence, workflow update, and final validation notes are pending.

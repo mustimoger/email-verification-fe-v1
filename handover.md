@@ -241,21 +241,26 @@
 ## Step 100.4 - Decide website deploy trigger policy after cutover
 
 ### What
-- Decide whether to keep manual-only website deploys or enable `push` auto-deploy for `apps/website/**`.
+- Lock and implement the post-cutover website deploy trigger policy.
 
 ### Why
-- Contract currently defines manual deploy pre-cutover; post-cutover policy should be explicit.
+- Post-cutover operations must avoid ambiguous release behavior.
 
 ### How
-1. Review release governance and rollback tolerance.
-2. If approved, update `.github/workflows/website-deploy.yml` to include `push` trigger with path filters.
-3. Validate workflow behavior and document final policy in root docs.
+1. Keep manual deploy support (`workflow_dispatch`) for controlled releases.
+2. Add automatic deploy on `push` to `main` for `apps/website/**`.
+3. Include `.github/workflows/website-deploy.yml` in path filters so trigger-policy updates self-validate through deploy pipeline.
+4. Update root docs to reflect the locked policy.
 
 ### Where
 - GitHub Actions workflow and root markdown docs
 
 ### Status
-- Pending product/ops decision.
+- Completed (`2026-02-08`):
+  - Decision: enable auto deploy on `push` to `main` for website changes while retaining manual `workflow_dispatch`.
+  - Implementation: `.github/workflows/website-deploy.yml` now includes:
+    - `push.branches: [main]`
+    - `push.paths: ["apps/website/**", ".github/workflows/website-deploy.yml"]`
 
 ---
 
@@ -296,7 +301,7 @@
 1. `git push origin main` at session start.
 2. Re-read `AGENTS.md`, this `handover.md`, and `ui-progress.md`.
 3. Monitor production routes (`boltroute.ai`, `www`, and `app`) and keep Step `100.3` rollback guard active.
-4. Execute Step `100.4` only after deploy-policy confirmation.
+4. Continue with the next prioritized product task from `ui-progress.md`.
 
 ### Where
 - Repo: `/home/codex/email-verification-fe-v1`

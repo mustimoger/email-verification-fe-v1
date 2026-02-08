@@ -40,7 +40,7 @@
   - Trigger: `push` and `pull_request` when `apps/website/**` or workflow file changes
   - Stages: `npm ci`, `npm run lint`, `npm run build` in `apps/website`
 - Website deploy (`.github/workflows/website-deploy.yml`)
-  - Trigger: manual `workflow_dispatch` (pre-cutover policy)
+  - Trigger: `push` to `main` for `apps/website/**` and manual `workflow_dispatch`
   - Stages: website checks, then deploy to `/var/www/boltroute-website`
 
 ## Deployment Ownership And Current State
@@ -49,7 +49,7 @@
   - Host/domain: `app.boltroute.ai`
   - Workflow: `.github/workflows/deploy.yml`
 - Website deployment:
-  - Status: deploy automation implemented, manual trigger only before domain cutover
+  - Status: deploy automation active with automatic deploy on `main` website changes + manual trigger
   - Release root: `/var/www/boltroute-website`
   - Service target: `boltroute-website`
   - Workflow: `.github/workflows/website-deploy.yml`
