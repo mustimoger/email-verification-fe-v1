@@ -117,6 +117,7 @@
 - [x] Task 103 - Complete Step 100.1 with operator root commands and re-run Step 100.2 against persisted on-disk Caddy config (MVP).
 - [x] Task 104 - Capture final operator verification (`17:53:35 UTC`) and Caddyfile formatting hardening, then update runbook commands for hosts without `rg` (MVP).
 - [x] Task 105 - Execute Step 100.4 by deciding and implementing post-cutover website deploy trigger policy in GitHub Actions (MVP).
+- [x] Task 106 - Rewrite root `handover.md` with unambiguous post-Step-100.4 continuation steps (What/Why/How/Where) and explicit next-session execution order (MVP).
 
 ## Progress log
 ### Task 1 - Completed
@@ -682,3 +683,9 @@
 - Why: Post-cutover operations required a locked, automation-backed release policy instead of manual-only ambiguity.
 - How: Updated `.github/workflows/website-deploy.yml` to trigger on `push` to `main` for `apps/website/**` and workflow-file changes while retaining `workflow_dispatch`; verified implementation by successful auto-triggered run `21802721793` (`website-checks` + `deploy` both `success`) at `2026-02-08 17:59:01 UTC`.
 - Not implemented yet: None for this task.
+
+### Task 106 - Completed
+- What: Rewrote root `handover.md` into a strict, post-Step-100.4 continuation runbook for next Codex session.
+- Why: The previous handover mixed historical cutover detail with current-state operations, leaving avoidable ambiguity when context is nearly exhausted.
+- How: Replaced handover content with a clean sequence including: locked contract values, validated evidence anchors, active open items only, and strict ordered next steps (`110.1` to `110.5`) using explicit `What/Why/How/Where` for each step.
+- Not implemented yet: Handover rewrite is complete; next execution work begins from Step `110.1` in the new runbook.

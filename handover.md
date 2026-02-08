@@ -1,194 +1,159 @@
-# Handover: Dashboard + Website Integration (Cutover Stage)
+# Handover: Dashboard + Website Integration (Post-Cutover Runbook)
 
-## 0) Snapshot (Updated 2026-02-08 17:33:29 UTC)
+## 0) Snapshot (Updated 2026-02-08 18:03:29 UTC)
 
 ### What
-- Monorepo apps are in place:
-  - Dashboard: `apps/dashboard` (production: `https://app.boltroute.ai`)
-  - Website: `apps/website` (target production: `https://boltroute.ai`, `https://www.boltroute.ai`)
-- Task sequence is at `ui-progress.md` Task `99.6`; sub-steps `99.6.1` through `99.6.4` are completed successfully.
+- Production domains are live and stable:
+  - Dashboard: `https://app.boltroute.ai` (app stack)
+  - Website: `https://boltroute.ai` and `https://www.boltroute.ai` (website stack)
+- Infrastructure/cutover stream is completed through Step `100.4`.
+- Website deploy policy is implemented and validated:
+  - Automatic deploy on `push` to `main` for `apps/website/**`
+  - Manual deploy retained via `workflow_dispatch`
 
 ### Why
-- Previous blockers (filesystem, systemd service, secret, deploy rerun, smoke checks) are resolved.
-- DNS + reverse proxy cutover is completed and validated.
+- Next session must continue from operational steady-state, not re-run cutover tasks.
+- Remaining work is now normal product backlog execution plus ongoing rollback readiness.
 
 ### How
-- Keep Task `99.6` state as completed; rollback remains available only for future regression handling.
+- Treat Tasks `99.1` to `99.6.4`, `100.1`, `100.2`, and `100.4` as completed.
+- Keep `99.6.5` rollback as standby-only.
+- Use `ui-progress.md` for task execution and `deployment.md` for deployment state evidence.
 
 ### Where
-- Primary tracker: `ui-progress.md`
-- Deploy contract and status: `deployment.md`
-- This continuation runbook: `handover.md`
+- Primary task tracker: `ui-progress.md`
+- Deployment/ops evidence: `deployment.md`
+- Session continuation runbook: `handover.md`
 
 ---
 
-## 1) Locked Decisions (Do Not Re-Decide)
+## 1) Locked Contract (Do Not Re-Decide)
 
 ### What
-- Deployment contract is locked to reuse dashboard host/user (Option A).
-- Website service contract is locked.
+- Deployment contract values are locked.
 
 ### Why
-- Workflows/scripts and host provisioning were built against these values.
+- Workflows, deploy scripts, and host provisioning depend on these exact values.
 
 ### How
-- Locked values:
-  - Deploy host/user: `DEPLOY_HOST` + `DEPLOY_USER`
-  - Website root: `/var/www/boltroute-website`
+- Keep these values unchanged unless explicitly requested by the user:
+  - Deploy host/user: `DEPLOY_HOST`, `DEPLOY_USER`
+  - Website app root: `/var/www/boltroute-website`
   - Website env file: `/var/www/boltroute-website/shared/.env.local`
   - Website service: `boltroute-website`
   - Website upstream: `127.0.0.1:3002`
-  - Deploy workflow: `.github/workflows/website-deploy.yml` (manual pre-cutover)
+  - Website deploy workflow: `.github/workflows/website-deploy.yml`
+  - Website deploy triggers:
+    - `push` on `main` with paths `apps/website/**` and `.github/workflows/website-deploy.yml`
+    - manual `workflow_dispatch`
 
 ### Where
-- Contract details are also reflected in `deployment.md`.
+- `.github/workflows/website-deploy.yml`
+- `deployment.md` (contract section)
 
 ---
 
-## 2) Verified Current State (Evidence)
-
-## A) Workflow evidence
+## 2) Verified Evidence Anchors
 
 ### What
-- Historical failing run exists, and remediation rerun succeeded.
+- Deploy automation and runtime health are validated with concrete evidence.
 
 ### Why
-- Confirms deploy pipeline now works end-to-end after prerequisite fixes.
+- Next session should trust current state and avoid repeating completed infrastructure actions.
 
 ### How
-- Failed run:
-  - Run ID: `21801362879`
-  - URL: `https://github.com/mustimoger/email-verification-fe-v1/actions/runs/21801362879`
-  - Failure: `Create release directory` (`Permission denied`)
-- Successful rerun:
-  - Run ID: `21801917773`
-  - URL: `https://github.com/mustimoger/email-verification-fe-v1/actions/runs/21801917773`
-  - Status: `completed` / `success`
-  - Jobs: `website-checks` = success, `deploy` = success
-  - Critical deploy steps succeeded: `Create release directory`, `Upload env file`, `Sync release`, `Deploy release`
+- Website deploy workflow evidence:
+  - Historical failure: run `21801362879` (`Create release directory` permission denied)
+  - Remediated success: run `21801917773`
+  - Post-policy auto-trigger success: run `21802721793`
+- Runtime and routing evidence:
+  - Persisted Caddy host block exists: `/etc/caddy/Caddyfile` line `30` (`boltroute.ai, www.boltroute.ai {`)
+  - Website service: `Active: active (running)`
+  - Public checks (latest operator verification): all `HTTP/2 200`
+    - `https://boltroute.ai`
+    - `https://www.boltroute.ai`
+    - `https://boltroute.ai/pricing`
+    - `https://boltroute.ai/integrations`
+    - `https://app.boltroute.ai/overview`
+  - DNS checks:
+    - `boltroute.ai` -> `135.181.160.203`
+    - `www.boltroute.ai` -> `boltroute.ai` -> `135.181.160.203`
+  - Caddy formatting hardening completed: `caddy fmt --overwrite /etc/caddy/Caddyfile` then validate/reload.
 
 ### Where
-- GitHub Actions workflow: `.github/workflows/website-deploy.yml`
-
-## B) Host/runtime evidence
-
-### What
-- Website runtime is active on the target upstream and serving pages.
-
-### Why
-- Confirms cutover target is healthy before DNS switch.
-
-### How
-- Service: `systemctl status boltroute-website` => `active (running)`
-- Listener: `ss -ltn` includes `127.0.0.1:3002`
-- Local route checks:
-  - `curl -I http://127.0.0.1:3002/` => `200`
-  - `curl -I http://127.0.0.1:3002/pricing` => `200`
-  - `curl -I http://127.0.0.1:3002/integrations` => `200`
-- Dashboard unaffected:
-  - `curl -I https://app.boltroute.ai/` => `307` to `/overview`
-  - `curl -I https://app.boltroute.ai/overview` => `200`
-  - `curl -I https://app.boltroute.ai/pricing/embed` => `200`
-
-### Where
-- Target host runtime (`boltroute-website` service)
-- Public dashboard domain (`app.boltroute.ai`)
-
-## C) DNS/public status evidence (post-cutover)
-
-### What
-- `boltroute.ai` and `www.boltroute.ai` are cut over to the website host.
-
-### Why
-- Confirms public cutover is active and serving from the new host.
-
-### How
-- DNS snapshot (`2026-02-08 17:33:29 UTC`):
-  - `dig +short boltroute.ai A` => `135.181.160.203`
-  - `dig +short www.boltroute.ai A` => `boltroute.ai.` then `135.181.160.203`
-  - authoritative check: `dig @saanvi.ns.cloudflare.com +short boltroute.ai A` => `135.181.160.203`
-  - authoritative check: `dig @alaric.ns.cloudflare.com +short boltroute.ai A` => `135.181.160.203`
-  - authoritative check: `dig @saanvi.ns.cloudflare.com +short www.boltroute.ai CNAME` => `boltroute.ai.`
-  - `dig +short app.boltroute.ai A` => `135.181.160.203`
-- Public response snapshot (`2026-02-08 17:33:29 UTC`):
-  - `curl -I https://boltroute.ai` => `HTTP/2 200`
-  - `curl -I https://www.boltroute.ai` => `HTTP/2 200`
-  - `curl -I https://boltroute.ai/pricing` => `HTTP/2 200`
-  - `curl -I https://boltroute.ai/integrations` => `HTTP/2 200`
-
-### Where
-- DNS provider zone records
-- Public endpoints: `https://boltroute.ai`, `https://www.boltroute.ai`
+- GitHub Actions run URLs
+- Target host: `/etc/caddy/Caddyfile`, `systemctl status boltroute-website`
+- Public endpoints above
 
 ---
 
-## 3) Completion Matrix (Task 99)
+## 3) Active Open Items (Only)
+
+## Item A - Rollback readiness (`99.6.5`)
 
 ### What
-- Completed sub-steps:
-  - `99.1` filesystem permissions
-  - `99.2` systemd service provisioning
-  - `99.3` secret configuration
-  - `99.4` deploy rerun success
-  - `99.5` pre-cutover smoke checks
-  - `99.6.1` pre-cutover baseline capture
-  - `99.6.2` proxy vhost configuration/verification
-  - `99.6.3` DNS cutover
-  - `99.6.4` post-cutover validation
-- Conditional not triggered:
-  - `99.6.5` rollback (not required, validation passed)
+- Keep rollback procedure available but unexecuted.
 
 ### Why
-- Next session must not repeat completed steps.
+- Rollback is only for regressions; running it now would revert a healthy production state.
 
 ### How
-- Treat Task `99.6` as completed; execute rollback instructions only if a new regression appears.
+- If regression appears:
+  1. Revert DNS for `boltroute.ai` and `www.boltroute.ai` to `192.248.184.194`.
+  2. Revert proxy changes only if they are causally linked.
+  3. Re-run website/dashboard smoke checks.
+  4. Document exact failure + timestamp in root docs.
 
 ### Where
-- Status source of truth: `ui-progress.md`
+- DNS provider panel
+- Target host proxy/service checks
+- `ui-progress.md`, `deployment.md`, `handover.md`
+
+## Item B - Tracker consistency cleanup before product work
+
+### What
+- Reconcile stale unchecked checklist items in `ui-progress.md` against completed progress-log entries.
+
+### Why
+- Current checklist contains legacy unchecked tasks that are already completed in logs, which can mislead next-session prioritization.
+
+### How
+- Audit unchecked tasks vs their progress-log sections.
+- For mismatches:
+  - mark checkbox correctly
+  - add/update progress-log notes explaining the correction
+- Do not silently delete history; keep historical context as notes.
+
+### Where
+- `ui-progress.md` (Tasks list + Progress log)
 
 ---
 
-## 4) Next Actions (Strict Order, Post-Cutover)
+## 4) Strict Next Actions (Next Session, In Order)
 
-## Step 100.1 - Persist website vhost config on disk
+## Step 110.1 - Session preflight and state sync
 
 ### What
-- Persist the active website reverse-proxy block into `/etc/caddy/Caddyfile`.
+- Start with repository and context synchronization.
 
 ### Why
-- Current routing is known healthy, but persistence currently depends on runtime-loaded config.
+- Prevent drift before taking any new action.
 
 ### How
-1. Back up `/etc/caddy/Caddyfile`.
-2. Add a persistent host block for `boltroute.ai, www.boltroute.ai` to `reverse_proxy 127.0.0.1:3002`.
-3. Run `caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile`.
-4. Run `caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile`.
+1. Run `git push origin main`.
+2. Re-read `AGENTS.md`, `handover.md`, `ui-progress.md`, and `deployment.md`.
+3. Confirm no unexpected uncommitted changes.
 
 ### Where
-- Target host (`/etc/caddy/Caddyfile`)
+- Repo root: `/home/codex/email-verification-fe-v1`
 
-### Status
-- Completed (`2026-02-08 17:52:06 UTC`) via root-assisted execution.
-- Earlier blocked attempt (`2026-02-08 17:47:49 UTC`):
-  - Backup created: `/tmp/Caddyfile.backup.20260208T174749Z`
-  - Candidate created: `/tmp/Caddyfile.step1001.20260208T174749Z` with `boltroute.ai, www.boltroute.ai` -> `reverse_proxy 127.0.0.1:3002`
-  - `caddy validate --config /tmp/Caddyfile.step1001.20260208T174749Z --adapter caddyfile` => `Valid configuration`
-  - `caddy reload --config /tmp/Caddyfile.step1001.20260208T174749Z --adapter caddyfile` => success
-  - Final persist attempt: `cp /tmp/Caddyfile.step1001.20260208T174749Z /etc/caddy/Caddyfile` => `Permission denied`
-- Final completion evidence (`2026-02-08 17:52:06 UTC`):
-  - Operator executed root write to `/etc/caddy/Caddyfile` and reloaded Caddy.
-  - `caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile` => `Valid configuration`
-  - `caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile` => success
-  - Formatting hardening (`2026-02-08 17:54:22 UTC`): `caddy fmt --overwrite /etc/caddy/Caddyfile` + validate + reload completed successfully.
-
-## Step 100.2 - Re-run post-persistence smoke checks
+## Step 110.2 - Production health check gate
 
 ### What
-- Re-validate public website routes, dashboard non-regression, and local service health after Step `100.1`.
+- Validate public routes and service health before starting new product changes.
 
 ### Why
-- Confirms persisted config behaves exactly like the validated runtime state.
+- Catch regressions early and preserve rollback optionality.
 
 ### How
 1. `dig +short boltroute.ai A`
@@ -201,109 +166,96 @@
 8. `systemctl status boltroute-website --no-pager | grep -m1 'Active:'`
 
 ### Where
-- Any internet-connected terminal + target host shell
+- Internet terminal + target host terminal
 
-### Status
-- Completed (`2026-02-08 17:52:35 UTC`) after persisted on-disk config:
-  - Persist check: `grep -n '^boltroute.ai, www.boltroute.ai {' /etc/caddy/Caddyfile` => line `30`
-  - `dig +short boltroute.ai A` => `135.181.160.203`
-  - `dig +short www.boltroute.ai A` => `boltroute.ai.` then `135.181.160.203`
-  - `curl -I https://boltroute.ai` => `HTTP/2 200`
-  - `curl -I https://www.boltroute.ai` => `HTTP/2 200`
-  - `curl -I https://boltroute.ai/pricing` => `HTTP/2 200`
-  - `curl -I https://boltroute.ai/integrations` => `HTTP/2 200`
-  - `curl -I https://app.boltroute.ai/overview` => `HTTP/2 200`
-  - `systemctl status boltroute-website --no-pager` => `active (running)`
-- Operator rerun (`2026-02-08 17:53:35 UTC`) confirmed the same healthy route + DNS outputs and the same persisted host-block line `30`.
-- Command portability note:
-  - Target host does not have `rg`; use `grep -m1 'Active:'` for service-status extraction.
-
-## Step 100.3 - Keep rollback readiness active
+## Step 110.3 - Reconcile pending-task list (anti-confusion gate)
 
 ### What
-- Keep rollback playbook available for production regressions.
+- Normalize `ui-progress.md` pending checklist against actual completion history.
 
 ### Why
-- Post-cutover risk moves from migration execution to ongoing production stability.
+- Next product task selection must be based on true pending work only.
 
 ### How
-1. If regression is detected, revert `boltroute.ai` and `www.boltroute.ai` DNS back to `192.248.184.194`.
-2. Revert proxy changes only if they are part of the regression.
-3. Re-run website + dashboard smoke checks.
-4. Record the exact failing check and timestamp.
+1. Identify all unchecked items in Tasks list.
+2. Cross-check each item against progress-log completion entries.
+3. Correct checklist states and add newcomer-safe notes (`What/Why/How`).
+4. Commit and push corrections.
 
 ### Where
-- DNS provider + target host
+- `ui-progress.md`
 
-### Status
-- Standby (execute only on failure).
-
-## Step 100.4 - Decide website deploy trigger policy after cutover
+## Step 110.4 - Select next true product task
 
 ### What
-- Lock and implement the post-cutover website deploy trigger policy.
+- Choose one real pending product task after Step `110.3` reconciliation.
 
 ### Why
-- Post-cutover operations must avoid ambiguous release behavior.
+- Enforces single-task execution with clear boundaries and traceability.
 
 ### How
-1. Keep manual deploy support (`workflow_dispatch`) for controlled releases.
-2. Add automatic deploy on `push` to `main` for `apps/website/**`.
-3. Include `.github/workflows/website-deploy.yml` in path filters so trigger-policy updates self-validate through deploy pipeline.
-4. Update root docs to reflect the locked policy.
+1. Pick one pending task with user confirmation.
+2. Add/adjust task status to `In Progress` before coding.
+3. Execute MVP-first implementation.
+4. Validate with required tests/checks.
+5. Update root docs and push.
 
 ### Where
-- GitHub Actions workflow and root markdown docs
+- `ui-progress.md` (task selection and logging)
+- Affected code paths in repo
 
-### Status
-- Completed (`2026-02-08`):
-  - Decision: enable auto deploy on `push` to `main` for website changes while retaining manual `workflow_dispatch`.
-  - Implementation: `.github/workflows/website-deploy.yml` now includes:
-    - `push.branches: [main]`
-    - `push.paths: ["apps/website/**", ".github/workflows/website-deploy.yml"]`
-  - Validation evidence: auto-triggered workflow run `21802721793` (`https://github.com/mustimoger/email-verification-fe-v1/actions/runs/21802721793`) completed `success` with both jobs green (`website-checks`, `deploy`) on `2026-02-08 17:59:01 UTC`.
+## Step 110.5 - Continue steady-state ops posture
+
+### What
+- Keep rollback guard active while product work continues.
+
+### Why
+- Website/domain integration is production-critical and must remain observable during feature work.
+
+### How
+- Re-run Step `110.2` checks after any major deploy or infra-adjacent change.
+- Trigger rollback only on validated regression criteria.
+
+### Where
+- Public endpoints + target host
+- Root docs for evidence capture
 
 ---
 
-## 5) Mandatory Documentation After Each Step
+## 5) Mandatory Documentation Discipline (Do Not Skip)
 
 ### What
-- Update root documentation after every completed sub-step.
+- Update root docs after each completed step/task.
 
 ### Why
-- Prevent state loss between Codex sessions.
+- Required for context-window handoff continuity and newcomer clarity.
 
 ### How
 1. Update `ui-progress.md`:
-   - status checkbox
-   - progress log with `What / Why / How / Not implemented yet` (if any)
-2. Update `deployment.md` with current deployment/cutover state.
-3. Update `handover.md` with next strict step and latest evidence.
+   - checklist status
+   - progress log using `What / Why / How / Not implemented yet`
+2. Update `deployment.md` for deployment/runtime state changes.
+3. Update `handover.md` strict next step + latest evidence.
 4. Commit and push `main`.
-5. Ask user confirmation before starting next step.
+5. Ask user confirmation before starting the next task.
 
 ### Where
-- Root markdown files:
-  - `ui-progress.md`
-  - `deployment.md`
-  - `handover.md`
+- `ui-progress.md`
+- `deployment.md`
+- `handover.md`
 
 ---
 
-## 6) Immediate Resume Point For Next Codex Session
+## 6) Immediate Resume Point (One Line)
 
 ### What
-- Resume from post-cutover state; Task `99.6` is completed.
+- Resume at Step `110.1`, then execute Step `110.2` and Step `110.3` before any new product implementation.
 
 ### Why
-- DNS + proxy cutover and post-cutover validations are complete.
+- This guarantees state sync, production safety, and backlog clarity.
 
 ### How
-1. `git push origin main` at session start.
-2. Re-read `AGENTS.md`, this `handover.md`, and `ui-progress.md`.
-3. Monitor production routes (`boltroute.ai`, `www`, and `app`) and keep Step `100.3` rollback guard active.
-4. Continue with the next prioritized product task from `ui-progress.md`.
+- Follow Section `4` in exact order.
 
 ### Where
 - Repo: `/home/codex/email-verification-fe-v1`
-- Active state: Task `99.6` completed (rollback playbook remains available)
