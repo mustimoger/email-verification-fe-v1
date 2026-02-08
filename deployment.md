@@ -94,12 +94,15 @@
   - Step 100.1 initial attempt on `2026-02-08 17:47:49 UTC`: backup `/tmp/Caddyfile.backup.20260208T174749Z` and candidate `/tmp/Caddyfile.step1001.20260208T174749Z` were created; `caddy validate` passed and `caddy reload` succeeded from candidate; final write to `/etc/caddy/Caddyfile` initially failed with `Permission denied` due missing passwordless sudo.
   - Step 100.1 completion on `2026-02-08 17:52:06 UTC`: operator executed root commands to persist website host block in `/etc/caddy/Caddyfile`; `caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile` returned `Valid configuration`; reload succeeded.
   - Step 100.2 post-persist smoke checks on `2026-02-08 17:52:35 UTC`: persisted host block present at `/etc/caddy/Caddyfile` line `30`; `boltroute.ai`, `www`, `/pricing`, `/integrations`, and `app.boltroute.ai/overview` all returned `HTTP/2 200`; DNS resolves to `135.181.160.203`; `boltroute-website` service is `active (running)`.
+  - Step 100.2 operator rerun on `2026-02-08 17:53:35 UTC`: repeated persisted-host-block (`line 30`), DNS, and public-route checks all remained healthy (`HTTP/2 200` on apex/`www`/`pricing`/`integrations`/`app /overview`).
+  - Caddyfile formatting hardening on `2026-02-08 17:54:22 UTC`: `sudo caddy fmt --overwrite /etc/caddy/Caddyfile` completed, followed by successful validate + reload.
 - Open items:
   - Decide post-cutover website deploy trigger policy (`workflow_dispatch` only vs adding `push` for `apps/website/**`).
   - Keep rollback procedure (`99.6.5`) available for regressions.
 - Historical notes:
   - Initial manual run `21801362879` failed at `Create release directory` due missing permissions; this was remediated and superseded by successful run `21801917773`.
   - During initial post-cutover checks at `2026-02-08 17:31:33 UTC`, apex/`www` TLS briefly failed (`curl` exit `35`) while cert issuance completed; it recovered by `17:32:19 UTC` and final validation passed.
+  - Target-host shell does not include `rg` by default; use `grep -m1 'Active:'` for portable service-status capture in operator commands.
 
 ## MVP deployment plan (production-grade baseline)
 

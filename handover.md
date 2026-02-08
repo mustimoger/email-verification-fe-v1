@@ -180,6 +180,7 @@
   - Operator executed root write to `/etc/caddy/Caddyfile` and reloaded Caddy.
   - `caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile` => `Valid configuration`
   - `caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile` => success
+  - Formatting hardening (`2026-02-08 17:54:22 UTC`): `caddy fmt --overwrite /etc/caddy/Caddyfile` + validate + reload completed successfully.
 
 ## Step 100.2 - Re-run post-persistence smoke checks
 
@@ -197,7 +198,7 @@
 5. `curl -I https://boltroute.ai/pricing`
 6. `curl -I https://boltroute.ai/integrations`
 7. `curl -I https://app.boltroute.ai/overview`
-8. `systemctl status boltroute-website --no-pager`
+8. `systemctl status boltroute-website --no-pager | grep -m1 'Active:'`
 
 ### Where
 - Any internet-connected terminal + target host shell
@@ -213,6 +214,9 @@
   - `curl -I https://boltroute.ai/integrations` => `HTTP/2 200`
   - `curl -I https://app.boltroute.ai/overview` => `HTTP/2 200`
   - `systemctl status boltroute-website --no-pager` => `active (running)`
+- Operator rerun (`2026-02-08 17:53:35 UTC`) confirmed the same healthy route + DNS outputs and the same persisted host-block line `30`.
+- Command portability note:
+  - Target host does not have `rg`; use `grep -m1 'Active:'` for service-status extraction.
 
 ## Step 100.3 - Keep rollback readiness active
 

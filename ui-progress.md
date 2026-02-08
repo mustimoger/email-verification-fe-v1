@@ -115,6 +115,7 @@
 - [x] Task 101 - Execute Step 100.1 by persisting website vhosts in `/etc/caddy/Caddyfile` and reloading Caddy (MVP).
 - [x] Task 102 - Execute Step 100.2 post-persistence smoke checks for `boltroute.ai`/`www`/`app` + service health (MVP).
 - [x] Task 103 - Complete Step 100.1 with operator root commands and re-run Step 100.2 against persisted on-disk Caddy config (MVP).
+- [x] Task 104 - Capture final operator verification (`17:53:35 UTC`) and Caddyfile formatting hardening, then update runbook commands for hosts without `rg` (MVP).
 
 ## Progress log
 ### Task 1 - Completed
@@ -668,3 +669,9 @@
 - Why: Step `100.1` initially failed from this shell due root restrictions, so operator execution was required to complete the MVP safely.
 - How: Operator completed root persistence/reload and shared output; then at `2026-02-08 17:52:35 UTC` revalidation confirmed persisted host block (`/etc/caddy/Caddyfile` line `30`) and healthy endpoints/services (`boltroute.ai`, `www`, `/pricing`, `/integrations`, `app/overview` all `HTTP/2 200`; `boltroute-website` `active`).
 - Not implemented yet: None for this task; follow-up deploy-trigger policy decision remains in Step `100.4`.
+
+### Task 104 - Completed
+- What: Captured final operator verification and Caddyfile formatting hardening, then synced runbook compatibility guidance.
+- Why: Operator output added newer proof (`17:53:35 UTC`) and revealed that `rg` is unavailable on the target host, causing a blank `SYSTEMD_ACTIVE` capture in one command variant.
+- How: Recorded the final persisted-config check (`/etc/caddy/Caddyfile` host block line `30`, public routes all `HTTP/2 200`, DNS `135.181.160.203`), captured successful `sudo caddy fmt --overwrite /etc/caddy/Caddyfile` + validate/reload at `2026-02-08 17:54:22 UTC`, and updated docs to use `grep -m1 'Active:'` for portable service-status capture.
+- Not implemented yet: None for this task.
