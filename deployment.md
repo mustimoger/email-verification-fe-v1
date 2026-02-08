@@ -431,6 +431,13 @@
 - **Where:** `ui-progress.md` (Tasks list + Progress log).
 - **Status:** Complete (`2026-02-08 18:13:45 UTC`).
 
+### Step 110.4 - Select next true product task (completed)
+- **What:** Selected and executed one user-confirmed pending product task: create deployment-structure documentation.
+- **Why:** Step `110.4` enforces single-task scope after tracker reconciliation so progress remains traceable and newcomer-safe.
+- **How:** Used the reconciled pending list to confirm next work with the user, then completed Task `111` by adding root `structure.md` covering production deploy paths, workflow triggers, secret inputs, and push-to-production sequence for dashboard + website.
+- **Where:** `ui-progress.md` (Task `110` + Task `111`), `structure.md`.
+- **Status:** Complete (`2026-02-08 18:21:39 UTC`).
+
 ## Open items (required before execution)
 - Confirm the current web server (Nginx/Apache/Caddy/other) and how TLS is managed today.
 - Confirm downtime tolerance and rollback expectations for the cutover.

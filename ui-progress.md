@@ -121,7 +121,8 @@
 - [x] Task 107 - Execute Step 110.1 session preflight and state sync before any new product work (MVP).
 - [x] Task 108 - Execute Step 110.2 production health check gate and capture fresh evidence (MVP).
 - [x] Task 109 - Execute Step 110.3 stale unchecked task reconciliation in `ui-progress.md` (MVP).
-- [ ] Task 110 - Execute Step 110.4 by selecting one true pending product task with user confirmation (MVP).
+- [x] Task 110 - Execute Step 110.4 by selecting one true pending product task with user confirmation (MVP).
+- [x] Task 111 - Create root `structure.md` that explains monorepo production deployment and GitHub Actions push-to-production flow in beginner-friendly language (MVP).
 
 ## Progress log
 ### Task 1 - Completed
@@ -713,4 +714,18 @@
 - Why: Step `110.3` prevents selecting the wrong next product task by ensuring the pending list reflects reality.
 - How: Audited every unchecked task and cross-checked against progress-log completion entries; corrected only stale mismatches by marking Tasks `3`, `4`, `5`, `6`, `7`, and `8` as completed because each already had a `Task X - Completed` log entry. Verified remaining unchecked tasks are true pending items.
 - Where: `ui-progress.md` Tasks list and Progress log sections.
-- Not implemented yet: Step `110.4` selection/execution of one true pending product task (with user confirmation) is still pending.
+- Not implemented yet: Step `110.5` remains ongoing operational guidance; no additional product task is started until user confirms the next selection.
+
+### Task 110 - Completed
+- What: Executed Step `110.4` selection gate by choosing the next true pending product task with user confirmation.
+- Why: Runbook order requires explicit user-confirmed task selection after Step `110.3` before new work starts.
+- How: Presented the reconciled pending-task list, received user instruction to create deployment-structure documentation, and selected Task `111` as the single scoped product task for this step.
+- Where: `ui-progress.md` pending list + user-confirmed request flow in this session.
+- Not implemented yet: Step `110.5` steady-state ops posture remains active guidance for future infra-adjacent changes.
+
+### Task 111 - Completed
+- What: Created a concise root `structure.md` that explains monorepo production deployment and push-to-production flow in beginner-friendly language.
+- Why: New contributors need one simple file focused on deployment mechanics (workflows, triggers, release paths, and secrets) rather than app business functionality.
+- How: Documented the two production pipelines from real workflow/script sources (`deploy.yml`, `website-deploy.yml`, `website-ci.yml`, and both remote deploy scripts), including trigger rules, release process, service restarts, secret usage, and practical "how code reaches production" steps.
+- Where: `structure.md` (repo root).
+- Not implemented yet: No runtime or infrastructure changes were performed; this task is documentation-only.

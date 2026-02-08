@@ -1,6 +1,6 @@
 # Handover: Dashboard + Website Integration (Post-Cutover Runbook)
 
-## 0) Snapshot (Updated 2026-02-08 18:13:45 UTC)
+## 0) Snapshot (Updated 2026-02-08 18:21:39 UTC)
 
 ### What
 - Production domains are live and stable:
@@ -109,23 +109,23 @@
 - Target host proxy/service checks
 - `ui-progress.md`, `deployment.md`, `handover.md`
 
-## Item B - Tracker consistency cleanup before product work
+## Item B - Backlog execution discipline
 
 ### What
-- Reconcile stale unchecked checklist items in `ui-progress.md` against completed progress-log entries.
+- Continue product backlog work one task at a time with explicit user confirmation.
 
 ### Why
-- Current checklist contains legacy unchecked tasks that are already completed in logs, which can mislead next-session prioritization.
+- Keeps scope controlled and avoids hidden multi-task drift in long-running sessions.
 
 ### How
-- Audit unchecked tasks vs their progress-log sections.
-- For mismatches:
-  - mark checkbox correctly
-  - add/update progress-log notes explaining the correction
-- Do not silently delete history; keep historical context as notes.
+1. List true pending tasks from `ui-progress.md`.
+2. Select exactly one task with user confirmation before implementation.
+3. Apply MVP-first changes.
+4. Update `ui-progress.md`, `deployment.md`, and `handover.md` after completion.
+5. Commit and push `main`.
 
 ### Where
-- `ui-progress.md` (Tasks list + Progress log)
+- `ui-progress.md`, `deployment.md`, `handover.md`
 
 ---
 
@@ -249,7 +249,7 @@
 ## 6) Immediate Resume Point (One Line)
 
 ### What
-- Resume at Step `110.4` before any new product implementation.
+- Keep Step `110.5` steady-state ops posture, then continue single-task backlog execution.
 
 ### Why
 - This guarantees state sync, production safety, and backlog clarity.
@@ -322,3 +322,23 @@
 
 ### Next strict step
 - Execute Step `110.4` by selecting one true pending product task with user confirmation.
+
+### Step 110.4 - Completed (`2026-02-08 18:21:39 UTC`)
+
+### What
+- Selected and completed one true pending product task with user confirmation.
+
+### Why
+- This preserves runbook ordering and keeps implementation scope auditable.
+
+### How
+1. Listed current pending tasks after Step `110.3` reconciliation.
+2. Received user-confirmed selection to create beginner-friendly deployment structure documentation.
+3. Added `structure.md` at repo root describing: production targets, workflow triggers, release mechanics, secret flow, and push-to-production path.
+4. Updated root trackers to mark Step `110.4` and the selected task complete.
+
+### Where
+- `ui-progress.md`, `deployment.md`, `handover.md`, `structure.md`
+
+### Next strict step
+- Follow Step `110.5` steady-state ops posture and continue backlog work one confirmed task at a time.
