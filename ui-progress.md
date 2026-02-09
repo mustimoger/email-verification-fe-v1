@@ -140,7 +140,7 @@
 - [x] Task 126 - Add website SEO/LLM crawler endpoints: `robots.txt`, `sitemap.xml`, and `llms.txt` with allow-all crawler policy (MVP).
 - [x] Task 127 - Add sitemap auto-discovery logic so new published posts/pages/landing content is included without manual URL edits (MVP).
 - [x] Task 128 - Validate SEO/LLM endpoint behavior with unit + integration checks and website lint/build (MVP).
-- [ ] Task 129 - Deploy SEO/LLM endpoint changes to `main` and capture post-deploy endpoint smoke checks (MVP).
+- [x] Task 129 - Deploy SEO/LLM endpoint changes to `main` and capture post-deploy endpoint smoke checks (MVP).
 
 ## Progress log
 ### Task 1 - Completed
@@ -891,3 +891,15 @@
   Then ran integration smoke checks by starting production server on port `3022` and fetching `/robots.txt`, `/sitemap.xml`, and `/llms.txt` (all returned `HTTP 200` with expected content types and body content).
 - Where: `apps/website/tests/seo/site-url.test.ts`, `apps/website/tests/seo/sitemap.test.ts`, `apps/website/package.json`, `apps/website/package-lock.json`.
 - Not implemented yet: Existing pre-existing lint/build warnings in website remain (`<img>` optimization and `metadataBase` warnings); no new blocking errors were introduced.
+
+### Task 129 - Completed
+- What: Deployed the SEO/LLM endpoint changes to `main` and verified production endpoint behavior.
+- Why: MVP required deployment and real production evidence, not only local validation.
+- How: Committed and pushed `main` commit `2f70dc6` (`feat(website): add robots, sitemap, and llms endpoints`). Verified GitHub Actions success:
+  Website CI run `21828246386` and Website Deploy run `21828246368` both completed successfully. Then executed production smoke checks:
+  `curl -I https://boltroute.ai/robots.txt`,
+  `curl -I https://boltroute.ai/sitemap.xml`,
+  `curl -I https://boltroute.ai/llms.txt`
+  (all `HTTP/2 200` with correct content types). Confirmed robots allow-all policy + sitemap pointer, confirmed sitemap contains key public URLs and excludes `/test_home` and `/test_page`, and confirmed `llms.txt` is reachable with the expected policy text.
+- Where: GitHub Actions runs `21828246386` and `21828246368`; production endpoints `https://boltroute.ai/robots.txt`, `https://boltroute.ai/sitemap.xml`, `https://boltroute.ai/llms.txt`.
+- Not implemented yet: No separate `llms-full.txt` or segmented sitemap index was added in this MVP.
