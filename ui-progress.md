@@ -133,6 +133,8 @@
 - [x] Task 119 - Validate website title metadata update and run required checks (MVP).
 - [x] Task 120 - Fix auth-page logo hydration mismatch by making initial SSR/client render deterministic before theme-based logo swap (MVP).
 - [x] Task 121 - Validate auth hydration mismatch fix and run required dashboard checks (MVP).
+- [x] Task 122 - Keep homepage pricing trust-row copy on a single line (no wrapping) for the four requested items (MVP).
+- [x] Task 123 - Validate homepage trust-row single-line behavior and run required website checks (MVP).
 
 ## Progress log
 ### Task 1 - Completed
@@ -830,3 +832,17 @@
 - How: Ran `source .venv/bin/activate && set -a && source apps/dashboard/.env.local && set +a && npm run test:dashboard`, then `source .venv/bin/activate && set -a && source apps/dashboard/.env.local && set +a && npm run build:dashboard`; both passed.
 - Where: Repo root using `apps/dashboard` test/build scripts.
 - Not implemented yet: No additional cross-browser favicon cache-busting mechanism was added; may require hard refresh/new tab in already-open browser sessions.
+
+### Task 122 - Completed
+- What: Kept the homepage pricing trust-row items on one line for the four requested strings: `Credits never expire`, `No charge for unknowns`, `99%+ accuracy`, and `No credit card to start`.
+- Why: The requested homepage behavior is to avoid wrapping these trust-row labels onto new lines.
+- How: Updated `apps/website/src/components/PricingTeaser.jsx` trust-row container classes from wrapping layout to `flex-nowrap` + `whitespace-nowrap` and added `overflow-x-auto`; also set each trust item to `shrink-0` so labels stay on a single row.
+- Where: `apps/website/src/components/PricingTeaser.jsx`.
+- Not implemented yet: No copy/content changes were made; only layout behavior for the existing four strings was adjusted.
+
+### Task 123 - Completed
+- What: Validated the single-line trust-row update with website checks.
+- Why: Confirm the no-wrap change does not break website lint/build behavior.
+- How: Ran `source .venv/bin/activate && npm run lint:website && npm run build:website`; both passed. Existing warnings remained (`<img>` optimization and `metadataBase`) with no new errors from this change.
+- Where: Repo root commands using the `apps/website` lint/build pipeline.
+- Not implemented yet: No browser automation snapshot test was added; validation used current project lint/build checks.

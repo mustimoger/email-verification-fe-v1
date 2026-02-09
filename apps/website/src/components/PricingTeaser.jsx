@@ -98,14 +98,14 @@ export default function PricingTeaser() {
         </Link>
 
         {/* Trust row */}
-        <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 mt-8 text-[18px] text-white">
+        <div className="mt-8 flex flex-nowrap items-center justify-center gap-x-6 overflow-x-auto whitespace-nowrap text-[18px] text-white">
           {[
             "Credits never expire",
             "No charge for unknowns",
             "99%+ accuracy",
             "No credit card to start",
           ].map((item) => (
-            <span key={item} className="flex items-center gap-1.5">
+            <span key={item} className="flex shrink-0 items-center gap-1.5">
               <svg
                 className="w-3.5 h-3.5 text-emerald-500/70"
                 fill="none"
