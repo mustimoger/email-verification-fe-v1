@@ -9,7 +9,8 @@
     "prebuild": "npm run content:build",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test:seo": "tsx tests/seo/site-url.test.ts && tsx tests/seo/sitemap.test.ts"
   },
   "dependencies": {
     "@mdx-js/loader": "^3.1.1",
@@ -33,6 +34,7 @@
     "eslint-config-next": "14.2.35",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
+    "tsx": "^4.21.0",
     "typescript": "^5"
   }
 }

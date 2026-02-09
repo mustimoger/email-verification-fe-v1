@@ -137,6 +137,10 @@
 - [x] Task 123 - Validate homepage trust-row single-line behavior and run required website checks (MVP).
 - [x] Task 124 - Remove homepage pricing trust-row horizontal scrollbar while keeping all four trust items on one line (MVP).
 - [x] Task 125 - Validate trust-row scrollbar fix and run required website checks (MVP).
+- [x] Task 126 - Add website SEO/LLM crawler endpoints: `robots.txt`, `sitemap.xml`, and `llms.txt` with allow-all crawler policy (MVP).
+- [x] Task 127 - Add sitemap auto-discovery logic so new published posts/pages/landing content is included without manual URL edits (MVP).
+- [x] Task 128 - Validate SEO/LLM endpoint behavior with unit + integration checks and website lint/build (MVP).
+- [ ] Task 129 - Deploy SEO/LLM endpoint changes to `main` and capture post-deploy endpoint smoke checks (MVP).
 
 ## Progress log
 ### Task 1 - Completed
@@ -862,3 +866,28 @@
 - How: Ran `source .venv/bin/activate && npm run lint:website && npm run build:website`; both passed. Existing warnings remained unchanged (`<img>` and `metadataBase`).
 - Where: Repo root `apps/website` lint/build pipeline.
 - Not implemented yet: No browser automation regression test was added in this task.
+
+### Task 126 - Completed
+- What: Added website crawler/SEO endpoints for `robots.txt`, `sitemap.xml`, and `llms.txt` with an allow-all crawler policy.
+- Why: The site needed explicit crawler discovery surfaces for search engines and LLM agents.
+- How: Implemented route handlers at `apps/website/src/app/robots.txt/route.ts`, `apps/website/src/app/sitemap.xml/route.ts`, and `apps/website/src/app/llms.txt/route.ts`; added shared site URL resolution helper `apps/website/src/lib/seo/site-url.ts` so endpoint URLs are generated from configured site env values or request origin.
+- Where: `apps/website/src/app/robots.txt/route.ts`, `apps/website/src/app/sitemap.xml/route.ts`, `apps/website/src/app/llms.txt/route.ts`, `apps/website/src/lib/seo/site-url.ts`.
+- Not implemented yet: No `app/robots.ts` or `app/sitemap.ts` metadata-route variants were added; this MVP intentionally uses explicit route handlers for plain-text/XML control.
+
+### Task 127 - Completed
+- What: Added sitemap auto-discovery so newly published content is included without manually editing URL lists.
+- Why: New posts/pages/landing content should appear in sitemap automatically as content grows.
+- How: Implemented reusable sitemap builder logic in `apps/website/src/lib/seo/sitemap-core.ts` and wired production content source in `apps/website/src/lib/seo/sitemap.ts`; static public routes are included explicitly, while Velite `posts/pages/landings` are included automatically when `draft` is false and placeholder canonicals (`example.com`) are excluded.
+- Where: `apps/website/src/lib/seo/sitemap-core.ts`, `apps/website/src/lib/seo/sitemap.ts`.
+- Not implemented yet: New non-content app routes still need a one-line static route entry in `PUBLIC_STATIC_PATHS` to appear in sitemap (content-backed routes are fully automatic).
+
+### Task 128 - Completed
+- What: Validated SEO/LLM endpoint behavior with unit + integration checks and website lint/build.
+- Why: Confirm endpoint correctness and deploy safety for the MVP before pushing to `main`.
+- How: Added unit tests in `apps/website/tests/seo/site-url.test.ts` and `apps/website/tests/seo/sitemap.test.ts`, wired `test:seo` script in `apps/website/package.json`, installed `tsx` dev dependency, and ran:
+  `source .venv/bin/activate && npm --prefix apps/website run test:seo`,
+  `source .venv/bin/activate && npm --prefix apps/website run lint`,
+  `source .venv/bin/activate && npm --prefix apps/website run build`.
+  Then ran integration smoke checks by starting production server on port `3022` and fetching `/robots.txt`, `/sitemap.xml`, and `/llms.txt` (all returned `HTTP 200` with expected content types and body content).
+- Where: `apps/website/tests/seo/site-url.test.ts`, `apps/website/tests/seo/sitemap.test.ts`, `apps/website/package.json`, `apps/website/package-lock.json`.
+- Not implemented yet: Existing pre-existing lint/build warnings in website remain (`<img>` optimization and `metadataBase` warnings); no new blocking errors were introduced.
