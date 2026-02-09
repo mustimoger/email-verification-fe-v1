@@ -135,6 +135,8 @@
 - [x] Task 121 - Validate auth hydration mismatch fix and run required dashboard checks (MVP).
 - [x] Task 122 - Keep homepage pricing trust-row copy on a single line (no wrapping) for the four requested items (MVP).
 - [x] Task 123 - Validate homepage trust-row single-line behavior and run required website checks (MVP).
+- [x] Task 124 - Remove homepage pricing trust-row horizontal scrollbar while keeping all four trust items on one line (MVP).
+- [x] Task 125 - Validate trust-row scrollbar fix and run required website checks (MVP).
 
 ## Progress log
 ### Task 1 - Completed
@@ -846,3 +848,17 @@
 - How: Ran `source .venv/bin/activate && npm run lint:website && npm run build:website`; both passed. Existing warnings remained (`<img>` optimization and `metadataBase`) with no new errors from this change.
 - Where: Repo root commands using the `apps/website` lint/build pipeline.
 - Not implemented yet: No browser automation snapshot test was added; validation used current project lint/build checks.
+
+### Task 124 - Completed
+- What: Removed the horizontal scrollbar under the homepage pricing trust-row while keeping the four trust texts on a single line.
+- Why: The previous implementation used horizontal overflow scrolling to force single-line behavior, which showed an unwanted scrollbar in the UI.
+- How: Updated the trust-row container in `apps/website/src/components/PricingTeaser.jsx` by removing `overflow-x-auto` and tightening spacing (`gap-x-6` to `gap-x-4`) while retaining `flex-nowrap` + `whitespace-nowrap`.
+- Where: `apps/website/src/components/PricingTeaser.jsx`.
+- Not implemented yet: No text/content changes were made; this task is layout-only.
+
+### Task 125 - Completed
+- What: Validated the trust-row scrollbar fix with website checks.
+- Why: Ensure the layout tweak did not break lint/build behavior and remains deploy-safe.
+- How: Ran `source .venv/bin/activate && npm run lint:website && npm run build:website`; both passed. Existing warnings remained unchanged (`<img>` and `metadataBase`).
+- Where: Repo root `apps/website` lint/build pipeline.
+- Not implemented yet: No browser automation regression test was added in this task.

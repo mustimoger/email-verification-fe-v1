@@ -98,7 +98,7 @@ export default function PricingTeaser() {
         </Link>
 
         {/* Trust row */}
-        <div className="mt-8 flex flex-nowrap items-center justify-center gap-x-6 overflow-x-auto whitespace-nowrap text-[18px] text-white">
+        <div className="mt-8 flex flex-nowrap items-center justify-center gap-x-4 whitespace-nowrap text-[18px] text-white">
           {[
             "Credits never expire",
             "No charge for unknowns",
