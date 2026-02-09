@@ -59,14 +59,14 @@ export default function PricingTeaser() {
               }`}
             >
               <div
-                className={`text-[11px] font-semibold tracking-wider uppercase mb-1 ${
+                className={`text-[16.5px] font-semibold tracking-wider uppercase mb-1 ${
                   tier.highlight ? "text-orange-400" : "text-slate-500"
                 }`}
               >
                 {tier.volume} emails
               </div>
               <div
-                className={`text-2xl font-extrabold tracking-tight ${
+                className={`text-4xl font-extrabold tracking-tight ${
                   tier.highlight ? "text-white" : "text-slate-300"
                 }`}
               >
@@ -79,7 +79,7 @@ export default function PricingTeaser() {
         {/* CTA */}
         <Link
           href="/pricing"
-          className="inline-flex items-center gap-2 px-8 py-3.5 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-white font-bold text-sm rounded-lg transition-all duration-200 shadow-lg shadow-orange-500/20 hover:shadow-orange-500/30 hover:-translate-y-0.5"
+          className="inline-flex items-center gap-2 px-8 py-3.5 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-white font-bold text-[21px] rounded-lg transition-all duration-200 shadow-lg shadow-orange-500/20 hover:shadow-orange-500/30 hover:-translate-y-0.5"
         >
           See Full Pricing
           <svg
@@ -98,7 +98,7 @@ export default function PricingTeaser() {
         </Link>
 
         {/* Trust row */}
-        <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 mt-8 text-xs text-white">
+        <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 mt-8 text-[18px] text-white">
           {[
             "Credits never expire",
             "No charge for unknowns",

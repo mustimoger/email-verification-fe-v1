@@ -4,7 +4,7 @@ import { Header } from "@/components/Header";
 import { FooterSection } from "@/components/FooterSection";
 
 export const metadata: Metadata = {
-  title: "Saatosa",
+  title: "BoltRoute",
   description: "SaaS marketing site",
   icons: {
     icon: "/bolt.png",

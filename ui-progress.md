@@ -51,9 +51,9 @@
 - [ ] Task 48 - Remove unused icon dependencies after migration (MVP).
 - [ ] Task 49 - Validate icon migration and run unit + integration tests.
 - [x] Task 50 - Set `/public/bolt.png` as the browser favicon (MVP).
-- [ ] Task 51 - Validate favicon update and run unit + integration tests.
-- [ ] Task 52 - Remove the default Next.js favicon so only `/public/bolt.png` is served (MVP).
-- [ ] Task 53 - Validate favicon-only update and run unit + integration tests.
+- [x] Task 51 - Validate favicon update and run unit + integration tests.
+- [x] Task 52 - Remove the default Next.js favicon so only `/public/bolt.png` is served (MVP).
+- [x] Task 53 - Validate favicon-only update and run unit + integration tests.
 - [x] Task 54 - Define marketing demo dataset (credits, metrics, tasks, API usage) for screenshots (MVP).
 - [x] Task 55 - Create a dedicated Supabase demo user with provided credentials (MVP).
 - [x] Task 56 - Seed ext API Postgres with insert-only demo data (>=15 completed file-backed tasks + API usage) (MVP).
@@ -125,6 +125,14 @@
 - [x] Task 111 - Create root `structure.md` that explains monorepo production deployment and GitHub Actions push-to-production flow in beginner-friendly language (MVP).
 - [x] Task 112 - Fix broken privacy link on website Terms page by replacing `https://boltroute.ai/privacy` with `https://boltroute.ai/privacy-policy` (MVP).
 - [x] Task 113 - Add a `make.com` integration card to the dashboard Integrations Catalog using the logo in `apps/dashboard/public` (MVP).
+- [x] Task 114 - Increase homepage pricing teaser text size by 1.5x for specified pricing volumes, prices, CTA, and trust-row copy (MVP).
+- [x] Task 115 - Validate homepage pricing teaser typography update and run required checks (MVP).
+- [x] Task 116 - Add a root shell script to run website/dashboard/backend locally on ports `3010/8010/8011` with safe shutdown that preserves SSH session (MVP).
+- [x] Task 117 - Validate local-run shell script behavior and syntax checks (MVP).
+- [x] Task 118 - Change website browser tab title from `Saatosa` to `BoltRoute` in root metadata (MVP).
+- [x] Task 119 - Validate website title metadata update and run required checks (MVP).
+- [x] Task 120 - Fix auth-page logo hydration mismatch by making initial SSR/client render deterministic before theme-based logo swap (MVP).
+- [x] Task 121 - Validate auth hydration mismatch fix and run required dashboard checks (MVP).
 
 ## Progress log
 ### Task 1 - Completed
@@ -745,3 +753,80 @@
 - How: Copied the make logo into dashboard public assets (`apps/dashboard/public/integrations/make.png`), updated `apps/dashboard/app/lib/integrations-catalog.ts` to append a managed `Make.com` catalog option when the existing Zapier/n8n/Google Sheets trio is present and Make is absent, and added test coverage in `apps/dashboard/tests/integrations-catalog.test.ts`. Validation run: `source .venv/bin/activate && cd apps/dashboard && set -a && source .env.local && set +a && npx tsx tests/integrations-catalog.test.ts`; `source .venv/bin/activate && set -a && source apps/dashboard/.env.local && set +a && npm run test:dashboard`; `source .venv/bin/activate && set -a && source apps/dashboard/.env.local && set +a && npm run build:dashboard`.
 - Where: `apps/dashboard/app/lib/integrations-catalog.ts`, `apps/dashboard/public/integrations/make.png`, `apps/dashboard/tests/integrations-catalog.test.ts`.
 - Not implemented yet: No redesign of card layout/spacing was needed; existing Catalog styling and structure were preserved per current design principles.
+
+### Task 114 - Completed
+- What: Increased the homepage `Simple, Transparent Pricing` teaser typography by 1.5x for the requested text nodes (`10K/100K/1M emails`, `$37/$141/$426`, `See Full Pricing`, and trust-row items).
+- Why: The pricing anchors and trust copy needed stronger visual emphasis without changing component structure or behavior.
+- How: Updated `apps/website/src/components/PricingTeaser.jsx` with scoped class-size changes only: tier volume labels from `11px` to `16.5px`, tier prices from `text-2xl` to `text-4xl` (24px to 36px), CTA label to `21px`, and trust-row text from `12px` to `18px`.
+- Where: `apps/website/src/components/PricingTeaser.jsx`.
+- Not implemented yet: No copy/content changes were made outside the requested text-size updates.
+
+### Task 115 - Completed
+- What: Validated the homepage pricing typography update with project checks.
+- Why: Ensure the MVP text-size change did not break website build/lint integrity.
+- How: Ran `source .venv/bin/activate && npm run lint:website` and `source .venv/bin/activate && npm run build:website`; both passed. Existing pre-existing warnings remained (`<img>` optimization warnings and `metadataBase` warnings), with no new errors from this task.
+- Where: Website lint/build scripts executed from repo root using `apps/website` pipeline.
+- Not implemented yet: Dedicated website unit/integration test suites are not currently defined in `apps/website/package.json`; validation used available lint + production build checks.
+
+### Task 116 - Completed
+- What: Added a root-level shell script to start website, dashboard, and backend together on `3010/8010/8011`.
+- Why: Running all local services in one terminal was requested, and previous ad-hoc command sequences were error-prone (port conflicts, unsafe shutdown behavior).
+- How: Created `run-local-dev.sh` with fixed ports, venv activation, local backend log-path overrides, pre-start port cleanup, and PID-based shutdown traps that stop only spawned processes.
+- Where: `run-local-dev.sh` (repo root).
+- Not implemented yet: No custom CLI flags were added; script currently uses the requested fixed ports only.
+
+### Task 117 - Completed
+- What: Validated the new local-run script for syntax and runtime behavior.
+- Why: Ensure the script reliably starts all services and shuts down cleanly without terminating the SSH session.
+- How: Ran `bash -n run-local-dev.sh` and `timeout 20s ./run-local-dev.sh`; confirmed startup URLs, website/dashboard/backend processes on `3010/8010/8011`, and clean teardown on timeout. Also fixed a reliability issue by preferring `fuser` over `lsof` for port cleanup in this environment.
+- Where: Validation executed from repo root against `run-local-dev.sh`.
+- Not implemented yet: End-to-end application interaction tests were not added in this task; validation focused on startup/port/process behavior.
+
+### Task 118 - Completed
+- What: Updated the website browser tab title from `Saatosa` to `BoltRoute`.
+- Why: Browser tab branding needed to match the product name.
+- How: Changed root metadata title in `apps/website/src/app/layout.tsx` from `Saatosa` to `BoltRoute`.
+- Where: `apps/website/src/app/layout.tsx`.
+- Not implemented yet: No other text/branding strings were modified in this task beyond tab metadata title.
+
+### Task 119 - Completed
+- What: Validated the website title metadata update with standard website checks.
+- Why: Ensure this metadata-only change does not introduce website regressions.
+- How: Ran `source .venv/bin/activate && npm run lint:website` and `source .venv/bin/activate && npm run build:website`; both succeeded with existing pre-existing warnings only.
+- Where: Repo root commands targeting `apps/website` lint/build pipeline.
+- Not implemented yet: No new automated UI assertion was added for tab title; validation used the existing lint/build workflow.
+
+### Task 120 - Completed
+- What: Fixed auth-page hydration mismatch caused by theme-based logo source switching on initial render.
+- Why: `/signin` (and same pattern on `/signup` and `/reset-password`) rendered different `Image src/srcSet` values between SSR HTML and first client render, producing React hydration mismatch errors.
+- How: Added a `hasMounted` gate in `apps/dashboard/app/signin/page.tsx`, `apps/dashboard/app/signup/page.tsx`, and `apps/dashboard/app/reset-password/page.tsx`; logo source now defaults deterministically to `/logo.png` for SSR and initial hydration, then switches to `/logo-white.svg` only after client mount when `resolvedTheme === "dark"`.
+- Where: `apps/dashboard/app/signin/page.tsx`, `apps/dashboard/app/signup/page.tsx`, `apps/dashboard/app/reset-password/page.tsx`.
+- Not implemented yet: No broader theme-provider refactor was done; this task targets the concrete hydration mismatch path only.
+
+### Task 121 - Completed
+- What: Validated the auth hydration fix using dashboard checks.
+- Why: Ensure hydration fix does not break dashboard behavior or build pipeline.
+- How: Ran `source .venv/bin/activate && set -a && source apps/dashboard/.env.local && set +a && npm run test:dashboard`, then `source .venv/bin/activate && set -a && source apps/dashboard/.env.local && set +a && npm run build:dashboard`; both passed.
+- Where: Repo root using `apps/dashboard` test/build scripts.
+- Not implemented yet: Browser-level visual regression snapshot was not added in this task; validation used existing unit/integration/build coverage.
+
+### Task 51 - Completed
+- What: Validated dashboard favicon behavior against the configured Bolt icon path.
+- Why: The browser tab was not reliably showing a favicon, so we needed to validate favicon configuration with current dashboard assets.
+- How: Confirmed `apps/dashboard/public/bolt.png` exists, verified metadata icon configuration in `apps/dashboard/app/layout.tsx`, and re-ran dashboard test/build checks after favicon routing updates.
+- Where: `apps/dashboard/app/layout.tsx`, `apps/dashboard/public/bolt.png`.
+- Not implemented yet: No browser-automation assertion was added; validation used existing build/test coverage plus manual browser verification step.
+
+### Task 52 - Completed
+- What: Removed the default Next.js favicon file from the dashboard app so Bolt icon configuration is the single source.
+- Why: `apps/dashboard/app/favicon.ico` could override intended favicon behavior and conflict with `/public/bolt.png` branding.
+- How: Deleted `apps/dashboard/app/favicon.ico` and kept explicit metadata icons pointing to `/bolt.png`.
+- Where: Removed `apps/dashboard/app/favicon.ico`; updated `apps/dashboard/app/layout.tsx`.
+- Not implemented yet: No `.ico` conversion asset was introduced; favicon now uses the existing PNG asset.
+
+### Task 53 - Completed
+- What: Validated the favicon-only update after removing default Next.js favicon.
+- Why: Ensure favicon cleanup did not cause regressions in dashboard runtime/build pipeline.
+- How: Ran `source .venv/bin/activate && set -a && source apps/dashboard/.env.local && set +a && npm run test:dashboard`, then `source .venv/bin/activate && set -a && source apps/dashboard/.env.local && set +a && npm run build:dashboard`; both passed.
+- Where: Repo root using `apps/dashboard` test/build scripts.
+- Not implemented yet: No additional cross-browser favicon cache-busting mechanism was added; may require hard refresh/new tab in already-open browser sessions.

@@ -19,6 +19,8 @@ export const metadata: Metadata = {
     "User dashboard for managing email verification credits, usage, and account settings.",
   icons: {
     icon: "/bolt.png",
+    shortcut: "/bolt.png",
+    apple: "/bolt.png",
   },
 };
 

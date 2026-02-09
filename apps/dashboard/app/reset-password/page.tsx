@@ -35,7 +35,8 @@ export default function ResetPasswordPage() {
   const [resetComplete, setResetComplete] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const logoSrc = resolvedTheme === "dark" ? "/logo-white.svg" : "/logo.png";
+  const [hasMounted, setHasMounted] = useState(false);
+  const logoSrc = hasMounted && resolvedTheme === "dark" ? "/logo-white.svg" : "/logo.png";
 
   useEffect(() => {
     if (!authLoading && !session && !resetComplete) {
@@ -43,6 +44,10 @@ export default function ResetPasswordPage() {
       setError("Reset link is invalid or expired. Request a new email to continue.");
     }
   }, [authLoading, resetComplete, session]);
+
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();

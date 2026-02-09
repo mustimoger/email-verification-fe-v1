@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { FormEvent, Suspense, useMemo, useState } from "react";
+import { FormEvent, Suspense, useEffect, useMemo, useState } from "react";
 import { Poppins, Roboto } from "next/font/google";
 
 import { useAuth } from "../components/auth-provider";
@@ -35,7 +35,8 @@ function SignUpContent() {
   const nextPath = useMemo(() => resolveNextPath(searchParams, "/overview"), [searchParams]);
   const nextQuery = useMemo(() => buildNextQuery(searchParams.get("next")), [searchParams]);
   const signinHref = nextQuery ? `/signin${nextQuery}` : "/signin";
-  const logoSrc = resolvedTheme === "dark" ? "/logo-white.svg" : "/logo.png";
+  const [hasMounted, setHasMounted] = useState(false);
+  const logoSrc = hasMounted && resolvedTheme === "dark" ? "/logo-white.svg" : "/logo.png";
 
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
@@ -44,6 +45,10 @@ function SignUpContent() {
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();

@@ -37,7 +37,8 @@ function SignInContent() {
   const nextPath = useMemo(() => resolveNextPath(searchParams, "/overview"), [searchParams]);
   const nextQuery = useMemo(() => buildNextQuery(searchParams.get("next")), [searchParams]);
   const signupHref = nextQuery ? `/signup${nextQuery}` : "/signup";
-  const logoSrc = resolvedTheme === "dark" ? "/logo-white.svg" : "/logo.png";
+  const [hasMounted, setHasMounted] = useState(false);
+  const logoSrc = hasMounted && resolvedTheme === "dark" ? "/logo-white.svg" : "/logo.png";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -53,6 +54,10 @@ function SignInContent() {
     if (notice) {
       setError(notice);
     }
+  }, []);
+
+  useEffect(() => {
+    setHasMounted(true);
   }, []);
 
   useEffect(() => {
