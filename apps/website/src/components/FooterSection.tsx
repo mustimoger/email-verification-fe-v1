@@ -1,5 +1,7 @@
 import { Work_Sans, Inter } from "next/font/google";
 
+import { NewsletterSignupForm } from "@/components/NewsletterSignupForm";
+
 const workSans = Work_Sans({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
@@ -22,21 +24,7 @@ export function FooterSection() {
               Get Our Newsletters
             </h5>
             <div className="mt-4 lg:mt-8">
-              <div className="relative">
-                <div className="h-[47px] rounded-[10px] bg-[#f6f6f6] lg:h-[58px]">
-                  <input
-                    type="email"
-                    placeholder="Email Address"
-                    className="h-full w-full bg-transparent px-[14px] py-[14px] text-[16px] font-medium leading-[19.2px] text-[#001726] placeholder:text-[#696969] focus:outline-none lg:py-[19.5px] lg:pl-6 lg:pr-[8.5px]"
-                  />
-                </div>
-                <button
-                  type="button"
-                  className={`${workSans.className} mt-3 flex h-[47px] w-full items-center justify-center rounded-[10px] bg-[#3397F6] text-[16px] font-semibold leading-[19.2px] text-white lg:absolute lg:right-[10px] lg:top-1/2 lg:mt-0 lg:h-[41px] lg:w-[118px] lg:-translate-y-1/2`}
-                >
-                  Subscribe
-                </button>
-              </div>
+              <NewsletterSignupForm buttonFontClassName={workSans.className} />
             </div>
           </div>
 

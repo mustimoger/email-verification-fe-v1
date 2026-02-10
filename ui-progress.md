@@ -149,7 +149,7 @@
 - [ ] Task 150 - Deploy homepage hero email verification MVP to `main` and run production smoke checks with env-backed realtime verification (MVP).
 - [x] Task 151 - Complete External API migration Phase F1 pre-deploy gate (tests/build + authenticated runtime evidence) (MVP).
 - [x] Task 152 - Implement website newsletter subscribe API route with Acumbamail integration + unit tests (MVP).
-- [ ] Task 153 - Wire website footer newsletter form to the API route with success/error UX (MVP).
+- [x] Task 153 - Wire website footer newsletter form to the API route with success/error UX (MVP).
 - [ ] Task 154 - Validate newsletter flow (tests + website build) and deploy to `main` (MVP).
 
 ## Progress log
@@ -1135,3 +1135,10 @@
 - How: Added a Next.js server route `POST /api/newsletter/subscribe` (Node.js runtime) that validates JSON payloads, rejects invalid emails, supports a honeypot bot trap, optionally rate-limits by client IP (env-driven), and calls Acumbamail `addSubscriber` using server-only env vars. Implemented the Acumbamail integration as a shared helper module so request construction and error normalization are testable. Added a focused route test that mocks `fetch` and verifies the outbound request shape and error handling. Executed `source .venv/bin/activate && npm --prefix apps/website run test:newsletter` (passed).
 - Where: `apps/website/src/app/api/newsletter/subscribe/route.ts`, `apps/website/src/lib/newsletter/acumbamail.ts`, `apps/website/tests/newsletter/subscribe-route.test.ts`, `apps/website/package.json`, `ui-progress.md`.
 - Not implemented yet: Footer UI wiring (Task 153) and deployment with production env vars (`ACUMBAMAIL_API_BASE_URL`, `ACUMBAMAIL_AUTH_TOKEN`, `ACUMBAMAIL_LIST_ID`) remain pending.
+
+### Task 153 - Completed
+- What: Wired the website footer newsletter form to the new newsletter subscription API route with basic success/error UX.
+- Why: Without client-side wiring, visitors could type an email but nothing would be submitted to Acumbamail.
+- How: Added a small client component that submits to `POST /api/newsletter/subscribe`, includes a honeypot field, disables submission while loading, and shows an inline success or error message based on the API response. Replaced the static footer input/button with this component while keeping the existing footer layout/styling intact.
+- Where: `apps/website/src/components/NewsletterSignupForm.tsx`, `apps/website/src/components/FooterSection.tsx`, `ui-progress.md`.
+- Not implemented yet: Production validation + deploy (Task 154) is still pending, including setting `ACUMBAMAIL_API_BASE_URL`, `ACUMBAMAIL_AUTH_TOKEN`, and `ACUMBAMAIL_LIST_ID` in the website runtime env.
