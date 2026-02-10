@@ -10,7 +10,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test:seo": "tsx tests/seo/site-url.test.ts && tsx tests/seo/sitemap.test.ts"
+    "test:seo": "tsx tests/seo/site-url.test.ts && tsx tests/seo/sitemap.test.ts",
+    "test:newsletter": "tsx tests/newsletter/subscribe-route.test.ts",
+    "test": "npm run test:seo && npm run test:newsletter"
   },
   "dependencies": {
     "@mdx-js/loader": "^3.1.1",

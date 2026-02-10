@@ -141,6 +141,16 @@
 - [x] Task 127 - Add sitemap auto-discovery logic so new published posts/pages/landing content is included without manual URL edits (MVP).
 - [x] Task 128 - Validate SEO/LLM endpoint behavior with unit + integration checks and website lint/build (MVP).
 - [x] Task 129 - Deploy SEO/LLM endpoint changes to `main` and capture post-deploy endpoint smoke checks (MVP).
+- [x] Task 145 - Complete External API migration Phase E3 smoke evidence and log concrete runtime blockers before Phase F (MVP).
+- [x] Task 146 - Fix dashboard backend `/account` profile and purchases proxy `502` failures discovered in E3, then revalidate smoke evidence (MVP).
+- [x] Task 147 - Harden post-F0 migration handover docs for context-limited continuation with strict preflight + F1/F2 sequencing (MVP).
+- [x] Task 148 - Implement website homepage hero email verification backend logic with secure external API integration and popup wiring (MVP).
+- [x] Task 149 - Validate homepage hero verification flow with website checks (unit/integration/build) and document outcomes (MVP).
+- [ ] Task 150 - Deploy homepage hero email verification MVP to `main` and run production smoke checks with env-backed realtime verification (MVP).
+- [x] Task 151 - Complete External API migration Phase F1 pre-deploy gate (tests/build + authenticated runtime evidence) (MVP).
+- [x] Task 152 - Implement website newsletter subscribe API route with Acumbamail integration + unit tests (MVP).
+- [ ] Task 153 - Wire website footer newsletter form to the API route with success/error UX (MVP).
+- [ ] Task 154 - Validate newsletter flow (tests + website build) and deploy to `main` (MVP).
 
 ## Progress log
 ### Task 1 - Completed
@@ -903,3 +913,225 @@
   (all `HTTP/2 200` with correct content types). Confirmed robots allow-all policy + sitemap pointer, confirmed sitemap contains key public URLs and excludes `/test_home` and `/test_page`, and confirmed `llms.txt` is reachable with the expected policy text.
 - Where: GitHub Actions runs `21828246386` and `21828246368`; production endpoints `https://boltroute.ai/robots.txt`, `https://boltroute.ai/sitemap.xml`, `https://boltroute.ai/llms.txt`.
 - Not implemented yet: No separate `llms-full.txt` or segmented sitemap index was added in this MVP.
+
+### Task 130 - Completed
+- What: Scanned the full dashboard codebase for External API integration touchpoints and created a root migration runbook for updated `docs.boltroute.ai` contracts.
+- Why: The External API contract changed and the dashboard needs a clear, session-resumable, file-by-file adaptation plan before implementation starts.
+- How: Audited frontend direct External API client usage, backend External API client/proxy routes/services, and related tests/scripts; validated current docs endpoints and payloads from `https://docs.boltroute.ai/llms.txt` plus endpoint markdown pages; then authored `ext-api-updates.md` with phased MVP-first steps, affected files, test/deploy gates, and explicit open questions.
+- Where: `ext-api-updates.md` (new root plan file).
+- Not implemented yet: No code behavior changes were made in this step; migration implementation tasks remain pending in `ext-api-updates.md`, including confirmation of `/credits/grant` support and upload-column canonical handling.
+
+### Task 131 - Completed
+- What: Locked user clarifications into the External API migration runbook and started an append-only execution log in that file.
+- Why: The next Codex session must continue without confusion, and implementation must follow confirmed rules (credits grant support, explicit upload column selection, and 5-status model with disposable separated).
+- How: Updated `ext-api-updates.md` by adding a dedicated "Locked migration decisions" section, adjusting migration phases to enforce the new status model/full-switch direction, narrowing open questions to unresolved non-primary status behavior, and appending an execution-log entry for this completed step.
+- Where: `ext-api-updates.md`.
+- Not implemented yet: Runtime dashboard/backend code changes are still pending; only planning/progress documentation was updated in this step.
+
+### Task 132 - Completed
+- What: Implemented the first runtime External API migration step for dashboard status/count mapping and switched to the new 5-primary-status model with `unknown` as secondary.
+- Why: Dashboard logic still relied on legacy status assumptions (`exists/not_exists`) and merged disposable/role-based semantics incorrectly for the updated External API contract.
+- How: Added shared status normalization in `apps/dashboard/app/lib/verification-status.ts`, then updated mapping/count logic across `apps/dashboard/app/history/utils.ts`, `apps/dashboard/app/overview/utils.ts`, `apps/dashboard/app/overview/overview-client.tsx`, `apps/dashboard/app/verify/verify-client.tsx`, `apps/dashboard/app/verify/verify-sections.tsx`, and `apps/dashboard/app/verify/utils.ts` to use primary buckets (`valid`, `invalid`, `catchall`, `disposable_domain`, `role_based`) with separate `unknown` handling; updated affected tests in `apps/dashboard/tests/history-mapping.test.ts`, `apps/dashboard/tests/overview-mapping.test.ts`, and `apps/dashboard/tests/verify-mapping.test.ts`; validated with:
+  `source .venv/bin/activate && npm --prefix apps/dashboard run test:history`,
+  `source .venv/bin/activate && npm --prefix apps/dashboard run test:overview`,
+  `source .venv/bin/activate && set -a && source apps/dashboard/.env.local && set +a && npm --prefix apps/dashboard exec tsx apps/dashboard/tests/verify-mapping.test.ts`,
+  `source .venv/bin/activate && set -a && source apps/dashboard/.env.local && set +a && npm run test:dashboard`,
+  `source .venv/bin/activate && set -a && source apps/dashboard/.env.local && set +a && npm run build:dashboard`.
+- Where: `apps/dashboard/app/lib/verification-status.ts`, `apps/dashboard/app/history/utils.ts`, `apps/dashboard/app/overview/utils.ts`, `apps/dashboard/app/overview/overview-client.tsx`, `apps/dashboard/app/verify/verify-client.tsx`, `apps/dashboard/app/verify/verify-sections.tsx`, `apps/dashboard/app/verify/utils.ts`, and the three updated dashboard mapping test files.
+- Not implemented yet: Backend External API migration phases (`apps/dashboard/backend/*`) are still pending, and no deployment to `main` has been executed for this step yet.
+
+### Task 133 - Completed
+- What: Hardened handover documentation for context-constrained continuation and created a ready-to-send kickoff message for the next Codex session.
+- Why: Session context is near limit; next session must continue from exact migration state without ambiguity or accidental rework.
+- How: Updated `ext-api-updates.md` to remove ambiguous checklist state, mark completed file-level items, and add a strict "Next Session Resume Guide" section with explicit What/Why/How/Where plus timestamped repo-state snapshot and validated command list; created root `next-codex-session-handover.md` containing a copy-ready first-message template for the next session start.
+- Where: `ext-api-updates.md`, `next-codex-session-handover.md`.
+- Not implemented yet: Backend migration phases (`C1`/`C2`/`C3`/`C4`) remain pending; no new runtime behavior changes or deployment were executed in this documentation step.
+
+### Task 134 - Completed
+- What: Updated backend test coverage first for Phase `C1 + C2` contract alignment and upload-status support expectations.
+- Why: The migration requires tests-first execution before backend client/runtime updates, so regressions are caught by contract assertions instead of after-the-fact behavior checks.
+- How: Updated `apps/dashboard/backend/tests/test_external_client.py` to assert docs-aligned task/file-backed fields (`is_file_backed`, nested `file.*`) plus upload-status endpoint behavior (`GET /tasks/batch/uploads/{upload_id}`), and updated `apps/dashboard/backend/tests/test_tasks_metrics_mapping.py` to assert new status vocabulary handling (`valid`, `invalid`, `catchall`, `invalid_syntax`, `disposable_domain`, `unknown`) while still covering legacy aliases (`exists`, `not_exists`, `disposable_domain_emails`). Ran `source .venv/bin/activate && pytest -q apps/dashboard/backend/tests/test_external_client.py apps/dashboard/backend/tests/test_tasks_metrics_mapping.py` and confirmed expected red-state failures against current backend runtime code.
+- Where: `apps/dashboard/backend/tests/test_external_client.py`, `apps/dashboard/backend/tests/test_tasks_metrics_mapping.py`, `ext-api-updates.md`.
+- Not implemented yet: Runtime implementation in `apps/dashboard/backend/app/clients/external.py` and `apps/dashboard/backend/app/services/task_metrics.py` is still pending for this phase, so the updated tests are intentionally failing until the next step.
+
+### Task 135 - Completed
+- What: Completed Phase `C1 + C2` runtime backend alignment for External API client models/methods and metrics status mapping behavior.
+- Why: Updated backend runtime needed to match docs contract and pass the tests-first assertions added in Task 134, while preserving locked migration rules (5 primary statuses and `unknown` kept secondary).
+- How: Updated `apps/dashboard/backend/app/clients/external.py` with docs-aligned status/model coverage (expanded realtime response fields, task file-backed metadata fields, upload-status response models, new `get_upload_status(upload_id)`, and `list_credit_transactions(limit, offset)`), then updated `apps/dashboard/backend/app/services/task_metrics.py` so counting uses `valid/invalid/catchall/disposable_domain/role_based` with `unknown` excluded from primary invalid totals and legacy aliases still supported. Validation commands:
+  `source .venv/bin/activate && pytest -q apps/dashboard/backend/tests/test_external_client.py apps/dashboard/backend/tests/test_tasks_metrics_mapping.py`
+  `source .venv/bin/activate && pytest -q apps/dashboard/backend/tests/test_tasks_list_fallback.py apps/dashboard/backend/tests/test_tasks_jobs_proxy.py apps/dashboard/backend/tests/test_tasks_upload_email_count.py apps/dashboard/backend/tests/test_tasks_latest_upload.py apps/dashboard/backend/tests/test_tasks_latest_uploads.py`
+  `source .venv/bin/activate && pytest -q apps/dashboard/backend/tests`
+  Both suites passed.
+- Where: `apps/dashboard/backend/app/clients/external.py`, `apps/dashboard/backend/app/services/task_metrics.py`, `ext-api-updates.md`.
+- Not implemented yet: Phase `C3` route implementation is still pending; `/api/tasks/latest-upload` and `/api/tasks/latest-uploads` continue to return `204` until that step is executed.
+
+### Task 136 - Completed
+- What: Hardened migration handover documentation for context-limited continuation and recreated a copy-ready initial message for the next Codex session.
+- Why: Current session context is near limit, and the next session must continue from the exact checkpoint (C3 only) without redoing completed C1/C2 work or mis-ordering phases.
+- How: Updated `ext-api-updates.md` to remove ambiguity by marking P0.2 complete, tightening Section 9 into an explicit C3-only resume guide with strict guardrails, validation commands, remaining-gap evidence, and non-goals; added Section 10 handover lock entry with What/Why/How/Where; recreated `next-codex-session-handover.md` with a strict copy-ready first message specifying read order, locked rules, and required C3 execution flow.
+- Where: `ext-api-updates.md`, `next-codex-session-handover.md`.
+- Not implemented yet: No runtime code changes were made in this step; `apps/dashboard/backend/app/api/tasks.py` C3 route implementation remains pending.
+
+### Task 137 - Completed
+- What: Completed C3 tests-first update for latest-upload route behavior and captured the expected pre-implementation red state.
+- Why: C3 must replace fixed `204` latest-upload behavior with metadata-backed responses, and tests needed to define and lock that contract before route code changes.
+- How: Updated `apps/dashboard/backend/tests/test_tasks_latest_upload.py` and `apps/dashboard/backend/tests/test_tasks_latest_uploads.py` to assert:
+  - `200` payloads for file-backed uploads (including upload-status metadata merge),
+  - fallback to task metadata when upload-status lookup is unavailable,
+  - `204` only when no resolvable file-backed uploads exist,
+  - default `LATEST_UPLOADS_LIMIT` usage and `limit <= 0` validation.
+  Then ran `source .venv/bin/activate && pytest -q apps/dashboard/backend/tests/test_tasks_latest_upload.py apps/dashboard/backend/tests/test_tasks_latest_uploads.py` and observed expected failures because `apps/dashboard/backend/app/api/tasks.py` still returns fixed `204`.
+- Where: `apps/dashboard/backend/tests/test_tasks_latest_upload.py`, `apps/dashboard/backend/tests/test_tasks_latest_uploads.py`, `ext-api-updates.md`.
+- Not implemented yet: C3 route implementation in `apps/dashboard/backend/app/api/tasks.py` is still pending; full backend suite rerun is deferred until that code update is complete.
+
+### Task 138 - Completed
+- What: Implemented C3 latest-upload backend routes to return upload/task metadata-based responses while preserving frontend route contracts.
+- Why: The remaining migration gap was fixed `204` behavior on `/api/tasks/latest-upload` and `/api/tasks/latest-uploads` despite completed C1/C2 upload-status support.
+- How: Updated `apps/dashboard/backend/app/api/tasks.py` by adding route-local helpers to identify file-backed tasks, fetch upload status via `get_upload_status(upload_id)` when available, and fall back to task/file metadata when upload-status lookup fails; routes now return `LatestUploadResponse` payloads when resolvable and keep `204` only when none are available. Explicit email-column selection/upload mapping logic was not changed. Validation commands run:
+  `source .venv/bin/activate && pytest -q apps/dashboard/backend/tests/test_tasks_latest_upload.py apps/dashboard/backend/tests/test_tasks_latest_uploads.py`
+  `source .venv/bin/activate && pytest -q apps/dashboard/backend/tests`
+  Both passed (`7 passed` targeted, `116 passed` full backend suite).
+- Where: `apps/dashboard/backend/app/api/tasks.py`, `apps/dashboard/backend/tests/test_tasks_latest_upload.py`, `apps/dashboard/backend/tests/test_tasks_latest_uploads.py`, `ext-api-updates.md`.
+- Not implemented yet: Phase C4 and later migration phases (D/E3/F) remain pending.
+
+### Task 139 - Completed
+- What: Completed Phase C4 by reconciling `/credits/grant` flow coverage for signup, trial, and purchase paths with updated backend/external client expectations.
+- Why: C4 required preserving `/credits/grant` as the backend grant path and hardening tests so future model updates do not silently break credit grant propagation.
+- How: Added tests-first assertions that grant flows call external grants with correct reasons/metadata in:
+  - `apps/dashboard/backend/tests/test_signup_bonus.py` (`reason="signup_bonus"`, source metadata for signup),
+  - `apps/dashboard/backend/tests/test_trial_bonus.py` (`reason="trial_bonus"`, source metadata for trial),
+  - `apps/dashboard/backend/tests/test_billing.py` (`reason="purchase"`, purchase metadata from webhook transaction),
+  and added external client route contract coverage in `apps/dashboard/backend/tests/test_external_client.py` to assert `grant_credits()` posts to `POST /credits/grant`. Ran:
+  `source .venv/bin/activate && pytest -q apps/dashboard/backend/tests/test_signup_bonus.py apps/dashboard/backend/tests/test_trial_bonus.py apps/dashboard/backend/tests/test_billing.py apps/dashboard/backend/tests/test_external_client.py`
+  `source .venv/bin/activate && pytest -q apps/dashboard/backend/tests`
+  Both passed (`25 passed` targeted, `117 passed` full backend suite).
+- Where: `apps/dashboard/backend/tests/test_signup_bonus.py`, `apps/dashboard/backend/tests/test_trial_bonus.py`, `apps/dashboard/backend/tests/test_billing.py`, `apps/dashboard/backend/tests/test_external_client.py`, `ext-api-updates.md`.
+- Not implemented yet: No runtime code path changes were required for C4; remaining migration work is Phase D onward.
+
+### Task 140 - Completed
+- What: Completed Phase D1 by aligning shared dashboard frontend API TypeScript contracts to the updated External API/backend shapes.
+- Why: The migration required current typed payload coverage for verify/task/metrics/latest-upload flows and explicit separation of primary statuses from legacy aliases to prevent type-level drift back to legacy-first assumptions.
+- How: Updated `apps/dashboard/app/lib/api-client.ts` with richer response type fields (`VerifyEmailResponse`, `VerificationStep`, `TaskDetailResponse`, `TaskListResponse`), added structured status/count types (`VerificationStatusCounts`, `TaskJobStatusCounts`), and introduced explicit verification status taxonomy types that keep `exists/not_exists` as compatibility aliases rather than primary status definitions. Ran:
+  `source .venv/bin/activate && npm --prefix apps/dashboard run test:history`
+  `source .venv/bin/activate && npm --prefix apps/dashboard run test:overview`
+  `source .venv/bin/activate && set -a && source apps/dashboard/.env.local && set +a && npm --prefix apps/dashboard exec tsx apps/dashboard/tests/verify-mapping.test.ts`
+  `source .venv/bin/activate && set -a && source apps/dashboard/.env.local && set +a && npm run build:dashboard`
+  All passed.
+- Where: `apps/dashboard/app/lib/api-client.ts`, `ext-api-updates.md`.
+- Not implemented yet: Phase D2 dashboard surface validation, E3 integration/smoke checks, and deploy phases remain pending.
+
+### Task 141 - Completed
+- What: Hardened `ext-api-updates.md` handover sections for context-limited continuation with zero ambiguity on next scope.
+- Why: The file still contained stale C3-only resume instructions that no longer matched completed C3/C4/D1 state and could cause incorrect rework in the next session.
+- How: Updated `ext-api-updates.md` Section 9 and Section 10 to D2-only scope, refreshed completed-file inventory, refreshed evidence snapshot command results/counts, and tightened non-goals/guardrails; also appended a Section 8 execution-log entry with explicit What/Why/How/Where for this documentation step.
+- Where: `ext-api-updates.md` (Sections 8, 9, 10).
+- Not implemented yet: Phase D2 runtime surface validation, E3 integration/smoke checks, and Phase F deploy gates remain pending.
+
+### Task 142 - Completed
+- What: Created a new copy-ready root kickoff message artifact for the next Codex session.
+- Why: You requested an explicit initial handover message, and the previous artifact was missing while context is near limit.
+- How: Added `next-codex-session-handover.md` with a strict first-message template aligned to current migration lock state (B/C1/C2/C3/C4/D1 complete, D2 only next), including exact read order, locked rules, required D2 validation commands, and mandatory progress-log updates after each completed step.
+- Where: `next-codex-session-handover.md`, `ext-api-updates.md` Section 8.
+- Not implemented yet: D2 runtime surface validation, E3 integration/smoke checks, and Phase F deploy gates remain pending.
+
+### Task 143 - Completed
+- What: Completed Phase D2 validation for dashboard surfaces against the updated External API contract and re-baselined migration handover docs to post-D2 scope.
+- Why: D2 was the only remaining Phase D task and needed concrete validation evidence before proceeding to final regression/deploy gates.
+- How: Executed required D2 checks:
+  `source .venv/bin/activate && npm --prefix apps/dashboard run test:history`,
+  `source .venv/bin/activate && npm --prefix apps/dashboard run test:overview`,
+  `source .venv/bin/activate && set -a && source apps/dashboard/.env.local && set +a && npm --prefix apps/dashboard exec tsx apps/dashboard/tests/verify-mapping.test.ts`,
+  `source .venv/bin/activate && set -a && source apps/dashboard/.env.local && set +a && npm run test:dashboard`,
+  `source .venv/bin/activate && set -a && source apps/dashboard/.env.local && set +a && npm run build:dashboard`.
+  Added D2-adjacent validation for API/account-shell utility behavior with:
+  `source .venv/bin/activate && npm --prefix apps/dashboard exec tsx apps/dashboard/tests/api-usage-utils.test.ts` and
+  `source .venv/bin/activate && npm --prefix apps/dashboard exec tsx apps/dashboard/tests/credits-cache.test.ts`.
+  Attempted Playwright-authenticated protected-route smoke checks on local dashboard dev (`/overview`), but injected session from `key-value-pair.txt` failed refresh (`AuthApiError: Invalid Refresh Token`), so Playwright-authenticated evidence is deferred to E3 with refreshed session data.
+- Where: `ext-api-updates.md` (Sections 4, 8, 9, 10), `next-codex-session-handover.md`, `ui-progress.md`.
+- Not implemented yet: Phase E2 remaining backend task/job status-payload proxy test coverage, Phase E3 authenticated Playwright smoke checks, and Phase F deploy gates remain pending.
+
+### Task 144 - Completed
+- What: Completed Phase E2 remaining backend coverage by adding task/job proxy tests for updated status payload passthrough and input validation.
+- Why: E2 still had one pending item (`task/job proxy tests for new status payloads`) blocking transition to E3 smoke checks.
+- How: Updated `apps/dashboard/backend/tests/test_tasks_jobs_proxy.py` with:
+  - a new route-level test asserting `/api/tasks/{task_id}/jobs` preserves nested `email.status` payloads for `valid`, `invalid`, `catchall`, `disposable_domain`, `role_based`, and `unknown`, including `is_disposable` and `is_role_based` flags;
+  - a new route-level test asserting invalid negative `offset` is rejected with `400`.
+  Validation commands:
+  `source .venv/bin/activate && pytest -q apps/dashboard/backend/tests/test_tasks_jobs_proxy.py` (`5 passed`),
+  `source .venv/bin/activate && pytest -q apps/dashboard/backend/tests` (`119 passed`).
+- Where: `apps/dashboard/backend/tests/test_tasks_jobs_proxy.py`, `ext-api-updates.md`, `next-codex-session-handover.md`, `ui-progress.md`.
+- Not implemented yet: Phase E3 authenticated Playwright smoke checks and Phase F deploy gates remain pending; Playwright route checks still require refreshed session data in `key-value-pair.txt`.
+
+### Task 145 - Completed
+- What: Completed Phase E3 integration/smoke evidence capture with backend/frontend command validation plus authenticated Playwright route checks for `overview`, `history`, `verify`, `api`, and `account`.
+- Why: Migration could not move to deploy gating without end-to-end smoke evidence showing real runtime behavior on protected dashboard routes.
+- How: Ran:
+  `source .venv/bin/activate && pytest -q apps/dashboard/backend/tests/test_tasks_*.py apps/dashboard/backend/tests/test_account.py` (`41 passed`),
+  `source .venv/bin/activate && set -a && source apps/dashboard/.env.local && set +a && npm run test:dashboard` (passed),
+  `source .venv/bin/activate && set -a && source apps/dashboard/.env.local && set +a && npm run build:dashboard` (passed);
+  then injected refreshed auth session from `key-value-pair.txt` and captured route artifacts:
+  `tmp/e3-overview.png`, `tmp/e3-history.png`, `tmp/e3-verify.png`, `tmp/e3-api.png`, `tmp/e3-account.png` and matching `tmp/e3-*-console.log` files.
+  Console evidence shows:
+  - `POST /api/credits/signup-bonus` -> `409 Conflict` with eligibility-window warning for current test user;
+  - `GET /api/account/profile` and `GET /api/account/purchases` -> `502 Bad Gateway` on `/account`.
+- Where: `tmp/e3-*.png`, `tmp/e3-*-console.log`, `ext-api-updates.md`, `next-codex-session-handover.md`, `ui-progress.md`.
+- Not implemented yet: `/account` backend `502` fixes are still pending, so Phase F deploy gates remain blocked until those endpoints are fixed and E3 smoke is revalidated.
+
+### Task 146 - Completed
+- What: Completed F0 revalidation for the `/account` blocker fix and confirmed no blocking `502` responses remain for account profile/purchases routes.
+- Why: Phase F could not advance to deploy gating until post-fix runtime smoke proved the E3-discovered `/account` failures were resolved in authenticated flow.
+- How: Ran
+  `source .venv/bin/activate && pytest -q apps/dashboard/backend/tests/test_account.py` (`11 passed`),
+  `source .venv/bin/activate && set -a && source apps/dashboard/.env.local && set +a && npm run test:dashboard` (passed),
+  `source .venv/bin/activate && set -a && source apps/dashboard/.env.local && set +a && npm run build:dashboard` (passed),
+  then captured authenticated Playwright artifacts for `/account` and `/overview` using refreshed `key-value-pair.txt` session storage data.
+  Console evidence in `tmp/f0-account-reval-console.log` and `tmp/f0-overview-reval-console.log` shows no `/api/account/profile` or `/api/account/purchases` `502` entries; remaining `POST /api/credits/signup-bonus` `409 Conflict` is the expected warning path for current test user.
+- Where: `apps/dashboard/backend/app/api/account.py`, `apps/dashboard/backend/tests/test_account.py`, `tmp/f0-account-reval.png`, `tmp/f0-account-reval-console.log`, `tmp/f0-overview-reval.png`, `tmp/f0-overview-reval-console.log`, `ext-api-updates.md`, `next-codex-session-handover.md`, `ui-progress.md`.
+- Not implemented yet: Phase F1 pre-deploy gate and Phase F2 deploy-to-main verification remain pending.
+
+### Task 147 - Completed
+- What: Hardened migration handover documentation so the next Codex session can continue from post-F0 state without ambiguity.
+- Why: Context is near limit and the next session must start directly on deploy gates, not re-derive runtime prerequisites or reopen completed blocker-fix work.
+- How: Updated `ext-api-updates.md` to append a dedicated post-F0 handover-hardening execution entry (What/Why/How/Where), tightened Section 9 with mandatory runtime preflight (`run-local-dev.sh`, backend health check, `key-value-pair.txt` readiness), and refreshed Section 10 lock wording to post-F0-handover-hardened scope; updated `next-codex-session-handover.md` with a copy-ready first message that includes mandatory preflight plus explicit F1/F2 execution order.
+- Where: `ext-api-updates.md`, `next-codex-session-handover.md`, `ui-progress.md`.
+- Not implemented yet: Phase F1 pre-deploy gate and Phase F2 deploy-to-main verification remain pending.
+
+### Task 151 - Completed
+- What: Completed Phase F1 pre-deploy gates (backend tests, dashboard tests/build, and authenticated protected-route smoke evidence) for the External API migration.
+- Why: Phase F2 deploy-to-main cannot start until the full pre-deploy quality gates are green and the post-F0 runtime behavior is reconfirmed in an authenticated flow.
+- How: Ran
+  `source .venv/bin/activate && pytest -q apps/dashboard/backend/tests` (`123 passed`),
+  `source .venv/bin/activate && set -a && source apps/dashboard/.env.local && set +a && npm run test:dashboard` (passed),
+  `source .venv/bin/activate && set -a && source apps/dashboard/.env.local && set +a && npm run build:dashboard` (passed),
+  then captured authenticated Playwright artifacts for `/account` and `/overview` using refreshed `key-value-pair.txt` session storage data:
+  `tmp/f1-account-predeploy.png`, `tmp/f1-account-predeploy-console.log`, `tmp/f1-overview-predeploy.png`, `tmp/f1-overview-predeploy-console.log`.
+  Console evidence shows no `/api/account/profile` or `/api/account/purchases` `502` entries; expected `POST /api/credits/signup-bonus` `409 Conflict` warning path remains for the current test user.
+- Where: `ext-api-updates.md`, `next-codex-session-handover.md`, `tmp/f1-account-predeploy.png`, `tmp/f1-account-predeploy-console.log`, `tmp/f1-overview-predeploy.png`, `tmp/f1-overview-predeploy-console.log`.
+- Not implemented yet: Phase F2 deploy-to-main and post-deploy verification remain pending.
+
+### Task 148 - Completed
+- What: Implemented website homepage hero email-verification backend logic and wired the hero form to show verification results in the popup UI.
+- Why: The homepage hero input existed visually but had no secure backend integration for realtime verification.
+- How: Added a secure server route `POST /api/email-verification` in the website app that calls external realtime verification (`/api/v1/verify`) using server-only env vars (`BOLTROUTE_VERIFY_API_BASE_URL`, `BOLTROUTE_VERIFY_API_KEY`), handles invalid payload/upstream/network failures with explicit messages, and normalizes API responses for UI consumption. Moved popup implementation from repo root to `apps/website/src/components/EmailVerificationPopup.tsx`, added shared normalization in `apps/website/src/lib/email-verification.ts`, added a new client form component `apps/website/src/components/HeroVerificationForm.tsx`, and integrated it into `apps/website/src/components/HeroSection.tsx`.
+- Where: `apps/website/src/app/api/email-verification/route.ts`, `apps/website/src/lib/email-verification.ts`, `apps/website/src/components/EmailVerificationPopup.tsx`, `apps/website/src/components/HeroVerificationForm.tsx`, `apps/website/src/components/HeroSection.tsx`.
+- Not implemented yet: Deployment environment must provide `BOLTROUTE_VERIFY_API_BASE_URL` and `BOLTROUTE_VERIFY_API_KEY` for runtime verification requests.
+
+### Task 149 - Completed
+- What: Validated the new homepage verification flow with focused unit/integration-style tests and full website lint/build checks.
+- Why: MVP completion required proving the new route and UI wiring compile and behave as expected before deploy.
+- How: Added and executed:
+  `source .venv/bin/activate && cd apps/website && npx tsx tests/email-verification-normalize.test.ts`,
+  `source .venv/bin/activate && cd apps/website && npx tsx tests/email-verification-route.test.ts`,
+  `source .venv/bin/activate && cd apps/website && npm run test:seo`,
+  `source .venv/bin/activate && npm --prefix apps/website run lint`,
+  `source .venv/bin/activate && npm --prefix apps/website run build`.
+  New tests passed, and lint/build passed with existing non-blocking warnings unrelated to this task.
+- Where: `apps/website/tests/email-verification-normalize.test.ts`, `apps/website/tests/email-verification-route.test.ts`, `apps/website` lint/build outputs, `ui-progress.md`.
+- Not implemented yet: Browser-level manual smoke on production `https://boltroute.ai` after env vars are set and deployed to `main`.
+
+### Task 152 - Completed
+- What: Implemented a production-grade MVP newsletter subscription API route for the website footer using Acumbamail, plus unit tests.
+- Why: The footer newsletter input existed visually but had no backend integration to actually add subscribers to a list.
+- How: Added a Next.js server route `POST /api/newsletter/subscribe` (Node.js runtime) that validates JSON payloads, rejects invalid emails, supports a honeypot bot trap, optionally rate-limits by client IP (env-driven), and calls Acumbamail `addSubscriber` using server-only env vars. Implemented the Acumbamail integration as a shared helper module so request construction and error normalization are testable. Added a focused route test that mocks `fetch` and verifies the outbound request shape and error handling. Executed `source .venv/bin/activate && npm --prefix apps/website run test:newsletter` (passed).
+- Where: `apps/website/src/app/api/newsletter/subscribe/route.ts`, `apps/website/src/lib/newsletter/acumbamail.ts`, `apps/website/tests/newsletter/subscribe-route.test.ts`, `apps/website/package.json`, `ui-progress.md`.
+- Not implemented yet: Footer UI wiring (Task 153) and deployment with production env vars (`ACUMBAMAIL_API_BASE_URL`, `ACUMBAMAIL_AUTH_TOKEN`, `ACUMBAMAIL_LIST_ID`) remain pending.
