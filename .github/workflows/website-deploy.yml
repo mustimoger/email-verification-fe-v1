@@ -47,6 +47,7 @@ jobs:
       DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
       APP_ROOT: /var/www/boltroute-website
       APP_ENV_REMOTE: /var/www/boltroute-website/shared/.env.local
+      BACKEND_ENV_REMOTE: /var/www/boltroute-app/shared/backend.env
       WEBSITE_SERVICE: boltroute-website
     steps:
       - name: Checkout
@@ -76,7 +77,11 @@ jobs:
         run: |
           set -euo pipefail
           app_env_file="$(mktemp)"
+          backend_env_file="$(mktemp)"
           printf '%s' "${WEBSITE_APP_ENV_LOCAL}" > "${app_env_file}"
+          ssh "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "if [ -f '${BACKEND_ENV_REMOTE}' ]; then cat '${BACKEND_ENV_REMOTE}'; fi" \
+            > "${backend_env_file}"
 
           upsert_if_missing_or_blank() {
             local key="$1"
@@ -109,7 +114,7 @@ jobs:
             printf '\n%s\n' "${line}" >> "${app_env_file}"
           }
 
-          for env_source in "./apps/dashboard/backend/.env" "./apps/dashboard/backend/.env.local"; do
+          for env_source in "${backend_env_file}" "./apps/dashboard/backend/.env" "./apps/dashboard/backend/.env.local"; do
             upsert_if_missing_or_blank "SMTP_SERVER" "${env_source}"
             upsert_if_missing_or_blank "SMTP_PORT" "${env_source}"
             upsert_if_missing_or_blank "SMTP_USERNAME" "${env_source}"
@@ -127,7 +132,7 @@ jobs:
           scp "${app_env_file}" "${DEPLOY_USER}@${DEPLOY_HOST}:${APP_ENV_REMOTE}"
           ssh "${DEPLOY_USER}@${DEPLOY_HOST}" \
             "chmod 600 ${APP_ENV_REMOTE}"
-          rm -f "${app_env_file}"
+          rm -f "${app_env_file}" "${backend_env_file}"
 
       - name: Sync release
         run: |
