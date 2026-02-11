@@ -12,7 +12,8 @@
     "lint": "next lint",
     "test:seo": "tsx tests/seo/site-url.test.ts && tsx tests/seo/sitemap.test.ts",
     "test:newsletter": "tsx tests/newsletter/subscribe-route.test.ts",
-    "test": "npm run test:seo && npm run test:newsletter"
+    "test:contact": "tsx tests/contact/route.test.ts && tsx tests/contact/form-path.test.ts",
+    "test": "npm run test:seo && npm run test:newsletter && npm run test:contact"
   },
   "dependencies": {
     "@mdx-js/loader": "^3.1.1",
@@ -23,6 +24,7 @@
     "lucide-react": "^0.563.0",
     "mailparser": "^3.9.3",
     "next": "14.2.35",
+    "nodemailer": "^6.10.1",
     "react": "^18",
     "react-dom": "^18",
     "remark-gfm": "^4.0.1",
@@ -30,6 +32,7 @@
   },
   "devDependencies": {
     "@types/node": "^20",
+    "@types/nodemailer": "^6.4.22",
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "eslint": "^8",

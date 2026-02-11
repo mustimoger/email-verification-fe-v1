@@ -166,6 +166,24 @@
 - [x] Task 172 - Create Supabase `sales_contact_requests` table via MCP migration (schema + constraints + indexes) (MVP).
 - [x] Task 173 - Switch backend sales-contact persistence to `sales_contact_requests` and keep idempotency guarantees (MVP).
 - [x] Task 174 - Validate sales-contact table integration (backend tests + dashboard checks/build) and document results (MVP).
+- [x] Task 175 - Define MVP `/contact` implementation tasks for website backend wiring before runtime code changes.
+- [x] Task 176 - Implement website `/api/contact` backend route with server-side validation and delivery target wiring (MVP).
+- [x] Task 177 - Wire website `/contact` form submit UX to `/api/contact` with explicit success/error feedback (MVP).
+- [x] Task 178 - Add contact flow tests (API + form path) and run website validation checks (MVP).
+- [ ] Task 179 - Deploy website `/contact` MVP to `main` and run production smoke checks (MVP).
+- [x] Task 180 - Switch website `/api/contact` delivery from webhook relay to direct SMTP send using existing SMTP env pattern (MVP).
+- [x] Task 181 - Run Playwright runtime smoke test for `/contact` form submission and capture console/network logs (MVP).
+- [x] Task 182 - Wire SMTP/contact env injection into website runtime startup and revalidate `/contact` with Playwright logs (MVP).
+- [x] Task 183 - Define implementation TODO breakdown for contact SMTP bounce-diagnostics hardening (envelope/provider response + async retry) before runtime changes.
+- [x] Task 184 - Implement contact SMTP envelope/header/provider-response structured logging in synchronous send path (MVP hardening phase 1).
+- [ ] Task 185 - Add/extend contact SMTP tests for envelope fields and provider response extraction logging contract (MVP hardening phase 1).
+- [ ] Task 186 - Implement durable contact delivery outbox + attempt records for async retry lifecycle (MVP hardening phase 2).
+- [ ] Task 187 - Add internal token-protected retry worker route for due outbox items with capped exponential backoff (MVP hardening phase 2).
+- [ ] Task 188 - Add retry lifecycle tests (temporary failure reschedule, success finalization, dead-letter) and run website validation checks.
+- [ ] Task 189 - Deploy contact hardening changes to `main` and run production smoke checks for submission + retry observability.
+- [x] Task 190 - Re-run Playwright `/contact` submission smoke with console/network/runtime SMTP logs after phase-1 logging hardening.
+- [x] Task 191 - Audit production `/contact` runtime behavior against SMTP bounce report and isolate whether website form currently reaches SMTP relay.
+- [x] Task 192 - Fix website contact SMTP build blocker (`envelopeFrom` nullable type) so deploy pipeline can compile `apps/website`.
 - [x] Task 163 - Translate `enterprise-contact.md` into implementation TODOs and lock MVP scope for dashboard `/pricing` Contact Sales flow.
 - [x] Task 164 - Implement backend `POST /api/sales/contact-request` endpoint with auth, validation, idempotency, and deterministic request IDs (MVP).
 - [x] Task 165 - Implement dashboard `/pricing` Contact Sales submit UX with explicit fallback order and user-visible states (MVP).
@@ -1328,3 +1346,129 @@
   Also validated Supabase table state with MCP (`public.sales_contact_requests` exists, RLS enabled, anon/authenticated revoked on table).
 - Where: `apps/dashboard/backend/tests/test_sales_contact.py`, `apps/dashboard/backend/tests/test_sales_contact_requests.py`, `apps/dashboard/backend/tests/test_settings.py`, `apps/dashboard/tests/contact-sales.test.ts`, Supabase schema `public.sales_contact_requests`, `ui-progress.md`.
 - Not implemented yet: No RLS policy was added for this table (currently service-role-only access is expected). No deploy-to-main or production smoke was executed in this step.
+
+### Task 175 - Completed
+- What: Added explicit MVP execution tasks for website `/contact` backend wiring into the root progress tracker before making runtime code changes.
+- Why: Your workflow requires all new TODO items to be tracked first so newcomers can follow execution order and understand scope before implementation starts.
+- How: Added Task 176-179 checklist items that split the work into backend route wiring, frontend submit wiring, test/validation, and deploy smoke verification.
+- Where: `ui-progress.md`.
+- Not implemented yet: Runtime code changes for `/contact` are pending under Tasks 176-179.
+
+### Task 176 - Completed
+- What: Implemented website backend MVP endpoint `POST /api/contact` plus delivery wiring to a configurable webhook destination.
+- Why: The `/contact` page previously had no backend submit path; this step creates real server-side processing so form data can be validated and forwarded reliably.
+- How: Added `apps/website/src/app/api/contact/route.ts` with JSON parsing, honeypot handling, field validation (`name/email/phone/message`), optional IP-based in-memory rate limiting, structured logging, request IDs, and cache-busting responses; added `apps/website/src/lib/contact/delivery.ts` for webhook config parsing and outbound POST delivery with timeout/auth-token support and upstream error normalization. Added env-driven configuration keys: `CONTACT_WEBHOOK_URL`, `CONTACT_WEBHOOK_AUTH_TOKEN`, `CONTACT_WEBHOOK_TIMEOUT_MS`, `CONTACT_RATE_LIMIT_WINDOW_SECONDS`, `CONTACT_RATE_LIMIT_MAX_PER_WINDOW`.
+- Where: `apps/website/src/app/api/contact/route.ts`, `apps/website/src/lib/contact/delivery.ts`, `ui-progress.md`.
+- Not implemented yet: This webhook relay approach was superseded by Task 180 (direct SMTP delivery). `/contact` frontend form wiring (Task 177), dedicated contact API tests (Task 178), and deploy + production smoke checks (Task 179) are still pending.
+
+### Task 180 - Completed
+- What: Replaced website `/api/contact` delivery from webhook relay to direct SMTP email sending in the website backend runtime.
+- Why: You requested `/contact` to use SMTP directly and you already have SMTP credentials configured in backend environments.
+- How: Removed webhook delivery module and added `apps/website/src/lib/contact/smtp.ts` using `nodemailer`; wired `apps/website/src/app/api/contact/route.ts` to load SMTP config, compose a structured plain-text notification email with contact/context/request metadata, and send directly through SMTP. Added `nodemailer` dependency to `apps/website/package.json` (and lockfile). The route now reads SMTP envs (`SMTP_SERVER`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_STARTTLS_REQUIRED`, `SMTP_FROM_EMAIL`, `SMTP_FROM_NAME`, `SMTP_REPLY_TO`) with optional `CONTACT_NOTIFICATION_TO_EMAIL` and `CONTACT_SMTP_TIMEOUT_MS`.
+- Where: `apps/website/src/lib/contact/smtp.ts`, `apps/website/src/app/api/contact/route.ts`, `apps/website/package.json`, `apps/website/package-lock.json`, `ui-progress.md`.
+- Not implemented yet: `/contact` frontend form is still not wired to call this endpoint (Task 177), contact route tests are still pending (Task 178), and deploy + production smoke checks are pending (Task 179).
+
+### Task 177 - Completed
+- What: Wired the website `/contact` UI form to submit asynchronously to `POST /api/contact` with explicit loading, success, and failure states.
+- Why: The page had static form markup with no submit handler; users needed visible feedback and real backend submission behavior.
+- How: Added client component `apps/website/src/components/ContactForm.tsx` with controlled fields (`name`, `email`, `phone`, `message`), honeypot support (`hp`), submit disable/loading state, server-error extraction, and success/error message rendering. Updated `apps/website/src/app/contact/page.tsx` to reuse this component while preserving existing styling and layout structure. Verified with `source .venv/bin/activate && npm --prefix apps/website run lint` (passed with existing non-blocking warnings).
+- Where: `apps/website/src/components/ContactForm.tsx`, `apps/website/src/app/contact/page.tsx`, `ui-progress.md`.
+- Not implemented yet: Contact API/form tests remain pending (Task 178), and deploy + production smoke checks remain pending (Task 179).
+
+### Task 181 - Completed
+- What: Executed Playwright runtime submission test on website `/contact` and captured browser console + network request logs for the contact API call.
+- Why: You requested an end-to-end Playwright check with concrete logs to confirm current submit behavior.
+- How: Used Playwright MCP against `http://127.0.0.1:3010/contact`, filled `name/phone/email/message`, clicked `Send Message`, then collected logs using `browser_console_messages` and `browser_network_requests`.
+- Where: Playwright runtime output in this session; validated route target `POST http://127.0.0.1:3010/api/contact`.
+- Outcome: Submission path is wired and triggered correctly, but request returned `500` with on-page message `Contact SMTP service is not configured.` Console log includes `website.contact.submit_failed` with request ID `2e38973e-4485-4fd8-9489-02e4d293f825`.
+- Not implemented yet: SMTP env values still need to be present in the website runtime process for successful contact delivery; automated API/form tests under Task 178 remain pending.
+
+### Task 182 - Completed
+- What: Wired SMTP/contact env loading into local runtime startup so website `/api/contact` can access SMTP configuration, then revalidated contact submission end-to-end with Playwright logs.
+- Why: The first Playwright run showed `/api/contact` failed with `Contact SMTP service is not configured.` because `apps/website` runtime did not inherit SMTP env from backend env files.
+- How: Updated `run-local-dev.sh` to parse dotenv files safely (without shell `source` execution risk for unquoted values with spaces), load envs from `apps/dashboard/backend/.env`, `apps/dashboard/backend/.env.local`, and `apps/website/.env.local`, apply `CONTACT_NOTIFICATION_TO_EMAIL` fallback from `SMTP_REPLY_TO`, and warn on missing SMTP keys. Restarted local stack via `./run-local-dev.sh`, re-ran Playwright form submit on `http://127.0.0.1:3010/contact`, then captured browser network/console logs and server runtime logs.
+- Where: `run-local-dev.sh`, Playwright MCP logs in this session, and local server runtime output from `./run-local-dev.sh`.
+- Outcome: Contact submission now succeeds in runtime test:
+  - Network: `POST /api/contact => 200`
+  - Browser console: no submit error/warning
+  - Server log: `website.contact.smtp_submitted` with request ID `29234c3a-86cb-4467-98dd-6ab38665ede5`, SMTP message ID, `acceptedCount: 1`, `rejectedCount: 0`.
+- Not implemented yet: Automated contact API/form tests remain pending under Task 178, and deploy + production smoke checks remain pending under Task 179.
+
+### Task 178 - Completed
+- What: Added automated tests for contact flow (API route + form wiring contract) and completed website validation checks.
+- Why: The `/contact` feature needed explicit regression coverage for backend validation/SMTP behavior and frontend wiring, plus build-level verification before deployment.
+- How:
+  - Added `apps/website/tests/contact/route.test.ts` covering:
+    - SMTP misconfiguration -> `500`
+    - Invalid email payload -> `400`
+    - Honeypot short-circuit -> `200` without SMTP send
+    - Successful SMTP send path with nodemailer transport mocking -> `200`
+  - Added `apps/website/tests/contact/form-path.test.ts` covering:
+    - `ContactForm` posts to `/api/contact` and includes required field names + honeypot
+    - `/contact` page imports/renders `ContactForm`
+  - Added website npm script `test:contact` and included it in aggregate `test` script.
+  - Fixed production build type blockers:
+    - refined `applyRateLimit` return type in `apps/website/src/app/api/contact/route.ts`
+    - added `@types/nodemailer` dev dependency for TypeScript builds.
+  - Validation commands executed:
+    - `source .venv/bin/activate && npm --prefix apps/website run test:contact` (passed)
+    - `source .venv/bin/activate && npm --prefix apps/website run test` (passed)
+    - `source .venv/bin/activate && npm --prefix apps/website run lint` (passed with existing non-blocking warnings)
+    - `source .venv/bin/activate && npm --prefix apps/website run build` (passed after type fixes; existing non-blocking warnings only)
+- Where: `apps/website/tests/contact/route.test.ts`, `apps/website/tests/contact/form-path.test.ts`, `apps/website/package.json`, `apps/website/package-lock.json`, `apps/website/src/app/api/contact/route.ts`, `ui-progress.md`.
+- Not implemented yet: Deployment to `main` and production smoke verification are still pending under Task 179.
+
+### Task 183 - Completed
+- What: Added a concrete implementation task breakdown for contact SMTP bounce-diagnostics hardening before new runtime code changes.
+- Why: The approved hardening plan includes multiple phases (diagnostic logging + async retry lifecycle); explicit task slicing keeps execution auditable and newcomer-safe.
+- How: Added Task 184-189 entries to `ui-progress.md` covering phase-1 envelope/provider logging, phase-2 durable outbox + worker + tests, validation, and deploy smoke.
+- Where: `ui-progress.md`.
+- Not implemented yet: Runtime hardening work starts in Task 184 and remains pending until completed step-by-step.
+
+### Task 184 - Completed
+- What: Implemented synchronous contact SMTP hardening to log explicit envelope sender/recipient and provider response details for every submission attempt.
+- Why: Bounce diagnosis needed immediate visibility into the real SMTP envelope and relay response, not only message ID + counts.
+- How:
+  - Extended `apps/website/src/lib/contact/smtp.ts` to:
+    - parse optional `CONTACT_SMTP_ENVELOPE_FROM` and `CONTACT_SMTP_SENDER_EMAIL`
+    - send explicit SMTP envelope (`envelope.from`, `envelope.to`)
+    - capture provider response text/code, SMTP command (on failure), and envelope/header fields in send results
+    - normalize `accepted/rejected/pending` address lists for structured logs.
+  - Updated `apps/website/src/app/api/contact/route.ts` to:
+    - emit `website.contact.smtp_attempt` before send with envelope/header fields
+    - enrich `website.contact.smtp_delivery_failed` and `website.contact.smtp_submitted` logs with provider response metadata and full envelope/header addresses.
+  - Ran targeted validation:
+    - `source .venv/bin/activate && npm --prefix apps/website run test:contact` (passed).
+- Where: `apps/website/src/lib/contact/smtp.ts`, `apps/website/src/app/api/contact/route.ts`, `ui-progress.md`.
+- Not implemented yet: Explicit phase-1 test extensions for provider-response/envelope contract are pending under Task 185, and async retry/outbox phases remain pending under Tasks 186-189.
+
+### Task 190 - Completed
+- What: Re-ran Playwright `/contact` submission smoke after phase-1 logging hardening and captured browser + runtime diagnostics.
+- Why: You requested another real runtime submission to confirm behavior and inspect the new SMTP envelope/provider response logs.
+- How: Started local stack with `./run-local-dev.sh`, ran Playwright against `http://127.0.0.1:3010/contact`, submitted form (`qa-contact-test-3@example.com`), collected `browser_console_messages`, `browser_network_requests`, and runtime output from the local server process.
+- Where: Playwright MCP logs in this session and local runtime output from `run-local-dev.sh`.
+- Outcome:
+  - Browser network: `POST /api/contact => 200 OK`
+  - Browser console: no contact submit warnings/errors
+  - Runtime log includes new diagnostics:
+    - `website.contact.smtp_attempt` with `envelopeFrom: support@boltroute.ai`, `envelopeTo: [support@boltroute.ai]`, `headerReplyTo: qa-contact-test-3@example.com`
+    - `website.contact.smtp_submitted` with `providerResponseCode: 250`, `providerResponseText: "250 Delivery in progress"`, message ID `<f08a03f2-995c-f7b9-2c8d-d4ef3b42f14c@boltroute.ai>`.
+- Not implemented yet: Task 185 test extensions and phase-2 async retry/outbox implementation (Tasks 186-189) remain pending.
+
+### Task 191 - Completed
+- What: Audited live production `/contact` behavior and API availability to isolate whether reported SMTP soft bounces can originate from the website contact form.
+- Why: The report mixed two hypotheses (form submit failure and SMTP relay failure); we needed concrete runtime evidence before changing SMTP internals again.
+- How:
+  - Fetched `https://boltroute.ai/contact` HTML and verified it still renders a static `<form>` without client submit wiring to `/api/contact`.
+  - Called `POST https://boltroute.ai/api/contact` with JSON and observed `404`, confirming the contact API route is not deployed on current production build.
+  - Compared production state against local repo state (`HEAD` on `main` still contains static form; SMTP-backed `/api/contact` implementation is present only in uncommitted workspace changes).
+- Where: `ui-progress.md`; runtime evidence collected via `curl` against `https://boltroute.ai/contact` and `https://boltroute.ai/api/contact`; local repo check via `git show HEAD:apps/website/src/app/contact/page.tsx`.
+- Outcome: Current production `/contact` form is not reaching SMTP relay at all. Any Acumbamail soft bounces seen now are from a different mail flow (not the deployed website contact form path).
+- Not implemented yet: Task 179 deployment of the contact MVP remains pending, so production still lacks the `/api/contact` route and client submit wiring.
+
+### Task 192 - Completed
+- What: Fixed a production-build blocker in the website contact SMTP config path so `apps/website` compiles successfully in deploy pipelines.
+- Why: `next build` failed with a strict TypeScript error because `envelopeFrom` could be inferred as nullable (`string | null`) while `ContactSmtpConfig` requires a non-null `string`.
+- How: Added explicit validation for `envelopeFrom` in `getContactSmtpConfig()` so nullable inference is eliminated before returning config; re-ran `source .venv/bin/activate && npm --prefix apps/website run build` and confirmed successful compile with `/api/contact` route included.
+- Where: `apps/website/src/lib/contact/smtp.ts`, `ui-progress.md`.
+- Not implemented yet: Deployment to `main` and post-deploy production smoke for Task 179 are still pending.

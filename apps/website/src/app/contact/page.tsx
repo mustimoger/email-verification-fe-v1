@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Work_Sans } from "next/font/google";
-import { ArrowUpRight, Mail, MapPin, Phone, type LucideIcon } from "lucide-react";
+import { Mail, MapPin, Phone, type LucideIcon } from "lucide-react";
+import { ContactForm } from "@/components/ContactForm";
 
 const workSans = Work_Sans({
   subsets: ["latin"],
@@ -115,61 +116,7 @@ export default function ContactPage() {
                 Send Us Message
               </h6>
 
-              <form className="relative mt-5 flex w-full flex-col gap-5">
-                <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-                  <label className="flex flex-col text-[16px] font-medium leading-[28px] text-[#001726]">
-                    Name
-                    <span className="mt-2 h-14 overflow-hidden rounded-[8px] border border-[#DCE2E8] bg-[#EBF0F5]">
-                      <input
-                        type="text"
-                        name="name"
-                        className="h-full w-full bg-transparent px-5 py-[14px] text-[16px] font-medium leading-[28px] text-[#001726] placeholder:text-[#696969] focus:outline-none"
-                      />
-                    </span>
-                  </label>
-
-                  <label className="flex flex-col text-[16px] font-medium leading-[28px] text-[#001726]">
-                    Phone
-                    <span className="mt-2 h-14 overflow-hidden rounded-[8px] border border-[#DCE2E8] bg-[#EBF0F5]">
-                      <input
-                        type="tel"
-                        name="phone"
-                        className="h-full w-full bg-transparent px-5 py-[14px] text-[16px] font-medium leading-[28px] text-[#001726] placeholder:text-[#696969] focus:outline-none"
-                      />
-                    </span>
-                  </label>
-                </div>
-
-                <label className="flex flex-col text-[16px] font-medium leading-[28px] text-[#001726]">
-                  Email
-                  <span className="mt-2 h-14 overflow-hidden rounded-[8px] border border-[#DCE2E8] bg-[#EBF0F5]">
-                    <input
-                      type="email"
-                      name="email"
-                      className="h-full w-full bg-transparent px-5 py-[14px] text-[16px] font-medium leading-[28px] text-[#001726] placeholder:text-[#696969] focus:outline-none"
-                    />
-                  </span>
-                </label>
-
-                <label className="flex flex-col text-[16px] font-medium leading-[28px] text-[#001726]">
-                  Message
-                  <span className="mt-2 overflow-hidden rounded-[8px] border border-[#DCE2E8] bg-[#EBF0F5]">
-                    <textarea
-                      name="message"
-                      rows={4}
-                      className="min-h-[119px] w-full resize-none bg-transparent px-5 py-[14px] text-[16px] font-medium leading-[28px] text-[#001726] placeholder:text-[#696969] focus:outline-none"
-                    />
-                  </span>
-                </label>
-
-                <button
-                  type="submit"
-                  className={`${workSans.className} inline-flex h-14 w-fit items-center gap-1 rounded-[12px] bg-[#3397F6] px-6 text-[16px] font-semibold leading-[11px] text-white transition hover:bg-[#2e8fec]`}
-                >
-                  Send Message
-                  <ArrowUpRight className="h-3 w-3" />
-                </button>
-              </form>
+              <ContactForm buttonFontClassName={workSans.className} />
             </div>
           </div>
         </div>
