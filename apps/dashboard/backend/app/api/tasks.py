@@ -4,7 +4,7 @@ import time
 import uuid
 from typing import Dict, Optional
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Response, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, Response, UploadFile, status
 from pydantic import BaseModel
 
 from ..clients.external import (
@@ -21,6 +21,7 @@ from ..clients.external import (
 from ..core.auth import AuthContext, get_current_user
 from ..core.settings import get_settings
 from ..services.file_processing import _column_letters_to_index
+from ..services.upload_notifications import process_bulk_upload_webhook
 
 router = APIRouter(prefix="/api", tags=["tasks"])
 logger = logging.getLogger(__name__)
@@ -45,6 +46,133 @@ class LatestUploadResponse(BaseModel):
     job_status: Optional[Dict[str, int]] = None
 
 
+def _normalize_text(value: object) -> Optional[str]:
+    if not isinstance(value, str):
+        return None
+    trimmed = value.strip()
+    return trimmed or None
+
+
+def _is_file_backed_task(task: object) -> bool:
+    if bool(getattr(task, "is_file_backed", False)):
+        return True
+    file_metadata = getattr(task, "file", None)
+    if file_metadata is None:
+        return False
+    upload_id = _normalize_text(getattr(file_metadata, "upload_id", None))
+    filename = _normalize_text(getattr(file_metadata, "filename", None))
+    return bool(upload_id or filename)
+
+
+def _task_created_sort_key(task: object) -> str:
+    file_metadata = getattr(task, "file", None)
+    file_created = _normalize_text(getattr(file_metadata, "created_at", None)) if file_metadata else None
+    return file_created or _normalize_text(getattr(task, "created_at", None)) or ""
+
+
+async def _resolve_upload_status_for_task(task: object, client: ExternalAPIClient, user_id: str):
+    file_metadata = getattr(task, "file", None)
+    upload_id = _normalize_text(getattr(file_metadata, "upload_id", None)) if file_metadata else None
+    if not upload_id:
+        return None
+    try:
+        return await client.get_upload_status(upload_id)
+    except ExternalAPIError as exc:
+        logger.info(
+            "route.tasks.latest_upload.upload_status_unavailable",
+            extra={
+                "user_id": user_id,
+                "task_id": getattr(task, "id", None),
+                "upload_id": upload_id,
+                "status_code": exc.status_code,
+                "details": exc.details,
+            },
+        )
+        return None
+    except Exception:  # noqa: BLE001
+        logger.exception(
+            "route.tasks.latest_upload.upload_status_exception",
+            extra={"user_id": user_id, "task_id": getattr(task, "id", None), "upload_id": upload_id},
+        )
+        return None
+
+
+def _build_latest_upload_response(task: object, upload_status: object | None) -> Optional[LatestUploadResponse]:
+    task_id = _normalize_text(getattr(task, "id", None))
+    if not task_id:
+        return None
+
+    file_metadata = getattr(task, "file", None)
+    file_name = (
+        _normalize_text(getattr(upload_status, "filename", None))
+        or _normalize_text(getattr(file_metadata, "filename", None))
+        or _normalize_text(getattr(task, "file_name", None))
+    )
+    if not file_name:
+        return None
+
+    created_at = (
+        _normalize_text(getattr(upload_status, "created_at", None))
+        or _normalize_text(getattr(file_metadata, "created_at", None))
+        or _normalize_text(getattr(task, "created_at", None))
+    )
+    status_value = _normalize_text(getattr(upload_status, "status", None)) or _normalize_text(getattr(task, "status", None))
+
+    email_count = getattr(upload_status, "email_count", None)
+    if email_count is None:
+        email_count = getattr(file_metadata, "email_count", None) if file_metadata else None
+    if email_count is None:
+        email_count = getattr(task, "email_count", None)
+
+    metrics = getattr(task, "metrics", None)
+    job_status = getattr(metrics, "job_status", None) if metrics else None
+    if job_status is None:
+        job_status = getattr(task, "job_status", None)
+
+    return LatestUploadResponse(
+        task_id=task_id,
+        file_name=file_name,
+        created_at=created_at,
+        status=status_value,
+        email_count=email_count,
+        valid_count=getattr(task, "valid_count", None),
+        invalid_count=getattr(task, "invalid_count", None),
+        catchall_count=getattr(task, "catchall_count", None),
+        job_status=job_status,
+    )
+
+
+async def _resolve_latest_upload_rows(
+    *,
+    client: ExternalAPIClient,
+    user: AuthContext,
+    limit: int,
+) -> list[LatestUploadResponse]:
+    external_result = await client.list_tasks(limit=limit, offset=0)
+    tasks = list(external_result.tasks or [])
+    if not tasks:
+        return []
+
+    tasks.sort(key=_task_created_sort_key, reverse=True)
+
+    latest_uploads: list[LatestUploadResponse] = []
+    for task in tasks:
+        if not _is_file_backed_task(task):
+            continue
+        upload_status = await _resolve_upload_status_for_task(task, client=client, user_id=user.user_id)
+        latest_upload = _build_latest_upload_response(task, upload_status)
+        if latest_upload is None:
+            logger.info(
+                "route.tasks.latest_upload.metadata_incomplete",
+                extra={"user_id": user.user_id, "task_id": getattr(task, "id", None)},
+            )
+            continue
+        latest_uploads.append(latest_upload)
+        if len(latest_uploads) >= limit:
+            break
+    return latest_uploads
+
+
 def get_user_external_client(user: AuthContext = Depends(get_current_user)) -> ExternalAPIClient:
     """
     Build an external API client using the caller's Supabase JWT.
@@ -55,6 +183,23 @@ def get_user_external_client(user: AuthContext = Depends(get_current_user)) -> E
         bearer_token=user.token,
         max_upload_bytes=settings.upload_max_mb * 1024 * 1024,
     )
+
+
+def _resolve_bulk_upload_webhook_url(
+    *,
+    request: Request,
+    user_supplied_webhook_url: Optional[str],
+) -> Optional[str]:
+    explicit = _normalize_text(user_supplied_webhook_url)
+    if explicit:
+        return explicit
+
+    settings = get_settings()
+    configured = _normalize_text(settings.bulk_upload_webhook_url)
+    if configured:
+        return configured
+
+    return str(request.url_for("bulk_upload_tasks_webhook"))
 
 
 def normalize_email_column_mapping(email_column: str) -> tuple[str, int]:
@@ -70,6 +215,19 @@ def normalize_email_column_mapping(email_column: str) -> tuple[str, int]:
             detail="Email column must be a column letter or 1-based index",
         )
     return str(index + 1), index
+
+
+@router.post("/tasks/webhooks/bulk-upload", name="bulk_upload_tasks_webhook")
+async def bulk_upload_tasks_webhook(request: Request):
+    raw_body = await request.body()
+    try:
+        payload = json.loads(raw_body.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        logger.warning("route.tasks.bulk_upload_webhook.invalid_json", extra={"error": str(exc)})
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid webhook payload") from exc
+
+    result = await process_bulk_upload_webhook(payload=payload, raw_body=raw_body, headers=request.headers)
+    return result
 
 
 @router.post("/verify", response_model=VerifyEmailResponse)
@@ -248,26 +406,67 @@ async def list_tasks(
 @router.get("/tasks/latest-upload", response_model=LatestUploadResponse)
 async def get_latest_upload(
     user: AuthContext = Depends(get_current_user),
+    client: ExternalAPIClient = Depends(get_user_external_client),
 ):
-    logger.info(
-        "route.tasks.latest_upload.unavailable",
-        extra={"user_id": user.user_id, "reason": "ext_api_missing_file_name"},
-    )
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
+    settings = get_settings()
+    try:
+        latest_uploads = await _resolve_latest_upload_rows(client=client, user=user, limit=settings.latest_uploads_limit)
+        if not latest_uploads:
+            logger.info(
+                "route.tasks.latest_upload.no_content",
+                extra={"user_id": user.user_id},
+            )
+            return Response(status_code=status.HTTP_204_NO_CONTENT)
+        return latest_uploads[0]
+    except ExternalAPIError as exc:
+        level = logger.warning if exc.status_code in (401, 403) else logger.error
+        level(
+            "route.tasks.latest_upload.failed",
+            extra={"user_id": user.user_id, "status_code": exc.status_code, "details": exc.details},
+        )
+        raise HTTPException(status_code=exc.status_code, detail=exc.details or "Unable to fetch latest upload")
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("route.tasks.latest_upload.exception", extra={"user_id": user.user_id})
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Upstream tasks service error") from exc
 
 
 @router.get("/tasks/latest-uploads", response_model=list[LatestUploadResponse])
 async def get_latest_uploads(
     limit: Optional[int] = Query(default=None),
     user: AuthContext = Depends(get_current_user),
+    client: ExternalAPIClient = Depends(get_user_external_client),
 ):
     if limit is not None and limit <= 0:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="limit must be greater than zero")
-    logger.info(
-        "route.tasks.latest_uploads.unavailable",
-        extra={"user_id": user.user_id, "reason": "ext_api_missing_file_name"},
-    )
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
+    settings = get_settings()
+    resolved_limit = limit if limit is not None else settings.latest_uploads_limit
+    try:
+        latest_uploads = await _resolve_latest_upload_rows(client=client, user=user, limit=resolved_limit)
+        if not latest_uploads:
+            logger.info(
+                "route.tasks.latest_uploads.no_content",
+                extra={"user_id": user.user_id, "limit": resolved_limit},
+            )
+            return Response(status_code=status.HTTP_204_NO_CONTENT)
+        return latest_uploads
+    except ExternalAPIError as exc:
+        level = logger.warning if exc.status_code in (401, 403) else logger.error
+        level(
+            "route.tasks.latest_uploads.failed",
+            extra={
+                "user_id": user.user_id,
+                "limit": resolved_limit,
+                "status_code": exc.status_code,
+                "details": exc.details,
+            },
+        )
+        raise HTTPException(status_code=exc.status_code, detail=exc.details or "Unable to fetch latest uploads")
+    except Exception as exc:  # noqa: BLE001
+        logger.exception(
+            "route.tasks.latest_uploads.exception",
+            extra={"user_id": user.user_id, "limit": resolved_limit},
+        )
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Upstream tasks service error") from exc
 
 
 @router.get("/tasks/{task_id}/jobs", response_model=TaskJobsResponse)
@@ -372,6 +571,7 @@ async def get_task_detail(
 
 @router.post("/tasks/upload", response_model=list[BatchFileUploadResponse])
 async def upload_task_file(
+    request: Request,
     files: list[UploadFile] = File(...),
     file_metadata: str = Form(...),
     webhook_url: Optional[str] = Form(default=None),
@@ -382,6 +582,20 @@ async def upload_task_file(
 ):
     responses: list[BatchFileUploadResponse] = []
     target_user_id = user.user_id
+    resolved_webhook_url = _resolve_bulk_upload_webhook_url(
+        request=request,
+        user_supplied_webhook_url=webhook_url,
+    )
+
+    if _normalize_text(webhook_url):
+        logger.info(
+            "route.tasks.upload.custom_webhook_url",
+            extra={
+                "user_id": target_user_id,
+                "custom_webhook_url": _normalize_text(webhook_url),
+                "internal_notification_webhook_used": False,
+            },
+        )
     if user_id:
         logger.warning(
             "route.tasks.upload.user_id_not_supported",
@@ -450,7 +664,7 @@ async def upload_task_file(
             result = await client.upload_batch_file(
                 filename=item["file"].filename or "upload",
                 content=item["data"],
-                webhook_url=webhook_url,
+                webhook_url=resolved_webhook_url,
                 email_column=item["email_column_value"],
             )
             task_id = result.task_id

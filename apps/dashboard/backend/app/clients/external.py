@@ -18,10 +18,11 @@ class ExternalAPIError(Exception):
 
 
 class EmailStatus(str):
-    exists = "exists"
-    not_exists = "not_exists"
+    valid = "valid"
+    invalid = "invalid"
     catchall = "catchall"
     invalid_syntax = "invalid_syntax"
+    disposable_domain = "disposable_domain"
     unknown = "unknown"
 
 
@@ -54,10 +55,20 @@ class VerificationStep(BaseModel):
 
 
 class VerifyEmailResponse(BaseModel):
+    id: Optional[str] = None
     email: Optional[str] = None
-    is_role_based: Optional[bool] = None
-    message: Optional[str] = None
     status: Optional[str] = Field(default=None, description="EmailStatus")
+    is_role_based: Optional[bool] = None
+    is_disposable: Optional[bool] = None
+    has_mx_records: Optional[bool] = None
+    has_reverse_dns: Optional[bool] = None
+    domain_name: Optional[str] = None
+    host_name: Optional[str] = None
+    server_type: Optional[str] = None
+    is_catchall: Optional[bool] = None
+    message: Optional[str] = None
+    unknown_reason: Optional[str] = None
+    needs_physical_verify: Optional[bool] = None
     validated_at: Optional[str] = None
     verification_steps: Optional[List[VerificationStep]] = None
 
@@ -81,6 +92,16 @@ class TaskResponse(BaseModel):
     webhook_url: Optional[str] = None
 
 
+class TaskFileMetadata(BaseModel):
+    upload_id: Optional[str] = None
+    task_id: Optional[str] = None
+    filename: Optional[str] = None
+    email_count: Optional[int] = None
+    status: Optional[str] = None
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+
+
 class Task(BaseModel):
     id: Optional[str] = None
     user_id: Optional[str] = None
@@ -96,6 +117,9 @@ class Task(BaseModel):
     metrics: Optional[TaskMetrics] = None
     integration: Optional[str] = None
     file_name: Optional[str] = None
+    is_file_backed: Optional[bool] = None
+    file: Optional[TaskFileMetadata] = None
+    source: Optional[str] = None
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
 
@@ -117,14 +141,17 @@ class TaskDetailResponse(BaseModel):
     user_id: Optional[str] = None
     api_key_id: Optional[str] = None
     api_key_preview: Optional[str] = None
+    webhook_url: Optional[str] = None
     file_name: Optional[str] = None
+    is_file_backed: Optional[bool] = None
+    file: Optional[TaskFileMetadata] = None
+    source: Optional[str] = None
     created_at: Optional[str] = None
     started_at: Optional[str] = None
     finished_at: Optional[str] = None
     updated_at: Optional[str] = None
     metrics: Optional[TaskMetrics] = None
     jobs: Optional[List[TaskEmailJob]] = None
-    metrics: Optional[TaskMetrics] = None
 
 
 class TaskJobsResponse(BaseModel):
@@ -138,6 +165,7 @@ class TaskListResponse(BaseModel):
     count: Optional[int] = None
     limit: Optional[int] = None
     offset: Optional[int] = None
+    source: Optional[str] = None
     tasks: Optional[List[Task]] = None
 
 
@@ -156,6 +184,26 @@ class BatchFileUploadResponse(BaseModel):
     upload_id: Optional[str] = None
     uploaded_at: Optional[str] = None
     email_count: Optional[int] = None
+
+
+class UploadStatusTask(BaseModel):
+    id: Optional[str] = None
+    user_id: Optional[str] = None
+    webhook_url: Optional[str] = None
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+
+
+class UploadStatusResponse(BaseModel):
+    upload_id: Optional[str] = None
+    task_id: Optional[str] = None
+    filename: Optional[str] = None
+    email_count: Optional[int] = None
+    user_id: Optional[str] = None
+    status: Optional[str] = None
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+    task: Optional[UploadStatusTask] = None
 
 
 class BatchFileUploadError(BaseModel):
@@ -177,6 +225,13 @@ class CreditTransactionResponse(BaseModel):
     reason: Optional[str] = None
     metadata: Optional[Dict[str, Any]] = None
     created_at: Optional[str] = None
+
+
+class CreditTransactionsResponse(BaseModel):
+    transactions: Optional[List[CreditTransactionResponse]] = None
+    total: Optional[int] = None
+    limit: Optional[int] = None
+    offset: Optional[int] = None
 
 
 class APIKeySummary(BaseModel):
@@ -350,6 +405,9 @@ class ExternalAPIClient:
             data["email_column"] = email_column
         return await self._post_multipart("/tasks/batch/upload", data=data, files=files, model=BatchFileUploadResponse)
 
+    async def get_upload_status(self, upload_id: str) -> UploadStatusResponse:
+        return await self._get(f"/tasks/batch/uploads/{upload_id}", UploadStatusResponse)
+
     async def download_task_results(self, task_id: str, file_format: Optional[str] = None) -> DownloadedFile:
         params = {"format": file_format} if file_format else None
         response = await self._request("GET", f"/tasks/{task_id}/download", params=params)
@@ -430,6 +488,10 @@ class ExternalAPIClient:
     async def get_credit_balance(self, user_id: Optional[str] = None) -> CreditBalanceResponse:
         params = {"user_id": user_id} if user_id else None
         return await self._get("/credits/balance", CreditBalanceResponse, params=params)
+
+    async def list_credit_transactions(self, limit: int = 50, offset: int = 0) -> CreditTransactionsResponse:
+        params: Dict[str, Any] = {"limit": limit, "offset": offset}
+        return await self._get("/credits/transactions", CreditTransactionsResponse, params=params)
 
     async def grant_credits(
         self,

@@ -272,3 +272,36 @@ Covers critical reliability behavior and regression-prone routing decisions for 
 ## Not Implemented In This Session
 - No production-deploy action was executed in this step.
 - No dedicated notification-events table migration was implemented in this step (still tracked under `R1`).
+
+## T2. Fix GitHub Actions failure by pushing missing backend notification implementation
+- Status: `completed`
+- What:
+  - Resolve CI failure from commit `8d764be` by committing the missing backend implementation that the new integration test depends on.
+- Why:
+  - The previous commit included only the integration test and docs update, while required notification implementation files remained local-only, causing import and route failures in GitHub Actions.
+- How:
+  - Added SMTP + webhook notification services and backend wiring required by webhook processing and upload callback defaults.
+  - Added missing external client task metadata fields used by notification processor (`is_file_backed`, `file`, and file metadata structure).
+  - Added/updated backend tests for SMTP sending, webhook processing, upload webhook defaulting, and latest-upload task metadata behavior.
+  - Re-ran full backend suite with the same CI command path (`pytest backend/tests`) in a clean worktree.
+- Where:
+  - `apps/dashboard/backend/app/services/smtp_mailer.py`
+  - `apps/dashboard/backend/app/services/upload_notifications.py`
+  - `apps/dashboard/backend/app/core/settings.py`
+  - `apps/dashboard/backend/app/clients/external.py`
+  - `apps/dashboard/backend/app/api/tasks.py`
+  - `apps/dashboard/backend/tests/test_smtp_mailer.py`
+  - `apps/dashboard/backend/tests/test_bulk_upload_notifications.py`
+  - `apps/dashboard/backend/tests/test_tasks_upload_email_count.py`
+  - `apps/dashboard/backend/tests/test_tasks_latest_upload.py`
+  - `apps/dashboard/backend/tests/test_tasks_latest_uploads.py`
+
+## T2 Validation Evidence
+- Command:
+  - `cd apps/dashboard && source .venv/bin/activate && pytest backend/tests`
+- Result:
+  - `124 passed`
+
+## T2 Notes
+- CI failure root cause was deterministic: commit `8d764be` introduced `test_bulk_upload_notifications_integration.py` but not the implementation files it imports/exercises.
+- This step ships those missing backend files and wiring so GitHub Actions can collect and execute the notification integration test.

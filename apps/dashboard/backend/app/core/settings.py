@@ -2,7 +2,7 @@ from functools import lru_cache
 from typing import List, Literal, Optional
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import field_validator
+from pydantic import Field, field_validator
 
 
 class Settings(BaseSettings):
@@ -42,6 +42,21 @@ class Settings(BaseSettings):
     signup_bonus_credits: Optional[int] = None
     signup_bonus_max_account_age_seconds: Optional[int] = None
     signup_bonus_require_email_confirmed: Optional[bool] = None
+
+    smtp_server: Optional[str] = None
+    smtp_port: Optional[int] = None
+    smtp_username: Optional[str] = None
+    smtp_password: Optional[str] = None
+    smtp_starttls_required: Optional[bool] = None
+    smtp_from_email: Optional[str] = None
+    smtp_from_name: Optional[str] = None
+    smtp_reply_to: Optional[str] = None
+    bulk_upload_email_subject_completed: Optional[str] = None
+    bulk_upload_email_subject_failed: Optional[str] = None
+    bulk_upload_email_body_completed: Optional[str] = None
+    bulk_upload_email_body_failed: Optional[str] = None
+    bulk_upload_webhook_url: Optional[str] = None
+    bulk_upload_webhook_secret_key: Optional[str] = Field(default=None, alias="WEBHOOK_SECRET_KEY")
 
     @field_validator("backend_cors_origins", mode="before")
     @classmethod
@@ -115,6 +130,15 @@ class Settings(BaseSettings):
     @field_validator("external_api_jwt_ttl_seconds")
     @classmethod
     def positive_optional_ttl(cls, value):
+        if value is None:
+            return value
+        if value <= 0:
+            raise ValueError("must be greater than zero")
+        return value
+
+    @field_validator("smtp_port")
+    @classmethod
+    def positive_optional_port(cls, value):
         if value is None:
             return value
         if value <= 0:

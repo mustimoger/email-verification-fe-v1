@@ -93,3 +93,31 @@ async def test_upload_missing_email_count_returns_502(monkeypatch):
         )
 
     assert resp.status_code == 502
+
+
+@pytest.mark.anyio
+async def test_upload_defaults_internal_webhook_url(monkeypatch):
+    captured = {"webhook_url": None}
+
+    class FakeClient:
+        async def upload_batch_file(self, filename, content, webhook_url=None, email_column=None):
+            captured["webhook_url"] = webhook_url
+            return BatchFileUploadResponse(
+                status="ok",
+                upload_id="u1",
+                task_id="task-1",
+                filename=filename,
+                email_count=1,
+            )
+
+    app = _build_app(monkeypatch, FakeClient())
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.post(
+            "/api/tasks/upload",
+            files=[("files", ("emails.csv", b"email@example.com", "text/csv"))],
+            data=_upload_payload(),
+        )
+
+    assert resp.status_code == 200
+    assert captured["webhook_url"] == "http://test/api/tasks/webhooks/bulk-upload"
