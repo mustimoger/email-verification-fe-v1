@@ -170,7 +170,7 @@
 - [x] Task 176 - Implement website `/api/contact` backend route with server-side validation and delivery target wiring (MVP).
 - [x] Task 177 - Wire website `/contact` form submit UX to `/api/contact` with explicit success/error feedback (MVP).
 - [x] Task 178 - Add contact flow tests (API + form path) and run website validation checks (MVP).
-- [ ] Task 179 - Deploy website `/contact` MVP to `main` and run production smoke checks (MVP).
+- [x] Task 179 - Deploy website `/contact` MVP to `main` and run production smoke checks (MVP).
 - [x] Task 180 - Switch website `/api/contact` delivery from webhook relay to direct SMTP send using existing SMTP env pattern (MVP).
 - [x] Task 181 - Run Playwright runtime smoke test for `/contact` form submission and capture console/network logs (MVP).
 - [x] Task 182 - Wire SMTP/contact env injection into website runtime startup and revalidate `/contact` with Playwright logs (MVP).
@@ -184,7 +184,7 @@
 - [x] Task 190 - Re-run Playwright `/contact` submission smoke with console/network/runtime SMTP logs after phase-1 logging hardening.
 - [x] Task 191 - Audit production `/contact` runtime behavior against SMTP bounce report and isolate whether website form currently reaches SMTP relay.
 - [x] Task 192 - Fix website contact SMTP build blocker (`envelopeFrom` nullable type) so deploy pipeline can compile `apps/website`.
-- [ ] Task 193 - Propagate SMTP/contact env keys into website production runtime during deploy so `/api/contact` can send mail.
+- [x] Task 193 - Propagate SMTP/contact env keys into website production runtime during deploy so `/api/contact` can send mail.
 - [x] Task 163 - Translate `enterprise-contact.md` into implementation TODOs and lock MVP scope for dashboard `/pricing` Contact Sales flow.
 - [x] Task 164 - Implement backend `POST /api/sales/contact-request` endpoint with auth, validation, idempotency, and deterministic request IDs (MVP).
 - [x] Task 165 - Implement dashboard `/pricing` Contact Sales submit UX with explicit fallback order and user-visible states (MVP).
@@ -1473,3 +1473,29 @@
 - How: Added explicit validation for `envelopeFrom` in `getContactSmtpConfig()` so nullable inference is eliminated before returning config; re-ran `source .venv/bin/activate && npm --prefix apps/website run build` and confirmed successful compile with `/api/contact` route included.
 - Where: `apps/website/src/lib/contact/smtp.ts`, `ui-progress.md`.
 - Not implemented yet: Deployment to `main` and post-deploy production smoke for Task 179 are still pending.
+
+### Task 193 - Completed
+- What: Hardened website deploy env propagation so `/api/contact` receives required SMTP/contact keys in production runtime.
+- Why: Initial production deploys exposed `500 Contact SMTP service is not configured.` even though code was deployed; website env file lacked valid SMTP values.
+- How:
+  - Updated `.github/workflows/website-deploy.yml` upload step to upsert SMTP/contact keys when missing or blank.
+  - Added remote backfill source from dashboard backend production env (`/var/www/boltroute-app/shared/backend.env`) so deploy runner can pull authoritative SMTP values without relying on untracked local `.env` files.
+  - Executed iterative deploy runs:
+    - `21903848884` (first SMTP backfill attempt; deploy success, runtime still misconfigured)
+    - `21903982277` (blank-value upsert fix; deploy success, runtime still misconfigured)
+    - `21904065778` (remote backend env source fix; deploy success, runtime validated).
+- Where: `.github/workflows/website-deploy.yml`, `ui-progress.md`.
+- Not implemented yet: Async retry/outbox hardening tasks (Task 185-189) remain pending.
+
+### Task 179 - Completed
+- What: Deployed the website `/contact` MVP to `main` and validated production behavior on `https://boltroute.ai`.
+- Why: You requested immediate production deployment so you can test directly on the live contact page instead of local Playwright/dev environment.
+- How:
+  - Pushed contact MVP implementation commits to `main` (`06a678e`) and monitored website deploy workflow run `21903733011` to successful completion.
+  - Ran production smoke checks and found initial runtime misconfiguration (`500 Contact SMTP service is not configured.`), then completed Task 193 env propagation fixes and redeployed via runs `21903848884`, `21903982277`, and `21904065778`.
+  - Final production smoke evidence (after run `21904065778`):
+    - `GET https://boltroute.ai/contact` => `200` with hydrated `ContactForm` markup (`name="hp"` honeypot and client chunk `app/contact/page-*.js` present).
+    - `POST https://boltroute.ai/api/contact` (valid payload) => `200` with `{ "status":"accepted","message":"Contact request received." }`.
+    - `POST https://boltroute.ai/api/contact` (invalid email) => `400` with `{ "error":"A valid email is required." }`.
+- Where: `apps/website/src/app/api/contact/route.ts`, `apps/website/src/components/ContactForm.tsx`, `apps/website/src/lib/contact/smtp.ts`, `.github/workflows/website-deploy.yml`, `ui-progress.md`.
+- Not implemented yet: Contact async retry/outbox hardening (Task 185-189) remains pending by plan.
