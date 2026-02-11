@@ -186,7 +186,7 @@
 - [x] Task 192 - Fix website contact SMTP build blocker (`envelopeFrom` nullable type) so deploy pipeline can compile `apps/website`.
 - [x] Task 193 - Propagate SMTP/contact env keys into website production runtime during deploy so `/api/contact` can send mail.
 - [x] Task 194 - Align website `/contact` SMTP `Reply-To` policy to support-mailbox defaults (env-controlled) and extend contact route tests for the new behavior (MVP).
-- [ ] Task 195 - Deploy Task 194 reply-to policy changes to `main` and run production `/contact` smoke checks (MVP).
+- [x] Task 195 - Deploy Task 194 reply-to policy changes to `main` and run production `/contact` smoke checks (MVP).
 - [x] Task 163 - Translate `enterprise-contact.md` into implementation TODOs and lock MVP scope for dashboard `/pricing` Contact Sales flow.
 - [x] Task 164 - Implement backend `POST /api/sales/contact-request` endpoint with auth, validation, idempotency, and deterministic request IDs (MVP).
 - [x] Task 165 - Implement dashboard `/pricing` Contact Sales submit UX with explicit fallback order and user-visible states (MVP).
@@ -1517,3 +1517,16 @@
     - `source .venv/bin/activate && npm --prefix apps/website run build` (passed with existing non-blocking warnings).
 - Where: `apps/website/src/lib/contact/smtp.ts`, `apps/website/src/app/api/contact/route.ts`, `apps/website/tests/contact/route.test.ts`, `ui-progress.md`.
 - Not implemented yet: Deployment to `main` and production smoke verification for this reply-to policy change are not executed in this step.
+
+### Task 195 - Completed
+- What: Deployed the `/contact` reply-to policy update from Task 194 to `main` and validated live production behavior on `https://boltroute.ai`.
+- Why: You requested immediate deployment and production verification so contact form traffic uses support-mailbox `Reply-To` defaults unless explicitly configured otherwise.
+- How:
+  - Added Task 195 to the tracker before runtime actions, then pushed commit `b327bcc` to `main` (reply-to policy + contact tests + tracker updates).
+  - Monitored Website Deploy workflow run `21907160796` and confirmed it completed successfully (`website-checks` + `deploy` jobs green).
+  - Ran production smoke checks:
+    - `GET https://boltroute.ai/contact` => `200`, with honeypot field (`name="hp"`), hydrated contact page chunk (`app/contact/page-*.js`), and submit CTA text present.
+    - `POST https://boltroute.ai/api/contact` (valid payload) => `200` with `{ "status":"accepted","message":"Contact request received." }`.
+    - `POST https://boltroute.ai/api/contact` (invalid email) => `400` with `{ "error":"A valid email is required." }`.
+- Where: `apps/website/src/lib/contact/smtp.ts`, `apps/website/src/app/api/contact/route.ts`, `apps/website/tests/contact/route.test.ts`, GitHub Actions run `21907160796`, `ui-progress.md`.
+- Not implemented yet: Phase-2 contact retry/outbox hardening remains pending under Tasks 185-189.
