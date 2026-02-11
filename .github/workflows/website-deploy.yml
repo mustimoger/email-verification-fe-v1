@@ -78,35 +78,50 @@ jobs:
           app_env_file="$(mktemp)"
           printf '%s' "${WEBSITE_APP_ENV_LOCAL}" > "${app_env_file}"
 
-          append_if_missing() {
+          upsert_if_missing_or_blank() {
             local key="$1"
             local source_file="$2"
             if [ ! -f "${source_file}" ]; then
               return
             fi
-            if grep -qE "^${key}=" "${app_env_file}"; then
-              return
-            fi
             local line
             line="$(grep -m1 -E "^${key}=" "${source_file}" || true)"
-            if [ -n "${line}" ]; then
-              printf '\n%s\n' "${line}" >> "${app_env_file}"
+            if [ -z "${line}" ]; then
+              return
             fi
+            local source_value
+            source_value="${line#*=}"
+            if [ -z "${source_value}" ] || [ "${source_value}" = "\"\"" ] || [ "${source_value}" = "''" ]; then
+              return
+            fi
+
+            if grep -qE "^${key}=" "${app_env_file}"; then
+              local current_line
+              current_line="$(grep -m1 -E "^${key}=" "${app_env_file}" || true)"
+              local current_value
+              current_value="${current_line#*=}"
+              if [ -n "${current_value}" ] && [ "${current_value}" != "\"\"" ] && [ "${current_value}" != "''" ]; then
+                return
+              fi
+              sed -i "/^${key}=/d" "${app_env_file}"
+            fi
+
+            printf '\n%s\n' "${line}" >> "${app_env_file}"
           }
 
           for env_source in "./apps/dashboard/backend/.env" "./apps/dashboard/backend/.env.local"; do
-            append_if_missing "SMTP_SERVER" "${env_source}"
-            append_if_missing "SMTP_PORT" "${env_source}"
-            append_if_missing "SMTP_USERNAME" "${env_source}"
-            append_if_missing "SMTP_PASSWORD" "${env_source}"
-            append_if_missing "SMTP_STARTTLS_REQUIRED" "${env_source}"
-            append_if_missing "SMTP_FROM_EMAIL" "${env_source}"
-            append_if_missing "SMTP_FROM_NAME" "${env_source}"
-            append_if_missing "SMTP_REPLY_TO" "${env_source}"
-            append_if_missing "CONTACT_NOTIFICATION_TO_EMAIL" "${env_source}"
-            append_if_missing "CONTACT_SMTP_TIMEOUT_MS" "${env_source}"
-            append_if_missing "CONTACT_SMTP_ENVELOPE_FROM" "${env_source}"
-            append_if_missing "CONTACT_SMTP_SENDER_EMAIL" "${env_source}"
+            upsert_if_missing_or_blank "SMTP_SERVER" "${env_source}"
+            upsert_if_missing_or_blank "SMTP_PORT" "${env_source}"
+            upsert_if_missing_or_blank "SMTP_USERNAME" "${env_source}"
+            upsert_if_missing_or_blank "SMTP_PASSWORD" "${env_source}"
+            upsert_if_missing_or_blank "SMTP_STARTTLS_REQUIRED" "${env_source}"
+            upsert_if_missing_or_blank "SMTP_FROM_EMAIL" "${env_source}"
+            upsert_if_missing_or_blank "SMTP_FROM_NAME" "${env_source}"
+            upsert_if_missing_or_blank "SMTP_REPLY_TO" "${env_source}"
+            upsert_if_missing_or_blank "CONTACT_NOTIFICATION_TO_EMAIL" "${env_source}"
+            upsert_if_missing_or_blank "CONTACT_SMTP_TIMEOUT_MS" "${env_source}"
+            upsert_if_missing_or_blank "CONTACT_SMTP_ENVELOPE_FROM" "${env_source}"
+            upsert_if_missing_or_blank "CONTACT_SMTP_SENDER_EMAIL" "${env_source}"
           done
 
           scp "${app_env_file}" "${DEPLOY_USER}@${DEPLOY_HOST}:${APP_ENV_REMOTE}"
