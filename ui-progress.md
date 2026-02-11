@@ -184,6 +184,7 @@
 - [x] Task 190 - Re-run Playwright `/contact` submission smoke with console/network/runtime SMTP logs after phase-1 logging hardening.
 - [x] Task 191 - Audit production `/contact` runtime behavior against SMTP bounce report and isolate whether website form currently reaches SMTP relay.
 - [x] Task 192 - Fix website contact SMTP build blocker (`envelopeFrom` nullable type) so deploy pipeline can compile `apps/website`.
+- [ ] Task 193 - Propagate SMTP/contact env keys into website production runtime during deploy so `/api/contact` can send mail.
 - [x] Task 163 - Translate `enterprise-contact.md` into implementation TODOs and lock MVP scope for dashboard `/pricing` Contact Sales flow.
 - [x] Task 164 - Implement backend `POST /api/sales/contact-request` endpoint with auth, validation, idempotency, and deterministic request IDs (MVP).
 - [x] Task 165 - Implement dashboard `/pricing` Contact Sales submit UX with explicit fallback order and user-visible states (MVP).
