@@ -23,6 +23,7 @@ const ENV_KEYS = [
   "SMTP_FROM_EMAIL",
   "SMTP_FROM_NAME",
   "SMTP_REPLY_TO",
+  "CONTACT_SMTP_REPLY_TO_MODE",
   "CONTACT_NOTIFICATION_TO_EMAIL",
   "CONTACT_SMTP_TIMEOUT_MS",
   "CONTACT_RATE_LIMIT_WINDOW_SECONDS",
@@ -79,6 +80,7 @@ const withSmtpConfig = () => {
   process.env.SMTP_FROM_EMAIL = "support@boltroute.ai";
   process.env.SMTP_FROM_NAME = "BoltRoute";
   process.env.SMTP_REPLY_TO = "support@boltroute.ai";
+  delete process.env.CONTACT_SMTP_REPLY_TO_MODE;
   process.env.CONTACT_NOTIFICATION_TO_EMAIL = "sales@boltroute.ai";
   delete process.env.CONTACT_RATE_LIMIT_WINDOW_SECONDS;
   delete process.env.CONTACT_RATE_LIMIT_MAX_PER_WINDOW;
@@ -125,6 +127,29 @@ const main = async () => {
       assert.strictEqual(response.status, 400);
       const payload = (await response.json()) as ContactRouteError;
       assert.strictEqual(payload.error, "A valid email is required.");
+      assert.ok(payload.requestId);
+    } finally {
+      restoreEnv(envSnapshot);
+    }
+  });
+
+  await run("POST /api/contact returns 500 for invalid reply-to mode", async () => {
+    const envSnapshot = snapshotEnv();
+    try {
+      withSmtpConfig();
+      process.env.CONTACT_SMTP_REPLY_TO_MODE = "invalid";
+
+      const response = await POST(
+        makeRequest({
+          name: "QA User",
+          email: "qa@example.com",
+          message: "Need pricing details.",
+        }) as any,
+      );
+
+      assert.strictEqual(response.status, 500);
+      const payload = (await response.json()) as ContactRouteError;
+      assert.strictEqual(payload.error, "Contact SMTP service is not configured.");
       assert.ok(payload.requestId);
     } finally {
       restoreEnv(envSnapshot);
@@ -222,7 +247,7 @@ const main = async () => {
 
       assert.ok(capturedMailOptions);
       assert.strictEqual(capturedMailOptions?.to, "sales@boltroute.ai");
-      assert.strictEqual(capturedMailOptions?.replyTo, "qa-contact@example.com");
+      assert.strictEqual(capturedMailOptions?.replyTo, "support@boltroute.ai");
       assert.strictEqual(capturedMailOptions?.subject, `Contact form submission [${payload.requestId}]`);
 
       const bodyText = String(capturedMailOptions?.text ?? "");
@@ -230,6 +255,43 @@ const main = async () => {
       assert.ok(bodyText.includes("qa-contact@example.com"));
       assert.ok(bodyText.includes("Checking contact route SMTP delivery."));
       assert.ok(bodyText.includes("203.0.113.8"));
+    } finally {
+      (nodemailer as any).createTransport = originalCreateTransport;
+      restoreEnv(envSnapshot);
+    }
+  });
+
+  await run("POST /api/contact uses submitter reply-to when mode is submitter", async () => {
+    const envSnapshot = snapshotEnv();
+    const originalCreateTransport = nodemailer.createTransport;
+
+    let capturedMailOptions: Record<string, unknown> | null = null;
+
+    try {
+      withSmtpConfig();
+      process.env.CONTACT_SMTP_REPLY_TO_MODE = "submitter";
+
+      (nodemailer as any).createTransport = (() => ({
+        sendMail: async (mailOptions: Record<string, unknown>) => {
+          capturedMailOptions = mailOptions;
+          return {
+            messageId: "<smtp-message-id@example.com>",
+            accepted: ["sales@boltroute.ai"],
+            rejected: [],
+          };
+        },
+      })) as typeof nodemailer.createTransport;
+
+      const response = await POST(
+        makeRequest({
+          name: "QA Contact",
+          email: "qa-contact@example.com",
+          message: "Checking submitter reply-to mode.",
+        }) as any,
+      );
+
+      assert.strictEqual(response.status, 200);
+      assert.strictEqual(capturedMailOptions?.replyTo, "qa-contact@example.com");
     } finally {
       (nodemailer as any).createTransport = originalCreateTransport;
       restoreEnv(envSnapshot);

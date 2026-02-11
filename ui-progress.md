@@ -185,6 +185,8 @@
 - [x] Task 191 - Audit production `/contact` runtime behavior against SMTP bounce report and isolate whether website form currently reaches SMTP relay.
 - [x] Task 192 - Fix website contact SMTP build blocker (`envelopeFrom` nullable type) so deploy pipeline can compile `apps/website`.
 - [x] Task 193 - Propagate SMTP/contact env keys into website production runtime during deploy so `/api/contact` can send mail.
+- [x] Task 194 - Align website `/contact` SMTP `Reply-To` policy to support-mailbox defaults (env-controlled) and extend contact route tests for the new behavior (MVP).
+- [ ] Task 195 - Deploy Task 194 reply-to policy changes to `main` and run production `/contact` smoke checks (MVP).
 - [x] Task 163 - Translate `enterprise-contact.md` into implementation TODOs and lock MVP scope for dashboard `/pricing` Contact Sales flow.
 - [x] Task 164 - Implement backend `POST /api/sales/contact-request` endpoint with auth, validation, idempotency, and deterministic request IDs (MVP).
 - [x] Task 165 - Implement dashboard `/pricing` Contact Sales submit UX with explicit fallback order and user-visible states (MVP).
@@ -1499,3 +1501,19 @@
     - `POST https://boltroute.ai/api/contact` (invalid email) => `400` with `{ "error":"A valid email is required." }`.
 - Where: `apps/website/src/app/api/contact/route.ts`, `apps/website/src/components/ContactForm.tsx`, `apps/website/src/lib/contact/smtp.ts`, `.github/workflows/website-deploy.yml`, `ui-progress.md`.
 - Not implemented yet: Contact async retry/outbox hardening (Task 185-189) remains pending by plan.
+
+### Task 194 - Completed
+- What: Changed website `/contact` SMTP `Reply-To` handling to support-mailbox default behavior with an explicit env-controlled mode for submitter reply-to.
+- Why: Current behavior always used submitter email in `Reply-To`, which made header policy implicit and harder to control during bounce diagnosis; this update makes the policy explicit and safer by default.
+- How:
+  - Extended `apps/website/src/lib/contact/smtp.ts` with `CONTACT_SMTP_REPLY_TO_MODE` parsing (`support` default, `submitter` optional), a shared `resolveContactReplyTo()` helper, and structured result metadata for `headerReplyToMode`.
+  - Updated `apps/website/src/app/api/contact/route.ts` to use resolved reply-to in pre-send logs and include `headerReplyToMode` in success/failure telemetry; misconfiguration logs now include `hasValidContactSmtpReplyToMode`.
+  - Updated `apps/website/tests/contact/route.test.ts` to cover:
+    - invalid reply-to mode -> route returns `500`
+    - default mode -> `replyTo` is `support@boltroute.ai`
+    - submitter mode -> `replyTo` is the form email
+  - Validation run:
+    - `source .venv/bin/activate && npm --prefix apps/website run test:contact` (passed).
+    - `source .venv/bin/activate && npm --prefix apps/website run build` (passed with existing non-blocking warnings).
+- Where: `apps/website/src/lib/contact/smtp.ts`, `apps/website/src/app/api/contact/route.ts`, `apps/website/tests/contact/route.test.ts`, `ui-progress.md`.
+- Not implemented yet: Deployment to `main` and production smoke verification for this reply-to policy change are not executed in this step.

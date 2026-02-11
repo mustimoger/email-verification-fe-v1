@@ -17,6 +17,8 @@ export type ContactNotificationPayload = {
   };
 };
 
+type ContactReplyToMode = "support" | "submitter";
+
 type ContactSmtpConfig = {
   host: string;
   port: number;
@@ -26,6 +28,7 @@ type ContactSmtpConfig = {
   fromEmail: string;
   fromName: string;
   supportReplyTo: string;
+  replyToMode: ContactReplyToMode;
   recipientEmail: string;
   envelopeFrom: string;
   senderEmail: string | null;
@@ -46,6 +49,7 @@ export type ContactSmtpDeliveryResult =
       headerFrom: string;
       headerSender: string | null;
       headerReplyTo: string;
+      headerReplyToMode: ContactReplyToMode;
     }
   | {
       ok: false;
@@ -59,6 +63,7 @@ export type ContactSmtpDeliveryResult =
       headerFrom: string;
       headerSender: string | null;
       headerReplyTo: string;
+      headerReplyToMode: ContactReplyToMode;
     };
 
 const DEFAULT_SMTP_TIMEOUT_MS = 30_000;
@@ -97,6 +102,20 @@ function toBoolean(value: string | undefined): boolean | null {
   return null;
 }
 
+function toReplyToMode(value: string | undefined): ContactReplyToMode | null {
+  if (!value) {
+    return "support";
+  }
+  const normalized = value.trim().toLowerCase();
+  if (normalized.length === 0) {
+    return "support";
+  }
+  if (normalized === "support" || normalized === "submitter") {
+    return normalized;
+  }
+  return null;
+}
+
 export function getContactSmtpConfig(): ContactSmtpConfig | null {
   const host = asRequiredString(process.env.SMTP_SERVER);
   const port = toPositiveInteger(process.env.SMTP_PORT);
@@ -106,6 +125,7 @@ export function getContactSmtpConfig(): ContactSmtpConfig | null {
   const fromEmail = asRequiredString(process.env.SMTP_FROM_EMAIL);
   const fromName = asRequiredString(process.env.SMTP_FROM_NAME);
   const supportReplyTo = asRequiredString(process.env.SMTP_REPLY_TO);
+  const replyToMode = toReplyToMode(process.env.CONTACT_SMTP_REPLY_TO_MODE);
 
   const configuredRecipient = asRequiredString(process.env.CONTACT_NOTIFICATION_TO_EMAIL);
   const recipientEmail = configuredRecipient ?? supportReplyTo ?? fromEmail;
@@ -122,6 +142,7 @@ export function getContactSmtpConfig(): ContactSmtpConfig | null {
     !fromEmail ||
     !fromName ||
     !supportReplyTo ||
+    !replyToMode ||
     !recipientEmail ||
     !envelopeFrom
   ) {
@@ -139,6 +160,7 @@ export function getContactSmtpConfig(): ContactSmtpConfig | null {
     fromEmail,
     fromName,
     supportReplyTo,
+    replyToMode,
     recipientEmail,
     envelopeFrom,
     senderEmail,
@@ -209,13 +231,26 @@ function extractProviderResponseCode(responseText: string | null): string | null
   return String(parsed);
 }
 
+export function resolveContactReplyTo(
+  config: Pick<ContactSmtpConfig, "replyToMode" | "supportReplyTo">,
+  payload: Pick<ContactNotificationPayload, "contact">,
+): string {
+  if (config.replyToMode === "submitter") {
+    const submitterEmail = asRequiredString(payload.contact.email);
+    if (submitterEmail) {
+      return submitterEmail;
+    }
+  }
+  return config.supportReplyTo;
+}
+
 export async function sendContactNotificationEmail(
   config: ContactSmtpConfig,
   payload: ContactNotificationPayload,
 ): Promise<ContactSmtpDeliveryResult> {
   const headerFrom = `"${config.fromName}" <${config.fromEmail}>`;
   const headerSender = config.senderEmail;
-  const headerReplyTo = payload.contact.email || config.supportReplyTo;
+  const headerReplyTo = resolveContactReplyTo(config, payload);
   const envelopeFrom = config.envelopeFrom;
   const envelopeTo = [config.recipientEmail];
 
@@ -268,6 +303,7 @@ export async function sendContactNotificationEmail(
       headerFrom,
       headerSender,
       headerReplyTo,
+      headerReplyToMode: config.replyToMode,
     };
   } catch (error) {
     const errorRecord =
@@ -297,6 +333,7 @@ export async function sendContactNotificationEmail(
       headerFrom,
       headerSender,
       headerReplyTo,
+      headerReplyToMode: config.replyToMode,
     };
   }
 }

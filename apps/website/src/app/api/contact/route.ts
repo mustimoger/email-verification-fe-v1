@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import {
   getContactSmtpConfig,
+  resolveContactReplyTo,
   sendContactNotificationEmail,
   type ContactNotificationPayload,
 } from "@/lib/contact/smtp";
@@ -138,6 +139,14 @@ function getHeaderValue(request: NextRequest, headerName: string, maxLength: num
   return trimmed.slice(0, maxLength);
 }
 
+function isValidReplyToMode(value: string | undefined): boolean {
+  if (!value) {
+    return true;
+  }
+  const normalized = value.trim().toLowerCase();
+  return normalized.length === 0 || normalized === "support" || normalized === "submitter";
+}
+
 function sanitizeRequiredText(value: unknown, maxLength: number): string | null {
   if (typeof value !== "string") {
     return null;
@@ -263,6 +272,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ContactSu
       hasSmtpReplyTo: Boolean(process.env.SMTP_REPLY_TO),
       hasContactNotificationToEmail: Boolean(process.env.CONTACT_NOTIFICATION_TO_EMAIL),
       hasContactSmtpTimeoutMs: Boolean(process.env.CONTACT_SMTP_TIMEOUT_MS),
+      hasValidContactSmtpReplyToMode: isValidReplyToMode(process.env.CONTACT_SMTP_REPLY_TO_MODE),
     });
     return buildErrorResponse(requestId, "Contact SMTP service is not configured.", 500);
   }
@@ -316,6 +326,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ContactSu
       referer: getHeaderValue(request, "referer", 1024),
     },
   };
+  const headerReplyTo = resolveContactReplyTo(config, payload);
 
   console.info("website.contact.smtp_attempt", {
     requestId,
@@ -323,7 +334,8 @@ export async function POST(request: NextRequest): Promise<NextResponse<ContactSu
     envelopeTo: [config.recipientEmail],
     headerFrom: `"${config.fromName}" <${config.fromEmail}>`,
     headerSender: config.senderEmail,
-    headerReplyTo: payload.contact.email || config.supportReplyTo,
+    headerReplyTo,
+    headerReplyToMode: config.replyToMode,
   });
 
   const deliveryResult = await sendContactNotificationEmail(config, payload);
@@ -340,6 +352,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ContactSu
       headerFrom: deliveryResult.headerFrom,
       headerSender: deliveryResult.headerSender,
       headerReplyTo: deliveryResult.headerReplyTo,
+      headerReplyToMode: deliveryResult.headerReplyToMode,
     });
     return buildErrorResponse(requestId, deliveryResult.error, deliveryResult.statusCode);
   }
@@ -360,6 +373,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ContactSu
     headerFrom: deliveryResult.headerFrom,
     headerSender: deliveryResult.headerSender,
     headerReplyTo: deliveryResult.headerReplyTo,
+    headerReplyToMode: deliveryResult.headerReplyToMode,
   });
   return buildSuccessResponse(requestId);
 }
