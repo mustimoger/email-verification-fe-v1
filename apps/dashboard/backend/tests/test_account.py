@@ -135,6 +135,99 @@ def test_get_credits_handles_external_error(monkeypatch):
     assert resp.json()["credits_remaining"] is None
 
 
+def test_get_profile_retries_transient_failure(monkeypatch):
+    app = _build_app()
+
+    def fake_user():
+        return AuthContext(user_id="u-8", claims={}, token="t")
+
+    app.dependency_overrides[account_module.get_current_user] = fake_user
+    attempts = {"count": 0}
+
+    def fake_fetch_profile(user_id):
+        attempts["count"] += 1
+        if attempts["count"] == 1:
+            raise RuntimeError("temporary profile read error")
+        return {"user_id": user_id, "email": "retry@test.com", "display_name": "Retry"}
+
+    monkeypatch.setattr(account_module.supabase_client, "fetch_profile", fake_fetch_profile)
+
+    client = TestClient(app)
+    resp = client.get("/api/account/profile")
+    assert resp.status_code == 200
+    assert resp.json()["email"] == "retry@test.com"
+    assert attempts["count"] == 2
+
+
+def test_get_profile_retry_exhausted_returns_502(monkeypatch):
+    app = _build_app()
+
+    def fake_user():
+        return AuthContext(user_id="u-9", claims={}, token="t")
+
+    app.dependency_overrides[account_module.get_current_user] = fake_user
+
+    def always_fail(_user_id):
+        raise RuntimeError("profile backend down")
+
+    monkeypatch.setattr(account_module.supabase_client, "fetch_profile", always_fail)
+
+    client = TestClient(app)
+    resp = client.get("/api/account/profile")
+    assert resp.status_code == 502
+    assert resp.json()["detail"] == "Profile service unavailable"
+
+
+def test_get_purchases_retries_transient_failure(monkeypatch):
+    app = _build_app()
+
+    def fake_user():
+        return AuthContext(user_id="u-10", claims={}, token="t")
+
+    app.dependency_overrides[account_module.get_current_user] = fake_user
+    attempts = {"count": 0}
+
+    def fake_list_credit_grants(*, user_id, source, limit, offset):
+        attempts["count"] += 1
+        if attempts["count"] == 1:
+            raise RuntimeError("temporary purchase read error")
+        return [
+            {
+                "transaction_id": "txn-1",
+                "event_type": "transaction.completed",
+                "credits_granted": 250,
+                "price_ids": ["pri_123"],
+            }
+        ]
+
+    monkeypatch.setattr(account_module, "list_credit_grants", fake_list_credit_grants)
+
+    client = TestClient(app)
+    resp = client.get("/api/account/purchases")
+    assert resp.status_code == 200
+    assert resp.json()["items"][0]["transaction_id"] == "txn-1"
+    assert attempts["count"] == 2
+
+
+def test_get_purchases_retry_exhausted_returns_502(monkeypatch):
+    app = _build_app()
+
+    def fake_user():
+        return AuthContext(user_id="u-11", claims={}, token="t")
+
+    app.dependency_overrides[account_module.get_current_user] = fake_user
+
+    def always_fail(*, user_id, source, limit, offset):
+        raise RuntimeError("purchase backend down")
+
+    monkeypatch.setattr(account_module, "list_credit_grants", always_fail)
+
+    client = TestClient(app)
+    resp = client.get("/api/account/purchases")
+    assert resp.status_code == 502
+    assert resp.json()["detail"] == "Purchase history unavailable"
+
+
 class _FakeBalance:
     def __init__(self, balance: int):
         self.balance = balance

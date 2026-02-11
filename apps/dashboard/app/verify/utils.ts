@@ -34,6 +34,9 @@ export type FileVerification = {
   valid: number | null;
   catchAll: number | null;
   invalid: number | null;
+  disposable: number | null;
+  roleBased: number | null;
+  unknown: number | null;
   status: FileVerificationStatus;
   taskId: string | null;
 };
@@ -46,6 +49,9 @@ export type UploadSummary = {
     valid: number | null;
     catchAll: number | null;
     invalid: number | null;
+    disposable: number | null;
+    roleBased: number | null;
+    unknown: number | null;
   };
 };
 
@@ -371,12 +377,18 @@ export function buildUploadSummary(
     let valid: number | null = null;
     let invalid: number | null = null;
     let catchAll: number | null = null;
+    let disposable: number | null = null;
+    let roleBased: number | null = null;
+    let unknown: number | null = null;
     if (detail && jobs.length > 0 && !hasPending) {
       const counts = deriveCounts(detail);
       totalEmails = counts.total;
       valid = counts.valid;
       invalid = counts.invalid;
       catchAll = counts.catchAll;
+      disposable = counts.disposable;
+      roleBased = counts.roleBased;
+      unknown = counts.unknown;
     }
     if (detail?.metrics && !hasPending) {
       const metricsCounts = deriveCountsFromMetrics(detail.metrics);
@@ -385,6 +397,9 @@ export function buildUploadSummary(
         valid = metricsCounts.valid;
         invalid = metricsCounts.invalid;
         catchAll = metricsCounts.catchAll;
+        disposable = metricsCounts.disposable;
+        roleBased = metricsCounts.roleBased;
+        unknown = metricsCounts.unknown;
       }
     }
     const metricsTotal = detail?.metrics?.total_email_addresses;
@@ -399,6 +414,9 @@ export function buildUploadSummary(
       valid,
       catchAll,
       invalid,
+      disposable,
+      roleBased,
+      unknown,
       status,
       taskId,
     };
@@ -407,6 +425,9 @@ export function buildUploadSummary(
   let totalValid = 0;
   let totalInvalid = 0;
   let totalCatchAll = 0;
+  let totalDisposable = 0;
+  let totalRoleBased = 0;
+  let totalUnknown = 0;
   let totalEmails = 0;
   let hasTotals = false;
   fileRows.forEach((row) => {
@@ -420,6 +441,9 @@ export function buildUploadSummary(
       totalValid += row.valid;
       totalInvalid += row.invalid;
       totalCatchAll += row.catchAll;
+      totalDisposable += row.disposable ?? 0;
+      totalRoleBased += row.roleBased ?? 0;
+      totalUnknown += row.unknown ?? 0;
       hasTotals = true;
     }
   });
@@ -433,6 +457,9 @@ export function buildUploadSummary(
       valid: hasTotals ? totalValid : null,
       catchAll: hasTotals ? totalCatchAll : null,
       invalid: hasTotals ? totalInvalid : null,
+      disposable: hasTotals ? totalDisposable : null,
+      roleBased: hasTotals ? totalRoleBased : null,
+      unknown: hasTotals ? totalUnknown : null,
     },
   };
 }
@@ -510,6 +537,9 @@ const buildLatestUploadRow = (
           valid: validCount,
           invalid: invalidCount,
           catchAll: catchAllCount,
+          disposable: 0,
+          roleBased: 0,
+          unknown: 0,
         }
       : null;
   let totalEmails: number | null = countsFromDetail?.total ?? null;
@@ -527,6 +557,9 @@ const buildLatestUploadRow = (
     valid: fileCounts?.valid ?? null,
     catchAll: fileCounts?.catchAll ?? null,
     invalid: fileCounts?.invalid ?? null,
+    disposable: fileCounts?.disposable ?? null,
+    roleBased: fileCounts?.roleBased ?? null,
+    unknown: fileCounts?.unknown ?? null,
     status,
     taskId: latest.task_id,
   };
@@ -550,6 +583,9 @@ export function buildLatestUploadSummary(
       valid: hasTotals ? fileRow.valid : null,
       catchAll: hasTotals ? fileRow.catchAll : null,
       invalid: hasTotals ? fileRow.invalid : null,
+      disposable: hasTotals ? fileRow.disposable : null,
+      roleBased: hasTotals ? fileRow.roleBased : null,
+      unknown: hasTotals ? fileRow.unknown : null,
     },
   };
 }
@@ -563,7 +599,7 @@ export function buildLatestUploadsSummary(
       totalEmails: null,
       uploadDate: "—",
       files: [],
-      aggregates: { valid: null, catchAll: null, invalid: null },
+      aggregates: { valid: null, catchAll: null, invalid: null, disposable: null, roleBased: null, unknown: null },
     };
   }
   const rows = latestUploads.map((latest) => {
@@ -584,6 +620,9 @@ export function buildLatestUploadsSummary(
       valid: hasTotals ? latestRow.valid : null,
       catchAll: hasTotals ? latestRow.catchAll : null,
       invalid: hasTotals ? latestRow.invalid : null,
+      disposable: hasTotals ? latestRow.disposable : null,
+      roleBased: hasTotals ? latestRow.roleBased : null,
+      unknown: hasTotals ? latestRow.unknown : null,
     },
   };
 }
@@ -630,6 +669,9 @@ const buildTaskUploadRow = (task: Task, detail?: TaskDetailResponse | null): Fil
           valid: validCount,
           invalid: invalidCount,
           catchAll: catchAllCount,
+          disposable: 0,
+          roleBased: 0,
+          unknown: 0,
         }
       : null;
   const countsFromMetrics = status === "download" && metricsCounts ? metricsCounts : null;
@@ -661,6 +703,9 @@ const buildTaskUploadRow = (task: Task, detail?: TaskDetailResponse | null): Fil
     valid: fileCounts?.valid ?? null,
     catchAll: fileCounts?.catchAll ?? null,
     invalid: fileCounts?.invalid ?? null,
+    disposable: fileCounts?.disposable ?? null,
+    roleBased: fileCounts?.roleBased ?? null,
+    unknown: fileCounts?.unknown ?? null,
     status,
     taskId: task.id ?? null,
   };
@@ -675,7 +720,7 @@ export function buildTaskUploadsSummary(
       totalEmails: null,
       uploadDate: "—",
       files: [],
-      aggregates: { valid: null, catchAll: null, invalid: null },
+      aggregates: { valid: null, catchAll: null, invalid: null, disposable: null, roleBased: null, unknown: null },
     };
   }
   const rows = tasks.map((task) => {
@@ -696,6 +741,9 @@ export function buildTaskUploadsSummary(
       valid: hasTotals ? latestRow.valid : null,
       catchAll: hasTotals ? latestRow.catchAll : null,
       invalid: hasTotals ? latestRow.invalid : null,
+      disposable: hasTotals ? latestRow.disposable : null,
+      roleBased: hasTotals ? latestRow.roleBased : null,
+      unknown: hasTotals ? latestRow.unknown : null,
     },
   };
 }

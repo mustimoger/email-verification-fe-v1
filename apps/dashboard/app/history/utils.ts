@@ -2,6 +2,11 @@
 
 import { Task, TaskDetailResponse, TaskEmailJob, TaskMetrics } from "../lib/api-client";
 import { EXTERNAL_DATA_UNAVAILABLE } from "../lib/messages";
+import {
+  deriveVerificationMetricCounts,
+  resolveVerificationStatusBucket,
+  sumVerificationStatusCounts,
+} from "../lib/verification-status";
 
 export { EXTERNAL_DATA_UNAVAILABLE };
 
@@ -31,6 +36,9 @@ type DerivedCounts = {
   valid: number;
   invalid: number;
   catchAll: number;
+  disposable: number;
+  roleBased: number;
+  unknown: number;
 };
 
 type LabelSource = "task" | "detail";
@@ -45,6 +53,11 @@ function coerceCount(value: unknown): number | null {
     const parsed = Number(trimmed);
     return Number.isFinite(parsed) ? Math.trunc(parsed) : null;
   }
+  return null;
+}
+
+function coerceBoolean(value: unknown): boolean | null {
+  if (typeof value === "boolean") return value;
   return null;
 }
 
@@ -94,28 +107,23 @@ function resolveTaskLabel({
 }
 
 export function deriveCountsFromMetrics(metrics?: TaskMetrics | null): DerivedCounts | null {
-  if (!metrics?.verification_status) return null;
-  const statusCounts = metrics.verification_status;
-  if (typeof statusCounts !== "object" || !statusCounts) return null;
-  const valid = coerceCount(statusCounts.exists) ?? 0;
-  const catchAll = coerceCount(statusCounts.catchall) ?? 0;
-  let invalid = 0;
-  const unknownStatuses: string[] = [];
-  Object.entries(statusCounts).forEach(([key, raw]) => {
-    if (key === "exists" || key === "catchall") return;
-    const count = coerceCount(raw);
-    if (count === null) return;
-    invalid += count;
-    if (key !== "not_exists" && key !== "invalid_syntax" && key !== "unknown") {
-      unknownStatuses.push(key);
-    }
-  });
-  if (unknownStatuses.length > 0) {
-    console.warn("history.metrics.unknown_statuses", { statuses: unknownStatuses });
+  const derived = deriveVerificationMetricCounts(metrics?.verification_status ?? null);
+  if (!derived) return null;
+  const { counts, unknownKeys } = derived;
+  if (unknownKeys.length > 0) {
+    console.warn("history.metrics.unknown_statuses", { statuses: unknownKeys });
   }
-  const totalFromMetrics = coerceCount(metrics.total_email_addresses);
-  const total = totalFromMetrics ?? valid + invalid + catchAll;
-  return { total, valid, invalid, catchAll };
+  const totalFromMetrics = metrics ? coerceCount(metrics.total_email_addresses) : null;
+  const total = totalFromMetrics ?? sumVerificationStatusCounts(counts);
+  return {
+    total,
+    valid: counts.valid,
+    invalid: counts.invalid,
+    catchAll: counts.catchall,
+    disposable: counts.disposable_domain,
+    roleBased: counts.role_based,
+    unknown: counts.unknown,
+  };
 }
 
 function normalizeJobStatus(jobStatus?: Record<string, number> | null): Record<string, number> | null {
@@ -200,29 +208,60 @@ export function formatHistoryDate(input?: string): string {
   return date.toLocaleDateString("en-US", { day: "2-digit", month: "short", year: "numeric" });
 }
 
-export function deriveCounts(detail: TaskDetailResponse): { total: number; valid: number; invalid: number; catchAll: number } {
+export function deriveCounts(detail: TaskDetailResponse): {
+  total: number;
+  valid: number;
+  invalid: number;
+  catchAll: number;
+  disposable: number;
+  roleBased: number;
+  unknown: number;
+} {
   const jobs = detail.jobs ?? [];
   let valid = 0;
   let invalid = 0;
   let catchAll = 0;
+  let disposable = 0;
+  let roleBased = 0;
+  let unknown = 0;
   jobs.forEach((job: TaskEmailJob) => {
-    const status = job.email?.status ?? job.status;
-    switch (status) {
-      case "exists":
+    const bucket = resolveVerificationStatusBucket({
+      status: job.email?.status ?? job.status,
+      isRoleBased: coerceBoolean(job.email?.is_role_based),
+      isDisposable: coerceBoolean(job.email?.is_disposable),
+    });
+    switch (bucket) {
+      case "valid":
         valid += 1;
         break;
       case "catchall":
         catchAll += 1;
         break;
-      case "not_exists":
-      case "invalid_syntax":
+      case "invalid":
+        invalid += 1;
+        break;
+      case "disposable_domain":
+        disposable += 1;
+        break;
+      case "role_based":
+        roleBased += 1;
+        break;
+      case "pending":
       case "unknown":
       default:
-        invalid += 1;
+        unknown += 1;
         break;
     }
   });
-  return { total: jobs.length, valid, invalid, catchAll };
+  if (disposable > 0 || roleBased > 0 || unknown > 0) {
+    console.info("history.jobs.secondary_statuses", {
+      disposable,
+      role_based: roleBased,
+      unknown,
+      total_jobs: jobs.length,
+    });
+  }
+  return { total: jobs.length, valid, invalid, catchAll, disposable, roleBased, unknown };
 }
 
 export function mapDetailToHistoryRow(detail: TaskDetailResponse): HistoryRow | null {

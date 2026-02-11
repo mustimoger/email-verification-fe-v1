@@ -1,4 +1,8 @@
 import { IntegrationOption, Task, VerificationMetricsResponse } from "../lib/api-client";
+import {
+  deriveVerificationMetricCounts,
+  sumVerificationStatusCounts,
+} from "../lib/verification-status";
 import { formatPurposeLabel } from "../api/utils";
 
 export type TaskStatus = "Completed" | "Running" | "Cancelled";
@@ -42,6 +46,7 @@ export type ValidationTotals = {
   catchAll: number;
   roleBased: number;
   disposable: number;
+  unknown: number;
   total: number;
 };
 
@@ -62,49 +67,62 @@ export function aggregateValidationCounts(tasks: Task[] | undefined): Validation
   let catchAll = 0;
   let roleBased = 0;
   let disposable = 0;
+  let unknown = 0;
+  let total = 0;
   for (const task of tasks ?? []) {
-    valid += task.valid_count ?? 0;
-    invalid += task.invalid_count ?? 0;
-    catchAll += task.catchall_count ?? 0;
+    const metricCounts = deriveVerificationMetricCounts(task.metrics?.verification_status ?? null);
+    if (metricCounts) {
+      valid += metricCounts.counts.valid;
+      invalid += metricCounts.counts.invalid;
+      catchAll += metricCounts.counts.catchall;
+      roleBased += metricCounts.counts.role_based;
+      disposable += metricCounts.counts.disposable_domain;
+      unknown += metricCounts.counts.unknown;
+      const metricTotal = coerceCount(task.metrics?.total_email_addresses);
+      total += metricTotal ?? sumVerificationStatusCounts(metricCounts.counts);
+      if (metricCounts.unknownKeys.length > 0) {
+        console.warn("overview.metrics.unknown_statuses", { statuses: metricCounts.unknownKeys });
+      }
+      continue;
+    }
+    const fallbackValid = task.valid_count ?? 0;
+    const fallbackInvalid = task.invalid_count ?? 0;
+    const fallbackCatchAll = task.catchall_count ?? 0;
     const verificationStatus = task.metrics?.verification_status;
-    roleBased += verificationStatus?.role_based ?? 0;
-    disposable += verificationStatus?.disposable_domain_emails ?? 0;
+    const fallbackRoleBased = verificationStatus?.role_based ?? 0;
+    const fallbackDisposable =
+      verificationStatus?.disposable_domain ??
+      verificationStatus?.disposable_domain_emails ??
+      0;
+    valid += fallbackValid;
+    invalid += fallbackInvalid;
+    catchAll += fallbackCatchAll;
+    roleBased += fallbackRoleBased;
+    disposable += fallbackDisposable;
+    total += fallbackValid + fallbackInvalid + fallbackCatchAll + fallbackRoleBased + fallbackDisposable;
   }
-  const total = valid + invalid + catchAll + roleBased + disposable;
-  return { valid, invalid, catchAll, roleBased, disposable, total };
+  return { valid, invalid, catchAll, roleBased, disposable, unknown, total };
 }
 
 export function buildVerificationTotalsFromMetrics(
   metrics?: VerificationMetricsResponse | null,
 ): ValidationTotals | null {
   if (!metrics) return null;
-  const status = metrics.verification_status ?? {};
-  const valid = coerceCount(status.exists) ?? coerceCount(status.valid) ?? 0;
-  const invalidBase = coerceCount(status.invalid) ?? coerceCount(status.not_exists) ?? 0;
-  const invalidExtras = [
-    coerceCount(status.invalid_syntax),
-    coerceCount(status.unknown),
-    coerceCount(status.disposable_domain),
-    coerceCount(status.disposable_domain_emails),
-  ].reduce<number>((sum, value) => sum + (value ?? 0), 0);
-  const invalid = invalidBase + invalidExtras;
-  const catchAll =
-    coerceCount(metrics.total_catchall) ??
-    coerceCount(status.catchall) ??
-    0;
-  const roleBased =
-    coerceCount(metrics.total_role_based) ??
-    coerceCount(status.role_based) ??
-    0;
-  const disposable =
-    coerceCount(metrics.total_disposable_domain_emails) ??
-    coerceCount(status.disposable_domain) ??
-    coerceCount(status.disposable_domain_emails) ??
-    0;
+  const derived = deriveVerificationMetricCounts(metrics.verification_status ?? null);
+  if (!derived) return null;
+  if (derived.unknownKeys.length > 0) {
+    console.warn("overview.metrics.unknown_statuses", { statuses: derived.unknownKeys });
+  }
+  const valid = derived.counts.valid;
+  const invalid = derived.counts.invalid;
+  const catchAll = coerceCount(metrics.total_catchall) ?? derived.counts.catchall;
+  const roleBased = coerceCount(metrics.total_role_based) ?? derived.counts.role_based;
+  const disposable = coerceCount(metrics.total_disposable_domain_emails) ?? derived.counts.disposable_domain;
+  const unknown = derived.counts.unknown;
   const total =
     coerceCount(metrics.total_verifications) ??
-    valid + invalid + catchAll + roleBased + disposable;
-  return { valid, invalid, catchAll, roleBased, disposable, total };
+    valid + invalid + catchAll + roleBased + disposable + unknown;
+  return { valid, invalid, catchAll, roleBased, disposable, unknown, total };
 }
 
 export function buildUsageSeriesFromMetrics(metrics?: VerificationMetricsResponse | null) {

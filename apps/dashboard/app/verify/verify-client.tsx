@@ -34,6 +34,7 @@ import {
   type UploadSummary,
   type VerificationResult,
 } from "../verify/utils";
+import { normalizeVerificationStatus, resolveVerificationStatusBucket } from "../lib/verification-status";
 import styles from "./verify.module.css";
 import {
   ManualVerificationCard,
@@ -707,38 +708,39 @@ export default function VerifyV2Client() {
       valid: 0,
       invalid: 0,
       catchAll: 0,
+      disposable: 0,
+      roleBased: 0,
       unknown: 0,
       pending: 0,
     };
     const unmapped = new Set<string>();
     results.forEach((result) => {
-      const status = (result.status ?? "").toLowerCase().trim();
-      if (!status) {
-        counts.unknown += 1;
-        return;
-      }
-      if (status === "exists" || status === "valid") {
+      const bucket = resolveVerificationStatusBucket({
+        status: result.status,
+        isRoleBased: result.isRoleBased,
+        isDisposable: result.disposableDomain,
+      });
+      if (bucket === "valid") {
         counts.valid += 1;
-        return;
-      }
-      if (status === "not_exists" || status === "invalid" || status === "invalid_syntax") {
+      } else if (bucket === "invalid") {
         counts.invalid += 1;
-        return;
-      }
-      if (status === "catchall" || status === "catch-all" || status === "catch_all") {
+      } else if (bucket === "catchall") {
         counts.catchAll += 1;
-        return;
-      }
-      if (status === "unknown") {
-        counts.unknown += 1;
-        return;
-      }
-      if (status === "pending") {
+      } else if (bucket === "disposable_domain") {
+        counts.disposable += 1;
+      } else if (bucket === "role_based") {
+        counts.roleBased += 1;
+      } else if (bucket === "pending") {
         counts.pending += 1;
-        return;
+      } else {
+        counts.unknown += 1;
       }
-      counts.unknown += 1;
-      unmapped.add(status);
+      const rawStatus = (result.status ?? "").trim();
+      if (!rawStatus) return;
+      const normalized = normalizeVerificationStatus(rawStatus);
+      if (normalized === "unknown" && rawStatus.toLowerCase() !== "unknown") {
+        unmapped.add(rawStatus.toLowerCase());
+      }
     });
     return {
       counts,
@@ -776,13 +778,17 @@ export default function VerifyV2Client() {
       valid: uploadSummary?.aggregates.valid ?? null,
       invalid: uploadSummary?.aggregates.invalid ?? null,
       catchAll: uploadSummary?.aggregates.catchAll ?? null,
-      disposable: null,
+      disposable: uploadSummary?.aggregates.disposable ?? null,
+      roleBased: uploadSummary?.aggregates.roleBased ?? null,
+      unknown: uploadSummary?.aggregates.unknown ?? null,
     };
     const bars = [
       { key: "valid", label: "Valid", value: values.valid, color: "var(--chart-valid)" },
       { key: "invalid", label: "Invalid", value: values.invalid, color: "var(--chart-invalid)" },
       { key: "catchAll", label: "Catch-all", value: values.catchAll, color: "var(--chart-catchall)" },
       { key: "disposable", label: "Disposable", value: values.disposable, color: "var(--chart-processing)" },
+      { key: "roleBased", label: "Role-based", value: values.roleBased, color: "var(--status-info)" },
+      { key: "unknown", label: "Unknown", value: values.unknown, color: "var(--status-unknown)" },
     ];
     return bars.map((bar) => ({
       ...bar,
@@ -796,6 +802,9 @@ export default function VerifyV2Client() {
       valid: uploadSummary.aggregates.valid === null,
       invalid: uploadSummary.aggregates.invalid === null,
       catchAll: uploadSummary.aggregates.catchAll === null,
+      disposable: uploadSummary.aggregates.disposable === null,
+      roleBased: uploadSummary.aggregates.roleBased === null,
+      unknown: uploadSummary.aggregates.unknown === null,
     };
     if (Object.values(missing).some(Boolean)) {
       console.info("verify.upload.summary_counts_unavailable", {

@@ -7,6 +7,7 @@ import type {
   PricingQuoteV2Response,
   PricingIntervalV2,
   PricingModeV2,
+  SalesContactRequestPayload,
 } from "../lib/api-client";
 import { ApiError, billingApi } from "../lib/api-client";
 import { getBillingClient } from "../lib/paddle";
@@ -25,6 +26,13 @@ import {
   resolveDisplayTotals,
   validateQuantity,
 } from "./pricing-quote-utils";
+import {
+  buildSalesContactIdempotencyKey,
+  describeFallbackAction,
+  executeSalesContactFallbackAction,
+  resolveQuantityBucket,
+  resolveSalesContactFallbackAction,
+} from "./contact-sales";
 type PlanKey = "payg" | "monthly" | "annual";
 type PlanOption = {
   key: PlanKey;
@@ -89,6 +97,10 @@ const PAYMENT_LOGOS = [
   { label: "Amex", src: "/amex.png" },
   { label: "PayPal", src: "/paypal.png" },
 ];
+const SALES_SCHEDULER_URL = process.env.NEXT_PUBLIC_SALES_SCHEDULER_URL ?? "";
+const SALES_CONTACT_EMAIL = process.env.NEXT_PUBLIC_SALES_CONTACT_EMAIL ?? "";
+type ContactSubmitState = "idle" | "submitting" | "submitted" | "failed";
+
 function useDebouncedValue<T>(value: T, delayMs: number): T {
   const [debounced, setDebounced] = useState(value);
   useEffect(() => {
@@ -127,17 +139,6 @@ function buildQuantityMessage(config: PricingConfigV2Response | null, quantityVa
   }
   return null;
 }
-
-function openSupportChat(payload: { quantity?: number; plan: PlanKey }) {
-  if (typeof window === "undefined") return;
-  const crisp = (window as Window & { $crisp?: unknown[] }).$crisp;
-  if (Array.isArray(crisp)) {
-    crisp.push(["do", "chat:open"]);
-    crisp.push(["do", "chat:show"]);
-    return;
-  }
-  console.info("pricing_v2.contact_requested", payload);
-}
 export default function PricingV2Client({ variant = "full", onCtaClick }: PricingV2ClientProps) {
   const searchParams = useSearchParams();
   const [config, setConfig] = useState<PricingConfigV2Response | null>(null);
@@ -154,6 +155,9 @@ export default function PricingV2Client({ variant = "full", onCtaClick }: Pricin
   const [quoteLoading, setQuoteLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [contactSubmitState, setContactSubmitState] = useState<ContactSubmitState>("idle");
+  const [contactMessage, setContactMessage] = useState<string | null>(null);
+  const [contactRequestId, setContactRequestId] = useState<string | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const consentStatus = useConsentStatus();
 
@@ -369,10 +373,103 @@ export default function PricingV2Client({ variant = "full", onCtaClick }: Pricin
   const environment = config?.status === "sandbox" || config?.status === "production" ? config.status : undefined;
   const isEmbed = variant === "embed";
   const checkoutEnabled = Boolean(config?.checkout_enabled && config?.client_side_token && config?.checkout_script);
+  const quantityBucket = useMemo(() => {
+    if (!config || debouncedQuantity === null) {
+      return "unknown";
+    }
+    return resolveQuantityBucket(debouncedQuantity, config.pricing.min_volume, config.pricing.max_volume);
+  }, [config, debouncedQuantity]);
+
+  const runContactFallback = (payload: SalesContactRequestPayload, requestId?: string | null) => {
+    if (typeof window === "undefined") {
+      return { opened: false, actionDescription: "contact channel", actionType: "mailto" as const };
+    }
+    const action = resolveSalesContactFallbackAction({
+      windowRef: window,
+      schedulerUrl: SALES_SCHEDULER_URL,
+      mailtoRecipient: SALES_CONTACT_EMAIL,
+      payload,
+      requestId,
+    });
+    const opened = executeSalesContactFallbackAction(action, window);
+    return {
+      opened,
+      actionDescription: describeFallbackAction(action),
+      actionType: action.type,
+    };
+  };
+
+  const handleContactSales = async () => {
+    if (debouncedQuantity === null) {
+      setContactSubmitState("failed");
+      setContactMessage("Enter a valid quantity before contacting sales.");
+      return;
+    }
+
+    const payload: SalesContactRequestPayload = {
+      source: "dashboard_pricing",
+      plan: activePlan,
+      quantity: debouncedQuantity,
+      contactRequired,
+      page: isEmbed ? "/pricing/embed" : "/pricing",
+    };
+    const idempotencyKey = buildSalesContactIdempotencyKey(payload);
+
+    setCheckoutError(null);
+    setContactSubmitState("submitting");
+    setContactMessage("Submitting sales request...");
+    setContactRequestId(null);
+
+    console.info("pricing_contact_sales_clicked", {
+      source: payload.source,
+      plan: payload.plan,
+      quantity_bucket: quantityBucket,
+    });
+
+    try {
+      const response = await billingApi.submitSalesContactRequest(payload, idempotencyKey);
+      setContactSubmitState("submitted");
+      setContactRequestId(response.requestId);
+      const fallback = runContactFallback(payload, response.requestId);
+      const fallbackStatus = fallback.opened
+        ? `${fallback.actionDescription} opened.`
+        : `Could not open ${fallback.actionDescription} automatically.`;
+      setContactMessage(`${response.message} Reference: ${response.requestId}. ${fallbackStatus}`);
+      console.info("pricing_contact_sales_submitted", {
+        source: payload.source,
+        plan: payload.plan,
+        quantity_bucket: quantityBucket,
+        requestId: response.requestId,
+        fallback: fallback.actionType,
+        fallback_opened: fallback.opened,
+      });
+    } catch (err) {
+      const errorMessage = err instanceof ApiError ? err.message : "Unable to submit sales request right now.";
+      const fallback = runContactFallback(payload, null);
+      const fallbackStatus = fallback.opened
+        ? `${fallback.actionDescription} opened so you can continue.`
+        : "Please try again in a few minutes.";
+      setContactSubmitState("failed");
+      setContactRequestId(null);
+      setContactMessage(`${errorMessage} ${fallbackStatus}`);
+      console.error("pricing_contact_sales_failed", {
+        source: payload.source,
+        plan: payload.plan,
+        quantity_bucket: quantityBucket,
+        message: errorMessage,
+        fallback: fallback.actionType,
+        fallback_opened: fallback.opened,
+      });
+    }
+  };
 
   const handleCheckout = async () => {
     setCheckoutError(null);
     if (!config || !debouncedQuantity) return;
+    if (contactRequired) {
+      await handleContactSales();
+      return;
+    }
     if (!isEmbed && consentStatus !== "accepted") {
       setCheckoutError("Please accept cookies to enable checkout.");
       return;
@@ -384,10 +481,6 @@ export default function PricingV2Client({ variant = "full", onCtaClick }: Pricin
     }
     if (!activeQuote) {
       setCheckoutError("Pricing is unavailable.");
-      return;
-    }
-    if (contactRequired) {
-      openSupportChat({ quantity: debouncedQuantity, plan: activePlan });
       return;
     }
     try {
@@ -426,8 +519,13 @@ export default function PricingV2Client({ variant = "full", onCtaClick }: Pricin
   };
 
   const transitionClass = isLoaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6";
+  const isContactSubmitting = contactSubmitState === "submitting";
   const ctaDisabled =
-    configLoading || quoteLoading || Boolean(pricingError) || !debouncedQuantity || (!isEmbed && !checkoutEnabled);
+    configLoading ||
+    quoteLoading ||
+    Boolean(pricingError) ||
+    !debouncedQuantity ||
+    (contactRequired ? isContactSubmitting : (!isEmbed && !checkoutEnabled));
   const shouldLoadCheckoutScript = !isEmbed && checkoutEnabled && consentStatus === "accepted";
 
   const content = (
@@ -587,10 +685,11 @@ export default function PricingV2Client({ variant = "full", onCtaClick }: Pricin
                 </span>
                 <button
                   type="button"
-                  onClick={() => openSupportChat({ quantity: debouncedQuantity ?? undefined, plan: activePlan })}
-                  className="rounded-lg border border-[var(--pricing-accent)] px-4 py-2 text-xs font-semibold text-[var(--pricing-accent)] transition hover:-translate-y-0.5 hover:bg-[var(--pricing-accent-soft)] hover:text-[var(--text-primary)]"
+                  onClick={() => void handleContactSales()}
+                  disabled={isContactSubmitting}
+                  className="rounded-lg border border-[var(--pricing-accent)] px-4 py-2 text-xs font-semibold text-[var(--pricing-accent)] transition hover:-translate-y-0.5 hover:bg-[var(--pricing-accent-soft)] hover:text-[var(--text-primary)] disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  Contact Sales {"->"}
+                  {isContactSubmitting ? "Submitting..." : `Contact Sales ->`}
                 </button>
               </div>
             </div>
@@ -642,7 +741,13 @@ export default function PricingV2Client({ variant = "full", onCtaClick }: Pricin
                 disabled={ctaDisabled}
                 className="mt-6 w-full rounded-xl bg-[linear-gradient(135deg,var(--pricing-accent)_0%,var(--pricing-accent-strong)_100%)] px-6 py-4 text-base font-semibold text-[var(--pricing-cta-ink)] shadow-[0_16px_32px_rgba(249,168,37,0.3)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_36px_rgba(249,168,37,0.38)] disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {contactRequired ? "Contact Sales" : activePlan === "payg" ? "Buy Credits" : "Subscribe Now"}
+                {contactRequired
+                  ? isContactSubmitting
+                    ? "Submitting..."
+                    : "Contact Sales"
+                  : activePlan === "payg"
+                    ? "Buy Credits"
+                    : "Subscribe Now"}
               </button>
 
               {pricingError ? (
@@ -650,6 +755,18 @@ export default function PricingV2Client({ variant = "full", onCtaClick }: Pricin
               ) : null}
               {checkoutError ? (
                 <p className="mt-2 text-xs font-semibold text-[var(--status-danger)]">{checkoutError}</p>
+              ) : null}
+              {contactMessage ? (
+                <p
+                  className={`mt-2 text-xs font-semibold ${
+                    contactSubmitState === "failed" ? "text-[var(--status-danger)]" : "text-[var(--status-success)]"
+                  }`}
+                >
+                  {contactMessage}
+                </p>
+              ) : null}
+              {contactRequestId ? (
+                <p className="mt-1 text-[11px] font-semibold text-[var(--text-muted)]">Request reference: {contactRequestId}</p>
               ) : null}
 
               <div className="mt-6 border-t border-[var(--pricing-border)] pt-4">

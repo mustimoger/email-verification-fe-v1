@@ -57,6 +57,9 @@ class Settings(BaseSettings):
     bulk_upload_email_body_failed: Optional[str] = None
     bulk_upload_webhook_url: Optional[str] = None
     bulk_upload_webhook_secret_key: Optional[str] = Field(default=None, alias="WEBHOOK_SECRET_KEY")
+    sales_contact_user_rate_limit_requests: int = 5
+    sales_contact_ip_rate_limit_requests: int = 20
+    sales_contact_rate_limit_window_seconds: int = 300
 
     @field_validator("backend_cors_origins", mode="before")
     @classmethod
@@ -97,7 +100,15 @@ class Settings(BaseSettings):
             return parts
         return value
 
-    @field_validator("manual_max_emails", "latest_uploads_limit", "upload_poll_attempts", "upload_poll_page_size")
+    @field_validator(
+        "manual_max_emails",
+        "latest_uploads_limit",
+        "upload_poll_attempts",
+        "upload_poll_page_size",
+        "sales_contact_user_rate_limit_requests",
+        "sales_contact_ip_rate_limit_requests",
+        "sales_contact_rate_limit_window_seconds",
+    )
     @classmethod
     def positive_int(cls, value):
         if value <= 0:

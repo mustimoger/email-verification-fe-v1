@@ -62,6 +62,114 @@ async def test_tasks_jobs_proxy_returns_payload(monkeypatch):
 
 
 @pytest.mark.anyio
+async def test_tasks_jobs_proxy_preserves_updated_email_status_payloads(monkeypatch):
+    task_id = "11111111-1111-1111-1111-111111111111"
+
+    class FakeClient:
+        async def list_task_jobs(self, task_id: str, limit: int, offset: int):
+            return TaskJobsResponse(
+                count=6,
+                limit=limit,
+                offset=offset,
+                jobs=[
+                    TaskEmailJob(
+                        id="job-valid",
+                        task_id=task_id,
+                        email_address="valid@example.com",
+                        status="completed",
+                        email={
+                            "email_address": "valid@example.com",
+                            "status": "valid",
+                            "is_role_based": False,
+                            "is_disposable": False,
+                        },
+                    ),
+                    TaskEmailJob(
+                        id="job-invalid",
+                        task_id=task_id,
+                        email_address="invalid@example.com",
+                        status="completed",
+                        email={
+                            "email_address": "invalid@example.com",
+                            "status": "invalid",
+                            "is_role_based": False,
+                            "is_disposable": False,
+                        },
+                    ),
+                    TaskEmailJob(
+                        id="job-catchall",
+                        task_id=task_id,
+                        email_address="catchall@example.com",
+                        status="completed",
+                        email={
+                            "email_address": "catchall@example.com",
+                            "status": "catchall",
+                            "is_role_based": False,
+                            "is_disposable": False,
+                        },
+                    ),
+                    TaskEmailJob(
+                        id="job-disposable",
+                        task_id=task_id,
+                        email_address="disposable@example.com",
+                        status="completed",
+                        email={
+                            "email_address": "disposable@example.com",
+                            "status": "disposable_domain",
+                            "is_role_based": False,
+                            "is_disposable": True,
+                        },
+                    ),
+                    TaskEmailJob(
+                        id="job-role",
+                        task_id=task_id,
+                        email_address="role@example.com",
+                        status="completed",
+                        email={
+                            "email_address": "role@example.com",
+                            "status": "role_based",
+                            "is_role_based": True,
+                            "is_disposable": False,
+                        },
+                    ),
+                    TaskEmailJob(
+                        id="job-unknown",
+                        task_id=task_id,
+                        email_address="unknown@example.com",
+                        status="completed",
+                        email={
+                            "email_address": "unknown@example.com",
+                            "status": "unknown",
+                            "is_role_based": False,
+                            "is_disposable": False,
+                        },
+                    ),
+                ],
+            )
+
+    app = _build_app(monkeypatch, FakeClient())
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.get("/api/tasks/11111111-1111-1111-1111-111111111111/jobs?limit=10&offset=0")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["count"] == 6
+        statuses = [job.get("email", {}).get("status") for job in data["jobs"]]
+        assert statuses == [
+            "valid",
+            "invalid",
+            "catchall",
+            "disposable_domain",
+            "role_based",
+            "unknown",
+        ]
+        disposable_job = data["jobs"][3]
+        assert disposable_job["email"]["is_disposable"] is True
+        role_based_job = data["jobs"][4]
+        assert role_based_job["email"]["is_role_based"] is True
+
+
+@pytest.mark.anyio
 async def test_tasks_jobs_proxy_handles_external_error(monkeypatch):
     class FakeClient:
         async def list_task_jobs(self, task_id: str, limit: int, offset: int):
@@ -84,4 +192,17 @@ async def test_tasks_jobs_proxy_rejects_invalid_limit(monkeypatch):
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
         resp = await client.get("/api/tasks/11111111-1111-1111-1111-111111111111/jobs?limit=0")
+        assert resp.status_code == 400
+
+
+@pytest.mark.anyio
+async def test_tasks_jobs_proxy_rejects_invalid_offset(monkeypatch):
+    class FakeClient:
+        async def list_task_jobs(self, task_id: str, limit: int, offset: int):
+            return TaskJobsResponse(count=0, limit=limit, offset=offset, jobs=[])
+
+    app = _build_app(monkeypatch, FakeClient())
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.get("/api/tasks/11111111-1111-1111-1111-111111111111/jobs?offset=-1")
         assert resp.status_code == 400

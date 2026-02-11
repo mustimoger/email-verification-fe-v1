@@ -13,6 +13,7 @@ from .api.limits import router as limits_router
 from .api.debug import router as debug_router
 from .api.auth import router as auth_router
 from .api.credits import router as credits_router
+from .api.sales import router as sales_router
 
 
 def create_app() -> FastAPI:
@@ -46,6 +47,7 @@ def create_app() -> FastAPI:
     app.include_router(billing_router)
     app.include_router(billing_v2_router)
     app.include_router(credits_router)
+    app.include_router(sales_router)
     app.include_router(debug_router)
     app.include_router(auth_router, prefix="/api")
     app.include_router(auth_router)

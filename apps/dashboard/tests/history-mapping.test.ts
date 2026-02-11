@@ -24,22 +24,26 @@ function run(name: string, fn: () => void) {
   }
 }
 
-run("deriveCounts tallies valid/invalid/catchall from jobs", () => {
+run("deriveCounts tallies primary and secondary buckets from jobs", () => {
   const detail: TaskDetailResponse = {
     id: "t1",
     jobs: [
-      { status: "exists" },
+      { status: "valid" },
       { status: "catchall" },
-      { status: "not_exists" },
-      { email: { status: "exists" } },
-      { email: { status: "invalid_syntax" } },
+      { status: "invalid" },
+      { email: { status: "disposable_domain", is_disposable: true } },
+      { email: { status: "valid", is_role_based: true } },
+      { email: { status: "unknown" } },
     ],
   };
   const counts = deriveCounts(detail);
-  assert.strictEqual(counts.total, 5);
-  assert.strictEqual(counts.valid, 2);
+  assert.strictEqual(counts.total, 6);
+  assert.strictEqual(counts.valid, 1);
   assert.strictEqual(counts.catchAll, 1);
-  assert.strictEqual(counts.invalid, 2);
+  assert.strictEqual(counts.invalid, 1);
+  assert.strictEqual(counts.disposable, 1);
+  assert.strictEqual(counts.roleBased, 1);
+  assert.strictEqual(counts.unknown, 1);
 });
 
 run("mapDetailToHistoryRow maps completed task to status label with formatted date", () => {
@@ -48,9 +52,9 @@ run("mapDetailToHistoryRow maps completed task to status label with formatted da
     created_at: "2024-02-01T00:00:00Z",
     api_key_preview: "uG5...N23",
     jobs: [
-      { status: "exists" },
+      { status: "valid" },
       { status: "catchall" },
-      { status: "not_exists" },
+      { status: "invalid" },
     ],
   };
   const row = mapDetailToHistoryRow(detail);
@@ -72,7 +76,7 @@ run("mapDetailToHistoryRow marks pending when any job is in pending states", () 
     id: "t3",
     created_at: "2024-02-02T00:00:00Z",
     jobs: [
-      { status: "exists" },
+      { status: "valid" },
       { status: "processing" },
       { email: { status: "queued" } },
     ],
@@ -182,18 +186,21 @@ run("mapTaskToHistoryRow maps external metrics and missing file name to unavaila
     id: "t6",
     created_at: "2024-03-05T00:00:00Z",
     metrics: {
-      total_email_addresses: 4,
-      job_status: { completed: 4 },
+      total_email_addresses: 7,
+      job_status: { completed: 7 },
       verification_status: {
-        exists: 2,
+        valid: 2,
         catchall: 1,
-        not_exists: 1,
+        invalid: 1,
+        disposable_domain: 1,
+        role_based: 1,
+        unknown: 1,
       },
     },
   };
   const row = mapTaskToHistoryRow(task);
   assert(row, "row should not be null");
-  assert.strictEqual(row?.total, 4);
+  assert.strictEqual(row?.total, 7);
   assert.strictEqual(row?.valid, 2);
   assert.strictEqual(row?.catchAll, 1);
   assert.strictEqual(row?.invalid, 1);

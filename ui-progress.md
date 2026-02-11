@@ -151,6 +151,26 @@
 - [x] Task 152 - Implement website newsletter subscribe API route with Acumbamail integration + unit tests (MVP).
 - [x] Task 153 - Wire website footer newsletter form to the API route with success/error UX (MVP).
 - [ ] Task 154 - Validate newsletter flow (tests + website build) and deploy to `main` (MVP).
+- [x] Task 155 - Update homepage pricing card copy under “Pay only for what you can actually use” with the requested additional two-line message (MVP).
+- [x] Task 156 - Replace the same pricing card subtext with the new exact four-sentence copy provided by user (MVP).
+- [x] Task 157 - Replace homepage testimonial card content (Dennis J. Lester block) with new trust headline, four stat cards, subtext, and CTA copy (MVP).
+- [x] Task 158 - Fix homepage testimonial card layout regression (content clipping/disruption) after copy replacement by removing fixed-height constraint on desktop (MVP).
+- [x] Task 159 - Replace testimonial card image with `email-list-cleanup.png` from existing project assets (MVP).
+- [x] Task 160 - Resize testimonial desktop image by +20% while keeping top-right anchor positioning (MVP).
+- [x] Task 161 - Increase spacing between testimonial left content and right image by reducing left block width (without changing right image styles) (MVP).
+- [x] Task 162 - Add root `enterprise-contact.md` plan for dashboard `/pricing` “Contact Sales” click flow best-practice implementation (MVP).
+- [x] Task 168 - Fix dark-mode readability in `/verify` bulk-upload selected-file action area (file chips + secondary controls) using theme-aware surfaces (MVP).
+- [x] Task 169 - Validate `/verify` bulk-upload dark-mode readability fix and run required checks (MVP).
+- [x] Task 170 - Replace `/help` screenshot placeholders with real images from `apps/website/public` (MVP).
+- [x] Task 171 - Validate `/help` screenshot replacements with website checks (MVP).
+- [x] Task 172 - Create Supabase `sales_contact_requests` table via MCP migration (schema + constraints + indexes) (MVP).
+- [x] Task 173 - Switch backend sales-contact persistence to `sales_contact_requests` and keep idempotency guarantees (MVP).
+- [x] Task 174 - Validate sales-contact table integration (backend tests + dashboard checks/build) and document results (MVP).
+- [x] Task 163 - Translate `enterprise-contact.md` into implementation TODOs and lock MVP scope for dashboard `/pricing` Contact Sales flow.
+- [x] Task 164 - Implement backend `POST /api/sales/contact-request` endpoint with auth, validation, idempotency, and deterministic request IDs (MVP).
+- [x] Task 165 - Implement dashboard `/pricing` Contact Sales submit UX with explicit fallback order and user-visible states (MVP).
+- [x] Task 166 - Add backend/frontend tests for Contact Sales flow (validation, idempotency, fallback selection order) (MVP).
+- [x] Task 167 - Run Contact Sales MVP validation (targeted tests + dashboard build) and document results/remaining gaps (MVP).
 
 ## Progress log
 ### Task 1 - Completed
@@ -1142,3 +1162,169 @@
 - How: Added a small client component that submits to `POST /api/newsletter/subscribe`, includes a honeypot field, disables submission while loading, and shows an inline success or error message based on the API response. Replaced the static footer input/button with this component while keeping the existing footer layout/styling intact.
 - Where: `apps/website/src/components/NewsletterSignupForm.tsx`, `apps/website/src/components/FooterSection.tsx`, `ui-progress.md`.
 - Not implemented yet: Production validation + deploy (Task 154) is still pending, including setting `ACUMBAMAIL_API_BASE_URL`, `ACUMBAMAIL_AUTH_TOKEN`, and `ACUMBAMAIL_LIST_ID` in the website runtime env.
+
+### Task 155 - Completed
+- What: Updated the second card copy under “Pay only for what you can actually use” to include the requested two-line billing message exactly.
+- Why: The homepage pricing value prop needed the explicit no-overcharge statement visible in that card.
+- How: Edited `apps/website/src/components/TwoCardsSection.tsx` so the paragraph renders as two explicit lines using a line break:
+  `No inflated costs, no forced retries.`
+  `You’re not charged for unknown results when verification can’t be definitive.`
+  Then ran `source .venv/bin/activate && npm --prefix apps/website run lint` to verify no new lint errors were introduced.
+- Where: `apps/website/src/components/TwoCardsSection.tsx`, `ui-progress.md`.
+- Not implemented yet: No deployment was performed in this step.
+
+### Task 156 - Completed
+- What: Replaced the same pricing card subtext with your new exact four-sentence copy.
+- Why: You requested a direct copy revision of that card’s supporting text.
+- How: Updated the paragraph in `apps/website/src/components/TwoCardsSection.tsx` to:
+  `No inflated costs, no forced retries. You’re not charged for unknown results when verification can’t be definitive. Transparent pricing with zero hidden fees. Full visibility into every credit you spend.`
+  Then validated with `source .venv/bin/activate && npm --prefix apps/website run lint` (passed, with existing non-blocking warnings).
+- Where: `apps/website/src/components/TwoCardsSection.tsx`, `ui-progress.md`.
+- Not implemented yet: No deployment was performed in this step.
+
+### Task 157 - Completed
+- What: Replaced the homepage testimonial card content (previously centered around “Dennis J. Lester”) with the requested trust-focused messaging block.
+- Why: You requested a direct homepage content swap to emphasize quantitative trust proof, transparent pricing, and a strong signup CTA.
+- How: Updated `apps/website/src/components/TestimonialSection.tsx` to render:
+  - section headline: `Trusted by Email Marketers & Sales Teams Worldwide`
+  - four stat cards: `300M+ / Emails Verified & Counting`, `99.1% / Verification Accuracy Rate`, `0% / Charge for Unknown Results`, `∞ / Credits Never Expire`
+  - subtext: `Don't take our word for it — sign up free and verify 100 emails on us. See the accuracy yourself.`
+  - CTA button label: `Start Free — No Credit Card Required`
+  Also removed obsolete testimonial/star markup and the unused `Star` import, then validated with `source .venv/bin/activate && npm --prefix apps/website run lint` (passed with existing non-blocking warnings).
+- Where: `apps/website/src/components/TestimonialSection.tsx`, `ui-progress.md`.
+- Not implemented yet: No deployment was performed in this step.
+
+### Task 158 - Completed
+- What: Fixed the testimonial card layout disruption where new trust content was clipped in the card on desktop.
+- Why: The previous container still used fixed desktop height (`lg:h-[508px]`), which caused overflow clipping after we replaced short testimonial text with a larger stats+CTA block.
+- How: Updated the testimonial card container in `apps/website/src/components/TestimonialSection.tsx` from fixed height to minimum height (`lg:min-h-[508px]`) so the section can expand naturally when content grows while preserving baseline desktop sizing. Validated with `source .venv/bin/activate && npm --prefix apps/website run lint` (passed, existing warnings only).
+- Where: `apps/website/src/components/TestimonialSection.tsx`, `ui-progress.md`.
+- Not implemented yet: No deployment was performed in this step.
+
+### Task 159 - Completed
+- What: Replaced the testimonial card image with `email-list-cleanup.png` sourced from existing project assets.
+- Why: You requested that the image in the same card use `/home/codex/email-verification-fe-v1/apps/dashboard/public/email-list-cleanup.png` instead of the current stock photo.
+- How: Copied the existing asset from `apps/dashboard/public/email-list-cleanup.png` into `apps/website/public/email-list-cleanup.png` so it is served by the website app, then updated both testimonial image usages (mobile and desktop variants) in `apps/website/src/components/TestimonialSection.tsx` to `src="/email-list-cleanup.png"`. Validated with `source .venv/bin/activate && npm --prefix apps/website run lint` (passed with existing non-blocking warnings).
+- Where: `apps/dashboard/public/email-list-cleanup.png`, `apps/website/public/email-list-cleanup.png`, `apps/website/src/components/TestimonialSection.tsx`, `ui-progress.md`.
+- Not implemented yet: No deployment was performed in this step.
+
+### Task 160 - Completed
+- What: Increased the testimonial desktop image size by 20% and kept the top-right corner as the visual anchor.
+- Why: You requested the newly added image be larger without drifting from its top-right placement.
+- How: Updated the desktop testimonial image class in `apps/website/src/components/TestimonialSection.tsx` to use `origin-top-right scale-[1.2]` while preserving absolute top/right positioning (`-top-8 right-8`) and existing base dimensions. This scales the image by +20% from the top-right anchor point. Validated with `source .venv/bin/activate && npm --prefix apps/website run lint` (passed, existing warnings only).
+- Where: `apps/website/src/components/TestimonialSection.tsx`, `ui-progress.md`.
+- Not implemented yet: No deployment was performed in this step.
+
+### Task 161 - Completed
+- What: Added more visual space between the testimonial left content block and the right image, while leaving the right image styles untouched.
+- Why: After scaling the right image, the left and right sides felt too tight and visually crowded.
+- How: Reduced only the desktop left content max width in `apps/website/src/components/TestimonialSection.tsx` from `lg:max-w-[528px]` to `lg:max-w-[500px]`. This narrows the four stat cards and creates extra inter-column space without modifying right-image position/size/anchor. Validated with `source .venv/bin/activate && npm --prefix apps/website run lint` (passed with existing non-blocking warnings).
+- Where: `apps/website/src/components/TestimonialSection.tsx`, `ui-progress.md`.
+- Not implemented yet: No deployment was performed in this step.
+
+### Task 162 - Completed
+- What: Added a new root planning document for implementing best-practice logic behind dashboard `/pricing` \"Contact Sales\" button clicks.
+- Why: The current button behavior can silently do nothing for users when Crisp is unavailable; the project needed a concrete MVP-first implementation plan with guaranteed user-visible outcomes.
+- How: Created `enterprise-contact.md` with a first-principles MVP plan covering current-state gap, target UX flow, backend API contract (`POST /api/sales/contact-request`), frontend state handling, fallback order (Crisp -> scheduler -> mailto), security/rate-limit/idempotency requirements, observability events, test plan, rollout plan, and scope boundaries.
+- Where: `enterprise-contact.md`, `ui-progress.md`.
+- Not implemented yet: Runtime code changes are not part of this task; this step adds planning documentation only.
+
+### Task 168 - Completed
+- What: Fixed unreadable dark-mode styling in `/verify` bulk upload right-panel controls, including selected file chips and secondary action buttons (`Go back`, refresh, mapping row surfaces).
+- Why: Hardcoded `bg-white/70` and `bg-white/80` backgrounds made light text difficult to read in dark mode, especially in the selected-file action area shown in user screenshot.
+- How: Replaced fixed white translucent backgrounds with existing verify theme tokens so surfaces adapt per theme: `bg-[var(--verify-surface-contrast)]` and `bg-[var(--verify-surface-contrast-strong)]`.
+- Where: `apps/dashboard/app/verify/verify-sections.tsx`, `ui-progress.md`.
+- Not implemented yet: No deployment was executed in this step.
+
+### Task 169 - Completed
+- What: Validated the `/verify` dark-mode readability fix with targeted mapping tests, dashboard suite checks, and a production build.
+- Why: Ensure the UI-token changes do not regress verification mapping logic or app compilation.
+- How: Ran:
+  `source .venv/bin/activate && set -a && source apps/dashboard/.env.local && set +a && cd apps/dashboard && npx tsx tests/verify-mapping.test.ts` (passed),
+  `source .venv/bin/activate && set -a && source apps/dashboard/.env.local && set +a && npm run test:dashboard` (passed),
+  `source .venv/bin/activate && set -a && source apps/dashboard/.env.local && set +a && npm run build:dashboard` (passed).
+- Where: dashboard test/build command outputs, `ui-progress.md`.
+- Not implemented yet: Browser screenshot re-capture was not run in this step; visual confirmation should be done in local UI.
+
+### Task 163 - Completed
+- What: Translated the `enterprise-contact.md` plan into explicit implementation TODO tasks in the root tracker before runtime coding.
+- Why: This locks execution order and makes the feature implementation newcomer-safe, auditable, and resumable if context is lost.
+- How: Added Task 164-167 checklist items in `ui-progress.md` that separate backend endpoint work, frontend UX wiring, test coverage, and validation gates for the Contact Sales MVP.
+- Where: `ui-progress.md`.
+- Not implemented yet: Runtime endpoint/UI/test code is still pending under Tasks 164-167.
+
+### Task 170 - Completed
+- What: Replaced all `/help` page screenshot placeholders with real screenshot images from `apps/website/public`.
+- Why: The help page still showed temporary “REPLACE WITH SCREENSHOT” blocks and needed production-ready visual references.
+- How: Updated `apps/website/src/app/help/helpContent.ts` to replace 10 placeholder blocks with real `<img>` entries mapped by section (`email-overview.png`, `email-manual-verification.png`, `email-bulk-validation.png`, `email-column-mapping.png`, `email-verification-history.png`, `email-integrations.png`, `email-api.png`, `email-pricing.png`, `email-account.png`), and converted screenshot container CSS from dashed placeholder styling to image-card styling for readable rendering.
+- Where: `apps/website/src/app/help/helpContent.ts`, `ui-progress.md`.
+- Not implemented yet: No deploy step was executed in this task.
+
+### Task 171 - Completed
+- What: Validated `/help` screenshot replacement changes with website checks.
+- Why: Ensure the raw help HTML and CSS edits compile and do not break website build outputs.
+- How: Ran:
+  `source .venv/bin/activate && npm --prefix apps/website run lint` (passed with existing non-blocking warnings),
+  `source .venv/bin/activate && npm --prefix apps/website run build` (passed with existing non-blocking warnings).
+- Where: website lint/build command outputs, `ui-progress.md`.
+- Not implemented yet: Browser screenshot capture of final `/help` page was not performed in this step.
+
+### Task 164 - Completed
+- What: Implemented backend MVP support for `POST /api/sales/contact-request` including validation, auth context enrichment, idempotent persistence, and rate limiting.
+- Why: The pricing Contact Sales flow needed a real server-side request path so clicks can be persisted with a deterministic request reference instead of chat-only behavior.
+- How: Added new route module `apps/dashboard/backend/app/api/sales.py` and wired it in `apps/dashboard/backend/app/main.py`; implemented payload validation (`source/plan/quantity/contactRequired/page`), server-enriched context (user, IP, user-agent, account email), configurable per-user/per-IP rate limiting, and deterministic request IDs with idempotency-key handling backed by persisted `billing_events` rows through `apps/dashboard/backend/app/services/sales_contact_requests.py`; added lightweight in-memory limiter service `apps/dashboard/backend/app/services/request_rate_limit.py`; added configuration knobs in `apps/dashboard/backend/app/core/settings.py`.
+- Where: `apps/dashboard/backend/app/api/sales.py`, `apps/dashboard/backend/app/services/sales_contact_requests.py`, `apps/dashboard/backend/app/services/request_rate_limit.py`, `apps/dashboard/backend/app/core/settings.py`, `apps/dashboard/backend/app/main.py`, `ui-progress.md`.
+- Not implemented yet: Runtime verification is pending in Task 166/167 (tests/build execution), and frontend wiring is still pending under Task 165.
+
+### Task 165 - Completed
+- What: Replaced `/pricing` Contact Sales chat-only behavior with an async submit-first UX that always gives a user-visible next step.
+- Why: The previous implementation silently failed when Crisp was unavailable; the MVP requires deterministic submit state, clear messaging, and explicit fallback ordering.
+- How: Added Contact Sales fallback utility module `apps/dashboard/app/pricing/contact-sales.ts`; extended dashboard API client with `submitSalesContactRequest`; updated `apps/dashboard/app/pricing/pricing-client.tsx` to submit `POST /api/sales/contact-request`, track `idle/submitting/submitted/failed` state, disable contact actions while submitting, log structured click/success/failure events, and execute fallback order `Crisp -> scheduler URL -> mailto` after submit (and on submit failure for actionable continuation).
+- Where: `apps/dashboard/app/pricing/pricing-client.tsx`, `apps/dashboard/app/pricing/contact-sales.ts`, `apps/dashboard/app/lib/api-client.ts`, `ui-progress.md`.
+- Not implemented yet: Validation and regression checks are pending in Task 166/167, and deploy-to-main is not part of this step.
+
+### Task 166 - Completed
+- What: Added backend and frontend test coverage for the new Contact Sales flow contract.
+- Why: The MVP requires regression protection around payload validation, error mapping, idempotent handling behavior, and fallback channel selection.
+- How: Added backend route tests in `apps/dashboard/backend/tests/test_sales_contact.py` covering success, invalid payload, rate limiting, service-unavailable handling, and deduplicated idempotency responses; added frontend utility tests in `apps/dashboard/tests/contact-sales.test.ts` for idempotency key generation, fallback ordering, mailto payload generation, fallback execution behavior, and quantity bucket mapping.
+- Where: `apps/dashboard/backend/tests/test_sales_contact.py`, `apps/dashboard/tests/contact-sales.test.ts`, `ui-progress.md`.
+- Not implemented yet: Test execution/build verification is pending in Task 167.
+
+### Task 167 - Completed
+- What: Executed Contact Sales MVP validation gates and recorded outcomes.
+- Why: We needed to prove the new endpoint + frontend flow compiles and passes targeted regression coverage before considering deploy work.
+- How: Ran:
+  `source .venv/bin/activate && pytest -q apps/dashboard/backend/tests/test_sales_contact.py` (passed, `5 passed`);
+  `source .venv/bin/activate && pytest -q apps/dashboard/backend/tests/test_settings.py` (passed, `2 passed`);
+  `source .venv/bin/activate && npm --prefix apps/dashboard exec tsx apps/dashboard/tests/contact-sales.test.ts` (passed);
+  `source .venv/bin/activate && set -a && source apps/dashboard/.env.local && set +a && npm run test:dashboard` (passed);
+  `source .venv/bin/activate && set -a && source apps/dashboard/.env.local && set +a && npm run build:dashboard` (passed).
+  Build emitted existing `baseline-browser-mapping` staleness warnings but no blocking errors.
+- Where: `apps/dashboard/backend/tests/test_sales_contact.py`, `apps/dashboard/tests/contact-sales.test.ts`, `apps/dashboard/app/pricing/pricing-client.tsx`, `apps/dashboard/app/lib/api-client.ts`, `apps/dashboard/backend/app/api/sales.py`, `ui-progress.md`.
+- Not implemented yet: Deploy-to-main and production smoke checks for this feature have not been executed in this step.
+
+### Task 172 - Completed
+- What: Created the required Supabase table `public.sales_contact_requests` using MCP migration tooling.
+- Why: The Contact Sales plan prefers dedicated persistence in `sales_contact_requests` instead of reusing generic event storage.
+- How: Applied migration `create_sales_contact_requests_table` via Supabase MCP with schema for request payload/context fields, unique request-id/indexing, partial unique idempotency constraint per user, and lookup-friendly created-at indexes. Then verified table creation and FK wiring with `list_tables`.
+- Where: Supabase project schema (`public.sales_contact_requests`), `ui-progress.md`.
+- Not implemented yet: Backend persistence is still writing to `billing_events`; Task 173 will switch runtime writes to the new `sales_contact_requests` table.
+
+### Task 173 - Completed
+- What: Switched Contact Sales backend persistence from shared `billing_events` records to the dedicated `sales_contact_requests` table.
+- Why: You requested strict separation so custom pricing/sales-contact logic and data stay isolated from billing/credit event infrastructure.
+- How: Refactored `apps/dashboard/backend/app/services/sales_contact_requests.py` to insert and read from `sales_contact_requests` only, preserved deterministic request-id generation, preserved per-user idempotency behavior by resolving existing `request_id` via `(user_id, idempotency_key)`, and removed runtime dependence on `billing_events` for this flow.
+- Where: `apps/dashboard/backend/app/services/sales_contact_requests.py`, `ui-progress.md`.
+- Not implemented yet: No deploy-to-main was executed in this step.
+
+### Task 174 - Completed
+- What: Validated the dedicated-table integration for Contact Sales end-to-end at test/build level.
+- Why: We needed to confirm the table migration and persistence refactor did not regress backend API behavior or dashboard build outputs.
+- How: Ran:
+  `source .venv/bin/activate && pytest -q apps/dashboard/backend/tests/test_sales_contact.py apps/dashboard/backend/tests/test_sales_contact_requests.py apps/dashboard/backend/tests/test_settings.py` (passed, `9 passed`);
+  `source .venv/bin/activate && npm --prefix apps/dashboard exec tsx apps/dashboard/tests/contact-sales.test.ts` (passed);
+  `source .venv/bin/activate && set -a && source apps/dashboard/.env.local && set +a && npm run test:dashboard` (passed);
+  `source .venv/bin/activate && set -a && source apps/dashboard/.env.local && set +a && npm run build:dashboard` (passed).
+  Also validated Supabase table state with MCP (`public.sales_contact_requests` exists, RLS enabled, anon/authenticated revoked on table).
+- Where: `apps/dashboard/backend/tests/test_sales_contact.py`, `apps/dashboard/backend/tests/test_sales_contact_requests.py`, `apps/dashboard/backend/tests/test_settings.py`, `apps/dashboard/tests/contact-sales.test.ts`, Supabase schema `public.sales_contact_requests`, `ui-progress.md`.
+- Not implemented yet: No RLS policy was added for this table (currently service-role-only access is expected). No deploy-to-main or production smoke was executed in this step.

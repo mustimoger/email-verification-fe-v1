@@ -63,8 +63,9 @@ export function TwoCardsSection() {
                 Pay only for what you can actually use
               </h3>
               <p className="text-[16px] font-medium leading-[1.6] text-white/80">
-                No inflated costs, no forced retries. <strong>You’re not charged for unknown results</strong>{" "}
-                when verification can’t be definitive.
+                No inflated costs, no forced retries. You’re not charged for unknown results when
+                verification can’t be definitive. Transparent pricing with zero hidden fees. Full
+                visibility into every credit you spend.
               </p>
               <ul className="flex flex-col space-y-2.5 text-[15px] font-semibold text-white">
                 {[

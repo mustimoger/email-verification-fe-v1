@@ -6,6 +6,8 @@ import {
   BadgeCheck,
   CheckCheck,
   CircleX,
+  ShieldAlert,
+  UserRoundCheck,
   MailQuestionMark,
   Wallet,
 } from "lucide-react";
@@ -237,6 +239,7 @@ export default function OverviewV2Client() {
         catchAll: 0,
         roleBased: 0,
         disposable: 0,
+        unknown: 0,
         total: 0,
       },
     [validationTotals],
@@ -250,6 +253,8 @@ export default function OverviewV2Client() {
     const valid = validationTotals?.valid ?? null;
     const invalid = validationTotals?.invalid ?? null;
     const catchAll = validationTotals?.catchAll ?? null;
+    const disposable = validationTotals?.disposable ?? null;
+    const roleBased = validationTotals?.roleBased ?? null;
     return [
       {
         title: "Credits Remaining",
@@ -265,6 +270,16 @@ export default function OverviewV2Client() {
       { title: "Total Valid", value: valid !== null ? valid.toLocaleString() : missingValueLabel, icon: BadgeCheck },
       { title: "Total Invalid", value: invalid !== null ? invalid.toLocaleString() : missingValueLabel, icon: CircleX },
       { title: "Total Catch-all", value: catchAll !== null ? catchAll.toLocaleString() : missingValueLabel, icon: MailQuestionMark },
+      {
+        title: "Total Disposable",
+        value: disposable !== null ? disposable.toLocaleString() : missingValueLabel,
+        icon: ShieldAlert,
+      },
+      {
+        title: "Total Role-based",
+        value: roleBased !== null ? roleBased.toLocaleString() : missingValueLabel,
+        icon: UserRoundCheck,
+      },
     ];
   }, [creditsBalance, validationTotals]);
 
@@ -273,6 +288,8 @@ export default function OverviewV2Client() {
       { name: "Valid", value: resolvedValidationTotals.valid, color: "var(--chart-valid)" },
       { name: "Catch-all", value: resolvedValidationTotals.catchAll, color: "var(--chart-catchall)" },
       { name: "Invalid", value: resolvedValidationTotals.invalid, color: "var(--chart-invalid)" },
+      { name: "Disposable", value: resolvedValidationTotals.disposable, color: "var(--chart-processing)" },
+      { name: "Role-based", value: resolvedValidationTotals.roleBased, color: "var(--status-info)" },
     ];
     return slices.filter((slice) => slice.value > 0);
   }, [resolvedValidationTotals]);
@@ -284,6 +301,8 @@ export default function OverviewV2Client() {
       { label: "Valid", value: resolvedValidationTotals.valid, color: "var(--chart-valid)" },
       { label: "Catch-all", value: resolvedValidationTotals.catchAll, color: "var(--chart-catchall)" },
       { label: "Disposable", value: resolvedValidationTotals.disposable ?? 0, color: "var(--chart-processing)" },
+      { label: "Role-based", value: resolvedValidationTotals.roleBased ?? 0, color: "var(--status-info)" },
+      { label: "Unknown", value: resolvedValidationTotals.unknown ?? 0, color: "var(--status-unknown)" },
     ],
     [resolvedValidationTotals],
   );

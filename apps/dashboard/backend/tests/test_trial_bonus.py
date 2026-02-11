@@ -10,7 +10,7 @@ from app.core.auth import AuthContext
 from app.services.pricing_v2 import PricingConfigV2
 
 
-def _build_app(monkeypatch, auth_user, grants, inserted, config):
+def _build_app(monkeypatch, auth_user, grants, inserted, config, grant_calls=None):
     app = FastAPI()
     app.include_router(router)
 
@@ -21,7 +21,9 @@ def _build_app(monkeypatch, auth_user, grants, inserted, config):
     monkeypatch.setattr(credits_module.supabase_client, "fetch_auth_user", lambda _user_id: auth_user)
     monkeypatch.setattr(credits_module, "list_credit_grants", lambda **_kwargs: grants)
     monkeypatch.setattr(credits_module, "upsert_credit_grant", lambda **_kwargs: inserted)
-    async def fake_grant_external_credits(**_kwargs):
+    async def fake_grant_external_credits(**kwargs):
+        if grant_calls is not None:
+            grant_calls.append(kwargs)
         return None
     monkeypatch.setattr(credits_module, "grant_external_credits", fake_grant_external_credits)
 
@@ -44,11 +46,14 @@ def _config(credits):
 @pytest.mark.anyio
 async def test_trial_bonus_applies_for_confirmed_user(monkeypatch):
     now = datetime.now(timezone.utc)
+    grant_calls: list[dict] = []
 
     class FakeAuthUser:
         email_confirmed_at = now.isoformat()
+        email = "user-1@example.com"
+        created_at = now.isoformat()
 
-    app = _build_app(monkeypatch, FakeAuthUser(), grants=[], inserted=True, config=_config(120))
+    app = _build_app(monkeypatch, FakeAuthUser(), grants=[], inserted=True, config=_config(120), grant_calls=grant_calls)
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
         resp = await client.post("/api/credits/trial-bonus")
@@ -56,6 +61,15 @@ async def test_trial_bonus_applies_for_confirmed_user(monkeypatch):
     assert resp.status_code == 200
     assert resp.json()["status"] == "applied"
     assert resp.json()["credits_granted"] == 120
+    assert len(grant_calls) == 1
+    grant_payload = grant_calls[0]
+    assert grant_payload["user_id"] == "user-1"
+    assert grant_payload["amount"] == 120
+    assert grant_payload["reason"] == "trial_bonus"
+    assert grant_payload["metadata"]["source"] == "trial"
+    assert grant_payload["metadata"]["source_id"] == "user-1"
+    assert grant_payload["metadata"]["credits_granted"] == 120
+    assert grant_payload["metadata"]["user_email"] == "user-1@example.com"
 
 
 @pytest.mark.anyio

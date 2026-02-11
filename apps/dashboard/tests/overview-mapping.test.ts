@@ -49,7 +49,7 @@ run("aggregateValidationCounts sums task counts", () => {
   assert.strictEqual(totals.total, 9);
 });
 
-run("buildVerificationTotalsFromMetrics supports valid/invalid keys and invalid sub-statuses", () => {
+run("buildVerificationTotalsFromMetrics maps primary buckets and keeps unknown secondary", () => {
   const metrics = {
     total_verifications: 100,
     verification_status: {
@@ -67,10 +67,11 @@ run("buildVerificationTotalsFromMetrics supports valid/invalid keys and invalid 
   const totals = buildVerificationTotalsFromMetrics(metrics);
   assert.ok(totals);
   assert.strictEqual(totals?.valid, 50);
-  assert.strictEqual(totals?.invalid, 40);
+  assert.strictEqual(totals?.invalid, 25);
   assert.strictEqual(totals?.catchAll, 10);
   assert.strictEqual(totals?.roleBased, 4);
   assert.strictEqual(totals?.disposable, 10);
+  assert.strictEqual(totals?.unknown, 5);
   assert.strictEqual(totals?.total, 100);
 });
 

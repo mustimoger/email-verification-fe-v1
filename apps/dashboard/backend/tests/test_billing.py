@@ -201,6 +201,7 @@ def test_create_transaction_rejects_metadata(monkeypatch):
 
 def test_webhook_grants_credits(monkeypatch):
     grant_call = {}
+    external_grant_call = {}
 
     def fake_verify_webhook(raw_body, signature_header, remote_ip, headers=None):
         return True
@@ -217,6 +218,10 @@ def test_webhook_grants_credits(monkeypatch):
     monkeypatch.setattr(billing_module, "get_pricing_tiers_by_price_ids_v2", lambda price_ids: {})
     monkeypatch.setattr(billing_module, "record_billing_event", lambda **kwargs: fake_record_event(**kwargs))
     monkeypatch.setattr(billing_module, "upsert_credit_grant", fake_upsert_credit_grant)
+    async def fake_grant_external_credits(**kwargs):
+        external_grant_call.update(kwargs)
+        return None
+    monkeypatch.setattr(billing_module, "grant_external_credits", fake_grant_external_credits)
     monkeypatch.setattr(
         billing_module,
         "get_billing_plans_by_price_ids",
@@ -249,6 +254,13 @@ def test_webhook_grants_credits(monkeypatch):
     assert grant_call["user_id"] == "user-abc"
     assert grant_call["source"] == "purchase"
     assert grant_call["source_id"] == "txn_1"
+    assert external_grant_call["user_id"] == "user-abc"
+    assert external_grant_call["amount"] == 500
+    assert external_grant_call["reason"] == "purchase"
+    assert external_grant_call["metadata"]["source"] == "purchase"
+    assert external_grant_call["metadata"]["source_id"] == "txn_1"
+    assert external_grant_call["metadata"]["transaction_id"] == "txn_1"
+    assert external_grant_call["metadata"]["credits_granted"] == 500
 
 
 def test_webhook_grants_v2_annual_no_multiplier(monkeypatch):

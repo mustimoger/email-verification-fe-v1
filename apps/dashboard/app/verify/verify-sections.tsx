@@ -18,6 +18,7 @@ import { Bar, BarChart } from "recharts";
 
 import { buildColumnOptions, type FileColumnInfo } from "../verify/file-columns";
 import { formatNumber, type UploadSummary, type VerificationResult } from "../verify/utils";
+import { resolveVerificationStatusBucket } from "../lib/verification-status";
 
 const HERO_HIGHLIGHTS = [
   "Manual or bulk verification",
@@ -53,6 +54,8 @@ export type ResultsStatusCounts = {
   valid: number;
   invalid: number;
   catchAll: number;
+  disposable: number;
+  roleBased: number;
   unknown: number;
   pending: number;
 };
@@ -63,6 +66,8 @@ const STATUS_PILLS: { key: ResultsStatusKey; label: string; color: string }[] = 
   { key: "valid", label: "Valid", color: "bg-[var(--status-success)]" },
   { key: "invalid", label: "Invalid", color: "bg-[var(--status-danger)]" },
   { key: "catchAll", label: "Catch-all", color: "bg-[var(--status-warning)]" },
+  { key: "disposable", label: "Disposable", color: "bg-[var(--status-info)]" },
+  { key: "roleBased", label: "Role-based", color: "bg-[var(--chart-processing)]" },
   { key: "unknown", label: "Unknown", color: "bg-[var(--status-unknown)]" },
 ];
 
@@ -70,6 +75,8 @@ const STATUS_LABELS: Record<ResultsStatusKey, string> = {
   valid: "Valid",
   invalid: "Invalid",
   catchAll: "Catch-all",
+  disposable: "Disposable",
+  roleBased: "Role-based",
   unknown: "Unknown",
   pending: "Pending",
 };
@@ -78,18 +85,24 @@ const STATUS_TONES: Record<ResultsStatusKey, string> = {
   valid: "text-[var(--status-success)]",
   invalid: "text-[var(--status-danger)]",
   catchAll: "text-[var(--status-warning)]",
+  disposable: "text-[var(--status-info)]",
+  roleBased: "text-[var(--chart-processing)]",
   unknown: "text-[var(--status-unknown)]",
   pending: "text-[var(--text-muted)]",
 };
 
-const resolveStatusKey = (status?: string): ResultsStatusKey => {
-  const normalized = status ? status.toLowerCase().trim() : "";
-  if (!normalized) return "unknown";
-  if (normalized === "exists" || normalized === "valid") return "valid";
-  if (normalized === "not_exists" || normalized === "invalid" || normalized === "invalid_syntax") return "invalid";
-  if (normalized === "catchall" || normalized === "catch-all" || normalized === "catch_all") return "catchAll";
-  if (normalized === "unknown") return "unknown";
-  if (normalized === "pending") return "pending";
+const resolveStatusKey = (result: VerificationResult): ResultsStatusKey => {
+  const bucket = resolveVerificationStatusBucket({
+    status: result.status,
+    isRoleBased: result.isRoleBased,
+    isDisposable: result.disposableDomain,
+  });
+  if (bucket === "valid") return "valid";
+  if (bucket === "invalid") return "invalid";
+  if (bucket === "catchall") return "catchAll";
+  if (bucket === "disposable_domain") return "disposable";
+  if (bucket === "role_based") return "roleBased";
+  if (bucket === "pending") return "pending";
   return "unknown";
 };
 
@@ -399,7 +412,7 @@ export function ResultsCard({
         {hasResults ? (
           <div className="max-h-60 space-y-2 overflow-y-auto pr-1">
             {results.map((item) => {
-              const statusKey = resolveStatusKey(item.status);
+              const statusKey = resolveStatusKey(item);
               return (
                 <div
                   key={item.email}
@@ -423,7 +436,7 @@ export function ResultsCard({
             type="button"
             onClick={onRefresh}
             disabled={isRefreshing}
-            className="rounded-xl border border-[var(--verify-border)] bg-white/70 px-3 py-2 text-xs font-semibold text-[var(--text-secondary)]"
+            className="rounded-xl border border-[var(--verify-border)] bg-[var(--verify-surface-contrast)] px-3 py-2 text-xs font-semibold text-[var(--text-secondary)]"
           >
             {isRefreshing ? "Refreshing..." : "Refresh status"}
           </button>
@@ -487,7 +500,7 @@ export function UploadSection({
           type="button"
           onClick={onRefreshSummary}
           disabled={latestUploadRefreshing}
-          className="rounded-xl border border-[var(--verify-border)] bg-white/70 px-3 py-2 text-xs font-semibold text-[var(--text-secondary)] disabled:cursor-not-allowed disabled:opacity-70"
+          className="rounded-xl border border-[var(--verify-border)] bg-[var(--verify-surface-contrast)] px-3 py-2 text-xs font-semibold text-[var(--text-secondary)] disabled:cursor-not-allowed disabled:opacity-70"
         >
           {latestUploadRefreshing ? "Refreshing..." : "Refresh status"}
         </button>
@@ -501,14 +514,14 @@ export function UploadSection({
           {latestUploadError}
         </div>
       ) : null}
-      <div className="mt-4 rounded-2xl border border-[var(--verify-border)] bg-white/70 p-4">
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <div className="mt-4 rounded-2xl border border-[var(--verify-border)] bg-[var(--verify-surface-contrast)] p-4">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
           {summaryBars.map((bar) => (
             <SummaryBarChart key={bar.key} bar={bar} />
           ))}
         </div>
         <div className="mt-4 flex flex-wrap items-center gap-2 text-xs font-semibold text-[var(--text-muted)]">
-          <span className="rounded-full border border-[var(--verify-border)] bg-white/70 px-3 py-1">
+          <span className="rounded-full border border-[var(--verify-border)] bg-[var(--verify-surface-contrast)] px-3 py-1">
             Total: {totalEmailsLabel}
           </span>
           <span className={`rounded-full px-3 py-1 text-xs font-bold ${summaryStatusClass}`}>
@@ -531,7 +544,7 @@ export function UploadSection({
         {uploadSummary.files.map((file) => (
           <span
             key={file.fileName}
-            className="inline-flex items-center gap-2 rounded-full border border-[var(--verify-border)] bg-white/70 px-3 py-1 text-xs font-semibold text-[var(--text-secondary)]"
+            className="inline-flex items-center gap-2 rounded-full border border-[var(--verify-border)] bg-[var(--verify-surface-contrast)] px-3 py-1 text-xs font-semibold text-[var(--text-secondary)]"
           >
             {file.fileName}
             <button
@@ -549,7 +562,7 @@ export function UploadSection({
         <button
           type="button"
           onClick={onReturnToIdle}
-          className="rounded-xl border border-[var(--verify-border)] bg-white/70 px-4 py-2 text-xs font-semibold text-[var(--text-secondary)]"
+          className="rounded-xl border border-[var(--verify-border)] bg-[var(--verify-surface-contrast)] px-4 py-2 text-xs font-semibold text-[var(--text-secondary)]"
         >
           Go back
         </button>
@@ -577,13 +590,13 @@ export function UploadSection({
         {uploadSummary.files.map((file) => (
           <div
             key={file.fileName}
-            className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--verify-border)] bg-white/70 px-3 py-2"
+            className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--verify-border)] bg-[var(--verify-surface-contrast)] px-3 py-2"
           >
             <span className="text-xs font-semibold text-[var(--text-secondary)]">{file.fileName}</span>
             <select
               value={columnMapping[file.fileName] ?? ""}
               onChange={(event) => onUpdateColumnMapping(file.fileName, event.target.value)}
-              className="rounded-lg border border-[var(--verify-border)] bg-white/80 px-3 py-1 text-xs font-semibold text-[var(--text-secondary)] focus:border-[var(--verify-accent)] focus:outline-none"
+              className="rounded-lg border border-[var(--verify-border)] bg-[var(--verify-surface-contrast-strong)] px-3 py-1 text-xs font-semibold text-[var(--text-secondary)] focus:border-[var(--verify-accent)] focus:outline-none"
             >
               <option value="">Select email column</option>
               {(fileColumns[file.fileName] ? buildColumnOptions(fileColumns[file.fileName], firstRowHasLabels) : []).map(
@@ -615,7 +628,7 @@ export function UploadSection({
         <button
           type="button"
           onClick={onReturnToFileList}
-          className="rounded-xl border border-[var(--verify-border)] bg-white/70 px-4 py-2 text-xs font-semibold text-[var(--text-secondary)]"
+          className="rounded-xl border border-[var(--verify-border)] bg-[var(--verify-surface-contrast)] px-4 py-2 text-xs font-semibold text-[var(--text-secondary)]"
         >
           Go back
         </button>

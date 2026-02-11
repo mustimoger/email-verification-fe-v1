@@ -1,6 +1,7 @@
 import { Work_Sans, Inter } from "next/font/google";
 import { ArrowUpRight, CheckCircle2, Star } from "lucide-react";
 import { CountUp } from "./CountUp";
+import { HeroVerificationForm } from "./HeroVerificationForm";
 
 const workSans = Work_Sans({
   subsets: ["latin"],
@@ -133,16 +134,7 @@ export function HeroSection({ backgroundVideoSrc }: HeroSectionProps) {
         </div>
 
         <div className="mx-auto mt-[178px] flex w-full max-w-[720px] flex-col items-center gap-4 rounded-[18px] border border-[rgba(255,255,255,0.18)] bg-[rgba(16,18,20,0.35)] px-8 py-9 text-center shadow-[0_18px_50px_rgba(15,23,42,0.25)] backdrop-blur md:mt-[186px] md:px-12 md:py-10">
-          <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center">
-            <input
-              type="email"
-              placeholder="Enter email to validate"
-              className="h-[56px] w-full rounded-[14px] border border-[rgba(255,255,255,0.2)] bg-white px-4 text-[16px] font-medium text-slate-900 shadow-[0_8px_20px_rgba(15,23,42,0.12)] outline-none placeholder:text-slate-400 focus:border-[#f9cf4a] focus:ring-2 focus:ring-[#f9cf4a]/40"
-            />
-            <button className="h-[56px] shrink-0 rounded-[14px] bg-[#ffa742] px-8 text-[16px] font-semibold text-[#6c6c6c] shadow-[0_12px_24px_rgba(255,167,66,0.35)] transition hover:brightness-105">
-              Verify
-            </button>
-          </div>
+          <HeroVerificationForm />
         </div>
 
         <div className="mt-[44px] text-center">

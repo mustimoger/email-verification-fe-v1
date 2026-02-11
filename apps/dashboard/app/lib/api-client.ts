@@ -14,12 +14,52 @@ export class ApiError extends Error {
   }
 }
 
+export type VerificationPrimaryStatus =
+  | "valid"
+  | "invalid"
+  | "catchall"
+  | "disposable_domain"
+  | "role_based";
+
+export type VerificationSecondaryStatus = "invalid_syntax" | "unknown";
+
+// Legacy aliases are accepted for backward-compatible parsing, not as primary dashboard buckets.
+export type VerificationLegacyStatusAlias = "exists" | "not_exists" | "disposable_domain_emails";
+
+export type VerificationStatus =
+  | VerificationPrimaryStatus
+  | VerificationSecondaryStatus
+  | VerificationLegacyStatusAlias
+  | (string & {});
+
+export type VerificationStatusCounts = {
+  valid?: number;
+  invalid?: number;
+  catchall?: number;
+  disposable_domain?: number;
+  role_based?: number;
+  invalid_syntax?: number;
+  unknown?: number;
+  exists?: number;
+  not_exists?: number;
+  disposable_domain_emails?: number;
+};
+
+export type TaskJobStatusCounts = {
+  pending?: number;
+  processing?: number;
+  completed?: number;
+  failed?: number;
+};
+
 export type VerificationStep = {
   id?: string;
   email_id?: string;
+  email?: Record<string, unknown>;
   step?: string;
   status?: string;
   error_message?: string;
+  metadata?: string;
   created_at?: string;
   started_at?: string;
   completed_at?: string;
@@ -27,10 +67,20 @@ export type VerificationStep = {
 };
 
 export type VerifyEmailResponse = {
+  id?: string;
   email?: string;
+  status?: VerificationStatus;
   is_role_based?: boolean;
+  is_disposable?: boolean;
+  has_mx_records?: boolean;
+  has_reverse_dns?: boolean;
+  domain_name?: string;
+  host_name?: string;
+  server_type?: string;
+  is_catchall?: boolean;
   message?: string;
-  status?: string;
+  unknown_reason?: string | null;
+  needs_physical_verify?: boolean;
   validated_at?: string;
   verification_steps?: VerificationStep[];
 };
@@ -49,13 +99,13 @@ export type ManualVerificationResult = {
 };
 
 export type TaskMetrics = {
-  job_status?: Record<string, number>;
+  job_status?: TaskJobStatusCounts;
   last_verification_completed_at?: string;
   last_verification_requested_at?: string;
   progress?: number;
   progress_percent?: number;
   total_email_addresses?: number;
-  verification_status?: Record<string, number>;
+  verification_status?: VerificationStatusCounts;
 };
 
 export type TaskFileMetadata = {
@@ -92,7 +142,7 @@ export type Task = {
   valid_count?: number;
   invalid_count?: number;
   catchall_count?: number;
-  job_status?: Record<string, number>;
+  job_status?: TaskJobStatusCounts;
   metrics?: TaskMetrics;
   integration?: string;
   file_name?: string;
@@ -104,7 +154,7 @@ export type TaskJobEmail = {
   id?: string;
   email?: string;
   email_address?: string;
-  status?: string;
+  status?: VerificationStatus;
   is_role_based?: boolean;
   is_disposable?: boolean;
   has_mx_records?: boolean;
@@ -135,6 +185,7 @@ export type TaskDetailResponse = {
   api_key_id?: string;
   api_key_preview?: string;
   api_key?: string;
+  webhook_url?: string;
   file_name?: string;
   source?: string;
   is_file_backed?: boolean;
@@ -151,6 +202,7 @@ export type TaskListResponse = {
   count?: number;
   limit?: number;
   offset?: number;
+  source?: string;
   tasks?: Task[];
 };
 
@@ -180,7 +232,7 @@ export type LatestUploadResponse = {
   valid_count?: number;
   invalid_count?: number;
   catchall_count?: number;
-  job_status?: Record<string, number>;
+  job_status?: TaskJobStatusCounts;
 };
 
 export type UploadFileMetadata = {
@@ -327,15 +379,15 @@ export type VerificationMetricsSeriesPoint = {
   total_verifications?: number;
   total_tasks?: number;
   unique_email_addresses?: number;
-  job_status?: Record<string, number>;
-  verification_status?: Record<string, number>;
+  job_status?: TaskJobStatusCounts;
+  verification_status?: VerificationStatusCounts;
   total_catchall?: number;
   total_role_based?: number;
   total_disposable_domain_emails?: number;
 };
 
 export type VerificationMetricsResponse = {
-  job_status?: Record<string, number>;
+  job_status?: TaskJobStatusCounts;
   last_verification_completed_at?: string;
   last_verification_requested_at?: string;
   total_catchall?: number;
@@ -345,7 +397,7 @@ export type VerificationMetricsResponse = {
   total_verifications?: number;
   unique_email_addresses?: number;
   user_id?: string;
-  verification_status?: Record<string, number>;
+  verification_status?: VerificationStatusCounts;
   series?: VerificationMetricsSeriesPoint[];
 };
 
@@ -428,6 +480,22 @@ export type PricingQuoteV2Response = {
   rounding_adjustment: string;
   rounding_adjustment_cents: number;
   tier: PricingTierV2;
+};
+
+export type SalesContactPlan = "payg" | "monthly" | "annual";
+
+export type SalesContactRequestPayload = {
+  source: string;
+  plan: SalesContactPlan;
+  quantity: number;
+  contactRequired: boolean;
+  page: string;
+};
+
+export type SalesContactRequestResponse = {
+  ok: true;
+  requestId: string;
+  message: string;
 };
 
 export type CreateTransactionResponse = {
@@ -926,4 +994,10 @@ export const billingApi = {
     price_id?: string;
     custom_data?: Record<string, unknown>;
   }) => request<CreateTransactionResponse>("/billing/v2/transactions", { method: "POST", body: payload }),
+  submitSalesContactRequest: (payload: SalesContactRequestPayload, idempotencyKey?: string) =>
+    request<SalesContactRequestResponse>("/sales/contact-request", {
+      method: "POST",
+      body: payload,
+      headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined,
+    }),
 };

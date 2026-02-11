@@ -1,5 +1,5 @@
 import logging
-from typing import Optional
+from typing import Callable, Optional, TypeVar
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status, UploadFile, File
 from pydantic import BaseModel, EmailStr, Field
@@ -14,6 +14,9 @@ from .tasks import get_user_external_client
 
 router = APIRouter(prefix="/api/account", tags=["account"])
 logger = logging.getLogger(__name__)
+T = TypeVar("T")
+
+ACCOUNT_FETCH_MAX_ATTEMPTS = 2
 
 
 class ProfileResponse(BaseModel):
@@ -52,6 +55,38 @@ class PurchaseResponse(BaseModel):
 
 class PurchaseListResponse(BaseModel):
     items: list[PurchaseResponse] = Field(default_factory=list)
+
+
+def _run_with_retry(
+    operation: str,
+    *,
+    user_id: str,
+    fn: Callable[[], T],
+    attempts: int = ACCOUNT_FETCH_MAX_ATTEMPTS,
+) -> T:
+    if attempts < 1:
+        raise ValueError("attempts must be at least 1")
+    last_error: Optional[Exception] = None
+    for attempt in range(1, attempts + 1):
+        try:
+            return fn()
+        except Exception as exc:  # noqa: BLE001
+            last_error = exc
+            if attempt >= attempts:
+                break
+            logger.warning(
+                "account.fetch.retry",
+                extra={
+                    "user_id": user_id,
+                    "operation": operation,
+                    "attempt": attempt,
+                    "max_attempts": attempts,
+                    "error": str(exc),
+                    "error_type": type(exc).__name__,
+                },
+            )
+    assert last_error is not None
+    raise last_error
 
 
 def _coerce_int(value: object) -> Optional[int]:
@@ -114,7 +149,11 @@ def _map_purchase_row(row: dict, *, user_id: str) -> Optional[PurchaseResponse]:
 @router.get("/profile", response_model=ProfileResponse)
 def get_profile(user: AuthContext = Depends(get_current_user)):
     try:
-        profile = supabase_client.fetch_profile(user.user_id)
+        profile = _run_with_retry(
+            "profile",
+            user_id=user.user_id,
+            fn=lambda: supabase_client.fetch_profile(user.user_id),
+        )
     except Exception as exc:  # noqa: BLE001
         logger.error("account.profile.fetch_failed", extra={"user_id": user.user_id, "error": str(exc), "error_type": type(exc).__name__})
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Profile service unavailable") from exc
@@ -216,7 +255,11 @@ def get_purchases(
         logger.warning("account.purchases.missing_limit", extra={"user_id": user.user_id, "offset": offset})
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="limit is required when offset is provided")
     try:
-        purchases = list_credit_grants(user_id=user.user_id, source="purchase", limit=limit, offset=offset)
+        purchases = _run_with_retry(
+            "purchases",
+            user_id=user.user_id,
+            fn=lambda: list_credit_grants(user_id=user.user_id, source="purchase", limit=limit, offset=offset),
+        )
     except Exception as exc:  # noqa: BLE001
         logger.error(
             "account.purchases.fetch_failed",

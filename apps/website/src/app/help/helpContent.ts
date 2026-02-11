@@ -471,35 +471,30 @@ export const helpStyles = String.raw`/* ========================================
     color: #1b1b20;
   }
   
-  /* Screenshot Placeholder */
+  /* Screenshots */
   .br-screenshot {
-    background: linear-gradient(135deg, #f9f9f8 0%, #ededed 100%);
-    border: 2px dashed #d0d0d0;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
     border-radius: 16px;
-    padding: 60px 40px;
-    text-align: center;
+    padding: 14px;
     margin: 24px 0;
-    position: relative;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
   }
   
-  .br-screenshot-label {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    background: #ff4444;
-    color: #ffffff;
-    padding: 8px 16px;
-    border-radius: 8px;
-    font-weight: 600;
-    font-size: 14px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+  .br-screenshot img {
+    width: 100%;
+    height: auto;
+    display: block;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
   }
   
   .br-screenshot p {
-    margin: 16px 0 0;
-    color: #6c6c6c;
-    font-size: 14px;
+    margin: 10px 0 0;
+    color: #4b5563;
+    font-size: 13px;
+    line-height: 1.5;
+    text-align: center;
   }
   
   /* Video Placeholder */
@@ -933,10 +928,9 @@ export const helpHtml = String.raw`<div class="br-help-center">
       <p>Recent verification tasks with status, dates, and quick access to download results.</p>
     </div>
 
-    <!-- SCREENSHOT PLACEHOLDER -->
     <div class="br-screenshot">
-      <div class="br-screenshot-label">🖼️ REPLACE WITH SCREENSHOT</div>
-      <p>Dashboard Overview Page<br><em>Recommended size: 1200×800px, showing full dashboard with sample data</em></p>
+      <img src="/email-overview.png" alt="Dashboard Overview page with key verification metrics and charts" loading="lazy" decoding="async">
+      <p>Dashboard Overview page</p>
     </div>
   </section>
 
@@ -984,10 +978,9 @@ export const helpHtml = String.raw`<div class="br-help-center">
       </div>
     </div>
 
-    <!-- SCREENSHOT PLACEHOLDER -->
     <div class="br-screenshot">
-      <div class="br-screenshot-label">🖼️ REPLACE WITH SCREENSHOT</div>
-      <p>Verify Page &#8211; Manual Verification Section<br><em>Show the text area and Live results panel</em></p>
+      <img src="/email-manual-verification.png" alt="Verify page manual verification section with text input and live results panel" loading="lazy" decoding="async">
+      <p>Verify page - manual verification section</p>
     </div>
 
     <h3 id="bulk-upload">Bulk Upload</h3>
@@ -1046,20 +1039,18 @@ export const helpHtml = String.raw`<div class="br-help-center">
       </div>
     </div>
 
-    <!-- SCREENSHOT PLACEHOLDER -->
     <div class="br-screenshot">
-      <div class="br-screenshot-label">🖼️ REPLACE WITH SCREENSHOT</div>
-      <p>Bulk Upload Section<br><em>Show drag-drop area and pre-flight checklist</em></p>
+      <img src="/email-bulk-validation.png" alt="Bulk upload section with drag and drop area and pre-flight checklist" loading="lazy" decoding="async">
+      <p>Bulk upload section</p>
     </div>
 
     <h3>Column Mapping</h3>
     <p>If your file has multiple columns, you&#8217;ll see a mapping screen. Select the column containing email addresses and confirm to start verification.</p>
     <p>BoltRoute auto-detects common header names like &#8220;email&#8221;, &#8220;Email&#8221;, &#8220;EMAIL&#8221;, &#8220;email_address&#8221;, etc.</p>
 
-    <!-- SCREENSHOT PLACEHOLDER -->
     <div class="br-screenshot">
-      <div class="br-screenshot-label">🖼️ REPLACE WITH SCREENSHOT</div>
-      <p>Column Mapping Screen<br><em>Show column selection interface</em></p>
+      <img src="/email-column-mapping.png" alt="Column mapping screen for selecting the email column in uploaded files" loading="lazy" decoding="async">
+      <p>Column mapping screen</p>
     </div>
   </section>
 
@@ -1178,10 +1169,9 @@ export const helpHtml = String.raw`<div class="br-help-center">
       • <strong>Status</strong> — Completed, Processing, or Failed</p>
     </div>
 
-    <!-- SCREENSHOT PLACEHOLDER -->
     <div class="br-screenshot">
-      <div class="br-screenshot-label">🖼️ REPLACE WITH SCREENSHOT</div>
-      <p>History Page<br><em>Show task list with various statuses and download buttons</em></p>
+      <img src="/email-verification-history.png" alt="History page with verification task list, statuses, and download actions" loading="lazy" decoding="async">
+      <p>History page</p>
     </div>
 
     <h3>Task Status Meanings</h3>
@@ -1290,10 +1280,9 @@ export const helpHtml = String.raw`<div class="br-help-center">
       </div>
     </div>
 
-    <!-- SCREENSHOT PLACEHOLDER -->
     <div class="br-screenshot">
-      <div class="br-screenshot-label">🖼️ REPLACE WITH SCREENSHOT</div>
-      <p>Integrations Page<br><em>Show the integration cards with Zapier, Make, n8n, Google Sheets</em></p>
+      <img src="/email-integrations.png" alt="Integrations page showing available integration cards and setup options" loading="lazy" decoding="async">
+      <p>Integrations page</p>
     </div>
 
     <h3>Setting Up Zapier</h3>
@@ -1406,10 +1395,9 @@ export const helpHtml = String.raw`<div class="br-help-center">
 
     <p><strong>Note:</strong> API users can retrieve plaintext keys with <span class="br-code">GET /api/v1/api-keys?reveal=true</span> when key reveal is enabled.</p>
 
-    <!-- SCREENSHOT PLACEHOLDER -->
     <div class="br-screenshot">
-      <div class="br-screenshot-label">🖼️ REPLACE WITH SCREENSHOT</div>
-      <p>API Page<br><em>Show key management table with Generate button</em></p>
+      <img src="/email-api.png" alt="API page with API key management table and generate key action" loading="lazy" decoding="async">
+      <p>API page</p>
     </div>
 
     <h3>Managing Keys</h3>
@@ -1509,10 +1497,9 @@ export const helpHtml = String.raw`<div class="br-help-center">
       </div>
     </div>
 
-    <!-- SCREENSHOT PLACEHOLDER -->
     <div class="br-screenshot">
-      <div class="br-screenshot-label">🖼️ REPLACE WITH SCREENSHOT</div>
-      <p>Pricing Page<br><em>Show credit slider and purchase options</em></p>
+      <img src="/email-pricing.png" alt="Pricing page with credit volume slider and purchase options" loading="lazy" decoding="async">
+      <p>Pricing page</p>
     </div>
 
     <div class="br-volume-pricing">
@@ -1569,10 +1556,9 @@ export const helpHtml = String.raw`<div class="br-help-center">
     <h3>Purchase History</h3>
     <p>Go to <strong>Account</strong> to view all past purchases with dates, amounts, and invoice numbers.</p>
 
-    <!-- SCREENSHOT PLACEHOLDER -->
     <div class="br-screenshot">
-      <div class="br-screenshot-label">🖼️ REPLACE WITH SCREENSHOT</div>
-      <p>Account Page &#8211; Purchase History<br><em>Show purchase history table</em></p>
+      <img src="/email-account.png" alt="Account page purchase history section with previous transactions and invoices" loading="lazy" decoding="async">
+      <p>Account page - purchase history</p>
     </div>
   </section>
 
@@ -1590,10 +1576,9 @@ export const helpHtml = String.raw`<div class="br-help-center">
     <p>• Change display name<br>• Update email address<br>• Change password</p>
     <p>Click <strong>Update profile</strong> to save changes.</p>
 
-    <!-- SCREENSHOT PLACEHOLDER -->
     <div class="br-screenshot">
-      <div class="br-screenshot-label">🖼️ REPLACE WITH SCREENSHOT</div>
-      <p>Account Page &#8211; Profile Section<br><em>Show profile form with display name, email, password fields</em></p>
+      <img src="/email-account.png" alt="Account page profile section with fields for name, email, and password updates" loading="lazy" decoding="async">
+      <p>Account page - profile section</p>
     </div>
 
     <h3>Changing Your Password</h3>

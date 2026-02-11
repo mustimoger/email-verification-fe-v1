@@ -41,13 +41,13 @@ run("mapTaskDetailToResults returns statuses mapped by email", () => {
   const detail: TaskDetailResponse = {
     jobs: [
       { email_address: "alpha@example.com", status: "completed" },
-      { email: { email_address: "beta@example.com", status: "exists" } },
+      { email: { email_address: "beta@example.com", status: "valid" } },
     ],
   };
   const results = mapTaskDetailToResults(["alpha@example.com", "beta@example.com", "gamma@example.com"], detail);
   assert.strictEqual(results.length, 3);
   assert.strictEqual(results[0].status, "completed");
-  assert.strictEqual(results[1].status, "exists");
+  assert.strictEqual(results[1].status, "valid");
   assert.strictEqual(results[2].status, "pending");
 });
 
@@ -80,9 +80,9 @@ run("buildUploadSummary uses detail jobs for counts when completed", () => {
   const detail: TaskDetailResponse = {
     id: "task-1",
     jobs: [
-      { email: { status: "exists" } },
+      { email: { status: "valid" } },
       { email: { status: "catchall" } },
-      { email: { status: "not_exists" } },
+      { email: { status: "invalid" } },
     ],
   };
   const summary = buildUploadSummary(files, links, new Map([["task-1", detail]]), "2024-03-01T00:00:00Z");
@@ -172,9 +172,16 @@ run("buildTaskUploadsSummary maps metrics and marks missing file name", () => {
       id: "task-1",
       created_at: "2024-03-03T00:00:00Z",
       metrics: {
-        total_email_addresses: 4,
-        job_status: { completed: 4 },
-        verification_status: { exists: 2, catchall: 1, not_exists: 1 },
+        total_email_addresses: 7,
+        job_status: { completed: 7 },
+        verification_status: {
+          valid: 2,
+          catchall: 1,
+          invalid: 1,
+          disposable_domain: 1,
+          role_based: 1,
+          unknown: 1,
+        },
       },
     },
   ];
@@ -182,8 +189,11 @@ run("buildTaskUploadsSummary maps metrics and marks missing file name", () => {
   assert.strictEqual(summary.files[0].fileName, EXTERNAL_DATA_UNAVAILABLE);
   assert.strictEqual(summary.files[0].downloadName, null);
   assert.strictEqual(summary.files[0].status, "download");
-  assert.strictEqual(summary.totalEmails, 4);
+  assert.strictEqual(summary.totalEmails, 7);
   assert.strictEqual(summary.aggregates.valid, 2);
+  assert.strictEqual(summary.aggregates.disposable, 1);
+  assert.strictEqual(summary.aggregates.roleBased, 1);
+  assert.strictEqual(summary.aggregates.unknown, 1);
 });
 
 run("buildLatestManualResults skips jobs without email addresses", () => {
@@ -191,7 +201,7 @@ run("buildLatestManualResults skips jobs without email addresses", () => {
     jobs: [
       { email_address: "alpha@example.com", status: "completed" },
       { status: "pending" },
-      { email: { email_address: "beta@example.com", status: "exists" } },
+      { email: { email_address: "beta@example.com", status: "valid" } },
     ],
   };
   const results = buildLatestManualResults(detail);
@@ -222,7 +232,7 @@ run("buildManualResultsFromJobs maps email metadata into export fields", () => {
     {
       email: {
         email: "alpha@example.com",
-        status: "exists",
+        status: "valid",
         is_role_based: true,
         is_disposable: false,
         is_catchall: false,
@@ -235,7 +245,7 @@ run("buildManualResultsFromJobs maps email metadata into export fields", () => {
   const results = buildManualResultsFromJobs(["alpha@example.com"], jobs);
   assert.strictEqual(results.length, 1);
   assert.strictEqual(results[0].email, "alpha@example.com");
-  assert.strictEqual(results[0].status, "exists");
+  assert.strictEqual(results[0].status, "valid");
   assert.strictEqual(results[0].isRoleBased, true);
   assert.strictEqual(results[0].disposableDomain, false);
   assert.strictEqual(results[0].catchallDomain, false);
@@ -248,7 +258,7 @@ run("buildManualExportRows marks missing export fields as unavailable", () => {
   const rows = buildManualExportRows([
     {
       email: "alpha@example.com",
-      status: "exists",
+      status: "valid",
       message: "ok",
     },
   ]);
