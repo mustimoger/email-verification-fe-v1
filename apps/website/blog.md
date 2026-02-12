@@ -36,7 +36,7 @@ Manual publishing is slow. This system gives us:
 ## How it works (high-level)
 
 1. **Inbox poll**  
-   GitHub Actions runs a job every 15 minutes to read the inbox using **IMAP**.
+   GitHub Actions runs the `Email Publish` workflow on demand (manual trigger) to read the inbox using **IMAP**.
 
 2. **Parsing**  
    The script `scripts/publish-from-email.js` parses the email and reads MDX.
@@ -100,9 +100,10 @@ Your email address must be in `ALLOWED_SENDERS` (comma-separated list).
 
 ### 4) Wait for automation
 
-GitHub Actions runs every 15 minutes.
-You can also manually trigger:  
+Trigger the workflow manually:  
 **Actions -> Email Publish -> Run workflow**
+
+If any message fails validation/parsing, the workflow run fails with an error summary.
 
 ### 5) Verify
 

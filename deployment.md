@@ -71,7 +71,7 @@
   - Website hero email verification (server-side route `POST /api/email-verification`) requires:
     - `BOLTROUTE_VERIFY_API_BASE_URL` (e.g. `https://api.boltroute.ai`)
     - `BOLTROUTE_VERIFY_API_KEY` (server-side API key; do not expose via `NEXT_PUBLIC_*`)
-  - Known optional automation keys (not website runtime): `IMAP_*`, `PROCESSED_FOLDER`, `ALLOWED_SENDERS`, `GIT_AUTHOR_*` for email publishing workflow in `apps/website/.github/workflows/email-publish.yml`.
+  - Known optional automation keys (not website runtime): `IMAP_*`, `PROCESSED_FOLDER`, `ALLOWED_SENDERS`, `GIT_AUTHOR_*` for email publishing workflow in `.github/workflows/email-publish.yml`.
   - Locked env file path: `/var/www/boltroute-website/shared/.env.local`.
   - Status: Locked.
 - 6. Deploy trigger policy:

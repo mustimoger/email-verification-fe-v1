@@ -1530,3 +1530,87 @@
     - `POST https://boltroute.ai/api/contact` (invalid email) => `400` with `{ "error":"A valid email is required." }`.
 - Where: `apps/website/src/lib/contact/smtp.ts`, `apps/website/src/app/api/contact/route.ts`, `apps/website/tests/contact/route.test.ts`, GitHub Actions run `21907160796`, `ui-progress.md`.
 - Not implemented yet: Phase-2 contact retry/outbox hardening remains pending under Tasks 185-189.
+
+### Task 196 - In Progress
+- What: Implement missing MDX email-CMS operational path end-to-end (workflow wiring, ingestion failure semantics, CMS tests, and docs alignment).
+- Why: The repository has MDX rendering and an ingestion script, but the advertised email automation is not currently wired in GitHub Actions and lacks CMS-focused test coverage.
+- Planned steps (added before implementation):
+  1. Add `.github/workflows/email-publish.yml` with manual trigger and secure env wiring for `apps/website/scripts/publish-from-email.js`.
+  2. Refactor publisher internals into reusable helpers and enforce fail-on-any-bad-email exit semantics.
+  3. Add CMS ingestion tests (frontmatter normalization, required fields, slug precedence, destination routing, unchanged writes, failure policy).
+  4. Update docs (`apps/website/README.md`, `apps/website/blog.md`, `deployment.md`) to match actual workflow path/trigger and behavior.
+  5. Run verification gates (`apps/website` tests + build) and record outcomes.
+- Where planned changes will land: `.github/workflows/email-publish.yml`, `apps/website/scripts/*`, `apps/website/tests/cms/*`, `apps/website/package.json`, `apps/website/package-lock.json`, `apps/website/README.md`, `apps/website/blog.md`, `deployment.md`, `ui-progress.md`.
+- Not implemented yet: All implementation steps are pending as of this entry.
+
+### Task 197 - Completed
+- What: Added the missing GitHub Actions workflow for MDX email publishing.
+- Why: The CMS ingestion script existed, but there was no operational automation entrypoint in `.github/workflows`, so email-based publishing could not run in CI.
+- How:
+  - Created `.github/workflows/email-publish.yml` with `workflow_dispatch` trigger only (manual policy).
+  - Added `permissions: contents: write` to allow script-managed commit/push.
+  - Wired the job to run in `apps/website` on Node 20 with `npm ci` and `node scripts/publish-from-email.js`.
+  - Mapped required/optional publisher env vars from repository secrets (`IMAP_*`, `PROCESSED_FOLDER`, `ALLOWED_SENDERS`, `GIT_AUTHOR_*`).
+  - Set checkout to `ref: main` + `fetch-depth: 0` so pushes target `main` consistently.
+- Where: `.github/workflows/email-publish.yml`, `ui-progress.md`.
+- Not implemented yet: Publisher failure semantics, CMS tests, docs alignment, and full validation gates remain pending under Task 196.
+
+### Task 198 - Completed
+- What: Refactored the email publisher internals into reusable helper utilities and enforced fail-on-any-bad-email run semantics.
+- Why: The CMS path needed testable core logic and explicit workflow failure when any message is invalid, matching the approved runtime policy.
+- How:
+  - Added `apps/website/scripts/publish-from-email-core.js` with reusable helpers:
+    - `normalizeMdxText`
+    - `normalizeFrontmatter`
+    - `normalizeMessageMetadata`
+    - `getContentBaseDir`
+    - `writeContentFile`
+    - `shouldFailRun`
+  - Updated `apps/website/scripts/publish-from-email.js` to consume the core module rather than duplicating parsing/validation/writing logic inline.
+  - Reworked post-processing flow so commit/push logic still runs for valid changes, but the script throws a non-zero error at the end if any message failed (`UID` + error summary included).
+- Where: `apps/website/scripts/publish-from-email-core.js`, `apps/website/scripts/publish-from-email.js`, `ui-progress.md`.
+- Not implemented yet: CMS test coverage and docs alignment were still pending at this step.
+
+### Task 199 - Completed
+- What: Added CMS ingestion tests and wired them into the website test pipeline.
+- Why: The repo previously had no automated tests for the email publisher path; regressions in slug/frontmatter validation/routing would be silent.
+- How:
+  - Added `apps/website/tests/cms/publish-from-email-core.test.ts` covering:
+    - MDX/frontmatter normalization
+    - required post-field validation
+    - slug precedence (frontmatter > filename > title)
+    - type-to-directory routing
+    - unchanged-content no-op writes
+    - fail-on-any-bad-email policy helper
+  - Added npm script `test:cms` and included it in aggregate `test` script in `apps/website/package.json`.
+  - Ran `source .venv/bin/activate && npm --prefix apps/website run test:cms` and confirmed pass.
+- Where: `apps/website/tests/cms/publish-from-email-core.test.ts`, `apps/website/package.json`, `ui-progress.md`.
+- Not implemented yet: Documentation alignment and full validation gates remained pending at this step.
+
+### Task 200 - Completed
+- What: Aligned CMS documentation with the implemented workflow and behavior.
+- Why: Existing docs still described scheduled polling and one path referenced a non-existent workflow location, causing onboarding and operational confusion.
+- How:
+  - Updated `apps/website/README.md` to document manual workflow trigger, exact workflow file path, and failure behavior.
+  - Updated `apps/website/blog.md` to remove "every 15 minutes" claims and document manual trigger + fail-on-validation behavior.
+  - Corrected workflow path reference in `deployment.md` from `apps/website/.github/workflows/email-publish.yml` to `.github/workflows/email-publish.yml`.
+  - Verified no stale 15-minute/path references remain in targeted docs via `rg`.
+- Where: `apps/website/README.md`, `apps/website/blog.md`, `deployment.md`, `ui-progress.md`.
+- Not implemented yet: Final full test/build verification and completion closeout were pending at this step.
+
+### Task 201 - Completed
+- What: Executed final CMS implementation verification gates and confirmed the website remains healthy after changes.
+- Why: MVP completion requires proving both functional tests and production build pipeline still pass with the new CMS workflow/refactor.
+- How:
+  - Ran `source .venv/bin/activate && npm --prefix apps/website run test` (passed), including new `test:cms` suite plus existing SEO/newsletter/contact tests.
+  - Ran `source .venv/bin/activate && npm --prefix apps/website run build` (passed), including Velite content build + Next production build.
+  - Observed only pre-existing non-blocking warnings (`<img>` usage, metadataBase warnings, existing hook dependency warning) with no new blocking errors.
+- Where: `apps/website` test/build outputs in this session, `ui-progress.md`.
+- Not implemented yet: None for the approved CMS plan scope.
+
+### Task 196 - Completed
+- What: Delivered the full MDX email-CMS operational plan implementation.
+- Why: The CMS was partially implemented (rendering yes, automation/testing incomplete); this closes the operational gap end-to-end.
+- How: Completed all five planned steps (workflow, refactor/failure semantics, CMS tests, docs alignment, and verification gates) and documented each completion task for newcomer continuity.
+- Where: `.github/workflows/email-publish.yml`, `apps/website/scripts/publish-from-email.js`, `apps/website/scripts/publish-from-email-core.js`, `apps/website/tests/cms/publish-from-email-core.test.ts`, `apps/website/package.json`, `apps/website/README.md`, `apps/website/blog.md`, `deployment.md`, `ui-progress.md`.
+- Not implemented yet: None within the requested implementation scope.

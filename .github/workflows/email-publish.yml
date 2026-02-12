@@ -1,0 +1,51 @@
+name: Email Publish
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: email-publish-main
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/website
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: apps/website/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Publish MDX from inbox
+        env:
+          IMAP_HOST: ${{ secrets.IMAP_HOST }}
+          IMAP_PORT: ${{ secrets.IMAP_PORT }}
+          IMAP_USER: ${{ secrets.IMAP_USER }}
+          IMAP_PASS: ${{ secrets.IMAP_PASS }}
+          IMAP_SECURE: ${{ secrets.IMAP_SECURE }}
+          IMAP_TLS_REJECT_UNAUTHORIZED: ${{ secrets.IMAP_TLS_REJECT_UNAUTHORIZED }}
+          IMAP_FOLDER: ${{ secrets.IMAP_FOLDER }}
+          PROCESSED_FOLDER: ${{ secrets.PROCESSED_FOLDER }}
+          ALLOWED_SENDERS: ${{ secrets.ALLOWED_SENDERS }}
+          GIT_AUTHOR_NAME: ${{ secrets.GIT_AUTHOR_NAME }}
+          GIT_AUTHOR_EMAIL: ${{ secrets.GIT_AUTHOR_EMAIL }}
+          PUBLISH_DRY_RUN: "false"
+          PUBLISH_SKIP_PUSH: "false"
+        run: node scripts/publish-from-email.js

@@ -57,6 +57,11 @@ GitHub Actions uses the same values as **repository secrets**:
 `IMAP_HOST`, `IMAP_PORT`, `IMAP_USER`, `IMAP_PASS`, `IMAP_SECURE`, `IMAP_FOLDER`,
 `PROCESSED_FOLDER`, `ALLOWED_SENDERS`, `IMAP_TLS_REJECT_UNAUTHORIZED`.
 
+Workflow entrypoint:
+- `.github/workflows/email-publish.yml`
+- Trigger manually from **Actions -> Email Publish -> Run workflow**
+- The run exits with failure if any message fails parsing or validation.
+
 #### Email format (MDX)
 
 Send an `.mdx` file as an attachment (preferred) or paste MDX in the email body.
