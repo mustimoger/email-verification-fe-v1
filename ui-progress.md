@@ -195,7 +195,7 @@
 - [x] Task 166 - Add backend/frontend tests for Contact Sales flow (validation, idempotency, fallback selection order) (MVP).
 - [x] Task 167 - Run Contact Sales MVP validation (targeted tests + dashboard build) and document results/remaining gaps (MVP).
 - [x] Task 207 - Add GA4 website tracking script for `boltroute.ai` with the provided measurement ID and run website validation checks (MVP).
-- [ ] Task 208 - Commit all current repository changes, push to `main`, and verify triggered deploy workflows to completion (MVP runtime ops).
+- [x] Task 208 - Commit all current repository changes, push to `main`, and verify triggered deploy workflows to completion (MVP runtime ops).
 
 ## Progress log
 ### Task 1 - Completed
@@ -1799,3 +1799,17 @@
   3. Monitor triggered GitHub Actions deploy workflows until completion and capture run outcomes.
 - Where planned changes will land: git commit on `main`, GitHub Actions run records, `ui-progress.md`.
 - Not implemented yet: All steps pending at this entry.
+
+### Task 208 - Completed
+- What: Committed all current repository changes, pushed to `main`, and verified deploy workflow completion.
+- Why: You requested full `commit/push/deploy all` execution.
+- How:
+  - Created commit `cd8a7ea` on `main` with all tracked and untracked workspace changes.
+  - Pushed `main` to origin (`9b75b0e..cd8a7ea`).
+  - Monitored push-triggered GitHub Actions runs for the same commit SHA:
+    - `Deploy` run `21951738662` -> `success`
+    - `Website Deploy` run `21951738674` -> `success`
+    - `Website CI` run `21951738769` -> `success`
+- Where: commit `cd8a7ea` on `main`, GitHub Actions run URLs under repository actions history, `ui-progress.md`.
+- Not implemented yet:
+  - No additional manual `workflow_dispatch` deploy was needed because push triggers already executed and passed for this commit.
