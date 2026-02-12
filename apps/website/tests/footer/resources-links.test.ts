@@ -15,21 +15,21 @@ const run = async (name: string, fn: () => Promise<void>) => {
 };
 
 const main = async () => {
-  await run("Footer resources include Tools between Blog and Help", async () => {
+  await run("Footer resources include Resources between Blog and Help", async () => {
     const source = await readFile(path.resolve("src/components/FooterSection.tsx"), "utf8");
 
     const blogIndex = source.indexOf('{ label: "Blog", href: "/blog" }');
-    const toolsIndex = source.indexOf('{ label: "Tools", href: "/resources" }');
+    const resourcesIndex = source.indexOf('{ label: "Resources", href: "/resources" }');
     const helpIndex = source.indexOf('{ label: "Help", href: "/help" }');
     const contactIndex = source.indexOf('{ label: "Contact", href: "/contact" }');
 
     assert.ok(blogIndex >= 0);
-    assert.ok(toolsIndex >= 0);
+    assert.ok(resourcesIndex >= 0);
     assert.ok(helpIndex >= 0);
     assert.ok(contactIndex >= 0);
 
-    assert.ok(blogIndex < toolsIndex);
-    assert.ok(toolsIndex < helpIndex);
+    assert.ok(blogIndex < resourcesIndex);
+    assert.ok(resourcesIndex < helpIndex);
     assert.ok(helpIndex < contactIndex);
   });
 

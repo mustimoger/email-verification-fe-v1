@@ -1885,3 +1885,49 @@
 - Where: `apps/website/src/app/resources/page.tsx`, `apps/website/src/components/FooterSection.tsx`, `apps/website/src/lib/seo/sitemap-core.ts`, `apps/website/tests/footer/resources-links.test.ts`, `apps/website/tests/seo/sitemap.test.ts`, `ui-progress.md`.
 - Not implemented yet:
   - No legacy `/tools` redirect route was added in this step; direct `/tools` traffic will no longer resolve unless you request a compatibility redirect.
+
+### Task 211 - In Progress
+- What: Update `/resources` page copy for the section pill and card CTA labels.
+- Why: You requested the page label and CTA wording to align with the new route naming and preferred action text.
+- Planned steps (added before implementation):
+  1. Change hero pill text from `Landing Tools` to `Resources`.
+  2. Change landing card button text from `View Tool` to `Read More`.
+  3. Run website validation and log completion details in this progress file.
+- Where planned changes will land: `apps/website/src/app/resources/page.tsx`, `ui-progress.md`.
+- Not implemented yet: All planned copy updates are pending at this entry.
+
+### Task 211 - Completed
+- What: Updated `/resources` hero pill and landing card CTA copy to the requested labels.
+- Why: You requested page wording alignment with the route name and preferred CTA phrasing.
+- How:
+  - Changed pill label from `Landing Tools` to `Resources`.
+  - Changed card button text from `View Tool` to `Read More`.
+  - Ran validation after copy update:
+    - `source .venv/bin/activate && npm --prefix apps/website run test` (passed),
+    - `source .venv/bin/activate && npm --prefix apps/website run build` (passed).
+- Where: `apps/website/src/app/resources/page.tsx`, `ui-progress.md`.
+- Not implemented yet:
+  - No additional UI/layout/styling changes were made in this step (copy-only update as requested).
+
+### Task 212 - In Progress
+- What: Change the footer `Resources` group menu text from `Tools` to `Resources` while keeping the link destination unchanged.
+- Why: You requested wording consistency with the renamed `/resources` page.
+- Planned steps (added before implementation):
+  1. Update footer link label text from `Tools` to `Resources` and keep href as `/resources`.
+  2. Update related footer link-order test expectations.
+  3. Run website validation and document completion in this progress file.
+- Where planned changes will land: `apps/website/src/components/FooterSection.tsx`, `apps/website/tests/footer/resources-links.test.ts`, `ui-progress.md`.
+- Not implemented yet: All planned label-change steps are pending at this entry.
+
+### Task 212 - Completed
+- What: Changed footer menu item text from `Tools` to `Resources` in the shared footer `Resources` group.
+- Why: You requested label consistency with the `/resources` route naming.
+- How:
+  - Updated the footer link label while preserving the same destination path (`/resources`) and existing layout/styling.
+  - Updated the footer link-order test assertion to match the new label text.
+  - Ran validation after the label change:
+    - `source .venv/bin/activate && npm --prefix apps/website run test` (passed),
+    - `source .venv/bin/activate && npm --prefix apps/website run build` (passed).
+- Where: `apps/website/src/components/FooterSection.tsx`, `apps/website/tests/footer/resources-links.test.ts`, `ui-progress.md`.
+- Not implemented yet:
+  - No additional footer structure/layout changes were made in this step (text-only update as requested).

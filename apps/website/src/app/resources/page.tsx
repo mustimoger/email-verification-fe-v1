@@ -37,7 +37,7 @@ export default function ToolsPage() {
         <div className="mx-auto w-full max-w-[1176px] px-5">
           <div className="mx-auto flex w-full max-w-[860px] flex-col items-center text-center">
             <span className="inline-flex items-center rounded-[8px] border border-[rgba(51,151,246,0.3)] bg-[rgba(51,151,246,0.2)] px-[15px] py-[10px] text-[14px] font-medium leading-[16.8px] text-white">
-              Landing Tools
+              Resources
             </span>
 
             <h1
@@ -90,7 +90,7 @@ export default function ToolsPage() {
                     href={card.href}
                     className={`${workSans.className} mt-6 inline-flex w-fit items-center rounded-[10px] bg-[#3397F6] px-4 py-2 text-[15px] font-semibold leading-[24px] text-white transition hover:bg-[#2d89e0]`}
                   >
-                    View Tool
+                    Read More
                   </a>
                 </div>
               </article>
