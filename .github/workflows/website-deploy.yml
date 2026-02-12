@@ -2,6 +2,11 @@ name: Website Deploy
 
 on:
   workflow_dispatch:
+    inputs:
+      contact_notification_to_email_override:
+        description: "Optional override for CONTACT_NOTIFICATION_TO_EMAIL for this deploy run only"
+        required: false
+        type: string
   push:
     branches:
       - main
@@ -74,6 +79,7 @@ jobs:
       - name: Upload env file
         env:
           WEBSITE_APP_ENV_LOCAL: ${{ secrets.WEBSITE_APP_ENV_LOCAL }}
+          CONTACT_NOTIFICATION_TO_EMAIL_OVERRIDE: ${{ github.event.inputs.contact_notification_to_email_override }}
         run: |
           set -euo pipefail
           app_env_file="$(mktemp)"
@@ -128,6 +134,20 @@ jobs:
             upsert_if_missing_or_blank "CONTACT_SMTP_ENVELOPE_FROM" "${env_source}"
             upsert_if_missing_or_blank "CONTACT_SMTP_SENDER_EMAIL" "${env_source}"
           done
+
+          apply_contact_recipient_override() {
+            local override_raw="${CONTACT_NOTIFICATION_TO_EMAIL_OVERRIDE:-}"
+            local override_value
+            override_value="$(printf '%s' "${override_raw}" | tr -d '\r\n')"
+            if [ -z "${override_value}" ]; then
+              return
+            fi
+            sed -i "/^CONTACT_NOTIFICATION_TO_EMAIL=/d" "${app_env_file}"
+            printf '\nCONTACT_NOTIFICATION_TO_EMAIL=%s\n' "${override_value}" >> "${app_env_file}"
+            echo "Applied CONTACT_NOTIFICATION_TO_EMAIL override for this deploy run."
+          }
+
+          apply_contact_recipient_override
 
           scp "${app_env_file}" "${DEPLOY_USER}@${DEPLOY_HOST}:${APP_ENV_REMOTE}"
           ssh "${DEPLOY_USER}@${DEPLOY_HOST}" \
