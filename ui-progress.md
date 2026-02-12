@@ -196,6 +196,10 @@
 - [x] Task 167 - Run Contact Sales MVP validation (targeted tests + dashboard build) and document results/remaining gaps (MVP).
 - [x] Task 207 - Add GA4 website tracking script for `boltroute.ai` with the provided measurement ID and run website validation checks (MVP).
 - [x] Task 208 - Commit all current repository changes, push to `main`, and verify triggered deploy workflows to completion (MVP runtime ops).
+- [ ] Task 213 - Confirm website consent MVP scope and legal baseline for public pages before runtime changes.
+- [ ] Task 214 - Implement website consent MVP UI (design-aligned banner/preferences) and gate non-essential website scripts until consent.
+- [ ] Task 215 - Add website consent tests and run website validation checks (unit/integration/build) for the MVP.
+- [ ] Task 216 - Deploy website consent MVP to `main` and verify push-triggered workflows complete successfully.
 
 ## Progress log
 ### Task 1 - Completed
@@ -1931,3 +1935,130 @@
 - Where: `apps/website/src/components/FooterSection.tsx`, `apps/website/tests/footer/resources-links.test.ts`, `ui-progress.md`.
 - Not implemented yet:
   - No additional footer structure/layout changes were made in this step (text-only update as requested).
+
+### Task 213 - In Progress
+- What: Confirm website consent MVP scope and legal baseline for public pages before runtime changes.
+- Why: You requested to proceed with website consent implementation, and we need a locked MVP scope before code edits so the implementation is minimal, testable, and legally safer.
+- Planned steps (added before implementation):
+  1. Audit current website runtime behavior for non-essential scripts and existing consent controls.
+  2. Define MVP consent behavior for first visit, reject/accept flow, script gating, and withdrawal path.
+  3. Lock legal baseline references for the MVP (consent before non-essential cookies, easy refusal, easy withdrawal, transparent links).
+  4. Document any known legal/compliance gaps that remain out of scope for MVP.
+- Where planned changes will land: `ui-progress.md` (scope contract), then implementation in `apps/website/src/app/*`, `apps/website/src/components/*`, `apps/website/src/lib/*`, and `apps/website/tests/*`.
+- Not implemented yet: Runtime code/test changes are pending until scope is confirmed in this task.
+
+### Task 213 - Completed
+- What: Confirmed and locked the website consent MVP scope and legal baseline before implementation.
+- Why: Keep the first release minimal and production-usable while reducing obvious consent-risk gaps on public pages.
+- How:
+  - Confirmed current website behavior: GA script currently loads immediately in `apps/website/src/app/layout.tsx` without prior consent gating.
+  - Locked MVP behavior contract:
+    - default status is `unknown` and banner is shown on first visit,
+    - equal prominence `Accept` and `Reject`,
+    - non-essential scripts are blocked until explicit `accepted`,
+    - `rejected` persists and keeps non-essential scripts off,
+    - persistent `Cookie Preferences` entry point allows reopening banner and changing decision (withdrawal/change path),
+    - banner includes links to policy/legal pages (Privacy, Terms, GDPR).
+  - Locked legal baseline references used for this MVP:
+    - ICO cookie guidance (prior consent for non-essential cookies and clear choice),
+    - EDPB consent guidelines (valid consent conditions),
+    - CNIL guidance (easy refusal and ability to withdraw).
+  - Logged remaining non-MVP gaps to track explicitly:
+    - no category-level granular consent center in this MVP,
+    - no server-side consent evidence/audit log in this MVP.
+- Where: `apps/website/src/app/layout.tsx` (audited only in this task), `ui-progress.md`.
+- Not implemented yet:
+  - Task 214 implementation (banner + gating) is not started in this task.
+  - Task 215 validation and Task 216 deploy are pending.
+
+### Task 214 - In Progress
+- What: Implement website consent MVP UI (design-aligned banner/preferences) and gate non-essential website scripts until consent.
+- Why: Enforce consent-before-load for optional scripts on public pages and provide a clear path to review/update consent.
+- Planned steps (added before implementation):
+  1. Add website consent state module (storage, status read/write, update events, open-banner request event).
+  2. Add website-styled consent banner component with Accept/Reject actions and legal links.
+  3. Gate GA script loading behind consent acceptance.
+  4. Add persistent footer `Cookie Preferences` control to reopen the banner for changes.
+  5. Run a lint sanity check to catch blocking syntax/type issues before formal validation task.
+- Where planned changes will land: `apps/website/src/lib/consent.ts`, `apps/website/src/lib/use-consent-status.ts`, `apps/website/src/components/ConsentBanner.tsx`, `apps/website/src/components/WebsiteAnalytics.tsx`, `apps/website/src/components/CookiePreferencesButton.tsx`, `apps/website/src/app/layout.tsx`, `apps/website/src/components/FooterSection.tsx`, `ui-progress.md`.
+- Not implemented yet: Task 215 tests/build validation and Task 216 deploy are pending by design.
+
+### Task 214 - Completed
+- What: Implemented website consent MVP with design-aligned banner + footer preferences entry point, and gated GA loading until explicit acceptance.
+- Why: Bring public website behavior in line with consent-first expectations while keeping implementation minimal and reversible for later enhancements.
+- How:
+  - Added website consent runtime module `apps/website/src/lib/consent.ts`:
+    - versioned local consent record (`accepted`/`rejected`/`unknown`),
+    - resilient localStorage read/write with explicit warnings on storage or parse failures,
+    - cross-component consent update event dispatch/listen,
+    - open-banner request event for manual preference changes.
+  - Added `apps/website/src/lib/use-consent-status.ts` for reactive consent status in client components.
+  - Added consent banner UI `apps/website/src/components/ConsentBanner.tsx`:
+    - fixed bottom dark-surface panel aligned with website visual language,
+    - equal-priority `Accept` and `Reject` controls,
+    - legal links (`Privacy Policy`, `Terms of Service`, `GDPR Compliance`),
+    - review mode when opened from preferences with current selection display.
+  - Added GA gating component `apps/website/src/components/WebsiteAnalytics.tsx`:
+    - GA scripts now render only when consent is `accepted`,
+    - consent updates toggle GA disable flag in-session for rejection after acceptance,
+    - explicit warning log when `NEXT_PUBLIC_GA_MEASUREMENT_ID` is missing.
+  - Added footer preferences control `apps/website/src/components/CookiePreferencesButton.tsx` and inserted it in `apps/website/src/components/FooterSection.tsx` without changing footer layout structure.
+  - Updated root layout `apps/website/src/app/layout.tsx` to use `WebsiteAnalytics` and `ConsentBanner` globally.
+  - Ran lint sanity check:
+    - `source .venv/bin/activate && npm --prefix apps/website run lint` (pass; existing non-blocking warnings only).
+- Where: `apps/website/src/lib/consent.ts`, `apps/website/src/lib/use-consent-status.ts`, `apps/website/src/components/ConsentBanner.tsx`, `apps/website/src/components/WebsiteAnalytics.tsx`, `apps/website/src/components/CookiePreferencesButton.tsx`, `apps/website/src/components/FooterSection.tsx`, `apps/website/src/app/layout.tsx`, `ui-progress.md`.
+- Not implemented yet:
+  - Consent-category granularity and category-specific toggles are not included in this MVP.
+  - Server-side consent audit trail is not included in this MVP.
+  - Formal website validation suite execution (tests + build) is pending in Task 215.
+  - Deployment to `main` is pending in Task 216.
+
+### Task 215 - In Progress
+- What: Add website consent tests and run website validation checks (unit/integration/build) for the MVP.
+- Why: Verify consent storage/event behavior and layout wiring are stable and avoid regressions before deployment.
+- Planned steps (added before implementation):
+  1. Add consent library unit tests for read/write/version handling and event-based banner open flow.
+  2. Add integration-style source checks for website layout/footer wiring (analytics gate + banner + cookie preferences control).
+  3. Include new consent tests in website test script chain.
+  4. Run website validation: targeted consent tests, full website test suite, and website build.
+  5. Record outcomes and any remaining gaps.
+- Where planned changes will land: `apps/website/tests/consent/*`, `apps/website/package.json`, `ui-progress.md`.
+- Not implemented yet: All validation and deployment steps are pending at this entry.
+
+### Task 215 - Completed
+- What: Added consent-focused website tests and completed validation (targeted tests, full website tests, and production build).
+- Why: Ensure the consent MVP is covered by repeatable checks before deployment and catch runtime/type regressions early.
+- How:
+  - Added consent unit tests in `apps/website/tests/consent/consent-state.test.ts` covering:
+    - consent persistence/readback,
+    - malformed JSON cleanup,
+    - version mismatch reset behavior,
+    - consent update event subscription,
+    - open-banner event subscription.
+  - Added wiring/integration source tests in `apps/website/tests/consent/layout-wiring.test.ts` covering:
+    - root layout consent-aware analytics + global banner wiring,
+    - footer `Cookie Preferences` control exposure,
+    - consent banner legal links and Accept/Reject controls.
+  - Updated website scripts in `apps/website/package.json`:
+    - added `test:consent`,
+    - included `test:consent` in the main `test` chain.
+  - Ran validation:
+    - `source .venv/bin/activate && npm --prefix apps/website run test:consent` (passed),
+    - `source .venv/bin/activate && npm --prefix apps/website run test` (passed),
+    - `source .venv/bin/activate && npm --prefix apps/website run build` (initially failed, then passed after a minimal type cast fix).
+  - Fixed build blocker discovered during validation:
+    - updated `apps/website/src/components/WebsiteAnalytics.tsx` to cast `window` via `unknown` before `WindowWithGtag`, resolving strict TS incompatibility in Next build.
+- Where: `apps/website/tests/consent/consent-state.test.ts`, `apps/website/tests/consent/layout-wiring.test.ts`, `apps/website/package.json`, `apps/website/src/components/WebsiteAnalytics.tsx`, `ui-progress.md`.
+- Not implemented yet:
+  - Deployment of consent MVP to `main` and workflow verification remains pending in Task 216.
+
+### Task 216 - In Progress
+- What: Deploy website consent MVP to `main` and verify push-triggered workflows complete successfully.
+- Why: Finalize consent MVP delivery in production pipeline and capture auditable deploy evidence.
+- Planned steps (added before implementation):
+  1. Commit all Task 214/215 website consent code + tests + progress-log updates on `main`.
+  2. Push commit to origin and capture resulting commit SHA.
+  3. Monitor push-triggered GitHub Actions for that SHA (`Website CI`, `Website Deploy`) until terminal status.
+  4. Record run IDs and outcomes in this progress file.
+- Where planned changes will land: git commit on `main`, GitHub Actions run records, `ui-progress.md`.
+- Not implemented yet: Workflow completion evidence is pending at this entry.

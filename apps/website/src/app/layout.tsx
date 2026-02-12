@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
-import Script from "next/script";
 import "./globals.css";
+import { ConsentBanner } from "@/components/ConsentBanner";
 import { Header } from "@/components/Header";
+import { WebsiteAnalytics } from "@/components/WebsiteAnalytics";
 import { FooterSection } from "@/components/FooterSection";
-
-const GA_MEASUREMENT_ID = "G-LGQ39S07PK";
 
 export const metadata: Metadata = {
   title: "BoltRoute",
@@ -22,21 +21,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="antialiased">
-        <Script
-          src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
-          strategy="afterInteractive"
-        />
-        <Script id="ga4-script" strategy="afterInteractive">
-          {`
-            window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
-            gtag('js', new Date());
-            gtag('config', '${GA_MEASUREMENT_ID}');
-          `}
-        </Script>
+        <WebsiteAnalytics />
         <Header />
         {children}
         <FooterSection />
+        <ConsentBanner />
       </body>
     </html>
   );

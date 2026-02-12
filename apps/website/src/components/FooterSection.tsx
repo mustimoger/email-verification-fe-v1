@@ -1,5 +1,6 @@
 import { Work_Sans, Inter } from "next/font/google";
 
+import { CookiePreferencesButton } from "@/components/CookiePreferencesButton";
 import { NewsletterSignupForm } from "@/components/NewsletterSignupForm";
 
 const workSans = Work_Sans({
@@ -119,7 +120,6 @@ export function FooterSection() {
                 { label: "Privacy", href: "/privacy-policy" },
                 { label: "Terms", href: "/terms" },
                 { label: "GDPR", href: "/gdpr-compliance" },
-                { label: "Refunds", href: "/refund-policy" },
               ].map((item) => (
                 <a
                   key={item.label}
@@ -129,6 +129,10 @@ export function FooterSection() {
                   {item.label}
                 </a>
               ))}
+              <CookiePreferencesButton className="transition-colors hover:text-[#FEFFFF]" />
+              <a href="/refund-policy" className="transition-colors hover:text-[#FEFFFF]">
+                Refunds
+              </a>
             </div>
             <div className="flex flex-wrap items-center justify-center gap-2 text-[16px] leading-[19.2px] text-white lg:flex-nowrap lg:justify-end lg:whitespace-nowrap">
               <span>Copyright</span>

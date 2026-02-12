@@ -12,9 +12,10 @@
     "lint": "next lint",
     "test:seo": "tsx tests/seo/site-url.test.ts && tsx tests/seo/sitemap.test.ts",
     "test:tools": "tsx tests/tools/tools-pages.test.ts && tsx tests/footer/resources-links.test.ts",
+    "test:consent": "tsx tests/consent/consent-state.test.ts && tsx tests/consent/layout-wiring.test.ts",
     "test:newsletter": "tsx tests/newsletter/subscribe-route.test.ts",
     "test:contact": "tsx tests/contact/route.test.ts && tsx tests/contact/form-path.test.ts",
-    "test": "npm run test:cms && npm run test:seo && npm run test:tools && npm run test:newsletter && npm run test:contact",
+    "test": "npm run test:cms && npm run test:seo && npm run test:tools && npm run test:consent && npm run test:newsletter && npm run test:contact",
     "test:cms": "tsx tests/cms/publish-from-email-core.test.ts"
   },
   "dependencies": {
