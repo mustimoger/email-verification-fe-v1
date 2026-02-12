@@ -19,7 +19,7 @@ const main = async () => {
     const source = await readFile(path.resolve("src/components/FooterSection.tsx"), "utf8");
 
     const blogIndex = source.indexOf('{ label: "Blog", href: "/blog" }');
-    const toolsIndex = source.indexOf('{ label: "Tools", href: "/tools" }');
+    const toolsIndex = source.indexOf('{ label: "Tools", href: "/resources" }');
     const helpIndex = source.indexOf('{ label: "Help", href: "/help" }');
     const contactIndex = source.indexOf('{ label: "Contact", href: "/contact" }');
 

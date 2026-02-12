@@ -1854,3 +1854,34 @@
 - Not implemented yet:
   - Automatic card creation for newly-added landing pages was intentionally not enabled in this MVP (current behavior is fixed curated allowlist as requested).
   - Header navigation was not changed (footer-only Tools link per request).
+
+### Task 210 - In Progress
+- What: Rename the new public route from `/tools` to `/resources` while keeping the same curated landing-card functionality.
+- Why: You decided the canonical path should be `/resources` instead of `/tools`.
+- Planned steps (added before implementation):
+  1. Move the route file from `src/app/tools/page.tsx` to `src/app/resources/page.tsx` and update metadata canonical path.
+  2. Update all internal references from `/tools` to `/resources` (footer resource link, sitemap static paths, related tests).
+  3. Run website test/build validation after the path rename.
+  4. Record completion details in this progress log, including what was intentionally kept unchanged.
+- Where planned changes will land: `apps/website/src/app/resources/page.tsx`, `apps/website/src/components/FooterSection.tsx`, `apps/website/src/lib/seo/sitemap-core.ts`, `apps/website/tests/footer/resources-links.test.ts`, `apps/website/tests/seo/sitemap.test.ts`, `ui-progress.md`.
+- Not implemented yet: All planned rename steps are pending at this entry.
+
+### Task 210 - Completed
+- What: Renamed the public tools hub route from `/tools` to `/resources` and updated all functional references/tests accordingly.
+- Why: You changed the canonical URL decision to `/resources`.
+- How:
+  - Moved route file from `apps/website/src/app/tools/page.tsx` to `apps/website/src/app/resources/page.tsx`.
+  - Updated page metadata to match new route:
+    - title changed to `Resources | BoltRoute`,
+    - canonical changed to `/resources`.
+  - Updated shared footer `Resources` group link target from `/tools` to `/resources` while keeping the same visual structure/layout classes.
+  - Updated sitemap static paths to include `/resources` instead of `/tools`.
+  - Updated tests for renamed path:
+    - footer resources link assertion now expects `/resources`,
+    - sitemap static-path assertion now expects `/resources`.
+  - Validation executed after rename:
+    - `source .venv/bin/activate && npm --prefix apps/website run test` (passed),
+    - `source .venv/bin/activate && npm --prefix apps/website run build` (passed).
+- Where: `apps/website/src/app/resources/page.tsx`, `apps/website/src/components/FooterSection.tsx`, `apps/website/src/lib/seo/sitemap-core.ts`, `apps/website/tests/footer/resources-links.test.ts`, `apps/website/tests/seo/sitemap.test.ts`, `ui-progress.md`.
+- Not implemented yet:
+  - No legacy `/tools` redirect route was added in this step; direct `/tools` traffic will no longer resolve unless you request a compatibility redirect.

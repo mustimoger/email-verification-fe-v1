@@ -19,11 +19,11 @@ const HERO_GRADIENT =
 const toolsCards = getToolsPageCards();
 
 export const metadata: Metadata = {
-  title: "Tools | BoltRoute",
+  title: "Resources | BoltRoute",
   description:
     "Explore BoltRoute tools and landing resources for verification APIs, list hygiene, enrichment workflows, and deliverability operations.",
   alternates: {
-    canonical: "/tools",
+    canonical: "/resources",
   },
 };
 
