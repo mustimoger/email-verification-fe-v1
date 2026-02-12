@@ -1813,3 +1813,44 @@
 - Where: commit `cd8a7ea` on `main`, GitHub Actions run URLs under repository actions history, `ui-progress.md`.
 - Not implemented yet:
   - No additional manual `workflow_dispatch` deploy was needed because push triggers already executed and passed for this commit.
+
+### Task 209 - In Progress
+- What: Build a new website page at `/tools` that lists the approved non-blog landing pages as cards and wire footer `Resources` link for `Tools`.
+- Why: You requested a dedicated tools hub page with shared website header/footer, a specific hero message, a 3-column card grid, and footer link placement between `Blog` and `Help` without redesign.
+- Planned steps (added before implementation):
+  1. Add a curated landing-card data source (fixed allowlist of the 11 approved landing slugs) with graceful missing-entry handling.
+  2. Create `apps/website/src/app/tools/page.tsx` with hero copy and responsive card grid (3 per row on desktop), linking each card to its landing page.
+  3. Insert `Tools` in shared footer `Resources` links between `Blog` and `Help` without changing existing footer layout styling.
+  4. Add `/tools` to sitemap static paths and add/extend tests for tools data mapping, footer order, and sitemap route coverage.
+  5. Run website test suite and capture outcomes in this progress log.
+- Where planned changes will land: `apps/website/src/lib/tools/*`, `apps/website/src/app/tools/page.tsx`, `apps/website/src/components/FooterSection.tsx`, `apps/website/src/lib/seo/sitemap-core.ts`, `apps/website/tests/tools/*`, `apps/website/tests/footer/*`, `apps/website/tests/seo/sitemap.test.ts`, `ui-progress.md`.
+- Not implemented yet: All planned implementation steps are pending at this entry.
+
+### Task 209 - Completed
+- What: Implemented new website `/tools` page with curated landing-tool cards, added footer `Resources` link for `Tools`, and added coverage/tests for tools source + footer order + sitemap static route.
+- Why: Deliver the requested non-blog tools hub using shared site layout while preserving existing footer design and ensuring future maintainers can validate behavior safely.
+- How:
+  - Added curated tools data source `apps/website/src/lib/tools/tools-pages.ts`:
+    - fixed allowlist for the exact 11 approved landing slugs,
+    - mapping from Velite `landings` data,
+    - graceful skip + `console.warn` for missing/draft/invalid entries,
+    - canonical URL validation with path fallback.
+  - Added route `apps/website/src/app/tools/page.tsx`:
+    - hero section with requested headline,
+    - 1–2 sentence supporting copy,
+    - responsive card grid (`1/2/3` columns; 3 per row on desktop),
+    - each card includes illustration area (`featuredImage` when present), title, description, and CTA to landing page.
+  - Updated shared footer resources list in `apps/website/src/components/FooterSection.tsx` by inserting `Tools` between `Blog` and `Help` without altering footer layout classes/styles.
+  - Added `/tools` to static sitemap paths in `apps/website/src/lib/seo/sitemap-core.ts`.
+  - Added tests:
+    - `apps/website/tests/tools/tools-pages.test.ts` for curated-source behavior/order/validation,
+    - `apps/website/tests/footer/resources-links.test.ts` for footer ordering,
+    - extended `apps/website/tests/seo/sitemap.test.ts` to assert `/tools` static path presence.
+  - Updated website test script chain in `apps/website/package.json` to include `test:tools`.
+  - Validation executed:
+    - `source .venv/bin/activate && npm --prefix apps/website run test` (passed),
+    - `source .venv/bin/activate && npm --prefix apps/website run build` (passed).
+- Where: `apps/website/src/lib/tools/tools-pages.ts`, `apps/website/src/app/tools/page.tsx`, `apps/website/src/components/FooterSection.tsx`, `apps/website/src/lib/seo/sitemap-core.ts`, `apps/website/tests/tools/tools-pages.test.ts`, `apps/website/tests/footer/resources-links.test.ts`, `apps/website/tests/seo/sitemap.test.ts`, `apps/website/package.json`, `ui-progress.md`.
+- Not implemented yet:
+  - Automatic card creation for newly-added landing pages was intentionally not enabled in this MVP (current behavior is fixed curated allowlist as requested).
+  - Header navigation was not changed (footer-only Tools link per request).

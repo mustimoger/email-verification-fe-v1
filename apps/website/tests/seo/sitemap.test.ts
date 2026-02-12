@@ -17,6 +17,8 @@ const run = (name: string, fn: () => void) => {
 };
 
 run("includes static routes and published content while excluding draft/placeholder entries", () => {
+  assert.ok(PUBLIC_STATIC_PATHS.includes("/tools"));
+
   const entries = buildSitemapEntriesFromSource(
     {
       posts: [

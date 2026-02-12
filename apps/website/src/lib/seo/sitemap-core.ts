@@ -30,6 +30,7 @@ export const PUBLIC_STATIC_PATHS = [
   "/integrations",
   "/pricing",
   "/setup-guide",
+  "/tools",
 ] as const;
 
 const isPlaceholderCanonical = (canonical?: string): boolean => {

@@ -62,6 +62,7 @@ export function FooterSection() {
               <div className="mt-4 flex flex-col gap-3 lg:mt-8">
                 {[
                   { label: "Blog", href: "/blog" },
+                  { label: "Tools", href: "/tools" },
                   { label: "Help", href: "/help" },
                   { label: "Contact", href: "/contact" },
                 ].map((item) => (
