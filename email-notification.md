@@ -305,3 +305,131 @@ Covers critical reliability behavior and regression-prone routing decisions for 
 ## T2 Notes
 - CI failure root cause was deterministic: commit `8d764be` introduced `test_bulk_upload_notifications_integration.py` but not the implementation files it imports/exercises.
 - This step ships those missing backend files and wiring so GitHub Actions can collect and execute the notification integration test.
+
+## T3. Root SMTP Diagnostic Script For Soft-Bounce Investigation
+- Status: `completed`
+- What:
+  - Added a root-level executable SMTP diagnostic tool that sends one email using backend `.env` SMTP settings and backend template semantics.
+  - Added verbose SMTP transcript logging (`EHLO`, `STARTTLS`, `AUTH`, `MAIL FROM`, `RCPT TO`, `DATA`, `QUIT`) and JSON summary output for deterministic debugging.
+  - Added targeted automated tests for script config loading, template rendering, and stage-wise SMTP probing.
+- Why:
+  - Acumbamail dashboard visibility is limited for soft-bounce analysis; this task gives local, step-level evidence for connection/auth/envelope acceptance before final mailbox delivery.
+- How:
+  - Implemented `smtp_diagnostic.py`:
+    - Loads backend settings from `apps/dashboard/backend/.env` via backend settings model.
+    - Reuses SMTP template rendering behavior from backend mailer helper functions.
+    - Emits structured warning when `SMTP_USERNAME` domain differs from `SMTP_FROM_EMAIL` domain.
+    - Writes timestamped artifacts under `artifacts/smtp-diagnostics/`.
+  - Added `apps/dashboard/backend/tests/test_smtp_diagnostic_script.py`.
+  - Ran focused backend tests and live probe commands.
+- Where:
+  - Script: `smtp_diagnostic.py`
+  - Tests: `apps/dashboard/backend/tests/test_smtp_diagnostic_script.py`
+
+## T3 Validation Evidence
+- Automated tests:
+  - `source .venv/bin/activate && cd apps/dashboard && pytest -q backend/tests/test_smtp_diagnostic_script.py backend/tests/test_smtp_mailer.py backend/tests/test_bulk_upload_notifications_integration.py`
+  - Result: `7 passed`
+- Live SMTP probes:
+  - `source .venv/bin/activate && ./smtp_diagnostic.py --verbose`
+  - `source .venv/bin/activate && ./smtp_diagnostic.py --verbose --recipient murat.kural@dva.com.tr`
+  - Result:
+    - Relay accepted both sends through all SMTP stages.
+    - Stage responses were all success (`250/220/235/250/250/250` sequence with `DATA` accepted as `250 Delivery in progress`).
+
+## T3 Findings
+- SMTP transport/auth/envelope acceptance is currently healthy from this app server to `smtp.acumbamail.com:587`.
+- Diagnostic logs flagged a configuration risk:
+  - `from_domain=boltroute.ai` vs `auth_domain=dva.com.tr` mismatch.
+- DNS policy checks (run in-session):
+  - `dig +short TXT boltroute.ai` -> `v=spf1 a mx -all`
+  - `dig +short TXT _dmarc.boltroute.ai` -> `v=DMARC1; p=quarantine; ...`
+  - `smtp.acumbamail.com` resolves outside `boltroute.ai` SPF-authorized senders.
+- Interpretation:
+  - Soft-bounces are likely happening after relay acceptance (recipient-side SPF/DMARC alignment enforcement), not at initial SMTP submission from the app.
+- Log artifacts:
+  - `artifacts/smtp-diagnostics/smtp-diagnostic-20260212T114738Z.log`
+  - `artifacts/smtp-diagnostics/smtp-diagnostic-20260212T114743Z.log`
+  - `artifacts/smtp-diagnostics/smtp-diagnostic-20260212T114956Z.log` (auth payload redaction applied)
+
+## T3 Not Implemented In This Session
+- No DNS/SPF/DKIM/DMARC verification automation was added yet in the script.
+- No production app code path was changed for delivery policy in this step; this task focused on reproducible diagnostics only.
+
+---
+
+## 12. Website MDX Email Publish Secrets (`.github/workflows/email-publish.yml`)
+
+This section is for the website content workflow only:
+- Workflow file: `.github/workflows/email-publish.yml`
+- Purpose: read MDX from IMAP inbox and publish content commits.
+
+### Where to add these values
+
+Add them as **repository secrets** (not committed files):
+1. GitHub repository -> **Settings**
+2. **Secrets and variables** -> **Actions**
+3. **New repository secret**
+4. Add each key exactly as listed below
+
+### Required secrets (must exist)
+
+- `IMAP_HOST`
+  - Suggested value: `mail.boltroute.ai`
+- `IMAP_PORT`
+  - Suggested value: `993`
+- `IMAP_USER`
+  - Suggested value: `publish@boltroute.ai`
+- `IMAP_PASS`
+  - Suggested value: mailbox password or app-specific password
+
+### Recommended secrets (strongly recommended)
+
+- `IMAP_SECURE`
+  - Suggested value: `true`
+- `IMAP_TLS_REJECT_UNAUTHORIZED`
+  - Suggested value: `true`
+  - Temporary fallback only if certificate chain is broken: `false`
+- `IMAP_FOLDER`
+  - Suggested value: `INBOX`
+- `PROCESSED_FOLDER`
+  - Suggested value: `Processed`
+  - Note: this mailbox folder must exist
+- `ALLOWED_SENDERS`
+  - Suggested value: `you@boltroute.ai,editor@boltroute.ai`
+- `GIT_AUTHOR_NAME`
+  - Suggested value: `email-publisher`
+- `GIT_AUTHOR_EMAIL`
+  - Suggested value: `email-publisher@users.noreply.github.com`
+
+### Important behavior
+
+- Workflow trigger policy is manual (`workflow_dispatch`).
+- The publisher run fails if any message fails parsing/validation.
+- `PUBLISH_DRY_RUN` and `PUBLISH_SKIP_PUSH` are hard-set in workflow to `false`.
+
+### Local manual run (optional, non-GitHub)
+
+For local testing only, you can place equivalent values in local `.env` (do not commit):
+
+```env
+IMAP_HOST=mail.boltroute.ai
+IMAP_PORT=993
+IMAP_USER=publish@boltroute.ai
+IMAP_PASS=change-me
+IMAP_SECURE=true
+IMAP_TLS_REJECT_UNAUTHORIZED=true
+IMAP_FOLDER=INBOX
+PROCESSED_FOLDER=Processed
+ALLOWED_SENDERS=you@boltroute.ai,editor@boltroute.ai
+GIT_AUTHOR_NAME=email-publisher
+GIT_AUTHOR_EMAIL=email-publisher@users.noreply.github.com
+```
+
+### Verification checklist
+
+- Secrets exist with exact names above.
+- Manually trigger: **Actions -> Email Publish -> Run workflow**.
+- Confirm workflow logs show inbox processing and either:
+  - successful content publish commit/push, or
+  - explicit UID-level failure summary.

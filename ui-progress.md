@@ -187,11 +187,15 @@
 - [x] Task 193 - Propagate SMTP/contact env keys into website production runtime during deploy so `/api/contact` can send mail.
 - [x] Task 194 - Align website `/contact` SMTP `Reply-To` policy to support-mailbox defaults (env-controlled) and extend contact route tests for the new behavior (MVP).
 - [x] Task 195 - Deploy Task 194 reply-to policy changes to `main` and run production `/contact` smoke checks (MVP).
+- [x] Task 196 - Add a safe per-run website deploy override for `CONTACT_NOTIFICATION_TO_EMAIL` so production contact recipient can be switched without replacing the full `WEBSITE_APP_ENV_LOCAL` secret (MVP runtime ops).
+- [x] Task 197 - Execute two production `/contact` form submissions as separate tests by deploying recipient override to `support@boltroute.ai` and `murat.kural@dva.com.tr`, then capture outcomes and request IDs (MVP runtime ops).
 - [x] Task 163 - Translate `enterprise-contact.md` into implementation TODOs and lock MVP scope for dashboard `/pricing` Contact Sales flow.
 - [x] Task 164 - Implement backend `POST /api/sales/contact-request` endpoint with auth, validation, idempotency, and deterministic request IDs (MVP).
 - [x] Task 165 - Implement dashboard `/pricing` Contact Sales submit UX with explicit fallback order and user-visible states (MVP).
 - [x] Task 166 - Add backend/frontend tests for Contact Sales flow (validation, idempotency, fallback selection order) (MVP).
 - [x] Task 167 - Run Contact Sales MVP validation (targeted tests + dashboard build) and document results/remaining gaps (MVP).
+- [x] Task 207 - Add GA4 website tracking script for `boltroute.ai` with the provided measurement ID and run website validation checks (MVP).
+- [ ] Task 208 - Commit all current repository changes, push to `main`, and verify triggered deploy workflows to completion (MVP runtime ops).
 
 ## Progress log
 ### Task 1 - Completed
@@ -1614,3 +1618,184 @@
 - How: Completed all five planned steps (workflow, refactor/failure semantics, CMS tests, docs alignment, and verification gates) and documented each completion task for newcomer continuity.
 - Where: `.github/workflows/email-publish.yml`, `apps/website/scripts/publish-from-email.js`, `apps/website/scripts/publish-from-email-core.js`, `apps/website/tests/cms/publish-from-email-core.test.ts`, `apps/website/package.json`, `apps/website/README.md`, `apps/website/blog.md`, `deployment.md`, `ui-progress.md`.
 - Not implemented yet: None within the requested implementation scope.
+
+### Task 202 - In Progress
+- What: Update `email-notification.md` with a clear, copy-ready setup guide for repository secrets required by `.github/workflows/email-publish.yml`.
+- Why: You requested a single source of truth that explains exactly which parameters to add, suggested values, and where they must be configured.
+- Planned steps (added before implementation):
+  1. Add a dedicated section in `email-notification.md` for website MDX email publish secrets.
+  2. Document where to add them (GitHub Actions repository secrets), required keys, recommended keys, and suggested values.
+  3. Add a local-only `.env` example for manual runs without implying secrets should be committed.
+  4. Record completion details and newcomer rationale in `ui-progress.md`.
+- Where planned changes will land: `email-notification.md`, `ui-progress.md`.
+- Not implemented yet: All steps pending at this entry.
+
+### Task 202 - Completed
+- What: Updated `email-notification.md` with a full setup guide for website MDX email-publish GitHub Actions secrets.
+- Why: You requested a clear reference for exact parameter names, suggested values, and where configuration must be applied.
+- How:
+  - Added new section `## 12. Website MDX Email Publish Secrets (.github/workflows/email-publish.yml)`.
+  - Documented exact configuration location in GitHub (`Settings -> Secrets and variables -> Actions -> New repository secret`).
+  - Listed required keys (`IMAP_HOST`, `IMAP_PORT`, `IMAP_USER`, `IMAP_PASS`) with suggested values.
+  - Listed strongly recommended keys (`IMAP_SECURE`, `IMAP_TLS_REJECT_UNAUTHORIZED`, `IMAP_FOLDER`, `PROCESSED_FOLDER`, `ALLOWED_SENDERS`, `GIT_AUTHOR_NAME`, `GIT_AUTHOR_EMAIL`) with suggested values and notes.
+  - Added runtime behavior notes (manual trigger, fail-on-validation semantics, dry-run/push flags in workflow).
+  - Added optional local `.env` example for manual local testing and a post-setup verification checklist.
+- Where: `email-notification.md`, `ui-progress.md`.
+- Not implemented yet: No GitHub secrets were created from this environment (documentation-only update as requested).
+
+### Task 203 - In Progress
+- What: Add a website `.env.example` file in the proper folder for the MDX email-publish workflow.
+- Why: Provide a safe, reusable template for future setup without storing real secrets in the repository.
+- Planned steps (added before implementation):
+  1. Create `apps/website/.env.example` with required and recommended `IMAP_*`/publisher keys used by `.github/workflows/email-publish.yml`.
+  2. Use placeholder values only (no real credentials), with short inline guidance comments.
+  3. Record completion details in `ui-progress.md` for newcomer continuity.
+- Where planned changes will land: `apps/website/.env.example`, `ui-progress.md`.
+- Not implemented yet: All steps pending at this entry.
+
+### Task 203 - Completed
+- What: Added a safe website environment template for MDX email publishing and finalized the filename as `.env.publish.example`.
+- Why: You requested a repository reference template for future setup while avoiding committed live secrets.
+- How:
+  - Created a non-secret template under `apps/website` with required and recommended publisher keys.
+  - Used placeholder/example values only.
+  - Renamed the template per your request from `.env.example` to `.env.publish.example`.
+- Where: `apps/website/.env.publish.example`, `ui-progress.md`.
+- Not implemented yet: No live secrets were stored in-repo (by design); actual secret values must remain in GitHub Actions secrets.
+
+### Task 204 - In Progress
+- What: Create a root-level `blog-publish.md` runbook covering the full MDX blog CMS publishing system.
+- Why: You requested a single, newcomer-friendly source under repo root that captures architecture, operational flow, setup, troubleshooting, and validation for the website blog CMS.
+- Planned steps (added before implementation):
+  1. Document CMS architecture and source-of-truth files (Velite collections, routing, and content directories).
+  2. Document the email publish workflow, required/recommended GitHub secrets, sender policy, and mailbox folder behavior.
+  3. Add an operational checklist (authoring format, trigger flow, verification, troubleshooting, and safety notes).
+  4. Record completion details in `ui-progress.md` for continuity in future sessions.
+- Where planned changes will land: `blog-publish.md`, `ui-progress.md`.
+- Not implemented yet: Documentation content is pending creation at this entry.
+
+### Task 204 - Completed
+- What: Added root-level `blog-publish.md` with complete MDX blog CMS implementation and operations details.
+- Why: You requested a single consolidated document at repo root that explains the system end-to-end for both operators and newcomers.
+- How:
+  - Documented CMS architecture, source directories, Velite collections, and runtime slug-route resolution behavior.
+  - Documented email publish workflow internals from the implemented scripts (trigger model, parsing flow, validation rules, slug precedence, commit/push behavior, and failure semantics).
+  - Documented required/recommended GitHub Actions secrets with setup path and value-shape warnings.
+  - Added authoring format examples (post/page), validation checklist, troubleshooting matrix, and operational guardrails.
+  - Referenced local template `apps/website/.env.publish.example` as the non-secret baseline.
+- Where: `blog-publish.md`, `ui-progress.md`.
+- Not implemented yet: No new automation logic changes were introduced; this task was documentation-only by request.
+
+### Task 205 - In Progress
+- What: Add a root-level SMTP diagnostic script to test real relay delivery behavior for backend notification emails with full protocol visibility.
+- Why: Acumbamail dashboard logs are insufficient for soft-bounce diagnosis; we need deterministic local evidence of each SMTP stage.
+- Planned steps (added before implementation):
+  1. Create root script to load backend SMTP config, build message using backend templates, and run a verbose SMTP transaction.
+  2. Add targeted tests for config loading, template rendering, and SMTP stage execution.
+  3. Run the script with live `.env` credentials and store transcript logs under root artifacts.
+  4. Document findings and likely failure surface for newcomer continuity.
+- Where planned changes will land: `smtp_diagnostic.py`, `apps/dashboard/backend/tests/test_smtp_diagnostic_script.py`, `email-notification.md`, `ui-progress.md`.
+- Not implemented yet: All steps pending at this entry.
+
+### Task 205 - Completed
+- What: Implemented and executed a production-like SMTP diagnostic flow for backend email notifications.
+- Why: You requested a concrete send-and-inspect path to identify why emails soft-bounce despite relay usage.
+- How:
+  - Added `smtp_diagnostic.py` at repo root with:
+    - backend `.env` loading via backend settings model,
+    - backend template rendering behavior reuse,
+    - verbose SMTP wire-stage logs (`EHLO`, `STARTTLS`, `AUTH`, `MAIL FROM`, `RCPT TO`, `DATA`, `QUIT`),
+    - JSON output including stage codes/responses and log file path.
+  - Added focused test suite `apps/dashboard/backend/tests/test_smtp_diagnostic_script.py`.
+  - Ran verification:
+    - `source .venv/bin/activate && cd apps/dashboard && pytest -q backend/tests/test_smtp_diagnostic_script.py backend/tests/test_smtp_mailer.py backend/tests/test_bulk_upload_notifications_integration.py` -> `7 passed`.
+  - Ran live probes:
+    - `source .venv/bin/activate && ./smtp_diagnostic.py --verbose`
+    - `source .venv/bin/activate && ./smtp_diagnostic.py --verbose --recipient murat.kural@dva.com.tr`
+    - `source .venv/bin/activate && ./smtp_diagnostic.py --verbose --recipient murat.kural@dva.com.tr` (post-auth-redaction validation)
+    - `dig +short TXT boltroute.ai` / `dig +short TXT _dmarc.boltroute.ai` to validate sender-domain policy alignment.
+  - Relay accepted both sends at SMTP level (auth + sender + recipient + data accepted), and script flagged sender/auth domain mismatch as an alignment risk (`boltroute.ai` vs `dva.com.tr`).
+  - DNS check showed `boltroute.ai` SPF currently `v=spf1 a mx -all` with DMARC quarantine policy, which likely excludes Acumbamail relay IPs and explains post-acceptance soft-bounces.
+- Where: `smtp_diagnostic.py`, `apps/dashboard/backend/tests/test_smtp_diagnostic_script.py`, `email-notification.md`, `ui-progress.md`, `artifacts/smtp-diagnostics/smtp-diagnostic-20260212T114738Z.log`, `artifacts/smtp-diagnostics/smtp-diagnostic-20260212T114743Z.log`, `artifacts/smtp-diagnostics/smtp-diagnostic-20260212T114956Z.log`.
+- Not implemented yet: DNS/SPF/DKIM/DMARC automatic checks were not added in this step.
+
+### Task 206 - In Progress
+- What: Create a root-level incident document `email-issue.md` that explains the current Acumbamail soft-bounce behavior for newcomer handover.
+- Why: You requested a complete, standalone explanation of the problem, executed tests, outcomes, and findings so future contributors can continue without missing context.
+- Planned steps (added before implementation):
+  1. Gather the full timeline and exact test evidence from SMTP diagnostic runs and production `/contact` E2E runs.
+  2. Write `email-issue.md` with sections for problem statement, environment, test matrix, raw outcomes, and conclusions.
+  3. Update `ui-progress.md` with completed What/Why/How/Where and any remaining unknowns.
+- Where planned changes will land: `email-issue.md`, `ui-progress.md`.
+- Not implemented yet: All steps pending at this entry.
+
+### Task 206 - Completed
+- What: Added a full newcomer-focused incident report at root: `email-issue.md`.
+- Why: You asked for a detailed, standalone problem document including DNS details, test history, outcomes, and infra context (including external mailbox/Hestia path).
+- How:
+  - Documented architecture split between sender paths (dashboard + website) and recipient mailbox infra (`mail.boltroute.ai`).
+  - Captured exact test matrix:
+    - backend SMTP transcript tests,
+    - production `/contact` E2E submissions with request IDs,
+    - recipient-specific delivery/soft-bounce outcomes from Acumbamail,
+    - DNS/MX/SPF/DMARC checks and mailbox-host probing.
+  - Added timeline of changes:
+    - initial soft-bounce pattern,
+    - temporary recipient override via `CONTACT_NOTIFICATION_TO_EMAIL`,
+    - SPF update to include Acumbamail,
+    - post-change verification context.
+  - Included concrete findings, probable root-cause direction, active mitigation, and next-action checklist for mail-auth + receiver-side (Hestia mailbox host) debugging.
+- Where: `email-issue.md`, `ui-progress.md`.
+- Not implemented yet:
+  - No receiver-side log extraction from the external mailbox host (`mail.boltroute.ai`) was performed from this repository environment.
+  - No DKIM verification automation was added in this documentation step.
+
+### Task 196 - Completed
+- What: Added a safe, per-run recipient override for website deploys so contact-recipient routing can be changed for a single run without replacing `WEBSITE_APP_ENV_LOCAL`.
+- Why: We needed two real production `/contact` tests with different recipients (`support@boltroute.ai` and `murat.kural@dva.com.tr`) while preserving all existing secret env keys.
+- How:
+  - Updated `.github/workflows/website-deploy.yml`:
+    - added optional `workflow_dispatch` input `contact_notification_to_email_override`,
+    - passed it into `Upload env file` step as `CONTACT_NOTIFICATION_TO_EMAIL_OVERRIDE`,
+    - applied override after env merge by replacing `CONTACT_NOTIFICATION_TO_EMAIL` in the temporary env payload only when input is provided.
+  - Committed workflow-only change on temporary branch `contact-recipient-e2e-override` (`2e5cce7`) and pushed to origin.
+- Where: `.github/workflows/website-deploy.yml`, branch `contact-recipient-e2e-override`, `ui-progress.md`.
+- Not implemented yet: Change is currently on temporary branch (not merged to `main`).
+
+### Task 197 - Completed
+- What: Executed two separate production `/contact` form submission tests with recipient-specific deploy overrides and captured request IDs.
+- Why: You requested explicit validation that contact-form submissions were tested independently for both recipient mailboxes.
+- How:
+  - Dispatched deploy run `21949897511` with override `support@boltroute.ai` from branch `contact-recipient-e2e-override`; run completed successfully and logs confirm override application (`Applied CONTACT_NOTIFICATION_TO_EMAIL override for this deploy run.`).
+  - Ran live browser form submission on `https://boltroute.ai/contact` via Playwright; API response `200` with request ID `7e5a3a29-6c2e-47a8-bb13-103708c445c8`.
+  - Dispatched deploy run `21949990638` with override `murat.kural@dva.com.tr`; run completed successfully and logs confirm override application.
+  - Ran second live browser form submission on `https://boltroute.ai/contact`; API response `200` with request ID `45546cbb-eaba-4048-b485-411d4386e0c5`.
+- Where: GitHub Actions runs `21949897511` and `21949990638`; Playwright runtime submissions against `https://boltroute.ai/contact`; `ui-progress.md`.
+- Not implemented yet:
+  - Inbox/delivery disposition was not confirmed from this environment (no direct mailbox/Acumbamail inbox access in this run).
+
+### Task 207 - Completed
+- What: Added the GA4 tag (`G-LGQ39S07PK`) to the website root layout so analytics loads across all pages.
+- Why: You requested Google Analytics tracking for `boltroute.ai` after creating the GA4 property.
+- How:
+  - Added `next/script` in `apps/website/src/app/layout.tsx`.
+  - Injected the external GA script (`https://www.googletagmanager.com/gtag/js?id=G-LGQ39S07PK`) with `afterInteractive` strategy.
+  - Injected the initialization block to define `window.dataLayer`, `gtag`, and `gtag('config', 'G-LGQ39S07PK')`.
+  - Ran website validation checks from repo root:
+    - `source .venv/bin/activate && npm run lint:website`
+    - `source .venv/bin/activate && npm run build:website`
+    - `source .venv/bin/activate && npm --prefix apps/website run test`
+  - Confirmed all checks completed successfully; only existing non-blocking warnings were reported.
+- Where: `apps/website/src/app/layout.tsx`, `ui-progress.md`.
+- Not implemented yet:
+  - No production deploy was executed in this step.
+
+### Task 208 - In Progress
+- What: Commit all current local repository changes, push to `main`, and verify deployment workflow completion.
+- Why: You requested `commit/push/deploy all` in one pass.
+- Planned steps (added before implementation):
+  1. Stage and commit all modified/untracked files currently present in the workspace.
+  2. Push `main` to origin.
+  3. Monitor triggered GitHub Actions deploy workflows until completion and capture run outcomes.
+- Where planned changes will land: git commit on `main`, GitHub Actions run records, `ui-progress.md`.
+- Not implemented yet: All steps pending at this entry.
